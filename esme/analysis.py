@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import multiprocessing as mp
 import os
-from pathlib import Path
 import pickle
 import re
+from pathlib import Path
 from typing import Generator, Iterable
 
 import cv2
@@ -19,7 +19,7 @@ IMAGE_PATH_KEY = "XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"
 
 
 NOISE_THRESHOLD = 0.08  # By eye...
-PIXEL_SIZE_UM = 28 # 28 microns, from the paper
+PIXEL_SIZE_UM = 28  # 28 microns, from the paper
 
 RawImageT = npt.NDArray
 
@@ -199,7 +199,6 @@ def get_gaussian_fit(x, y):
     mu0 = y.argmax()
     a0 = y.max()
     sigma0 = 1
-    image_size_x = len(x)
 
     # Bounds argument of curve_fit slows the fitting procedure down too much
     # (>2x worse), so avoid using it here.
@@ -258,7 +257,7 @@ class ScanMeasurement:
         self.tds = _tds_magic_number_from_filename(df_path)
         self.images = []
         self.bg = []
-        self._mean_bg_im = None # For caching.
+        self._mean_bg_im = None  # For caching.
         with df_path.open("br") as f:
             df = pickle.load(f)
             for relative_path in df[IMAGE_PATH_KEY]:
@@ -351,11 +350,10 @@ class TDSDispersionScan:
         return np.array([s.tds for s in self.measurements])
 
     def get_max_energy_slice_widths(self, padding: int = 20, do_mp: bool = True):
-        # if not MP:
+        if do_mp:
+            with mp.Pool(mp.cpu_count()) as p:
+                return p.map(_f, self.measurements)
         return [_f(m) for m in self.measurements]
-        # with mp.Pool(mp.cpu_count()) as p:
-        #     results = p.map(_f, self.measurements)
-        # return results
 
     def __getitem__(self, key: int) -> ScanMeasurement:
         return self.measurements[key]
@@ -381,6 +379,7 @@ class TDSScan(TDSDispersionScan):
 #     dx = scan.dx
 #     dx2 = dx**2
 
+
 def transform_variables_for_linear_fit(independent_variable, pixel_stds):
     """The fits used in the paper are linear relationships between the variances
     (i.e. pixel_std^2) and the square of the independent variable (either
@@ -393,8 +392,8 @@ def transform_variables_for_linear_fit(independent_variable, pixel_stds):
     x2 = independent_variable**2
     # Do error calculation by converting to ufloats
     widths = np.array([ufloat(value, error) for (value, error) in pixel_stds])
-    widths *= PIXEL_SIZE_UM # Convert pixels to micrometres
-    widths2 = widths ** 2
+    widths *= PIXEL_SIZE_UM  # Convert pixels to micrometres
+    widths2 = widths**2
     # Extract errors
     widths2, errors2 = zip(*[(w.nominal_value, w.std_dev) for w in widths])
     return x2, widths2, errors2
@@ -414,8 +413,6 @@ def linear_fit_to_pixel_stds(indep_var, pixel_stds):
     m = ufloat(popt[0], perr[0])
 
     return c, m
-
-
 
 
 def plot_tds_scan(scan: TDSDispersionScan):
@@ -459,57 +456,57 @@ def plot_tds_scan(scan: TDSDispersionScan):
     return c, m
 
 
-def calculate_energy_spread(dscan_files, tdsscan_files):
-    # Using notation from the paper, albeit in lower case.
-    tdsscan = TDSDispersionScan(tdsscan_files)
-    dscan = TDSDispersionScan(dscan_files)
+# def calculate_energy_spread(dscan_files, tdsscan_files):
+#     # Using notation from the paper, albeit in lower case.
+#     tdsscan = TDSDispersionScan(tdsscan_files)
+#     dscan = TDSDispersionScan(dscan_files)
 
-    energy_at_screen = dscan.beam_energy
+#     energy_at_screen = dscan.beam_energy
 
-    av, bv = plot_tds_scan(tdsscan)
-    ad, bd = plot_dispersion_scan(dscan_files)
+#     av, bv = plot_tds_scan(tdsscan)
+#     ad, bd = plot_dispersion_scan(dscan_files)
 
-    # dispersion0 =
-
-
-def main(pcl_file=None):
-    # measurement = ScanMeasurement(pcl_file)
-
-    # dscan = TDSDispersionScan(
-    #                           )
-
-    # tdsscan = TDSDispersionScan()
-
-    calculate_energy_spread(
-        [
-            "20210226-17_24_33_Dx_1181_tds_13.pcl",
-            "20210226-17_29_30_Dx_1006_tds_13.pcl",
-            "20210226-17_33_35_Dx_789_tds_13.pcl",
-            "20210226-17_37_57_Dx_578_tds_13.pcl",
-        ],
-        [
-            "20210226-17_43_09_Dx_1183_tds_8.pcl",
-            "20210226-17_44_49_Dx_1183_tds_10.pcl",
-            "20210226-17_46_49_Dx_1183_tds_12.pcl",
-            "20210226-17_49_10_Dx_1183_tds_14.pcl",
-            "20210226-17_50_54_Dx_1183_tds_16.pcl",
-            "20210226-17_52_24_Dx_1183_tds_18.pcl",
-        ],
-    )
-
-    from IPython import embed
-
-    embed()
-    # plot_dispersion_scan(dscan)
-
-    # plot_tds_scan(tdsscan)
-
-    # dscan.show_before_after_for_measurement(-1)
-    # tdsscan.show_before_after_for_measurement(-1)    #
-    # # dscan[3].show(9)
-
-    plt.show()
+#     # dispersion0 =
 
 
-if __name__ == '__main__':
-    main()
+# def main(pcl_file=None):
+#     # measurement = ScanMeasurement(pcl_file)
+
+#     # dscan = TDSDispersionScan(
+#     #                           )
+
+#     # tdsscan = TDSDispersionScan()
+
+#     calculate_energy_spread(
+#         [
+#             "20210226-17_24_33_Dx_1181_tds_13.pcl",
+#             "20210226-17_29_30_Dx_1006_tds_13.pcl",
+#             "20210226-17_33_35_Dx_789_tds_13.pcl",
+#             "20210226-17_37_57_Dx_578_tds_13.pcl",
+#         ],
+#         [
+#             "20210226-17_43_09_Dx_1183_tds_8.pcl",
+#             "20210226-17_44_49_Dx_1183_tds_10.pcl",
+#             "20210226-17_46_49_Dx_1183_tds_12.pcl",
+#             "20210226-17_49_10_Dx_1183_tds_14.pcl",
+#             "20210226-17_50_54_Dx_1183_tds_16.pcl",
+#             "20210226-17_52_24_Dx_1183_tds_18.pcl",
+#         ],
+#     )
+
+#     from IPython import embed
+
+#     embed()
+#     # plot_dispersion_scan(dscan)
+
+#     # plot_tds_scan(tdsscan)
+
+#     # dscan.show_before_after_for_measurement(-1)
+#     # tdsscan.show_before_after_for_measurement(-1)    #
+#     # # dscan[3].show(9)
+
+#     plt.show()
+
+
+# if __name__ == '__main__':
+#     main()

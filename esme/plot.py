@@ -63,9 +63,8 @@ def show_before_after_processing(measurement: ana.ScanMeasurement, index: int) -
     ax4.set_xlabel("Pixel Row Index")
     ax2.set_ylabel("Pixel Brightness")
     ax4.set_ylabel("Pixel Brightness")
-    fig.suptitle(
-        fr"TDS No. = {self.tds}, $\eta_x={self.dx}\,\mathrm{{m}}$, image {index}, before/after image processing"
-    )
+    m = measurement
+    fig.suptitle(fr"TDS No. = {m.tds}, $\eta_x={m.dx}\,\mathrm{{m}}$, image {index}, before/after image processing")
     ax2.legend()
     ax4.legend()
 
@@ -94,6 +93,7 @@ def show_before_after_processing(measurement: ana.ScanMeasurement, index: int) -
 #     ax.imshow(image)
 #     return fig, ax
 
+
 def plot_dispersion_scan(scan: ana.DispersionScan) -> tuple[ufloat, ufloat]:
     widths = np.asarray(list(scan.get_max_energy_slice_widths(padding=10)))
     dx = scan.dx
@@ -117,16 +117,18 @@ def plot_dispersion_scan(scan: ana.DispersionScan) -> tuple[ufloat, ufloat]:
 
     return c, m
 
+
 def _set_ylabel_for_scan(ax):
     ax.set_ylabel(r"$\sigma_M^2\,/\,\mathrm{\mathrm{\mu}m}^2$")
     # ax.set_ylabel(r"$\sigma_M^2\,/\,\mathrm{m}^2$")
     # ax.set_ylabel(r"$\sigma_M^2\,/\,\mathrm{px}^2$")
 
+
 def plot_tds_scan(scan: ana.TDSScan) -> tuple[ufloat, ufloat]:
     widths = np.asarray(list(scan.get_max_energy_slice_widths(padding=10)))
     tds = scan.tds
 
-     x2, widths2, errors2 = ana.transform_variables_for_linear_fit(tds, widths)
+    x2, widths2, errors2 = ana.transform_variables_for_linear_fit(tds, widths)
     c, m = ana.linear_fit_to_pixel_stds(tds, widths)
 
     tds2sample = np.linspace(0, 1.1 * max(tds**2))
@@ -141,21 +143,27 @@ def plot_tds_scan(scan: ana.TDSScan) -> tuple[ufloat, ufloat]:
 
     ax.set_xlabel(r"$\mathrm{TDS\ Power}^2\,/\,\mathrm{\%}^2$")
     ax.set_title("TDS scan fit")
-    add_info_box(ax, "V", "\%^2", c, m)
+    add_info_box(ax, "V", "\\%^2", c, m)
 
     return c, m
+
 
 # def _plot_scan(scan: ana.DispersionScan | ana.TDSScan):
 #     pass
 
+
 def add_info_box(ax, symbol, xunits, c, m):
-    props = dict(boxstyle='round', facecolor='white',
-                 alpha=0.5)
+    props = dict(boxstyle='round', facecolor='white', alpha=0.5)
 
-    textstr = '\n'.join([
-        rf"$\sigma_M^2 = A_{{{symbol}}} +B_{{{symbol}}} {{{symbol}}}^2$",
-        rf"$A_D = ({c.n:.2f}\pm{c.s:.1g})\,\mathrm{{\mu {xunits}}}$",
-        rf"$B_D = ({m.n:.2f}\pm{m.s:.1g})\,\mathrm{{\mu m^2\,/\,{xunits}}}$"])
+    textstr = '\n'.join(
+        [
+            rf"$\sigma_M^2 = A_{{{symbol}}} +B_{{{symbol}}} {{{symbol}}}^2$",
+            rf"$A_D = ({c.n:.2f}\pm{c.s:.1g})\,\mathrm{{\mu {xunits}}}$",
+            rf"$B_D = ({m.n:.2f}\pm{m.s:.1g})\,\mathrm{{\mu m^2\,/\,{xunits}}}$",
+        ]
+    )
 
-    ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=14,
-            verticalalignment='top', bbox=props)
+    ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=14, verticalalignment='top', bbox=props)
+
+
+# WRITE MY IDEAL CV!!!  THEN MAKE IT HAPPEN!
