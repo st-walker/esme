@@ -1,16 +1,5 @@
 from ocelot.cpbd.beam import Twiss
-from ocelot.cpbd.elements import (
-    Cavity,
-    Drift,
-    Hcor,
-    Marker,
-    Monitor,
-    Quadrupole,
-    SBend,
-    TDCavity,
-    Vcor,
-    Sextupole
-)
+from ocelot.cpbd.elements import Cavity, Drift, Hcor, Marker, Monitor, Quadrupole, SBend, Sextupole, TDCavity, Vcor
 from ocelot.utils.section_track import SectionCell
 
 tws = Twiss()

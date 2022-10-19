@@ -374,12 +374,6 @@ class TDSScan(TDSDispersionScan):
     pass
 
 
-# def fit_scan(scan: Union[DispersionScan | TDSScan]):
-#     widths = np.asarray(list(scan.get_max_energy_slice_widths(padding=10)))
-#     dx = scan.dx
-#     dx2 = dx**2
-
-
 def transform_variables_for_linear_fit(independent_variable, pixel_stds):
     """The fits used in the paper are linear relationships between the variances
     (i.e. pixel_std^2) and the square of the independent variable (either
