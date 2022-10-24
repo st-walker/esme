@@ -88,15 +88,26 @@ def line(x, m, c):
     return m * x + c
 
 
-def get_cropping_bounds(im: RawImageT) -> tuple[tuple[int, int], tuple[int, int]]:
-    non_zero_column_indices = np.squeeze(np.where((im != 0).any(axis=0)))
-    non_zero_row_indices = np.squeeze(np.where((im != 0).any(axis=1)))
-    idx_column_start = non_zero_column_indices[0]
-    idx_column_end = non_zero_column_indices[-1]
-    idx_row_start = non_zero_row_indices[0]
-    idx_row_end = non_zero_row_indices[-1]
+def get_cropping_bounds(im: RawImageT, image_index=-1) -> tuple[tuple[int, int], tuple[int, int]]:
+    non_zero_mask = im != 0
 
-    return (idx_row_start, idx_row_end), (idx_column_start, idx_column_end)
+    # "Along axis 1" -> each input to np.any is a row (axis 1 "points to the
+    # right"), so gives indices for axis 0, i.e. rows!
+    non_zero_row_indices = np.squeeze(np.where(non_zero_mask.any(axis=1)))
+    # "Along axis 0" -> each input to np.any is a column (axis 0 "points down"
+    # (im[0] gives a row of pixels for example, not a column)), so gives indices
+    # for axis 1, i.e. columns!
+    non_zero_column_indices = np.squeeze(np.where(non_zero_mask.any(axis=0)))
+
+    irow0 = non_zero_row_indices[0]
+    irow1 = non_zero_row_indices[-1]
+    icol0 = non_zero_column_indices[0]
+    icol1 = non_zero_column_indices[-1]
+
+    # Add 1 as index is exlusive on the upper bound, and this sometimes matters
+    # and prevents bugs/crashes in the error calculation later, because we can
+    # up with empty rows or columns.
+    return (irow0, irow1+1), (icol0, icol1+1)
 
 
 def get_cropping_slice(im: RawImageT) -> tuple:
