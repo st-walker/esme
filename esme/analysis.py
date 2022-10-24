@@ -371,7 +371,7 @@ class TDSDispersionScan:
         return self.measurements[key]
 
     def beam_energy(self) -> float:
-        return np.mean([m.beam_energy for m in self.beam_energy])
+        return np.mean([m.beam_energy for m in self])
 
     def flatten(self, include_bg: bool = False) -> Generator[TDSScreenImage]:
         for measurement in self.measurements():
