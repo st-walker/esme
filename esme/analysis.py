@@ -458,13 +458,19 @@ def plot_tds_scan(scan: TDSDispersionScan):
     return c, m
 
 
+def calculate_energy_spread_simple(scan: DispersionScan) -> tuple[float, float]:
+    # Get measurement instance with highest dispresion for this scan
+    dx, measurement = max((measurement.dx, measurement) for measurement in scan)
+    energy = measurement.beam_energy # in MeV
 
-#     # dscan.show_before_after_for_measurement(-1)
-#     # tdsscan.show_before_after_for_measurement(-1)    #
-#     # # dscan[3].show(9)
+    width_pixels = measurement.get_average_max_energy_slice_width()
+    # Calculate with uncertainties automatically.
+    width_pixels_unc = ufloat(*width_pixels)
+    width_unc = width_pixels_unc * PIXEL_SIZE_M
 
-#     plt.show()
+    energy_spread_unc = energy * width_unc / dx
+    energy_spread_kev = energy_spread_unc * 1e3
 
+    value, error = energy_spread_kev.n, energy_spread_kev.s
 
-# if __name__ == '__main__':
-#     main()
+    return value, error # in keV
