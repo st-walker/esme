@@ -377,6 +377,9 @@ class TDSDispersionScan:
         for measurement in self.measurements():
             yield from measurement.flatten(include_bg)
 
+    def __iter__(self):
+        return iter(self.measurements)
+
 
 class DispersionScan(TDSDispersionScan):
     pass
