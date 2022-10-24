@@ -20,6 +20,7 @@ IMAGE_PATH_KEY = "XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"
 
 NOISE_THRESHOLD = 0.08  # By eye...
 PIXEL_SIZE_UM = 28  # 28 microns, from the paper
+PIXEL_SIZE_M = PIXEL_SIZE_UM * 1e-6
 
 RawImageT = npt.NDArray
 
