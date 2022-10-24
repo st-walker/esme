@@ -421,7 +421,7 @@ def linear_fit_to_pixel_stds(indep_var, pixel_stds):
     return c, m
 
 
-def plot_tds_scan(scan: TDSDispersionScan):
+def plot_tds_scan(scan: TDSScan):
     widths = np.asarray(list(scan.get_max_energy_slice_widths(padding=10)))
 
     tds = scan.tds
