@@ -51,7 +51,7 @@ def get_slice_properties(image: RawImageT) -> tuple[npt.NDArray, npt.NDArray, np
     for i, column in enumerate(columns):
         try:
             popt, perr = get_gaussian_fit(row_index, column)
-        except RuntimeError:
+        except RuntimeError:  # Happens if curve_fit fails to converge.
             # Set parameters to NaN, mask them later from the output
             mu = sigma = sigma_mu = sigma_sigma = np.nan
         else:
@@ -85,7 +85,7 @@ def gauss(x, a, mu, sigma):
 
 
 def line(x, m, c):
-    return c + m * x
+    return m * x + c
 
 
 def get_cropping_bounds(im: RawImageT) -> tuple[tuple[int, int], tuple[int, int]]:
@@ -442,58 +442,10 @@ def plot_tds_scan(scan: TDSDispersionScan):
     ax.set_xlabel(r"$TDS \%^2$")
 
     ax.set_title("TDS Scan Fit")
-    # print(f"A_D = {m}")
-    # print(f"B_D = {bd}")
-
-    # plt.show()
 
     return c, m
 
 
-# def calculate_energy_spread(dscan_files, tdsscan_files):
-#     # Using notation from the paper, albeit in lower case.
-#     tdsscan = TDSDispersionScan(tdsscan_files)
-#     dscan = TDSDispersionScan(dscan_files)
-
-#     energy_at_screen = dscan.beam_energy
-
-#     av, bv = plot_tds_scan(tdsscan)
-#     ad, bd = plot_dispersion_scan(dscan_files)
-
-#     # dispersion0 =
-
-
-# def main(pcl_file=None):
-#     # measurement = ScanMeasurement(pcl_file)
-
-#     # dscan = TDSDispersionScan(
-#     #                           )
-
-#     # tdsscan = TDSDispersionScan()
-
-#     calculate_energy_spread(
-#         [
-#             "20210226-17_24_33_Dx_1181_tds_13.pcl",
-#             "20210226-17_29_30_Dx_1006_tds_13.pcl",
-#             "20210226-17_33_35_Dx_789_tds_13.pcl",
-#             "20210226-17_37_57_Dx_578_tds_13.pcl",
-#         ],
-#         [
-#             "20210226-17_43_09_Dx_1183_tds_8.pcl",
-#             "20210226-17_44_49_Dx_1183_tds_10.pcl",
-#             "20210226-17_46_49_Dx_1183_tds_12.pcl",
-#             "20210226-17_49_10_Dx_1183_tds_14.pcl",
-#             "20210226-17_50_54_Dx_1183_tds_16.pcl",
-#             "20210226-17_52_24_Dx_1183_tds_18.pcl",
-#         ],
-#     )
-
-#     from IPython import embed
-
-#     embed()
-#     # plot_dispersion_scan(dscan)
-
-#     # plot_tds_scan(tdsscan)
 
 #     # dscan.show_before_after_for_measurement(-1)
 #     # tdsscan.show_before_after_for_measurement(-1)    #
