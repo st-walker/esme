@@ -1,13 +1,51 @@
 #!/usr/bin/env python3
 
+import os
+from typing import Union
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
 from uncertainties import ufloat
 
 import esme.analysis as ana
 
+# def all_measurements_before_after_processing(measurement: ana.ScanMeasurement) -> None:
+#     for meas
 
-def show_before_after_processing(measurement: ana.ScanMeasurement, index: int) -> None:
+def dump_full_scan(dispersion_scan, tds_scan, root_outdir):
+
+    dscan_dir = root_outdir / "dispersion-scan"
+    for i, measurement in enumerate(dispersion_scan):
+        dx = measurement.dx
+        # tds = dispersion_scan.tds
+
+        measurement_outdir = dscan_dir / f"{i=},{dx=}"
+        measurement_outdir.mkdir(parents=True, exist_ok=True)
+
+        for image_index in range(measurement.nimages):
+            fig = show_before_after_processing(measurement, image_index)
+            fig.savefig(measurement_outdir / f"{image_index}.png")
+            plt.close()
+
+
+
+    dscan_dir = root_outdir / "tds-scan"
+    for i, measurement in enumerate(tds_scan):
+        # dx = measurement.dx
+        tds = measurement.tds
+
+        measurement_outdir = dscan_dir / f"{i=},{tds=}"
+        measurement_outdir.mkdir(parents=True, exist_ok=True)
+
+        for image_index in range(measurement.nimages):
+            fig = show_before_after_processing(measurement, image_index)
+            fig.savefig(measurement_outdir / f"{image_index}.png")
+            plt.close()
+
+
+
+def show_before_after_processing(measurement: ana.ScanMeasurement, index: int) -> plt.Figure:
     im = measurement.to_im(index, process=False)
     imp = measurement.to_im(index, process=True)
 
@@ -74,8 +112,10 @@ def show_before_after_processing(measurement: ana.ScanMeasurement, index: int) -
     ax1.set_ylim(ix1, ix0)
     ax1.set_xlim(iy0, iy1)
 
-    plt.show()
-    fig.savefig(f"{index}_check.png")
+
+    return fig
+    # plt.show()
+    # fig.savefig(f"{index}_check.png")
 
 
 # def show_before_after_for_measurement(self, index: int) -> None:

@@ -1,10 +1,12 @@
 """Console script for esme."""
 
+from pathlib import Path
+
 import click
 import matplotlib.pyplot as plt
 
 from esme.files import load_ini
-from esme.plot import plot_scans
+from esme.plot import plot_scans, dump_full_scan
 from esme.analysis import calculate_energy_spread_simple
 
 
@@ -34,7 +36,10 @@ def optics(scan_ini):
 @click.argument("scan-ini", nargs=-1)
 @click.option("--simple", "-s", is_flag=True,
                 help="Calculate the energy spread without accounting for the impact of the TDS.")
-def calc(scan_ini, simple):
+@click.option("--dump_images", "-d", is_flag=True,
+              help="Dump all images used in the calculation to file"
+              )
+def calc(scan_ini, simple, dump_images):
     dispersion_scan, tds_scan = load_ini(scan_ini)
     if simple:
         for ini_file in scan_ini:
@@ -43,6 +48,11 @@ def calc(scan_ini, simple):
             print(ini_file)
             print(f"({espread_kev}±{error_kev})keV")
     else:
+        if dump_images:
+            for ini_file in scan_ini:
+                root_outdir = Path(ini_file).resolve().parent / (Path(ini_file).stem + "-images")
+                dump_full_scan(dispersion_scan, tds_scan, root_outdir)
+
         plot_scans(dispersion_scan, tds_scan)
     plt.show()
 
