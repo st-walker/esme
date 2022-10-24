@@ -93,8 +93,9 @@ def show_before_after_processing(measurement: ana.ScanMeasurement, index: int) -
 #     ax.imshow(image)
 #     return fig, ax
 
+# def plot_dispersion_scan(gradient, y_intercept, dispersion, widths):
 
-def plot_dispersion_scan(scan: ana.DispersionScan) -> tuple[ufloat, ufloat]:
+def plot_dispersion_scan(scan: ana.DispersionScan, ax=None) -> tuple[ufloat, ufloat]:
     widths = np.asarray(list(scan.get_max_energy_slice_widths(padding=10)))
     dx = scan.dx
 
@@ -104,7 +105,8 @@ def plot_dispersion_scan(scan: ana.DispersionScan) -> tuple[ufloat, ufloat]:
     d2sample = np.linspace(0, 1.1 * max(dx**2))
     sigma2fit = ana.line(d2sample, m.n, c.n)
 
-    fig, ax = plt.subplots()
+    if ax is None:
+        fig, ax = plt.subplots()
     ax.errorbar(dx**2, widths2, yerr=errors2, label="Data")
     ax.plot(d2sample, sigma2fit, label="Fit")
     ax.legend(loc="lower right")
@@ -124,7 +126,7 @@ def _set_ylabel_for_scan(ax):
     # ax.set_ylabel(r"$\sigma_M^2\,/\,\mathrm{px}^2$")
 
 
-def plot_tds_scan(scan: ana.TDSScan) -> tuple[ufloat, ufloat]:
+def plot_tds_scan(scan: ana.TDSScan, ax=None) -> tuple[ufloat, ufloat]:
     widths = np.asarray(list(scan.get_max_energy_slice_widths(padding=10)))
     tds = scan.tds
 
@@ -134,7 +136,8 @@ def plot_tds_scan(scan: ana.TDSScan) -> tuple[ufloat, ufloat]:
     tds2sample = np.linspace(0, 1.1 * max(tds**2))
     sigma2fit = ana.line(tds2sample, m.n, c.n)
 
-    fig, ax = plt.subplots()
+    if ax is None:
+        fig, ax = plt.subplots()
     ax.errorbar(tds**2, widths2, yerr=errors2, label="Data")
     ax.plot(tds2sample, sigma2fit, label="Fit")
     ax.legend(loc="lower right")
@@ -147,9 +150,14 @@ def plot_tds_scan(scan: ana.TDSScan) -> tuple[ufloat, ufloat]:
 
     return c, m
 
+def plot_scans(scan1, scan2):
+    fig, (ax1, ax2) = plt.subplots(ncols=2)
 
-# def _plot_scan(scan: ana.DispersionScan | ana.TDSScan):
-#     pass
+    plot_dispersion_scan(scan1, ax1)
+    plot_tds_scan(scan2, ax2)
+
+    fig.suptitle("Dispersion and TDS Scan for a Energy Spread Measurement")
+
 
 
 def add_info_box(ax, symbol, xunits, c, m):
@@ -164,6 +172,3 @@ def add_info_box(ax, symbol, xunits, c, m):
     )
 
     ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=14, verticalalignment='top', bbox=props)
-
-
-# WRITE MY IDEAL CV!!!  THEN MAKE IT HAPPEN!
