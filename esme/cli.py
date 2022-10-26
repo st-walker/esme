@@ -6,7 +6,7 @@ import click
 import matplotlib.pyplot as plt
 
 from esme.files import load_ini
-from esme.plot import plot_scans, dump_full_scan
+from esme.plot import plot_scans, dump_full_scan, plot_measured_central_widths
 from esme.analysis import calculate_energy_spread_simple
 
 
@@ -55,6 +55,15 @@ def calc(scan_ini, simple, dump_images):
 
         plot_scans(dispersion_scan, tds_scan)
     plt.show()
+
+@main.command()
+@click.argument("scan-ini", nargs=-1)
+def plot(scan_ini):
+    for ini_file in scan_ini:
+        dscan, tscan = load_ini(ini_file)
+
+        plot_measured_central_widths(dscan, tscan)
+        plt.show()
 
 if __name__ == "__main__":
     main()  # pragma: no cover

@@ -212,3 +212,34 @@ def add_info_box(ax, symbol, xunits, c, m):
     )
 
     ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=14, verticalalignment='top', bbox=props)
+
+
+def plot_measured_central_widths(dscan:ana.DispersionScan, tscan: ana.TDSScan):
+    fig, ax = plt.subplots()
+
+    dx = dscan.dx
+    # tds = [0.38,0.47,0.56,0.65,0.75] # ??
+
+    tds = tscan.tds
+
+    dwidths = np.asarray(list(dscan.get_max_energy_slice_widths(padding=10)))
+    twidths = np.asarray(list(tscan.get_max_energy_slice_widths(padding=10)))
+
+    dwidths_um = dwidths * ana.PIXEL_SIZE_X_UM
+    twidths_um = twidths * ana.PIXEL_SIZE_X_UM
+
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2)
+
+    ax1.errorbar(dx, dwidths[..., 0], yerr=dwidths[..., 1], marker="x")
+    ax3.errorbar(dx, dwidths_um[..., 0],
+                 yerr=dwidths_um[..., 1], marker="x")
+    ax2.errorbar(tds, twidths[..., 0], yerr=twidths[..., 1], marker="x")
+    ax4.errorbar(tds, twidths_um[..., 0],
+                 yerr=twidths_um[..., 1], marker="x")
+
+    ax1.set_ylabel(r"$\sigma_M\,/\,\mathrm{px}$")
+    ax3.set_ylabel(r"$\sigma_M\,/\,\mathrm{\mu m}$")
+    ax3.set_xlabel("D / m")
+    ax4.set_xlabel("TDS strength / %")
+
+    fig.suptitle(fr"Measured maximum-energy slice widths for pixel size Y = {ana.PIXEL_SIZE_Y_UM} $\mathrm{{\mu m}}$")

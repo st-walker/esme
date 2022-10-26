@@ -19,8 +19,15 @@ IMAGE_PATH_KEY = "XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"
 
 
 NOISE_THRESHOLD = 0.08  # By eye...
-PIXEL_SIZE_UM = 28  # 28 microns, from the paper
-PIXEL_SIZE_M = PIXEL_SIZE_UM * 1e-6
+
+# WHICH DO I USE??
+
+PIXEL_SIZE_X_UM = 13.7369
+PIXEL_SIZE_Y_UM = 11.1756
+
+PIXEL_SIZE_X_M = PIXEL_SIZE_X_UM * 1e-6
+PIXEL_SIZE_Y_M = PIXEL_SIZE_Y_UM * 1e-6
+
 
 RawImageT = npt.NDArray
 
@@ -469,7 +476,7 @@ def calculate_energy_spread_simple(scan: DispersionScan) -> tuple[float, float]:
     width_pixels = measurement.get_average_max_energy_slice_width()
     # Calculate with uncertainties automatically.
     width_pixels_unc = ufloat(*width_pixels)
-    width_unc = width_pixels_unc * PIXEL_SIZE_M
+    width_unc = width_pixels_unc * PIXEL_SIZE_X_M
 
     energy_spread_unc = energy * width_unc / dx
     energy_spread_kev = energy_spread_unc * 1e3
