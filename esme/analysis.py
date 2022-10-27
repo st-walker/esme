@@ -9,8 +9,7 @@ import pickle
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Generator, Iterable
-import functools
+from typing import Any, Generator, Iterable, Optional
 
 import cv2
 import matplotlib.pyplot as plt
@@ -21,25 +20,23 @@ from scipy.constants import c, e, m_e
 from scipy.optimize import curve_fit
 from uncertainties import ufloat, umath
 
+IMAGE_PATH_KEY: str = "XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"
 
-IMAGE_PATH_KEY = "XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"
 
+NOISE_THRESHOLD: float = 0.08  # By eye...
 
-NOISE_THRESHOLD = 0.08  # By eye...
+PIXEL_SCALE_X_UM: float = 13.7369
+PIXEL_SCALE_Y_UM: float = 11.1756
 
-# WHICH DO I USE??
-
-PIXEL_SCALE_X_UM = 13.7369
-PIXEL_SCALE_Y_UM = 11.1756
-
-PIXEL_SCALE_X_M = PIXEL_SCALE_X_UM * 1e-6
-PIXEL_SCALE_Y_M = PIXEL_SCALE_Y_UM * 1e-6
+PIXEL_SCALE_X_M: float = PIXEL_SCALE_X_UM * 1e-6
+PIXEL_SCALE_Y_M: float = PIXEL_SCALE_Y_UM * 1e-6
 
 LOG = logging.getLogger(__name__)
 
-ELECTRON_MASS_EV = m_e * c**2 / e
+ELECTRON_MASS_EV: float = m_e * c**2 / e
 
 RawImageT = npt.NDArray
+ValueWithErrorT = tuple[float, float]
 
 
 def get_slice_properties(image: RawImageT) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
@@ -89,11 +86,11 @@ def get_slice_properties(image: RawImageT) -> tuple[npt.NDArray, npt.NDArray, np
     return column_index, means, sigmas
 
 
-def gauss(x, a, mu, sigma):
+def gauss(x, a, mu, sigma) -> Any:
     return a * np.exp(-((x - mu) ** 2) / (2.0 * sigma**2))
 
 
-def line(x, a0, a1):
+def line(x, a0, a1) -> Any:
     return a0 + a1 * x
 
 
@@ -176,7 +173,7 @@ def remove_all_disconnected_pixels(im: RawImageT) -> RawImageT:
     return masked_image
 
 
-def get_slice_core(pixels):
+def get_slice_core(pixels) -> tuple[npt.NDArray, npt.NDArray]:
     nonzero_pixels = (pixels != 0).nonzero()[0]
     istart = nonzero_pixels.min()
     iend = nonzero_pixels.max()
@@ -215,7 +212,7 @@ def _tds_magic_number_from_filename(fname: os.PathLike) -> int:
     return tds_magic_number
 
 
-def get_gaussian_fit(x, y):
+def get_gaussian_fit(x, y) -> tuple[tuple, tuple]:
     mu0 = y.argmax()
     a0 = y.max()
     sigma0 = 1
@@ -245,10 +242,10 @@ class TDSScreenImage:
         self._image = None
 
     @property
-    def filename(self):
+    def filename(self) -> str:
         return self.metadata[IMAGE_PATH_KEY]
 
-    def to_im(self, process=True):
+    def to_im(self, process=True) -> RawImageT:
         # path to png is in the df, but actuallt we want path to the adjacent
         # pcl file.
         fname = Path(self.filename).with_suffix(".pcl")
@@ -267,7 +264,7 @@ class TDSScreenImage:
 
     @property
     def beam_energy(self) -> float:
-        eV = 1e6 # Energy is given in MeV which we convert to eV for consistency.
+        eV = 1e6  # Energy is given in MeV which we convert to eV for consistency.
         return self.metadata["XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/I1D/ENERGY.ALL"] * eV
 
 
@@ -278,7 +275,7 @@ class ScanMeasurement:
         self.tds = _tds_magic_number_from_filename(df_path)
         self.images = []
         self.bg = []
-        self._mean_bg_im = None  # For caching.
+        self._mean_bg_im: Optional[RawImageT] = None  # For caching.
         with df_path.open("br") as f:
             df = pickle.load(f)
             for relative_path in df[IMAGE_PATH_KEY]:
@@ -293,7 +290,6 @@ class ScanMeasurement:
                     self.bg.append(image)
                 elif not image.is_bg:
                     self.images.append(image)
-
 
     def __repr__(self) -> str:
         return f"<Measurement: Dx={self.dx}>"
@@ -322,7 +318,7 @@ class ScanMeasurement:
         ax.axvline(x[np.argmin(means)], color="white", alpha=0.25)
         plt.show()
 
-    def mean_central_slice_width_with_error(self, padding: int = 10) -> tuple[float, float]:
+    def mean_central_slice_width_with_error(self, padding: int = 10) -> ValueWithErrorT:
         image_fitted_sigmas = []
         for i in range(self.nimages):
             image = self.to_im(i)
@@ -373,7 +369,9 @@ class TDSDispersionScan:
     def tds(self) -> npt.NDArray:
         return np.array([s.tds for s in self.measurements])
 
-    def max_energy_slice_widths_and_errors(self, padding: int = 20, do_mp: bool = False):
+    def max_energy_slice_widths_and_errors(
+        self, padding: int = 20, do_mp: bool = False
+    ) -> tuple[npt.NDArray, npt.NDArray]:
         if do_mp:
             with mp.Pool(mp.cpu_count()) as pool:
                 widths_with_errors = np.array(pool.map(_f, self.measurements))
@@ -383,7 +381,6 @@ class TDSDispersionScan:
         widths = widths_with_errors[..., 0]
         errors = widths_with_errors[..., 1]
         return widths, errors
-
 
     def __getitem__(self, key: int) -> ScanMeasurement:
         return self.measurements[key]
@@ -407,7 +404,9 @@ class TDSScan(TDSDispersionScan):
     pass
 
 
-def transform_pixel_widths(pixel_widths, pixel_widths_errors, pixel_units="px", to_variances=True):
+def transform_pixel_widths(
+    pixel_widths, pixel_widths_errors, pixel_units="px", to_variances=True
+) -> tuple[npt.NDArray, npt.NDArray]:
     """The fits used in the paper are linear relationships between the variances
     (i.e. pixel_std^2) and the square of the independent variable (either
     voltage squared V^2 or dipsersion D^2). This function takes D or V and sigma
@@ -437,9 +436,8 @@ def transform_pixel_widths(pixel_widths, pixel_widths_errors, pixel_units="px", 
     return np.array(widths), np.array(errors)
 
 
-def linear_fit(indep_var, dep_var, dep_var_err):
-    popt, pcov = curve_fit(line, indep_var, dep_var, sigma=dep_var_err,
-                           absolute_sigma=True)
+def linear_fit(indep_var, dep_var, dep_var_err) -> tuple[ValueWithErrorT, ValueWithErrorT]:
+    popt, pcov = curve_fit(line, indep_var, dep_var, sigma=dep_var_err, absolute_sigma=True)
     perr = np.sqrt(np.diag(pcov))
 
     # Present as tuples
@@ -449,7 +447,7 @@ def linear_fit(indep_var, dep_var, dep_var_err):
     return a0, a1
 
 
-def calculate_energy_spread_simple(scan: DispersionScan) -> tuple[float, float]:
+def calculate_energy_spread_simple(scan: DispersionScan) -> ValueWithErrorT:
     # Get measurement instance with highest dispresion for this scan
     dx, measurement = max((measurement.dx, measurement) for measurement in scan)
     energy = measurement.beam_energy  # in eV
@@ -482,8 +480,7 @@ class OpticalConfig:
 
 
 class SliceEnergySpreadMeasurement:
-    def __init__(self, dscan: DispersionScan, tscan: TDSScan,
-                 optical_config: OpticalConfig):
+    def __init__(self, dscan: DispersionScan, tscan: TDSScan, optical_config: OpticalConfig):
         self.dscan = dscan
         self.tscan = tscan
         self.oconfig = optical_config
@@ -494,21 +491,19 @@ class SliceEnergySpreadMeasurement:
         if ntscan != nvoltages:
             raise RuntimeError("Mismatch between provided voltages and tscan measurements.")
 
-    def dispersion_scan_fit(self) -> tuple[float, float]:
+    def dispersion_scan_fit(self) -> ValueWithErrorT:
         widths, errors = self.dscan.max_energy_slice_widths_and_errors(padding=10)
         dx2 = self.dscan.dx**2
         # widths, errors = transform_units_for_pixel_widths(widths, errors)
-        widths2_m2, errors2_m2 = transform_pixel_widths(widths, errors,
-                                                        pixel_units="m", to_variances=True)
+        widths2_m2, errors2_m2 = transform_pixel_widths(widths, errors, pixel_units="m", to_variances=True)
         a_v, b_v = linear_fit(dx2, widths2_m2, errors2_m2)
         return a_v, b_v
 
-    def tds_scan_fit(self) -> tuple[float, float]:
+    def tds_scan_fit(self) -> tuple[ValueWithErrorT, ValueWithErrorT]:
         widths, errors = self.tscan.max_energy_slice_widths_and_errors(padding=10)
         voltages2 = self.oconfig.tds_voltages**2
 
-        widths2_m2, errors2_m2 = transform_pixel_widths(widths, errors,
-                                                        pixel_units="m", to_variances=True)
+        widths2_m2, errors2_m2 = transform_pixel_widths(widths, errors, pixel_units="m", to_variances=True)
         a_v, b_v = linear_fit(voltages2, widths2_m2, errors2_m2)
         return a_v, b_v
 
@@ -516,40 +511,46 @@ class SliceEnergySpreadMeasurement:
         a_v, b_v = self.tds_scan_fit()
         a_d, b_d = self.dispersion_scan_fit()
 
-        energy = self.tscan.beam_energy().mean() # in eV
+        energy = self.tscan.beam_energy()  # in eV
         dispersion = self.tscan.dx.mean()
 
-        return FittedBeamParameters(a_v=a_v, b_v=b_v, a_d=a_d, b_d=b_d,
-                                    reference_energy=energy,
-                                    reference_dispersion=dispersion,
-                                    oconfig=self.oconfig)
+        return FittedBeamParameters(
+            a_v=a_v,
+            b_v=b_v,
+            a_d=a_d,
+            b_d=b_d,
+            reference_energy=energy,
+            reference_dispersion=dispersion,
+            oconfig=self.oconfig,
+        )
 
 
 @dataclass
 class FittedBeamParameters:
     """Table 2 from the paper"""
+
     # Stored as tuples, nominal value with error.
-    a_v: tuple[float, float]
-    b_v: tuple[float, float]
-    a_d: tuple[float, float]
-    b_d: tuple[float, float]
+    a_v: ValueWithErrorT
+    b_v: ValueWithErrorT
+    a_d: ValueWithErrorT
+    b_d: ValueWithErrorT
     reference_energy: float
     reference_dispersion: float
     oconfig: OpticalConfig
 
     @property
-    def sigma_e(self) -> float:
+    def sigma_e(self) -> ValueWithErrorT:
         energy0 = self.reference_energy
         dx0 = self.reference_dispersion
         # Convert to ufloat for correct error propagation before converting back
         # to tuples at the end.
         av = ufloat(*self.a_v)
         ad = ufloat(*self.a_d)
-        result = ((energy0 / dx0) * umath.sqrt(av - ad))
+        result = (energy0 / dx0) * umath.sqrt(av - ad)
         return result.n, result.s
 
     @property
-    def sigma_i(self):
+    def sigma_i(self) -> ValueWithErrorT:
         """This is the average beamsize in the TDS, returned in metres"""
         k = self.oconfig.tds_wavenumber
         dx0 = self.reference_dispersion
@@ -560,26 +561,25 @@ class FittedBeamParameters:
         return result.n, result.s
 
     @property
-    def sigma_b(self):
+    def sigma_b(self) -> ValueWithErrorT:
         bety = self.oconfig.tds_bety
         alfy = self.oconfig.tds_alfy
         gamy = self.oconfig.tds_gamy
         length = self.oconfig.tds_length
         sigma_i = ufloat(*self.sigma_i)
-        b_beta = (sigma_i**2
-                  / (bety + 0.25 * length**2 * gamy - length * alfy))
+        b_beta = sigma_i**2 / (bety + 0.25 * length**2 * gamy - length * alfy)
         result = umath.sqrt(b_beta * self.oconfig.ocr_betx)
         return result.n, result.s
 
     @property
-    def sigma_r(self):
+    def sigma_r(self) -> ValueWithErrorT:
         ad = ufloat(*self.a_d)
         sigma_b = ufloat(*self.sigma_b)
         result = umath.sqrt(ad - sigma_b**2)
         return result.n, result.s
 
     @property
-    def emitx(self):
+    def emitx(self) -> ValueWithErrorT:
         gam0 = self.reference_energy / ELECTRON_MASS_EV
         sigma_b = ufloat(*self.sigma_b)
         result = sigma_b**2 * gam0 / self.oconfig.ocr_betx

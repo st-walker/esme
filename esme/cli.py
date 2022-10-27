@@ -1,15 +1,11 @@
 """Console script for esme."""
 
-from pathlib import Path
-
 import click
 import matplotlib.pyplot as plt
 
 from esme.analysis import calculate_energy_spread_simple
 from esme.inout import load_config
-from esme.plot import (dump_full_scan, plot_measured_central_widths, plot_scans,
-                       pretty_beam_parameter_table, pretty_beam_parameter_table,
-                       pretty_measured_beam_sizes)
+from esme.plot import pretty_beam_parameter_table
 
 
 def preamble():

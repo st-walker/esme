@@ -2,7 +2,7 @@
 
 import os
 from pathlib import Path
-from typing import Iterable, Any
+from typing import Any, Iterable
 
 import numpy as np
 import toml
@@ -56,6 +56,7 @@ def _files_from_config(config, scan_name) -> list[Path]:
     paths = _apply_mask(paths, mask)
 
     return paths
+
 
 def load_config(fname: os.PathLike) -> SliceEnergySpreadMeasurement:
 

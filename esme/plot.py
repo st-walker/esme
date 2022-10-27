@@ -1,21 +1,13 @@
 #!/usr/bin/env python3
 
-import os
-from pathlib import Path
-from typing import Union
-
-import tabulate
 import matplotlib.pyplot as plt
 import numpy as np
-from uncertainties import ufloat
+import tabulate
 
 import esme.analysis as ana
 
-# def all_measurements_before_after_processing(measurement: ana.ScanMeasurement) -> None:
-#     for meas
 
-
-def dump_full_scan(dispersion_scan, tds_scan, root_outdir):
+def dump_full_scan(dispersion_scan, tds_scan, root_outdir) -> None:
 
     dscan_dir = root_outdir / "dispersion-scan"
     for i, measurement in enumerate(dispersion_scan):
@@ -133,7 +125,8 @@ def show_before_after_processing(measurement: ana.ScanMeasurement, index: int) -
 
 # def plot_dispersion_scan(gradient, y_intercept, dispersion, widths):
 
-def plot_dispersion_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> tuple[ufloat, ufloat]:
+
+def plot_dispersion_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> None:
     scan = esme.dscan
     widths, errors = scan.max_energy_slice_widths_and_errors(padding=10)
     dx2 = scan.dx**2
@@ -163,7 +156,7 @@ def _set_ylabel_for_scan(ax):
     # ax.set_ylabel(r"$\sigma_M^2\,/\,\mathrm{px}^2$")
 
 
-def plot_tds_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> tuple[ufloat, ufloat]:
+def plot_tds_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> None:
     widths, errors = esme.tscan.max_energy_slice_widths_and_errors(padding=10)
     voltages = esme.oconfig.tds_voltages
 
@@ -189,7 +182,7 @@ def plot_tds_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> tuple[uflo
     add_info_box(ax, "V", "MV", a0, a1)
 
 
-def plot_scans(esme: ana.SliceEnergySpreadMeasurement):
+def plot_scans(esme: ana.SliceEnergySpreadMeasurement) -> None:
     fig, (ax1, ax2) = plt.subplots(ncols=2)
 
     plot_dispersion_scan(esme, ax1)
@@ -198,7 +191,7 @@ def plot_scans(esme: ana.SliceEnergySpreadMeasurement):
     fig.suptitle("Dispersion and TDS Scan for a Energy Spread Measurement")
 
 
-def add_info_box(ax, symbol, xunits, c, m):
+def add_info_box(ax, symbol, xunits, c, m) -> None:
     props = dict(boxstyle='round', facecolor='white', alpha=0.5)
 
     textstr = '\n'.join(
@@ -209,13 +202,10 @@ def add_info_box(ax, symbol, xunits, c, m):
         ]
     )
 
-    ax.text(0.05, 0.95, textstr,
-            transform=ax.transAxes,
-            fontsize=14,
-            verticalalignment='top', bbox=props)
+    ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=14, verticalalignment='top', bbox=props)
 
 
-def plot_measured_central_widths(esme: ana.SliceEnergySpreadMeasurement):
+def plot_measured_central_widths(esme: ana.SliceEnergySpreadMeasurement) -> None:
     fig, ax = plt.subplots()
 
     dscan = esme.dscan
@@ -247,7 +237,7 @@ def plot_measured_central_widths(esme: ana.SliceEnergySpreadMeasurement):
 
 def pretty_beam_parameter_table(esme: ana.SliceEnergySpreadMeasurement) -> str:
     params = esme.all_fit_parameters()
-    from IPython import embed; embed()
+
     av, bv = params.a_v, params.b_v
     ad, bd = params.a_d, params.b_d
 
@@ -261,20 +251,10 @@ def pretty_beam_parameter_table(esme: ana.SliceEnergySpreadMeasurement) -> str:
 
     header = ["Variable", "value", "error", "units"]
     variables = ["A_V", "B_V", "A_D", "B_D", "σ_E", "σ_I", "σ_B", "σ_R", "εₙ"]
-    with_errors = [av, bv, ad, bd, (sige, sige_err), params.sigma_i,
-                   params.sigma_b, params.sigma_r, (ex, exe)]
+    with_errors = [av, bv, ad, bd, (sige, sige_err), params.sigma_i, params.sigma_b, params.sigma_r, (ex, exe)]
 
     units = ["m²", "m²/V²", "m²", "-", "keV", "m", "m", "m", "mm⋅mrad"]
     values = [a[0] for a in with_errors]
     errors = [a[1] for a in with_errors]
 
-    return tabulate.tabulate(np.array([variables, values, errors, units]).T,
-                             headers=header)
-
-
-
-
-def pretty_measured_beam_sizes(esme: ana.SliceEnergySpreadMeasurement) -> str:
-    raise ValueError
-    params = esme.all_fit_parameters()
-    from IPython import embed; embed()
+    return tabulate.tabulate(np.array([variables, values, errors, units]).T, headers=header)
