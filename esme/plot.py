@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
 import os
-from typing import Union
 from pathlib import Path
+from typing import Union
 
+import tabulate
 import matplotlib.pyplot as plt
 import numpy as np
 from uncertainties import ufloat
@@ -12,6 +13,7 @@ import esme.analysis as ana
 
 # def all_measurements_before_after_processing(measurement: ana.ScanMeasurement) -> None:
 #     for meas
+
 
 def dump_full_scan(dispersion_scan, tds_scan, root_outdir):
 
@@ -28,8 +30,6 @@ def dump_full_scan(dispersion_scan, tds_scan, root_outdir):
             fig.savefig(measurement_outdir / f"{image_index}.png")
             plt.close()
 
-
-
     dscan_dir = root_outdir / "tds-scan"
     for i, measurement in enumerate(tds_scan):
         # dx = measurement.dx
@@ -42,7 +42,6 @@ def dump_full_scan(dispersion_scan, tds_scan, root_outdir):
             fig = show_before_after_processing(measurement, image_index)
             fig.savefig(measurement_outdir / f"{image_index}.png")
             plt.close()
-
 
 
 def show_before_after_processing(measurement: ana.ScanMeasurement, index: int) -> plt.Figure:
@@ -112,7 +111,6 @@ def show_before_after_processing(measurement: ana.ScanMeasurement, index: int) -
     ax1.set_ylim(ix1, ix0)
     ax1.set_xlim(iy0, iy1)
 
-
     return fig
     # plt.show()
     # fig.savefig(f"{index}_check.png")
@@ -135,19 +133,20 @@ def show_before_after_processing(measurement: ana.ScanMeasurement, index: int) -
 
 # def plot_dispersion_scan(gradient, y_intercept, dispersion, widths):
 
-def plot_dispersion_scan(scan: ana.DispersionScan, ax=None) -> tuple[ufloat, ufloat]:
-    widths = np.asarray(list(scan.get_max_energy_slice_widths(padding=10)))
-    dx = scan.dx
+def plot_dispersion_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> tuple[ufloat, ufloat]:
+    scan = esme.dscan
+    widths, errors = scan.max_energy_slice_widths_and_errors(padding=10)
+    dx2 = scan.dx**2
 
-    x2, widths2, errors2 = ana.transform_variables_for_linear_fit(dx, widths)
-    c, m = ana.linear_fit_to_pixel_stds(dx, widths)
+    widths_um2, errors_um2 = ana.transform_pixel_widths(widths, errors, pixel_units="um")
+    a0, a1 = ana.linear_fit(dx2, widths_um2, errors_um2)
 
-    d2sample = np.linspace(0, 1.1 * max(dx**2))
-    sigma2fit = ana.line(d2sample, m.n, c.n)
+    d2sample = np.linspace(0, 1.1 * max(dx2))
+    sigma2fit = ana.line(d2sample, a0.n, a1.n)
 
     if ax is None:
         fig, ax = plt.subplots()
-    ax.errorbar(dx**2, widths2, yerr=errors2, label="Data")
+    ax.errorbar(dx2, widths_um2, yerr=errors_um2, label="Data")
     ax.plot(d2sample, sigma2fit, label="Fit")
     ax.legend(loc="lower right")
 
@@ -155,9 +154,7 @@ def plot_dispersion_scan(scan: ana.DispersionScan, ax=None) -> tuple[ufloat, ufl
 
     ax.set_xlabel(r"$D^2\,/\,\mathrm{m}^2$")
     ax.set_title("Dispersion scan fit")
-    add_info_box(ax, "D", "m^2", c, m)
-
-    return c, m
+    add_info_box(ax, "D", "m", a0, a1)
 
 
 def _set_ylabel_for_scan(ax):
@@ -166,38 +163,39 @@ def _set_ylabel_for_scan(ax):
     # ax.set_ylabel(r"$\sigma_M^2\,/\,\mathrm{px}^2$")
 
 
-def plot_tds_scan(scan: ana.TDSScan, ax=None) -> tuple[ufloat, ufloat]:
-    widths = np.asarray(list(scan.get_max_energy_slice_widths(padding=10)))
-    tds = scan.tds
+def plot_tds_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> tuple[ufloat, ufloat]:
+    widths, errors = esme.tscan.max_energy_slice_widths_and_errors(padding=10)
+    voltages = esme.oconfig.tds_voltages
 
-    x2, widths2, errors2 = ana.transform_variables_for_linear_fit(tds, widths)
-    c, m = ana.linear_fit_to_pixel_stds(tds, widths)
+    voltages2_mv2 = (voltages * 1e-6) ** 2
+    widths_um2, errors_um2 = ana.transform_pixel_widths(widths, errors, pixel_units="um")
 
-    tds2sample = np.linspace(0, 1.1 * max(tds**2))
-    sigma2fit = ana.line(tds2sample, m.n, c.n)
+    a0, a1 = ana.linear_fit(voltages2_mv2, widths_um2, errors_um2)
+
+    # Sample from just below minimum voltage to just above maximum
+    v2_sample = np.linspace(0.9 * min(voltages2_mv2), 1.1 * max(voltages2_mv2))
+    sigma2fit = ana.line(v2_sample, a0.n, a1.n)
 
     if ax is None:
         fig, ax = plt.subplots()
-    ax.errorbar(tds**2, widths2, yerr=errors2, label="Data")
-    ax.plot(tds2sample, sigma2fit, label="Fit")
+    ax.errorbar(voltages2_mv2, widths_um2, yerr=errors_um2, label="Data")
+    ax.plot(v2_sample, sigma2fit, label="Fit")
     ax.legend(loc="lower right")
 
     _set_ylabel_for_scan(ax)
 
-    ax.set_xlabel(r"$\mathrm{TDS\ Power}^2\,/\,\mathrm{\%}^2$")
+    ax.set_xlabel(r"$\mathrm{TDS\ Voltage}^2\,/\,\mathrm{MV}^2$")
     ax.set_title("TDS scan fit")
-    add_info_box(ax, "V", "\\%^2", c, m)
+    add_info_box(ax, "V", "MV", a0, a1)
 
-    return c, m
 
-def plot_scans(scan1, scan2):
+def plot_scans(esme: ana.SliceEnergySpreadMeasurement):
     fig, (ax1, ax2) = plt.subplots(ncols=2)
 
-    plot_dispersion_scan(scan1, ax1)
-    plot_tds_scan(scan2, ax2)
+    plot_dispersion_scan(esme, ax1)
+    plot_tds_scan(esme, ax2)
 
     fig.suptitle("Dispersion and TDS Scan for a Energy Spread Measurement")
-
 
 
 def add_info_box(ax, symbol, xunits, c, m):
@@ -206,40 +204,77 @@ def add_info_box(ax, symbol, xunits, c, m):
     textstr = '\n'.join(
         [
             rf"$\sigma_M^2 = A_{{{symbol}}} +B_{{{symbol}}} {{{symbol}}}^2$",
-            rf"$A_D = ({c.n:.2f}\pm{c.s:.1g})\,\mathrm{{\mu {xunits}}}$",
-            rf"$B_D = ({m.n:.2f}\pm{m.s:.1g})\,\mathrm{{\mu m^2\,/\,{xunits}}}$",
+            rf"$A_{{{symbol}}} = ({c.n:.2f}\pm{c.s:.1g})\,\mathrm{{\mu m}}^2$",
+            rf"$B_{{{symbol}}} = ({m.n:.2f}\pm{m.s:.1g})\,\mathrm{{\mu m^2\,/\,{xunits}}}^2$",
         ]
     )
 
-    ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=14, verticalalignment='top', bbox=props)
+    ax.text(0.05, 0.95, textstr,
+            transform=ax.transAxes,
+            fontsize=14,
+            verticalalignment='top', bbox=props)
 
 
-def plot_measured_central_widths(dscan:ana.DispersionScan, tscan: ana.TDSScan):
+def plot_measured_central_widths(esme: ana.SliceEnergySpreadMeasurement):
     fig, ax = plt.subplots()
 
+    dscan = esme.dscan
+    tscan = esme.tscan
+    voltages = esme.oconfig.voltages
+
     dx = dscan.dx
-    # tds = [0.38,0.47,0.56,0.65,0.75] # ??
 
-    tds = tscan.tds
+    dwidths = np.asarray(list(dscan.max_energy_slice_widths_and_errors(padding=10)))
+    twidths = np.asarray(list(tscan.max_energy_slice_widths_and_errors(padding=10)))
 
-    dwidths = np.asarray(list(dscan.get_max_energy_slice_widths(padding=10)))
-    twidths = np.asarray(list(tscan.get_max_energy_slice_widths(padding=10)))
-
-    dwidths_um = dwidths * ana.PIXEL_SIZE_X_UM
-    twidths_um = twidths * ana.PIXEL_SIZE_X_UM
+    dwidths_um = dwidths * ana.PIXEL_SCALE_X_UM
+    twidths_um = twidths * ana.PIXEL_SCALE_X_UM
 
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2)
 
     ax1.errorbar(dx, dwidths[..., 0], yerr=dwidths[..., 1], marker="x")
-    ax3.errorbar(dx, dwidths_um[..., 0],
-                 yerr=dwidths_um[..., 1], marker="x")
-    ax2.errorbar(tds, twidths[..., 0], yerr=twidths[..., 1], marker="x")
-    ax4.errorbar(tds, twidths_um[..., 0],
-                 yerr=twidths_um[..., 1], marker="x")
+    ax3.errorbar(dx, dwidths_um[..., 0], yerr=dwidths_um[..., 1], marker="x")
+    ax2.errorbar(voltages, twidths[..., 0], yerr=twidths[..., 1], marker="x")
+    ax4.errorbar(voltages, twidths_um[..., 0], yerr=twidths_um[..., 1], marker="x")
 
     ax1.set_ylabel(r"$\sigma_M\,/\,\mathrm{px}$")
     ax3.set_ylabel(r"$\sigma_M\,/\,\mathrm{\mu m}$")
     ax3.set_xlabel("D / m")
-    ax4.set_xlabel("TDS strength / %")
+    ax4.set_xlabel("TDS Voltage / V")
 
-    fig.suptitle(fr"Measured maximum-energy slice widths for pixel size Y = {ana.PIXEL_SIZE_Y_UM} $\mathrm{{\mu m}}$")
+    fig.suptitle(fr"Measured maximum-energy slice widths for pixel scale Y = {ana.PIXEL_SCALE_X_UM} $\mathrm{{\mu m}}$")
+
+
+def pretty_beam_parameter_table(esme: ana.SliceEnergySpreadMeasurement) -> str:
+    params = esme.all_fit_parameters()
+    from IPython import embed; embed()
+    av, bv = params.a_v, params.b_v
+    ad, bd = params.a_d, params.b_d
+
+    sige, sige_err = params.sigma_e
+    sige *= 1e-3
+    sige_err *= 1e-3
+
+    ex, exe = params.emitx
+    ex *= 1e6
+    exe *= 1e6
+
+    header = ["Variable", "value", "error", "units"]
+    variables = ["A_V", "B_V", "A_D", "B_D", "σ_E", "σ_I", "σ_B", "σ_R", "εₙ"]
+    with_errors = [av, bv, ad, bd, (sige, sige_err), params.sigma_i,
+                   params.sigma_b, params.sigma_r, (ex, exe)]
+
+    units = ["m²", "m²/V²", "m²", "-", "keV", "m", "m", "m", "mm⋅mrad"]
+    values = [a[0] for a in with_errors]
+    errors = [a[1] for a in with_errors]
+
+    return tabulate.tabulate(np.array([variables, values, errors, units]).T,
+                             headers=header)
+
+
+
+
+def pretty_measured_beam_sizes(esme: ana.SliceEnergySpreadMeasurement) -> str:
+    raise ValueError
+    params = esme.all_fit_parameters()
+    from IPython import embed; embed()
