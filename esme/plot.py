@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 
+import latdraw
 import matplotlib.pyplot as plt
 import numpy as np
 import tabulate
 
 import esme.analysis as ana
+import esme.lattice as lat
 
 
-def dump_full_scan(dispersion_scan, tds_scan, root_outdir) -> None:
+def dump_full_scan(esme: ana.SliceEnergySpreadMeasurement, root_outdir) -> None:
+
+    dispersion_scan = esme.dscan
+    tds_scan = esme.tscan
 
     dscan_dir = root_outdir / "dispersion-scan"
     for i, measurement in enumerate(dispersion_scan):
@@ -104,26 +109,6 @@ def show_before_after_processing(measurement: ana.ScanMeasurement, index: int) -
     ax1.set_xlim(iy0, iy1)
 
     return fig
-    # plt.show()
-    # fig.savefig(f"{index}_check.png")
-
-
-# def show_before_after_for_measurement(self, index: int) -> None:
-#     for i in range(self.measurements[index].nimages):
-#         self.measurements[index].show_before_after_processing(i)
-
-# def show_image(image: RawImageT) -> None:
-#     fig, ax = plt.subplots()
-#     ax.imshow(image)
-#     plt.show()
-
-
-# def plot_image(image: RawImageT) -> None:
-#     fig, ax = plt.subplots()
-#     ax.imshow(image)
-#     return fig, ax
-
-# def plot_dispersion_scan(gradient, y_intercept, dispersion, widths):
 
 
 def plot_dispersion_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> None:
@@ -131,14 +116,14 @@ def plot_dispersion_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> Non
     widths, errors = scan.max_energy_slice_widths_and_errors(padding=10)
     dx2 = scan.dx**2
 
-    widths_um2, errors_um2 = ana.transform_pixel_widths(widths, errors, pixel_units="um")
+    widths_um2, errors_um2 = ana.transform_pixel_widths(widths, errors, pixel_units="um", to_variances=True)
     a0, a1 = ana.linear_fit(dx2, widths_um2, errors_um2)
 
     d2sample = np.linspace(0, 1.1 * max(dx2))
-    sigma2fit = ana.line(d2sample, a0.n, a1.n)
+    sigma2fit = ana.line(d2sample, a0[0], a1[0])
 
     if ax is None:
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(14, 8))
     ax.errorbar(dx2, widths_um2, yerr=errors_um2, label="Data")
     ax.plot(d2sample, sigma2fit, label="Fit")
     ax.legend(loc="lower right")
@@ -167,10 +152,10 @@ def plot_tds_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> None:
 
     # Sample from just below minimum voltage to just above maximum
     v2_sample = np.linspace(0.9 * min(voltages2_mv2), 1.1 * max(voltages2_mv2))
-    sigma2fit = ana.line(v2_sample, a0.n, a1.n)
+    sigma2fit = ana.line(v2_sample, a0[0], a1[0])
 
     if ax is None:
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(14, 8))
     ax.errorbar(voltages2_mv2, widths_um2, yerr=errors_um2, label="Data")
     ax.plot(v2_sample, sigma2fit, label="Fit")
     ax.legend(loc="lower right")
@@ -182,13 +167,16 @@ def plot_tds_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> None:
     add_info_box(ax, "V", "MV", a0, a1)
 
 
-def plot_scans(esme: ana.SliceEnergySpreadMeasurement) -> None:
-    fig, (ax1, ax2) = plt.subplots(ncols=2)
+def plot_scans(esme: ana.SliceEnergySpreadMeasurement, root_outdir=None) -> None:
+    fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(14, 8))
 
     plot_dispersion_scan(esme, ax1)
     plot_tds_scan(esme, ax2)
 
     fig.suptitle("Dispersion and TDS Scan for a Energy Spread Measurement")
+
+    if root_outdir is not None:
+        fig.savefig(root_outdir / "scan-fits.png")
 
 
 def add_info_box(ax, symbol, xunits, c, m) -> None:
@@ -197,42 +185,46 @@ def add_info_box(ax, symbol, xunits, c, m) -> None:
     textstr = '\n'.join(
         [
             rf"$\sigma_M^2 = A_{{{symbol}}} +B_{{{symbol}}} {{{symbol}}}^2$",
-            rf"$A_{{{symbol}}} = ({c.n:.2f}\pm{c.s:.1g})\,\mathrm{{\mu m}}^2$",
-            rf"$B_{{{symbol}}} = ({m.n:.2f}\pm{m.s:.1g})\,\mathrm{{\mu m^2\,/\,{xunits}}}^2$",
+            rf"$A_{{{symbol}}} = ({c[0]:.2f}\pm{c[1]:.1g})\,\mathrm{{\mu m}}^2$",
+            rf"$B_{{{symbol}}} = ({m[0]:.2f}\pm{m[1]:.1g})\,\mathrm{{\mu m^2\,/\,{xunits}}}^2$",
         ]
     )
 
     ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=14, verticalalignment='top', bbox=props)
 
 
-def plot_measured_central_widths(esme: ana.SliceEnergySpreadMeasurement) -> None:
-    fig, ax = plt.subplots()
+def plot_measured_central_widths(esme: ana.SliceEnergySpreadMeasurement, root_outdir=None) -> None:
+    fig, ax = plt.subplots(figsize=(14, 8))
 
     dscan = esme.dscan
     tscan = esme.tscan
-    voltages = esme.oconfig.voltages
+    voltages = esme.oconfig.tds_voltages
 
     dx = dscan.dx
 
-    dwidths = np.asarray(list(dscan.max_energy_slice_widths_and_errors(padding=10)))
-    twidths = np.asarray(list(tscan.max_energy_slice_widths_and_errors(padding=10)))
+    dwidths, derrors = dscan.max_energy_slice_widths_and_errors(padding=10)
+    twidths, terrors = tscan.max_energy_slice_widths_and_errors(padding=10)
 
-    dwidths_um = dwidths * ana.PIXEL_SCALE_X_UM
-    twidths_um = twidths * ana.PIXEL_SCALE_X_UM
+    dwidths_um, derrors_um = ana.transform_pixel_widths(dwidths, derrors, pixel_units="um", to_variances=False)
+    twidths_um, terrors_um = ana.transform_pixel_widths(twidths, terrors, pixel_units="um", to_variances=False)
 
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2)
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2, figsize=(14, 8))
 
-    ax1.errorbar(dx, dwidths[..., 0], yerr=dwidths[..., 1], marker="x")
-    ax3.errorbar(dx, dwidths_um[..., 0], yerr=dwidths_um[..., 1], marker="x")
-    ax2.errorbar(voltages, twidths[..., 0], yerr=twidths[..., 1], marker="x")
-    ax4.errorbar(voltages, twidths_um[..., 0], yerr=twidths_um[..., 1], marker="x")
+    ax1.errorbar(dx, dwidths, yerr=derrors, marker="x")
+    ax3.errorbar(dx, dwidths_um, yerr=derrors_um, marker="x")
+
+    ax2.errorbar(voltages * 1e-6, twidths, yerr=terrors, marker="x")
+    ax4.errorbar(voltages * 1e-6, twidths_um, yerr=terrors_um, marker="x")
 
     ax1.set_ylabel(r"$\sigma_M\,/\,\mathrm{px}$")
     ax3.set_ylabel(r"$\sigma_M\,/\,\mathrm{\mu m}$")
     ax3.set_xlabel("D / m")
-    ax4.set_xlabel("TDS Voltage / V")
+    ax4.set_xlabel("TDS Voltage / MV")
 
     fig.suptitle(fr"Measured maximum-energy slice widths for pixel scale Y = {ana.PIXEL_SCALE_X_UM} $\mathrm{{\mu m}}$")
+
+    if root_outdir is not None:
+        fig.savefig(root_outdir / "measured-central-widths.png")
 
 
 def pretty_beam_parameter_table(esme: ana.SliceEnergySpreadMeasurement) -> str:
@@ -258,3 +250,95 @@ def pretty_beam_parameter_table(esme: ana.SliceEnergySpreadMeasurement) -> str:
     errors = [a[1] for a in with_errors]
 
     return tabulate.tabulate(np.array([variables, values, errors, units]).T, headers=header)
+
+
+def plot_quad_strengths(esme: ana.SliceEnergySpreadMeasurement, root_outdir=None) -> plt.Figure:
+    _plot_quad_strengths_dscan(esme, root_outdir=root_outdir)
+    _plot_quad_strengths_tds(esme, root_outdir=root_outdir)
+
+
+def _plot_quad_strengths_dscan(esme: ana.SliceEnergySpreadMeasurement, root_outdir=None) -> plt.Figure:
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(14, 8))
+    ((ax1, ax2), (ax3, ax4)) = axes
+    axes = axes.flatten()
+
+    dscan_all_images_dfs = esme.dscan.metadata
+    scan_quads = [lat.mean_quad_strengths(df) for df in dscan_all_images_dfs]
+
+    design_dispersions, design_quads = lat.design_quad_strengths()
+
+    for dx_actual, dx_design, df_actual, df_design, ax in zip(
+        design_dispersions, esme.dscan.dx, design_quads, scan_quads, axes
+    ):
+        ax.set_title(rf"Dispersion scan optics for $D_x={dx_actual}\,\mathrm{{m}}$")
+        ax.errorbar(
+            df_actual.s, df_actual.kick_mean, yerr=df_actual.kick_std, label="Readback", linestyle="", marker="x"
+        )
+        ax.plot(df_design.s, df_design.kick_mean, linestyle="", label="Intended", marker=".")
+        # ax.bar(df_design.s, df_design.kick_mean, alpha=0.25)
+
+    # ax1.set_xlabel("$s$ / m")
+    # ax2.set_xlabel("$s$ / m")
+    ax3.set_xticks(list(df_design.s), list(df_design.index), rotation=60, fontsize=8)
+    ax4.set_xticks(list(df_design.s), list(df_design.index), rotation=60, fontsize=8)
+    ax3.set_xlabel("Quadrupole name")
+    ax4.set_xlabel("Quadrupole name")
+
+    axes[0].legend()
+    fig.suptitle("Dispersion scan quadrupole strengths, 2021 TDS Calibration")
+
+    if root_outdir is not None:
+        fig.savefig(root_outdir / "dscan-quads.png")
+
+
+def _plot_quad_strengths_tds(esme: ana.SliceEnergySpreadMeasurement, root_outdir=None):
+    # fig, ax = plt.subplots()
+
+    cell = lat.injector_cell()
+    fig, (axm, ax) = latdraw.subplots_with_lattices(
+        [latdraw.interfaces.lattice_from_ocelot(cell), None], figsize=(14, 8)
+    )
+
+    tscan_all_images_dfs = esme.tscan.metadata
+    tscan_dx = esme.tscan.dx[0]
+    assert (tscan_dx == esme.tscan.dx).all()
+
+    tds_scan_quads = [lat.mean_quad_strengths(df) for df in tscan_all_images_dfs]
+    voltages = esme.oconfig.tds_voltages / 1e6  # to MV
+    for voltage, df_actual in zip(voltages, tds_scan_quads):
+        ax.errorbar(
+            df_actual.s,
+            df_actual.kick_mean,
+            yerr=df_actual.kick_std,
+            label=f"V={voltage:.3g} MV",
+            linestyle="",
+            marker="x",
+        )
+
+    design_dispersions, design_quads = lat.design_quad_strengths()
+    index = np.abs(np.array(design_dispersions) - tscan_dx).argmin()
+    df = design_quads[index]
+    ax.plot(df.s, df.kick_mean, linestyle="", label="Intended", marker=".")
+    ax.legend()
+    axm.set_title("TDS Scan quadrupole strengths, 2021 TDS Calibration")
+
+    ax.set_xticks(list(df.s), list(df.index), rotation=60, fontsize=8)
+
+    if root_outdir is not None:
+        fig.savefig(root_outdir / "tscan-quads.png")
+
+
+def _plot_quad_strengths(dfs, scan_var, scan_var_name, ax) -> plt.Figure:
+    assert len(scan_var) == len(dfs)
+
+    scan_quads = [lat.mean_quad_strengths(df) for df in dfs]
+
+    for dx, df in zip(scan_var, scan_quads):
+        ax.errorbar(
+            df["s"], df["kick_mean"], yerr=df["kick_std"], label=f"{scan_var_name}={dx}", linestyle="", marker="x"
+        )
+    ax.legend()
+
+
+def plot_tds_calibration():
+    pass

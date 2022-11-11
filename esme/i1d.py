@@ -51,36 +51,6 @@ bpma_63_i1d = Monitor(eid='BPMA.63.I1D')
 bpmd_64_i1d = Monitor(eid='BPMD.64.I1D')
 
 # lattice
-cell = SectionCell(
-    [
-        stsec_62_i1d,
-        di_2,
-        bb_62_i1d,
-        di_3,
-        qi_63_i1d,
-        di_4,
-        bpma_63_i1d,
-        di_5,
-        otrc_64_i1d,
-        di_6,
-        qi_64_i1d,
-        di_7,
-        otrd_64_i1d,
-        di_8,
-        torc_64_i1d,
-        di_9,
-        bpmd_64_i1d,
-        di_10,
-        duflange_65_i1d,
-        di_11,
-        duconcrete_65_i1d,
-        di_12,
-        bhm_66_i1d,
-        di_13,
-        duabsorb_66_i1d,
-        ensec_66_i1d,
-    ]
-)
 # power supplies
 
 #
@@ -88,3 +58,36 @@ qi_63_i1d.ps_id = 'QI.41.I1D'
 qi_64_i1d.ps_id = 'QI.42.I1D'
 
 bb_62_i1d.ps_id = 'BB.5.I1D'
+
+
+def make_cell():
+    return SectionCell(
+        [
+            stsec_62_i1d,
+            di_2,
+            bb_62_i1d,
+            di_3,
+            qi_63_i1d,
+            di_4,
+            bpma_63_i1d,
+            di_5,
+            otrc_64_i1d,
+            di_6,
+            qi_64_i1d,
+            di_7,
+            otrd_64_i1d,
+            di_8,
+            torc_64_i1d,
+            di_9,
+            bpmd_64_i1d,
+            di_10,
+            duflange_65_i1d,
+            di_11,
+            duconcrete_65_i1d,
+            di_12,
+            bhm_66_i1d,
+            di_13,
+            duabsorb_66_i1d,
+            ensec_66_i1d,
+        ]
+    )

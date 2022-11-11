@@ -2,7 +2,6 @@
 
 import os
 from pathlib import Path
-from typing import Any, Iterable
 
 import numpy as np
 import toml
@@ -15,12 +14,16 @@ class MalformedESMEConfigFile(RuntimeError):
 
 
 def _optics_config_from_dict(config: dict) -> OpticalConfig:
-    tds_mask = _get_masks(config, "tscan")
-
     tds = config["optics"]["tds"]
     screen_betax = config["optics"]["screen"]["betx"]
 
-    tds_voltages = np.array(tds["voltages"])[tds_mask]
+    try:
+        tds_voltages = np.array(tds["voltages"])
+    except KeyError:
+        try:
+            tds_voltages = toml.load(tds["crude_calib_file"])
+        except FileNotFoundError:
+            raise MalformedESMEConfigFile("Missing TDS voltage information")
 
     return OpticalConfig(
         tds_length=tds["length"],
@@ -32,28 +35,14 @@ def _optics_config_from_dict(config: dict) -> OpticalConfig:
     )
 
 
-def _get_masks(config: dict, scan_name: str) -> list[bool]:
-    try:
-        return config["data"][scan_name]["mask"]
-    except KeyError:
-        raise MalformedESMEConfigFile("Missing TDS Scan file mask")
-
-
-def _apply_mask(iterable: Iterable[Any], mask: Iterable[bool]) -> list[Any]:
-    return [i for (i, m) in zip(iterable, mask) if m]
-
-
 def _files_from_config(config, scan_name) -> list[Path]:
     try:
         basepath = Path(config["data"]["basepath"])
     except KeyError:
         basepath = Path(".")
 
-    mask = _get_masks(config, scan_name)
-
     fnames = config["data"][scan_name]["fnames"]
     paths = [basepath / f for f in fnames]
-    paths = _apply_mask(paths, mask)
 
     return paths
 
@@ -69,6 +58,6 @@ def load_config(fname: os.PathLike) -> SliceEnergySpreadMeasurement:
     tscan_paths = _files_from_config(config, "tscan")
 
     dscan = DispersionScan(dscan_paths)
-    tscan = TDSScan(tscan_paths)
+    tscan = TDSScan(tscan_paths, config["data"]["tscan"].get("bad_images"))
 
     return SliceEnergySpreadMeasurement(dscan, tscan, oconfig)

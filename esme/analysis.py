@@ -15,6 +15,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 import scipy.ndimage as ndi
 from scipy.constants import c, e, m_e
 from scipy.optimize import curve_fit
@@ -269,16 +270,26 @@ class TDSScreenImage:
 
 
 class ScanMeasurement:
-    def __init__(self, df_path: os.PathLike):
+    def __init__(self, df_path: os.PathLike, bad_image_indices=None):
+        LOG.debug(f"Loading measurement: {df_path=} with {bad_image_indices=}")
         df_path = Path(df_path)
         self.dx = _dispersion_from_filename(df_path)
         self.tds = _tds_magic_number_from_filename(df_path)
         self.images = []
+        if bad_image_indices is None:
+            bad_image_indices = []
         self.bg = []
         self._mean_bg_im: Optional[RawImageT] = None  # For caching.
+
         with df_path.open("br") as f:
             df = pickle.load(f)
-            for relative_path in df[IMAGE_PATH_KEY]:
+
+            for i, relative_path in enumerate(df[IMAGE_PATH_KEY]):
+                abs_path = df_path.parent / relative_path
+                LOG.debug(f"Loading image index {i} @ {relative_path}")
+                if i in bad_image_indices:
+                    LOG.debug(f"Skipping bad image: {i}")
+                    continue
                 # In the df the png paths relative to the pickled dataframe, but
                 # I want to be able to call it from anywhere, so resolve them to
                 # absolute paths.
@@ -287,12 +298,19 @@ class ScanMeasurement:
                 metadata[IMAGE_PATH_KEY] = abs_path
                 image = TDSScreenImage(metadata)
                 if image.is_bg:
+                    LOG.debug(f"Image{i} is bg")
                     self.bg.append(image)
                 elif not image.is_bg:
                     self.images.append(image)
 
     def __repr__(self) -> str:
         return f"<Measurement: Dx={self.dx}>"
+
+    @property
+    def metadata(self) -> pd.Dataframe:
+        df = pd.DataFrame([image.metadata for image in self.images])
+        df = df.sort_values("timestamp")
+        return df
 
     def to_im(self, index: int, process: bool = True) -> RawImageT:
         image = self[index].to_im()
@@ -358,8 +376,14 @@ def _f(measurement):
 
 
 class TDSDispersionScan:
-    def __init__(self, files: Iterable[os.PathLike]):
-        self.measurements = [ScanMeasurement(df_path) for df_path in files]
+    def __init__(self, files: Iterable[os.PathLike], bad_images_per_measurement=None):
+        LOG.debug(f"Instantiating {type(self).__name__}")
+        if bad_images_per_measurement is None:
+            self.measurements = [ScanMeasurement(df_path) for df_path in files]
+        else:
+            self.measurements = []
+            for df_path, bad_images in zip(files, bad_images_per_measurement):
+                self.measurements.append(ScanMeasurement(df_path, bad_images))
 
     @property
     def dx(self) -> npt.NDArray:
@@ -369,8 +393,12 @@ class TDSDispersionScan:
     def tds(self) -> npt.NDArray:
         return np.array([s.tds for s in self.measurements])
 
+    @property
+    def metadata(self) -> list[pd.Dataframe]:
+        return [m.metadata for m in self.measurements]
+
     def max_energy_slice_widths_and_errors(
-        self, padding: int = 20, do_mp: bool = False
+        self, padding: int = 20, do_mp: bool = True
     ) -> tuple[npt.NDArray, npt.NDArray]:
         if do_mp:
             with mp.Pool(mp.cpu_count()) as pool:
@@ -402,10 +430,13 @@ class DispersionScan(TDSDispersionScan):
 
 class TDSScan(TDSDispersionScan):
     pass
+    # def __init__(self, *args, **kwargs):
+    #     super().__init(*args, **kwargs)
+    #     self.calibrator = TDSCalibration
 
 
 def transform_pixel_widths(
-    pixel_widths, pixel_widths_errors, pixel_units="px", to_variances=True
+    pixel_widths, pixel_widths_errors, *, pixel_units="px", to_variances=True
 ) -> tuple[npt.NDArray, npt.NDArray]:
     """The fits used in the paper are linear relationships between the variances
     (i.e. pixel_std^2) and the square of the independent variable (either
@@ -557,7 +588,10 @@ class FittedBeamParameters:
         energy0 = self.reference_energy
         e0_joules = energy0 * e
         bv = ufloat(*self.b_v)
-        result = (e0_joules / (dx0 * e * k)) * umath.sqrt(bv)
+        try:
+            result = (e0_joules / (dx0 * e * k)) * umath.sqrt(bv)
+        except ValueError:
+            return np.nan, np.nan
         return result.n, result.s
 
     @property

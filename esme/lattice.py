@@ -1,7 +1,11 @@
 """Used for calibrating the measurement and also deriving measurement."""
 
 import os
+import re
+from typing import Iterable
 
+import numpy as np
+import pandas as pd
 from ocelot.cpbd.beam import Twiss
 from ocelot.cpbd.csr import CSR
 from ocelot.cpbd.magnetic_lattice import MagneticLattice
@@ -212,3 +216,90 @@ class I1D_Screen(SectionTrack):
         self.add_physics_process(sc, start=i1d_start, stop=i1d_stop)
         self.add_physics_process(csr, start=i1d_start, stop=i1d.bpma_63_i1d)
         self.add_physics_process(sv_dump, start=i1d_start, stop=i1d_start)
+
+
+def design_quad_strengths() -> pd.DataFrame:
+    # This is all very hardcoded for the measurement we did in October 2022.
+    # Get data in correct shape for passing to pd.DataFrame
+    # I think these are what they're "supposed" to be, should really check...
+    dispersions = [1.197, 1.025, 0.801, 0.6590]
+    # These are quads that are set at the start of the measurement and then left
+    # constant for the whole scan.
+    upstream_quad_names = [
+        "QI.52.I1",
+        "QI.53.I1",
+        "QI.54.I1",
+        "QI.55.I1",
+        "QI.57.I1",
+        "QI.59.I1",
+        # "QI.60.I1", "QI.61.I1", "QI.63.I1D", "QI.64.I1D"
+    ]
+    upstream_strengths = [
+        -83.7203,
+        500.308,
+        188.82,
+        -712.48,
+        712.48,
+        -712.48,
+        # -509.559, 832.63, -249.585, 831.95
+    ]
+
+    # The quads which change once per point in the dispersion scan.
+    scan_quad_names = ["QI.60.I1", "QI.61.I1", "QI.63.I1D", "QI.64.I1D"]
+    scan_strengths = [
+        [-509.559, 832.63, -249.585, 831.95],
+        [-509.0345, 832.175, 106.965, 475.4],
+        [-508.965, 820.2076, 582.365, 0],
+        [-508.749, 789.625, 1046.306, -475.4],
+    ]
+
+    result = []
+
+    for dx, strengths in zip(dispersions, scan_strengths):
+        strengths = upstream_strengths + strengths
+        stds = np.zeros_like(strengths)
+        quad_names = upstream_quad_names + scan_quad_names
+        df = pd.DataFrame(np.vstack((strengths, stds)).T, index=quad_names, columns=["kick_mean", "kick_std"])
+
+        df = _append_element_positions_and_names(df, quad_names)
+        result.append(df)
+
+    return dispersions, result
+
+
+def _append_element_positions_and_names(df: pd.DataFrame, names: Iterable[str]):
+    cell = injector_cell()
+    lengths = []
+    positions = []
+    for name in names:
+        try:
+            length = cell.element_attributes(name, "l")
+        except KeyError:
+            length = np.nan
+        try:
+            s = cell.element_s(name)
+        except KeyError:
+            s = np.nan
+
+        lengths.append(length)
+        positions.append(s)
+    return df.assign(length=lengths, s=positions)
+
+
+def mean_quad_strengths(df: pd.DataFrame, include_s=True, dropna=True):
+    pattern = re.compile(r"Q(I?)|(L[NS])\.")
+    quad_names = [key for key in df.keys() if pattern.match(key)]
+
+    df_quads = df[quad_names]
+
+    df = pd.DataFrame({"kick_mean": df_quads.mean(), "kick_std": df_quads.std()})
+
+    df = _append_element_positions_and_names(df, quad_names)
+
+    if dropna:
+        return df.dropna()
+    return df
+
+
+def injector_cell():
+    return i1.make_cell() + i1d.make_cell()
