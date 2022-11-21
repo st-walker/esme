@@ -13,6 +13,7 @@ from esme.plot import (
     plot_measured_central_widths,
     plot_quad_strengths,
     plot_scans,
+    plot_tds_calibration,
     pretty_beam_parameter_table,
 )
 
@@ -32,6 +33,8 @@ def main(debug):
     if debug:
         logging.getLogger("esme.analysis").setLevel(logging.DEBUG)
         logging.getLogger("esme.plot").setLevel(logging.DEBUG)
+        logging.getLogger("esme.lattice").setLevel(logging.DEBUG)
+        logging.getLogger("esme.calibration").setLevel(logging.DEBUG)
 
 
 @main.command()
@@ -74,8 +77,9 @@ def calc(scan_inis, simple):
 @click.option("--dump-images", "-d", is_flag=True, help="Dump all images used in the calculation to file")
 @click.option("--widths", "-w", is_flag=True, help="Dump all images used in the calculation to file")
 @click.option("--magnets", "-m", is_flag=True)
+@click.option("--calibration", "-c", is_flag=True)
 @click.option("--alle", is_flag=True)
-def plot(scan_inis, dump_images, widths, magnets, alle):
+def plot(scan_inis, dump_images, widths, magnets, alle, calibration):
     slice_energy_spread_measurements = [load_config(fname) for fname in scan_inis]
     for fname, sesme in zip(scan_inis, slice_energy_spread_measurements):
         root_outdir = None
@@ -90,7 +94,8 @@ def plot(scan_inis, dump_images, widths, magnets, alle):
             plot_quad_strengths(sesme, root_outdir)
             with (root_outdir / "parameters.txt").open("w") as f:
                 f.write(pretty_beam_parameter_table(sesme))
-
+        elif calibration:
+            plot_tds_calibration(sesme, root_outdir)
         elif dump_images:
             dump_full_scan(sesme, root_outdir)
         elif widths:

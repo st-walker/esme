@@ -6,6 +6,7 @@ import numpy as np
 import tabulate
 
 import esme.analysis as ana
+import esme.calibration as cal
 import esme.lattice as lat
 
 
@@ -277,8 +278,9 @@ def _plot_quad_strengths_dscan(esme: ana.SliceEnergySpreadMeasurement, root_outd
         ax.plot(df_design.s, df_design.kick_mean, linestyle="", label="Intended", marker=".")
         # ax.bar(df_design.s, df_design.kick_mean, alpha=0.25)
 
-    # ax1.set_xlabel("$s$ / m")
-    # ax2.set_xlabel("$s$ / m")
+    ylabel = r"$K_1 L\,/\,\mathrm{mrad\cdot{}m^{-1}}$"
+    ax1.set_ylabel(ylabel)
+    ax3.set_ylabel(ylabel)
     ax3.set_xticks(list(df_design.s), list(df_design.index), rotation=60, fontsize=8)
     ax4.set_xticks(list(df_design.s), list(df_design.index), rotation=60, fontsize=8)
     ax3.set_xlabel("Quadrupole name")
@@ -323,6 +325,7 @@ def _plot_quad_strengths_tds(esme: ana.SliceEnergySpreadMeasurement, root_outdir
     axm.set_title("TDS Scan quadrupole strengths, 2021 TDS Calibration")
 
     ax.set_xticks(list(df.s), list(df.index), rotation=60, fontsize=8)
+    ax.set_ylabel(r"$K_1 L\,/\,\mathrm{mrad\cdot{}m^{-1}}$")
 
     if root_outdir is not None:
         fig.savefig(root_outdir / "tscan-quads.png")
@@ -340,5 +343,60 @@ def _plot_quad_strengths(dfs, scan_var, scan_var_name, ax) -> plt.Figure:
     ax.legend()
 
 
-def plot_tds_calibration():
-    pass
+def plot_tds_calibration(sesme, root_outdir):
+    plot_r34s(sesme, root_outdir)
+    plot_tds_slopes(sesme, root_outdir)
+    plot_tds_voltages(sesme, root_outdir)
+
+
+def _r34s_from_scan(scan: ana.TDSDispersionScan):
+    result = []
+    for measurement in scan:
+        # Pick a non-bg image.
+        im = measurement.images[0]
+        result.append(cal.r34_from_tds_to_screen(im.metadata))
+    return result
+
+
+def plot_r34s(sesme, root_outdir):
+    fig, (ax1, ax2) = plt.subplots(nrows=2)
+
+    dscan_r34s = _r34s_from_scan(sesme.dscan)
+
+    ax1.plot(sesme.dscan.dx, dscan_r34s)
+    ax1.set_xlabel(r"$\eta_x\,/\,\mathrm{m}$")
+    ax1.set_ylabel(r"$R_{34}\,/\,\mathrm{m\cdot{}rad^{-1}}$")
+
+    tscan_r34s = _r34s_from_scan(sesme.tscan)
+
+    ax2.plot(sesme.tscan.tds, tscan_r34s)
+    ax2.set_xlabel(r'TDS "Power" / %')
+    ax2.set_ylabel(r"$R_{34}\,/\,\mathrm{m\cdot{}rad^{-1}}$")
+
+
+def plot_tds_slopes(sesme, root_outdir):
+    fig, ax = plt.subplots()
+
+    tds = sesme.tscan.tds
+    tds_slope = sesme.tscan.tds_slope
+
+    ax.plot(tds, tds_slope * 1e-6)
+    ax.set_xlabel("TDS Magic Number / %")
+    ax.set_ylabel(r"TDS Calibration Slope / $\mathrm{\mu{}mps^{-1}}$")
+
+    if root_outdir is not None:
+        fig.savefig(root_outdir / "tds-calibration-slopes.png")
+
+
+def plot_tds_voltages(sesme, root_outdir):
+    fig, ax = plt.subplots()
+
+    tds = sesme.tscan.tds
+    tds_voltage = abs(sesme.tscan.tds_voltage * 1e-6)
+
+    ax.plot(tds, tds_voltage)
+    ax.set_xlabel("TDS Magic Number / %")
+    ax.set_ylabel(r"$|V_\mathrm{TDS}|$ / MV")
+
+    if root_outdir is not None:
+        fig.savefig(root_outdir / "derived-tds-voltages.png")

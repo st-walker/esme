@@ -8,6 +8,7 @@ nav:
   - Installation: installation.md
   - Usage: usage.md
   - Modules: api.md
+  - Background: background.md
   - Contributing: contributing.md
   - Changelog: changelog.md
 theme:
@@ -51,7 +52,7 @@ plugins:
       lang: en
   - mkdocstrings:
       watch:
-        - esme-xfel
+        - esme
 extra:
   social:
     - icon: fontawesome/brands/twitter
@@ -73,3 +74,8 @@ extra:
 #google_analytics:
   #- UA-xxx
   #- auto
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js

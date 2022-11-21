@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+from typing import Any, Iterable
 
 import numpy as np
 import toml
@@ -17,17 +18,8 @@ def _optics_config_from_dict(config: dict) -> OpticalConfig:
     tds = config["optics"]["tds"]
     screen_betax = config["optics"]["screen"]["betx"]
 
-    try:
-        tds_voltages = np.array(tds["voltages"])
-    except KeyError:
-        try:
-            tds_voltages = toml.load(tds["crude_calib_file"])
-        except FileNotFoundError:
-            raise MalformedESMEConfigFile("Missing TDS voltage information")
-
     return OpticalConfig(
         tds_length=tds["length"],
-        tds_voltages=tds_voltages,
         tds_wavenumber=tds["wavenumber"],
         tds_bety=tds["bety"],
         tds_alfy=tds["alfy"],
@@ -57,7 +49,30 @@ def load_config(fname: os.PathLike) -> SliceEnergySpreadMeasurement:
     dscan_paths = _files_from_config(config, "dscan")
     tscan_paths = _files_from_config(config, "tscan")
 
-    dscan = DispersionScan(dscan_paths)
-    tscan = TDSScan(tscan_paths, config["data"]["tscan"].get("bad_images"))
+    slopes = config["optics"]["tds"].get("slopes")
+    slope_units = config["optics"]["tds"].get("slope_units")
+    if slopes and not slope_units:
+        raise MalformedESMEConfigFile("TDS slopes provided but without any units...")
+    if slopes:
+        slopes = np.array(slopes)
+        units = {"m/ps": 1e12}
+        try:
+            scale = units[slope_units]
+        except KeyError:
+            raise MalformedESMEConfigFile(f"Unknown slope units: {slope_units}")
+        else:
+            slopes *= scale
+
+    voltages = config["optics"]["tds"].get("voltages")
+    dscan = DispersionScan(dscan_paths,
+                           tds_slopes=slopes,
+                           tds_voltages=voltages,
+                           bad_images_per_measurement=config["data"]["dscan"].get("bad_images")
+                           )
+    tscan = TDSScan(tscan_paths,
+                    tds_slopes=slopes,
+                    tds_voltages=voltages,
+                    bad_images_per_measurement=config["data"]["tscan"].get("bad_images")
+                    )
 
     return SliceEnergySpreadMeasurement(dscan, tscan, oconfig)

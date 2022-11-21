@@ -21,6 +21,8 @@ from scipy.constants import c, e, m_e
 from scipy.optimize import curve_fit
 from uncertainties import ufloat, umath
 
+from esme.calibration import get_tds_voltage
+
 IMAGE_PATH_KEY: str = "XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"
 
 
@@ -191,11 +193,7 @@ def _dispersion_from_filename(fname: os.PathLike) -> float:
 
     if not match:
         raise MissingMetadataInFileNameError(fname)
-    substring = match.group(0)
-    substring.split("Dx_")
-
     dx = float(match.group(0).split("Dx_")[1])
-
     return dx / 1000  # convert to metres
 
 
@@ -205,12 +203,19 @@ def _tds_magic_number_from_filename(fname: os.PathLike) -> int:
 
     if not match:
         raise MissingMetadataInFileNameError(fname)
-    substring = match.group(0)
-    substring.split("tds_")
-
     tds_magic_number = int(match.group(0).split("tds_")[1])
 
     return tds_magic_number
+
+
+def _tds_slope_from_filename(fname: os.PathLike) -> float:
+    path = Path(fname)
+    match = re.search(r"[0-9]+um_ps", path.stem)
+    if not match:
+        raise MissingMetadataInFileNameError(fname)
+    calib_um_per_ps = int(match.group(0).split("um_ps")[0])
+    calib_m_per_s = calib_um_per_ps * 1e-6 * 1e12
+    return calib_m_per_s
 
 
 def get_gaussian_fit(x, y) -> tuple[tuple, tuple]:
@@ -270,11 +275,30 @@ class TDSScreenImage:
 
 
 class ScanMeasurement:
-    def __init__(self, df_path: os.PathLike, bad_image_indices=None):
+    def __init__(self, df_path: os.PathLike,
+                 tds_slope=None,
+                 tds_voltage=None,
+                 bad_image_indices=None):
+        """bad_image_indices are SKIPPED and not loaded at all."""
         LOG.debug(f"Loading measurement: {df_path=} with {bad_image_indices=}")
         df_path = Path(df_path)
         self.dx = _dispersion_from_filename(df_path)
         self.tds = _tds_magic_number_from_filename(df_path)
+
+        self.tds_slope = tds_slope
+        if tds_slope is None:
+            try:
+                self.tds_slope = _tds_slope_from_filename(df_path)
+            except MissingMetadataInFileNameError:
+                if tds_voltage is None:
+                    raise TypeError("No TDS voltage/calib info provided.")
+
+        self._tds_voltage = tds_voltage
+
+        # Either directly give the voltage or we calculate it from the calibration.
+        if tds_slope is not None and tds_voltage is not None:
+            raise TypeError("Only one of tds_slope and tds_voltage may be supplied.")
+
         self.images = []
         if bad_image_indices is None:
             bad_image_indices = []
@@ -305,6 +329,14 @@ class ScanMeasurement:
 
     def __repr__(self) -> str:
         return f"<Measurement: Dx={self.dx}>"
+
+    @property
+    def tds_voltage(self) -> float:
+        if self._tds_voltage is not None:
+            return self._tds_voltage
+        metadata = self.images[0].metadata
+        voltage = get_tds_voltage(self.tds_slope, metadata)
+        return voltage
 
     @property
     def metadata(self) -> pd.Dataframe:
@@ -376,14 +408,32 @@ def _f(measurement):
 
 
 class TDSDispersionScan:
-    def __init__(self, files: Iterable[os.PathLike], bad_images_per_measurement=None):
+    def __init__(
+        self,
+        files: Iterable[os.PathLike],
+        tds_slopes=None,
+        tds_voltages=None,
+        bad_images_per_measurement=None,
+    ):
+        # Ideally this voltage, calibration etc. stuff should go in the df.
+        # for now, whatever.
         LOG.debug(f"Instantiating {type(self).__name__}")
+        nfiles = len(files)
         if bad_images_per_measurement is None:
-            self.measurements = [ScanMeasurement(df_path) for df_path in files]
-        else:
-            self.measurements = []
-            for df_path, bad_images in zip(files, bad_images_per_measurement):
-                self.measurements.append(ScanMeasurement(df_path, bad_images))
+            bad_images_per_measurement = nfiles * [None]
+        if tds_slopes is None:
+            tds_slopes = nfiles * [None]
+        if tds_voltages is None:
+            tds_voltages = nfiles * [None]
+
+        self.measurements = []
+        for i, df_path in enumerate(files):
+            measurement = ScanMeasurement(df_path,
+                                          tds_slope=tds_slopes[i],
+                                          tds_voltage=tds_voltages[i],
+                                          bad_image_indices=bad_images_per_measurement[i]
+                                          )
+            self.measurements.append(measurement)
 
     @property
     def dx(self) -> npt.NDArray:
@@ -392,6 +442,13 @@ class TDSDispersionScan:
     @property
     def tds(self) -> npt.NDArray:
         return np.array([s.tds for s in self.measurements])
+
+    @property
+    def tds_slope(self):
+        return np.array([s.tds_slope for s in self.measurements])
+    @property
+    def tds_voltage(self):
+        return np.array([s.tds_voltage for s in self.measurements])
 
     @property
     def metadata(self) -> list[pd.Dataframe]:
@@ -498,29 +555,21 @@ def calculate_energy_spread_simple(scan: DispersionScan) -> ValueWithErrorT:
 
 @dataclass
 class OpticalConfig:
+    ocr_betx: float
     tds_length: float
-    tds_voltages: list
     tds_wavenumber: float
     tds_bety: float
     tds_alfy: float
-    ocr_betx: float
 
     @property
     def tds_gamy(self) -> float:
         return (1 + self.tds_alfy**2) / self.tds_bety
-
 
 class SliceEnergySpreadMeasurement:
     def __init__(self, dscan: DispersionScan, tscan: TDSScan, optical_config: OpticalConfig):
         self.dscan = dscan
         self.tscan = tscan
         self.oconfig = optical_config
-
-        ntscan = len(self.tscan.measurements)
-        nvoltages = len(self.oconfig.tds_voltages)
-
-        if ntscan != nvoltages:
-            raise RuntimeError("Mismatch between provided voltages and tscan measurements.")
 
     def dispersion_scan_fit(self) -> ValueWithErrorT:
         widths, errors = self.dscan.max_energy_slice_widths_and_errors(padding=10)
@@ -532,7 +581,7 @@ class SliceEnergySpreadMeasurement:
 
     def tds_scan_fit(self) -> tuple[ValueWithErrorT, ValueWithErrorT]:
         widths, errors = self.tscan.max_energy_slice_widths_and_errors(padding=10)
-        voltages2 = self.oconfig.tds_voltages**2
+        voltages2 = self.tscan.tds_voltage**2
 
         widths2_m2, errors2_m2 = transform_pixel_widths(widths, errors, pixel_units="m", to_variances=True)
         a_v, b_v = linear_fit(voltages2, widths2_m2, errors2_m2)
