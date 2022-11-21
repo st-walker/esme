@@ -323,7 +323,7 @@ def injector_cell_from_snapshot(snapshot: pd.Series, check=True, change_correcto
 
     if check:
         xfel_mask = snapshot.index.str.startswith("XFEL.")
-        bpm_mask = snapshot.index.str.contains(r"≤^BPM[GAFRSCD]\.")
+        bpm_mask = snapshot.index.str.contains(r"^BPM[GAFRSCD]\.")
         timestamp_mask = snapshot.index == "timestamp"
         sextupole_mask = snapshot.index.str.contains(r"^SC\.")
         other_kickers_mask = snapshot.index.str.contains(r"CB[LB]\.")
