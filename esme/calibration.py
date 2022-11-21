@@ -2,9 +2,9 @@ import numpy as np
 import pandas as pd
 from ocelot.cpbd.magnetic_lattice import MagneticLattice
 from scipy.constants import e
-from scipy.optimize import curve_fit
 
 from esme.lattice import injector_cell_from_snapshot
+
 
 def lat_from_tds_to_screen(snapshot: pd.Series):
     cell = injector_cell_from_snapshot(snapshot)
@@ -36,4 +36,3 @@ def get_tds_voltage(gradient_m_per_s, snapshot: pd.Series):
     voltage = (energy_joules / (e * frequency * r34)) * gradient_m_per_s
 
     return voltage
-

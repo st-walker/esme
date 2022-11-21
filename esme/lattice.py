@@ -1,22 +1,23 @@
 """Used for calibrating the measurement and also deriving measurement."""
 
-import os
+import logging
 import re
 from typing import Iterable
-import logging
 
 import numpy as np
 import pandas as pd
-from ocelot.cpbd.beam import Twiss
-from ocelot.cpbd.csr import CSR
-from ocelot.cpbd.magnetic_lattice import MagneticLattice
-from ocelot.cpbd.physics_proc import BeamTransform, LaserModulator, SaveBeam, SmoothBeam
-from ocelot.cpbd.sc import SpaceCharge
-from ocelot.cpbd.wake3D import Wake, WakeTable
-from ocelot.utils.section_track import SectionTrack
 
 import esme.i1 as i1
 import esme.i1d as i1d
+
+# from ocelot.cpbd.beam import Twiss
+# from ocelot.cpbd.csr import CSR
+# from ocelot.cpbd.magnetic_lattice import MagneticLattice
+# from ocelot.cpbd.physics_proc import BeamTransform, LaserModulator, SaveBeam, SmoothBeam
+# from ocelot.cpbd.sc import SpaceCharge
+# from ocelot.cpbd.wake3D import Wake, WakeTable
+# from ocelot.utils.section_track import SectionTrack
+
 
 LOG = logging.getLogger(__name__)
 
@@ -312,6 +313,7 @@ def mean_quad_strengths(df: pd.DataFrame, include_s=True, dropna=True):
 def injector_cell():
     return i1.make_cell() + i1d.make_cell()
 
+
 def injector_cell_from_snapshot(snapshot: pd.Series, check=True, change_correctors=False):
     quad_mask = snapshot.index.str.contains(r"^Q(?:I?|L[NS])\.")
     solenoid_mask = snapshot.index.str.contains(r"^SOL[AB]\.")
@@ -321,14 +323,13 @@ def injector_cell_from_snapshot(snapshot: pd.Series, check=True, change_correcto
 
     if check:
         xfel_mask = snapshot.index.str.startswith("XFEL.")
-        bpm_mask = snapshot.index.str.contains("^BPM[GAFRSCD]\.")
+        bpm_mask = snapshot.index.str.contains(r"≤^BPM[GAFRSCD]\.")
         timestamp_mask = snapshot.index == "timestamp"
-        sextupole_mask = snapshot.index.str.contains("^SC\.")
-        other_kickers_mask = snapshot.index.str.contains("CB[LB]\.")
+        sextupole_mask = snapshot.index.str.contains(r"^SC\.")
+        other_kickers_mask = snapshot.index.str.contains(r"CB[LB]\.")
         unused_mask = xfel_mask | bpm_mask | timestamp_mask | sextupole_mask | other_kickers_mask
         the_rest_mask = ~(used_mask | unused_mask)
         snapshot[the_rest_mask]
-
 
         the_rest = snapshot[the_rest_mask]
 
@@ -343,10 +344,9 @@ def injector_cell_from_snapshot(snapshot: pd.Series, check=True, change_correcto
         except KeyError:
             LOG.debug("NOT setting quad strength from snapshot: %s", quad_name)
         else:
-            k1 = int_strength * 1e-3 / quad.l # Convert to rad/m from mrad/m then to k1.
+            k1 = int_strength * 1e-3 / quad.l  # Convert to rad/m from mrad/m then to k1.
             LOG.debug(f"setting quad strength from snapshot: {quad_name=}, {quad.k1=} to {k1=}")
             quad.k1 = k1
-
 
     dipole_mask = bends_mask
     if change_correctors:

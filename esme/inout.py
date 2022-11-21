@@ -2,7 +2,6 @@
 
 import os
 from pathlib import Path
-from typing import Any, Iterable
 
 import numpy as np
 import toml
@@ -64,15 +63,17 @@ def load_config(fname: os.PathLike) -> SliceEnergySpreadMeasurement:
             slopes *= scale
 
     voltages = config["optics"]["tds"].get("voltages")
-    dscan = DispersionScan(dscan_paths,
-                           tds_slopes=slopes,
-                           tds_voltages=voltages,
-                           bad_images_per_measurement=config["data"]["dscan"].get("bad_images")
-                           )
-    tscan = TDSScan(tscan_paths,
-                    tds_slopes=slopes,
-                    tds_voltages=voltages,
-                    bad_images_per_measurement=config["data"]["tscan"].get("bad_images")
-                    )
+    dscan = DispersionScan(
+        dscan_paths,
+        tds_slopes=slopes,
+        tds_voltages=voltages,
+        bad_images_per_measurement=config["data"]["dscan"].get("bad_images"),
+    )
+    tscan = TDSScan(
+        tscan_paths,
+        tds_slopes=slopes,
+        tds_voltages=voltages,
+        bad_images_per_measurement=config["data"]["tscan"].get("bad_images"),
+    )
 
     return SliceEnergySpreadMeasurement(dscan, tscan, oconfig)

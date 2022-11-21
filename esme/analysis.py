@@ -275,10 +275,7 @@ class TDSScreenImage:
 
 
 class ScanMeasurement:
-    def __init__(self, df_path: os.PathLike,
-                 tds_slope=None,
-                 tds_voltage=None,
-                 bad_image_indices=None):
+    def __init__(self, df_path: os.PathLike, tds_slope=None, tds_voltage=None, bad_image_indices=None):
         """bad_image_indices are SKIPPED and not loaded at all."""
         LOG.debug(f"Loading measurement: {df_path=} with {bad_image_indices=}")
         df_path = Path(df_path)
@@ -428,11 +425,12 @@ class TDSDispersionScan:
 
         self.measurements = []
         for i, df_path in enumerate(files):
-            measurement = ScanMeasurement(df_path,
-                                          tds_slope=tds_slopes[i],
-                                          tds_voltage=tds_voltages[i],
-                                          bad_image_indices=bad_images_per_measurement[i]
-                                          )
+            measurement = ScanMeasurement(
+                df_path,
+                tds_slope=tds_slopes[i],
+                tds_voltage=tds_voltages[i],
+                bad_image_indices=bad_images_per_measurement[i],
+            )
             self.measurements.append(measurement)
 
     @property
@@ -446,6 +444,7 @@ class TDSDispersionScan:
     @property
     def tds_slope(self):
         return np.array([s.tds_slope for s in self.measurements])
+
     @property
     def tds_voltage(self):
         return np.array([s.tds_voltage for s in self.measurements])
@@ -564,6 +563,7 @@ class OpticalConfig:
     @property
     def tds_gamy(self) -> float:
         return (1 + self.tds_alfy**2) / self.tds_bety
+
 
 class SliceEnergySpreadMeasurement:
     def __init__(self, dscan: DispersionScan, tscan: TDSScan, optical_config: OpticalConfig):
