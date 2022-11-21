@@ -21,7 +21,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.6.2,<4.0"
+python = ">=3.10.4,<4.0"
 click = "8.0.1"
 
 black  = { version = "^21.5b2", optional = true}
@@ -44,6 +44,13 @@ mkdocs-autorefs = {version = "^0.2.1", optional = true}
 pre-commit = {version = "^2.12.0", optional = true}
 toml = {version = "^0.10.2", optional = true}
 bump2version = {version = "^1.0.1", optional = true}
+matplotlib = "^3.6.2"
+numpy = "^1.23.5"
+pandas = "^1.5.1"
+scipy = "^1.9.3"
+uncertainties = "^3.1.7"
+opencv-python = "^4.6.0"
+ocelot = {git = "https://github.com/st-walker/ocelot.git", rev = "bigting"}
 
 [tool.poetry.extras]
 test = [
