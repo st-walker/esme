@@ -1,0 +1,62 @@
+title = "Measurement @ 130MeV"
+
+[optics]
+
+[optics.tds]
+
+bety = 4.3
+alfy = 1.9
+wavenumber = 58.7
+# wavenumber = 62.88 @ 3GHz
+length = 0.7
+# voltages = [0.38E6, 0.47E6, 0.56E6, 0.65E6, 0.75E6, 0.84E6]
+# voltages = [930000, 792000, 654000, 515999, 377999]
+
+# voltages = [377999, 515999, 654000, 792000, 930000] # My own...
+# these should be in..  m/s.  by default in m/ps.
+slopes = [0.00020974, 0.00029401, 0.00040968, 0.00051703, 0.00066931]
+slope_units = "m/ps"
+
+
+[optics.screen]
+
+betx = 0.6
+
+[data]
+
+basepath = "/Users/stuartwalker/repos/emem/pyBigBro_11_10_2022"
+
+
+[data.dscan]
+
+fnames = ["20221011-15_11_22130_MeV_Dx_1190_tds_13%_365um_ps.pcl",
+          "20221011-15_17_53130_MeV_Dx_1016_tds_13%_365um_ps.pcl",
+          "20221011-15_23_00130_MeV_Dx_796_tds_13%_365um_ps.pcl",
+          "20221011-15_29_16130_MeV_Dx_587_tds_13%_365um_ps.pcl"]
+
+[data.tscan]
+
+
+fnames = ['20221011-16_12_59130_MeV_Dx_1179_tds_8%_212um_ps.pcl',
+'20221011-16_07_04130_MeV_Dx_1179_tds_11%_280um_ps.pcl',
+# TDS was off whole time:
+# "20221011-15_56_28130_MeV_Dx_1179_tds_14%_410um_ps-maybe-tds-off.pcl",
+# TDS was off for first image:
+
+'20221011-15_59_53130_MeV_Dx_1179_tds_14%_408um_ps.pcl',
+'20221011-15_50_14130_MeV_Dx_1179_tds_17%_515um_ps.pcl',
+'20221011-15_40_50130_MeV_Dx_1179_tds_20%_672um_ps.pcl']
+
+
+
+
+
+
+
+# fnames = ["20221011-15_40_50130_MeV_Dx_1179_tds_20%_672um_ps.pcl",
+#           "20221011-15_50_14130_MeV_Dx_1179_tds_17%_515um_ps.pcl",
+#           "20221011-15_59_53130_MeV_Dx_1179_tds_14%_408um_ps.pcl",
+#           "20221011-16_07_04130_MeV_Dx_1179_tds_11%_280um_ps.pcl",
+#           "20221011-16_12_59130_MeV_Dx_1179_tds_8%_212um_ps.pcl"]
+
+bad_images = [[], [], [0], [], []]
