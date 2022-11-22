@@ -2,11 +2,12 @@
 
 import logging
 from pathlib import Path
+import pickle
 
 import click
 import matplotlib.pyplot as plt
 
-from esme.analysis import calculate_energy_spread_simple
+from esme.analysis import calculate_energy_spread_simple, ScanMeasurement
 from esme.inout import load_config
 from esme.plot import (
     dump_full_scan,
@@ -15,6 +16,7 @@ from esme.plot import (
     plot_scans,
     plot_tds_calibration,
     pretty_beam_parameter_table,
+    show_before_after_processing
 )
 
 logging.basicConfig()
@@ -104,6 +106,17 @@ def plot(scan_inis, dump_images, widths, magnets, alle, calibration):
             plot_quad_strengths(sesme, root_outdir)
         else:
             plot_scans(sesme, root_outdir)
+
+@main.command()
+@click.argument("tcls", nargs=-1)
+def diag(tcls):
+    for f in tcls:
+        sm = ScanMeasurement(f)
+        width, error = sm.mean_central_slice_width_with_error()
+        print(f"{f}: central width: width±error")
+        for i in range(sm.nimages):
+            show_before_after_processing(sm, i)
+            plt.show()
 
 
 if __name__ == "__main__":
