@@ -237,9 +237,6 @@ def plot_measured_central_widths(esme: ana.SliceEnergySpreadMeasurement, root_ou
     if root_outdir is not None:
         fig.savefig(root_outdir / "measured-central-widths.png")
 
-    # if show:
-    #     plt.show()
-
 
 def pretty_beam_parameter_table(esme: ana.SliceEnergySpreadMeasurement) -> str:
     params = esme.all_fit_parameters()
@@ -388,7 +385,8 @@ def plot_r34s(sesme, root_outdir):
     ax2.set_xlabel(r"TDS Amplitude / %")
     ax2.set_ylabel(r"$R_{34}\,/\,\mathrm{m\cdot{}rad^{-1}}$")
 
-    # plt.show()
+    if root_outdir is not None:
+        fig.savefig(root_outdir / "r34s.png")
 
 
 def plot_calibrated_tds(sesme, root_outdir):
@@ -400,10 +398,9 @@ def plot_calibrated_tds(sesme, root_outdir):
     tds_percentage = sesme.tscan.tds_percentage
     derived_tds_voltage = abs(sesme.tscan.tds_voltage * 1e-6)  # MV
 
-    # Our pre-calibration
-    sergey_percentages = sesme.tscan[0].calibrator.percentages
+    sergey_percentages = sesme.tscan.calibrator.percentages
     sergey_voltages = abs(
-        sesme.tscan[0].calibrator.get_voltage(sergey_percentages, sesme.tscan[0].images[0].metadata) * 1e-6
+        sesme.tscan.calibrator.get_voltage(sergey_percentages, sesme.tscan[0].images[0].metadata) * 1e-6
     )
 
     # popt, _ = curve_fit(ana.line, sergey_percentages, sergey_sergey_)
@@ -411,8 +408,8 @@ def plot_calibrated_tds(sesme, root_outdir):
     fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(14, 8))
     ax1.plot(tds_percentage, derived_tds_voltage, marker="x", label="TDS Scan Derived Voltages")
 
-    sergey_tds_slopes = sesme.tscan[0].calibrator.tds_slopes
-    popt, _ = sesme.tscan[0].calibrator.linear_fit()
+    sergey_tds_slopes = sesme.tscan.calibrator.tds_slopes
+    popt, _ = sesme.tscan.calibrator.linear_fit()
 
     ax2.plot(sergey_percentages, sergey_tds_slopes * 1e-6, marker="x", label="TDS Calibration data")
     ax2.plot(sergey_percentages, ana.line(sergey_percentages, *popt) * 1e-6,
@@ -492,7 +489,9 @@ def plot_streaking_parameters(sesme, root_outdir):
 
     ax2.plot(abs(sesme.tscan.tds_voltage*1e-6), tscan_streak)
 
-    plt.show()
+    if root_outdir is not None:
+        fig.savefig(root_outdir / "streaking-parameters.png")
+
 
 def plot_bunch_lengths(sesme, root_outdir):
     dscan = sesme.dscan
@@ -528,6 +527,6 @@ def plot_bunch_lengths(sesme, root_outdir):
                  yerr=1e12*zrmse / tscan_streak / c)
     ax2.set_xlabel(VOLTAGE_LABEL)
 
-    plt.show()
 
-    from IPython import embed; embed()
+    if root_outdir is not None:
+        fig.savefig(root_outdir / "bunch-lengths.png")

@@ -46,7 +46,7 @@ class TDSCalibrator:
     def __repr__(self):
         cname = type(self).__name__
         dx = self.dispersion
-        return f"<{cname}: {dx=}, %={repr(self.percentage)}, grds={self.tds_slopes}>"
+        return f"<{cname}: {dx=}, %={repr(self.percentages)}, grds={self.tds_slopes}>"
 
     # def get_voltage_for_dispersion_scan(percentage, snapshot: pd.Series)
 
