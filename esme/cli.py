@@ -89,7 +89,7 @@ def plot(scan_inis, dump_images, widths, magnets, alle, calibration, save):
         if alle:
             root_outdir = Path(fname).resolve().parent / (Path(fname).stem + "-images")
             click.echo(f"Writing plots to {root_outdir}")
-            # dump_full_scan(sesme, root_outdir)
+            dump_full_scan(sesme, root_outdir)
             plot_measured_central_widths(sesme, root_outdir)
             plot_scans(sesme, root_outdir)
             plot_quad_strengths(sesme, root_outdir)

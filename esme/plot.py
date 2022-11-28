@@ -13,10 +13,11 @@ import esme.lattice as lat
 
 ETA_LABEL = r"$\eta_\mathrm{{OTR}}\,/\,\mathrm{m}$"
 VOLTAGE_LABEL = r"$|V_\mathrm{TDS}|\,/\,\mathrm{MV}$"
+TDS_CALIBRATION_LABEL = r"TDS Calibration Slope / $\mathrm{\mu{}mps^{-1}}$"
+TDS_AMPLITUDE_LABEL = r"TDS Amplitude / %"
 
 
-def dump_full_scan(esme: ana.SliceEnergySpreadMeasurement, root_outdir, show=True) -> None:
-
+def dump_full_scan(esme: ana.SliceEnergySpreadMeasurement, root_outdir) -> None:
     dispersion_scan = esme.dscan
     tds_scan = esme.tscan
 
@@ -30,8 +31,11 @@ def dump_full_scan(esme: ana.SliceEnergySpreadMeasurement, root_outdir, show=Tru
 
         for image_index in range(measurement.nimages):
             fig = show_before_after_processing(measurement, image_index)
+        if root_outdir is not None:
             fig.savefig(measurement_outdir / f"{image_index}.png")
             plt.close()
+        else:
+            plt.show()
 
     dscan_dir = root_outdir / "tds-scan"
     for i, measurement in enumerate(tds_scan):
@@ -43,10 +47,11 @@ def dump_full_scan(esme: ana.SliceEnergySpreadMeasurement, root_outdir, show=Tru
 
         for image_index in range(measurement.nimages):
             fig = show_before_after_processing(measurement, image_index)
-            fig.savefig(measurement_outdir / f"{image_index}.png")
-            # if show:
-            #     plt.show()
-            plt.close()
+            if root_outdir:
+                fig.savefig(measurement_outdir / f"{image_index}.png")
+                plt.close()
+            else:
+                plt.show()
 
 
 def show_before_after_processing(measurement: ana.ScanMeasurement, index: int) -> plt.Figure:
@@ -187,6 +192,8 @@ def plot_scans(esme: ana.SliceEnergySpreadMeasurement, root_outdir=None) -> None
 
     if root_outdir is not None:
         fig.savefig(root_outdir / "scan-fits.png")
+    else:
+        plt.show()
 
 
 def add_info_box(ax, symbol, xunits, c, m) -> None:
@@ -273,6 +280,8 @@ def pretty_beam_parameter_table(esme: ana.SliceEnergySpreadMeasurement) -> str:
 def plot_quad_strengths(esme: ana.SliceEnergySpreadMeasurement, root_outdir=None) -> plt.Figure:
     _plot_quad_strengths_dscan(esme, root_outdir=root_outdir)
     _plot_quad_strengths_tds(esme, root_outdir=root_outdir)
+    if root_outdir is not None:
+        plt.show()
 
 
 def _plot_quad_strengths_dscan(esme: ana.SliceEnergySpreadMeasurement, root_outdir=None) -> plt.Figure:
@@ -360,12 +369,24 @@ def _plot_quad_strengths(dfs, scan_var, scan_var_name, ax) -> plt.Figure:
     ax.legend()
 
 
-def plot_tds_calibration(sesme, root_outdir, show=True):
-    plot_r34s(sesme, root_outdir)
-    plot_calibrated_tds(sesme, root_outdir)
-    plot_streaking_parameters(sesme, root_outdir)
-    plot_tds_voltage(sesme, root_outdir)
-    plot_bunch_lengths(sesme, root_outdir)
+def plot_tds_calibration(sesme, root_outdir):
+    fig1 = plot_calibrator_with_fits(sesme.dscan.calibrator)
+    fig2 = plot_r34s(sesme)
+    fig3 = plot_calibrated_tds(sesme)
+    fig4 = plot_streaking_parameters(sesme)
+    fig5 = plot_tds_voltage(sesme)
+    fig6 = plot_bunch_lengths(sesme)
+
+    if root_outdir is None:
+        plt.show()
+        return
+
+    fig1.savefig(root_outdir / "calibrator-fits.png")
+    fig2.savefig(root_outdir / "r34s.png")
+    fig3.savefig(root_outdir / "derived-tds-voltages.png")
+    fig4.savefig(root_outdir / "streaking-parameters.png")
+    fig5.savefig(root_outdir / "tds-calibration-slopes.png")
+    fig6.savefig(root_outdir / "bunch-lengths.png")
 
 
 def _r34s_from_scan(scan: ana.TDSDispersionScan):
@@ -377,7 +398,7 @@ def _r34s_from_scan(scan: ana.TDSDispersionScan):
     return np.array(result)
 
 
-def plot_r34s(sesme, root_outdir):
+def plot_r34s(sesme):
     fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(14, 8))
 
     dscan_r34s = _r34s_from_scan(sesme.dscan)
@@ -392,11 +413,27 @@ def plot_r34s(sesme, root_outdir):
     ax2.set_xlabel(r"TDS Amplitude / %")
     ax2.set_ylabel(r"$R_{34}\,/\,\mathrm{m\cdot{}rad^{-1}}$")
 
-    if root_outdir is not None:
-        fig.savefig(root_outdir / "r34s.png")
+
+def plot_calibrator_with_fits(calib):
+    fig, ax = plt.subplots()
+
+    sample_x = np.linspace(min(calib.percentages) * 0.9,
+                           max(calib.percentages) / 0.9,
+                           num=100)
+
+    ax.plot(calib.percentages, calib.tds_slopes * 1e-6, marker="x", linestyle="", label="Data")
+    calib.fn = cal.line
+    ax.plot(sample_x, calib.get_tds_slope(sample_x) * 1e-6, label="line(%)")
+    calib.fn = cal.sqrt
+    ax.plot(sample_x, calib.get_tds_slope(sample_x) * 1e-6, label="sqrt(%)")
+
+    ax.legend()
+    ax.set_xlabel(TDS_AMPLITUDE_LABEL)
+    ax.set_ylabel(TDS_CALIBRATION_LABEL)
+    return fig
 
 
-def plot_calibrated_tds(sesme, root_outdir):
+def plot_calibrated_tds(sesme):
     # We plot two things here.  Firstly the stuff Sergey wrote down yesterday.
 
     # Secondly the derived voltages for the TDS scan.
@@ -406,9 +443,9 @@ def plot_calibrated_tds(sesme, root_outdir):
     derived_tds_voltage = abs(sesme.tscan.tds_voltage * 1e-6)  # MV
 
     sergey_percentages = sesme.tscan.calibrator.percentages
-    sergey_voltages = abs(
-        sesme.tscan.calibrator.get_voltage(sergey_percentages, sesme.tscan[0].images[0].metadata) * 1e-6
-    )
+    # sergey_voltages = abs(
+    #     sesme.tscan.calibrator.get_voltage(sergey_percentages, sesme.tscan[0].images[0].metadata) * 1e-6
+    # )
 
     # popt, _ = curve_fit(ana.line, sergey_percentages, sergey_sergey_)
 
@@ -416,13 +453,13 @@ def plot_calibrated_tds(sesme, root_outdir):
     ax1.plot(tds_percentage, derived_tds_voltage, marker="x", label="TDS Scan Derived Voltages")
 
     sergey_tds_slopes = sesme.tscan.calibrator.tds_slopes
-    popt, _ = sesme.tscan.calibrator.linear_fit()
+    popt, _ = sesme.tscan.calibrator.fit()
 
     ax2.plot(sergey_percentages, sergey_tds_slopes * 1e-6, marker="x", label="TDS Calibration data")
     ax2.plot(sergey_percentages, ana.line(sergey_percentages, *popt) * 1e-6,
              marker="x", label="Fit")
 
-    ax2.set_ylabel(r"TDS Calibration Slope / $\mathrm{\mu{}mps^{-1}}$")
+    ax2.set_ylabel(TDS_CALIBRATION_LABEL)
 
     ax2.set_xlabel("TDS Amplitude / %")
     ax1.set_ylabel(r"$|V_\mathrm{TDS}|$ / MV")
@@ -430,8 +467,7 @@ def plot_calibrated_tds(sesme, root_outdir):
 
     fig.suptitle("TDS Calibration data we took beforehand (below) and applied to scan (above)")
 
-    if root_outdir is not None:
-        fig.savefig(root_outdir / "derived-tds-voltages.png")
+    return fig
 
 
 def _streaks_from_scan(scan: ana.TDSDispersionScan):
@@ -445,7 +481,7 @@ def _streaks_from_scan(scan: ana.TDSDispersionScan):
     return streak
 
 
-def plot_tds_voltage(sesme, root_outdir):
+def plot_tds_voltage(sesme):
     fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(12.8, 8), sharey=True)
 
     dscan = sesme.dscan
@@ -476,11 +512,10 @@ def plot_tds_voltage(sesme, root_outdir):
     tit2 = rf"TDS-scan; $\eta_\mathrm{{OTR}}={{{tscan_dx[0]}}}\mathrm{{m}}$"
     ax2.set_title(tit2)
 
-    if root_outdir is not None:
-        fig.savefig(root_outdir / "tds-calibration-slopes.png")
+    return fig
 
 
-def plot_streaking_parameters(sesme, root_outdir):
+def plot_streaking_parameters(sesme):
     fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(14, 8), sharey=True)
 
     dscan_streak = abs(_streaks_from_scan(sesme.dscan))
@@ -495,12 +530,9 @@ def plot_streaking_parameters(sesme, root_outdir):
     tscan_streak = abs(_streaks_from_scan(sesme.tscan))
 
     ax2.plot(abs(sesme.tscan.tds_voltage*1e-6), tscan_streak)
+    return fig
 
-    if root_outdir is not None:
-        fig.savefig(root_outdir / "streaking-parameters.png")
-
-
-def plot_bunch_lengths(sesme, root_outdir):
+def plot_bunch_lengths(sesme):
     dscan = sesme.dscan
     zrms = [m.zrms(pixel_units="m") for m in dscan]
 
@@ -534,6 +566,4 @@ def plot_bunch_lengths(sesme, root_outdir):
                  yerr=1e12*zrmse / tscan_streak / c)
     ax2.set_xlabel(VOLTAGE_LABEL)
 
-
-    if root_outdir is not None:
-        fig.savefig(root_outdir / "bunch-lengths.png")
+    return fig

@@ -20,9 +20,13 @@ def line(x, a0, a1) -> Any:
     return a0 + a1 * x
 
 
+def sqrt(x, a0, a1) -> Any:
+    return a0 + a1 * np.sqrt(x)
+
+
 class TDSCalibrator:
     def __init__(self, percentages, tds_slopes, dispersion,
-                 tds_slope_units=None):
+                 tds_slope_units=None, fn=line):
         self.percentages = np.array(percentages)
         self.tds_slopes = np.array(tds_slopes)
         self.dispersion = dispersion
@@ -30,14 +34,15 @@ class TDSCalibrator:
             self.tds_slopes = self.tds_slopes * 1e6
         elif tds_slope_units is not None:
             raise TypeError(f"Wrong tds_slope_units: {tds_slope_units}")
+        self.fn = fn
 
-    def linear_fit(self):
-        popt, pcov = curve_fit(line, self.percentages, self.tds_slopes)
+    def fit(self):
+        popt, pcov = curve_fit(self.fn, self.percentages, self.tds_slopes)
         return popt, pcov
 
     def get_tds_slope(self, percentage):
-        popt, _ = self.linear_fit()
-        return line(percentage, *popt)
+        popt, _ = self.fit()
+        return self.fn(percentage, *popt)
 
     def get_voltage(self, percentage, snapshot: pd.Series):
         tds_slope = self.get_tds_slope(percentage)
