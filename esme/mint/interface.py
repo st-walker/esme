@@ -2,6 +2,7 @@
 S.Tomin, 2018
 """
 import time
+
 import numpy as np
 
 
@@ -72,8 +73,6 @@ class MachineInterface(object):
         pass
 
 
-
-
 class Device(object):
     def __init__(self, eid=None):
         self.eid = eid
@@ -87,8 +86,8 @@ class Device(object):
         self.target = None
         self.low_limit = 0
         self.high_limit = 0
-        self.phys2hw_factor = 1.
-        self.hw2phys_factor = 1.
+        self.phys2hw_factor = 1.0
+        self.hw2phys_factor = 1.0
 
     def set_value(self, val):
         self.values.append(val)
@@ -115,7 +114,7 @@ class Device(object):
 
         start_time = time.time()
         while start_time + self.timeout <= time.time():
-            if np.abs(self.get_value()-self.target) < self.tol:
+            if np.abs(self.get_value() - self.target) < self.tol:
                 return
             time.sleep(0.05)
 
@@ -153,7 +152,7 @@ class Device(object):
         :param phys_val: physical unit
         :return: hardware unit
         """
-        hw_val = phys_val*self.phys2hw_factor
+        hw_val = phys_val * self.phys2hw_factor
         return hw_val
 
     def hw2phys(self, hw_val):
@@ -163,5 +162,5 @@ class Device(object):
         :param hw_val: hardware unit
         :return: physical unit
         """
-        phys_val = hw_val*self.hw2phys_factor
+        phys_val = hw_val * self.hw2phys_factor
         return phys_val

@@ -5,17 +5,17 @@ S.Tomin
 Machine class to get machine snapshot
 """
 
-from mint.xfel_interface import XFELMachineInterface
-from mint.devices import Device
-import pandas as pd 
-import numpy as np
-import time
-from datetime import datetime
-import imageio
-import matplotlib
-
 import os
 import pickle
+import time
+from datetime import datetime
+
+import imageio
+import matplotlib
+import numpy as np
+import pandas as pd
+from mint.devices import Device
+from mint.xfel_interface import XFELMachineInterface
 
 
 class MPS(Device):
@@ -33,7 +33,7 @@ class MPS(Device):
 
     def num_bunches_requested(self, num_bunches=1):
         self.mi.set_value(self.server + ".UTIL/BUNCH_PATTERN/CONTROL/NUM_BUNCHES_REQUESTED_1", num_bunches)
-    
+
     def is_beam_on(self):
         val = self.mi.get_value(self.server + ".UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED")
         return val
@@ -43,11 +43,10 @@ class Machine:
     def __init__(self, snapshot):
         self.snapshot = snapshot
         self.mi = XFELMachineInterface()
-        self.bpm_server = "ORBIT"     # or "BPM"
+        self.bpm_server = "ORBIT"  # or "BPM"
         self.server = "XFEL"
         self.subtrain = "ALL"
         self.suffix = ""
-
 
     def is_machine_online(self):
         """
@@ -61,7 +60,7 @@ class Machine:
             try:
                 val = self.mi.get_value(alarm)
             except Exception as e:
-                print("id: " + alarm+ " ERROR: " + str(e))
+                print("id: " + alarm + " ERROR: " + str(e))
                 val = 0
             min_val, max_val = self.snapshot.alarm_bounds[i]
             if min_val < val < max_val:
@@ -75,18 +74,26 @@ class Machine:
     def get_orbit(self, data, all_names):
         for sec_id in self.snapshot.orbit_sections:
             try:
-                orbit_x = np.array(self.mi.get_value(self.server + ".DIAG/" + self.bpm_server + "/*." + sec_id + "/X." + self.subtrain + self.suffix))
+                orbit_x = np.array(
+                    self.mi.get_value(
+                        self.server + ".DIAG/" + self.bpm_server + "/*." + sec_id + "/X." + self.subtrain + self.suffix
+                    )
+                )
 
-                orbit_y = np.array(self.mi.get_value(self.server + ".DIAG/" + self.bpm_server + "/*." + sec_id + "/Y."  + self.subtrain + self.suffix))
+                orbit_y = np.array(
+                    self.mi.get_value(
+                        self.server + ".DIAG/" + self.bpm_server + "/*." + sec_id + "/Y." + self.subtrain + self.suffix
+                    )
+                )
             except Exception as e:
-                print("orbit id: " + sec_id+ " ERROR: " + str(e))
+                print("orbit id: " + sec_id + " ERROR: " + str(e))
                 return [], []
             x = orbit_x[:, 1].astype(np.float)
             y = orbit_y[:, 1].astype(np.float)
             xy = np.append(x, y)
 
-            names_x =  [name + ".X" for name in orbit_x[:, 4]]
-            names_y =  [name + ".Y" for name in orbit_y[:, 4]]
+            names_x = [name + ".X" for name in orbit_x[:, 4]]
+            names_y = [name + ".Y" for name in orbit_y[:, 4]]
             names = np.append(names_x, names_y)
             data = np.append(data, xy)
             all_names = np.append(all_names, names)
@@ -97,7 +104,7 @@ class Machine:
             try:
                 magnets = np.array(self.mi.get_value("XFEL.MAGNETS/MAGNET.ML/*." + sec_id + "/KICK_MRAD.SP"))
             except Exception as e:
-                print("magnets id: " + sec_id+ " ERROR: " + str(e))
+                print("magnets id: " + sec_id + " ERROR: " + str(e))
                 return [], []
             vals = magnets[:, 1].astype(np.float)
 
@@ -109,7 +116,9 @@ class Machine:
     def get_phase_shifters(self, data, all_names):
         for sec_id in self.snapshot.phase_shifter_sections:
             try:
-                phase_shifters = np.array(self.mi.get_value("XFEL.FEL/WAVELENGTHCONTROL." + sec_id + "/BPS.*." + sec_id + "/GAP.OFFSET"))
+                phase_shifters = np.array(
+                    self.mi.get_value("XFEL.FEL/WAVELENGTHCONTROL." + sec_id + "/BPS.*." + sec_id + "/GAP.OFFSET")
+                )
             except Exception as e:
                 print("ERROR: magnets: ", sec_id, e)
                 return [], []
@@ -124,10 +133,13 @@ class Machine:
         for sec_id in self.snapshot.undulators:
             try:
                 if sec_id in ["SA1", "SA2"]:
-                    undulators = np.array(self.mi.get_value("XFEL.FEL/WAVELENGTHCONTROL." + sec_id + "/U40.*." + sec_id + "/GAP"))
+                    undulators = np.array(
+                        self.mi.get_value("XFEL.FEL/WAVELENGTHCONTROL." + sec_id + "/U40.*." + sec_id + "/GAP")
+                    )
                 else:
                     undulators = np.array(
-                        self.mi.get_value("XFEL.FEL/WAVELENGTHCONTROL." + sec_id + "/U68.*." + sec_id + "/GAP"))
+                        self.mi.get_value("XFEL.FEL/WAVELENGTHCONTROL." + sec_id + "/U68.*." + sec_id + "/GAP")
+                    )
             except Exception as e:
                 print("ERROR: magnets: ", sec_id, e)
                 return [], []
@@ -137,7 +149,6 @@ class Machine:
             data = np.append(data, vals)
             all_names = np.append(all_names, names)
         return data, all_names
-
 
     def get_channels(self, data, all_names):
         data = list(data)
@@ -161,8 +172,8 @@ class Machine:
                 img = None
 
             cam_name = ch.split("/")[-2]
-            #datetime.utcnow().strftime('%Y%m%d_%H%M%S_%f')[:-3]
-            #name = cam_name + "-" + time.strftime("%Y%m%d-%H%M%S")
+            # datetime.utcnow().strftime('%Y%m%d_%H%M%S_%f')[:-3]
+            # name = cam_name + "-" + time.strftime("%Y%m%d-%H%M%S")
             name = cam_name + "-" + datetime.utcnow().strftime('%Y%m%d_%H%M%S_%f')[:-3]
 
             filename = name + ".png"
@@ -170,7 +181,7 @@ class Machine:
             path_pcl = folder + os.sep + name + ".pcl"
             if img is not None:
                 # scipy.misc.imsave(path, img)
-                #imageio.imwrite(path, img)
+                # imageio.imwrite(path, img)
                 matplotlib.image.imsave(path, img)
                 with open(path_pcl, 'wb') as f:
                     # Pickle the 'data' dictionary using the highest protocol available.
@@ -178,18 +189,18 @@ class Machine:
 
             else:
                 path = None
-            #print(data)
-            #data = list(data)
-            #data = np.append(data, np.array([path], dtype=object))
+            # print(data)
+            # data = list(data)
+            # data = np.append(data, np.array([path], dtype=object))
             data.append(path)
             all_names = np.append(all_names, ch)
         return data, all_names
 
     def wait_machine_online(self):
-    
+
         if self.is_machine_online():
-            return 
-            
+            return
+
         while True:
             if self.is_machine_online():
                 print("machine is BACK. Wait 5 sec for recovering and continue")
@@ -201,12 +212,12 @@ class Machine:
 
     def get_machine_snapshot(self, check_if_online=False):
 
-        #if not self.is_machine_online():
+        # if not self.is_machine_online():
         #    print("machine is not online. wait 3 sec ...")
         #    time.sleep(2)
         #    return None
         if check_if_online:
-        
+
             self.wait_machine_online()
 
         data = np.array([time.time()], dtype=object)
@@ -230,20 +241,19 @@ class Machine:
         if len(data) == 0:
             print("get_images bad")
             return None
-        #print(len(data), len(all_names))
+        # print(len(data), len(all_names))
         data_dict = {}
         for name, d in zip(all_names, data):
             data_dict[name] = [d]
 
         df = pd.DataFrame(data_dict, columns=data_dict.keys())
         return df
-            
-    
+
 
 if __name__ is "__main__":
     df = pd.DataFrame()
-    df2 = pd.DataFrame(data = {"a": 2, "b":4}, index=[0])
-    df3 = pd.DataFrame(data = {"b": [5], "a":[6], "c": [3]})
+    df2 = pd.DataFrame(data={"a": 2, "b": 4}, index=[0])
+    df3 = pd.DataFrame(data={"b": [5], "a": [6], "c": [3]})
     df = df.append(df2)
     print("1", df)
     df = df.append(df3)

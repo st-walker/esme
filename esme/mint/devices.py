@@ -1,12 +1,13 @@
 """
 Sergey Tomin, XFEL/DESY, 2017
 """
-from mint.interface import Device
-from PyQt5 import QtGui, QtCore
-import numpy as np
-import time
-from threading import Thread, Event
 import logging
+import time
+from threading import Event, Thread
+
+import numpy as np
+from mint.interface import Device
+from PyQt5 import QtCore, QtGui
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +19,8 @@ class Corrector(Device):
         self.server = server
 
     def set_value(self, val):
-        #self.values.append(val)
-        #self.times.append(time.time())
+        # self.values.append(val)
+        # self.times.append(time.time())
         ch = self.server + ".MAGNETS/MAGNET.ML/" + self.eid + "/KICK_MRAD.SP"
         self.mi.set_value(ch, val)
 
@@ -29,18 +30,18 @@ class Corrector(Device):
         return val
 
     def get_limits(self):
-        ch_min = self.server+ ".MAGNETS/MAGNET.ML/" + self.id + "/MIN_KICK"
+        ch_min = self.server + ".MAGNETS/MAGNET.ML/" + self.id + "/MIN_KICK"
         min_kick = self.mi.get_value(ch_min)
         ch_max = self.server + ".MAGNETS/MAGNET.ML/" + self.id + "/MAX_KICK"
         max_kick = self.mi.get_value(ch_max)
-        return [min_kick*1000, max_kick*1000]
-    
+        return [min_kick * 1000, max_kick * 1000]
+
     def is_ok(self):
-        ch = self.server+ ".MAGNETS/MAGNET.ML/" + self.id + "/COMBINED_STATUS"
+        ch = self.server + ".MAGNETS/MAGNET.ML/" + self.id + "/COMBINED_STATUS"
         status = int(self.mi.get_value(ch))
         power_bit = '{0:08b}'.format(status)[-2]
         busy_bit = '{0:08b}'.format(status)[-4]
-        
+
         if power_bit == "1" and busy_bit == "0":
             return True
         else:
@@ -54,17 +55,18 @@ class MITwiss(Device):
         self.server = server
 
     def get_tws(self, section):
-        ch_beta_x =  self.server + ".UTIL/BEAM_PARAMETER/" + section + "/PROJECTED_X.BETA." + self.subtrain
+        ch_beta_x = self.server + ".UTIL/BEAM_PARAMETER/" + section + "/PROJECTED_X.BETA." + self.subtrain
         ch_alpha_x = self.server + ".UTIL/BEAM_PARAMETER/" + section + "/PROJECTED_X.ALPHA." + self.subtrain
-        ch_beta_y =  self.server + ".UTIL/BEAM_PARAMETER/" + section + "/PROJECTED_Y.BETA." + self.subtrain
+        ch_beta_y = self.server + ".UTIL/BEAM_PARAMETER/" + section + "/PROJECTED_Y.BETA." + self.subtrain
         ch_alpha_y = self.server + ".UTIL/BEAM_PARAMETER/" + section + "/PROJECTED_Y.ALPHA." + self.subtrain
-        #ch_energy =  "XFEL.UTIL/BEAM_PARAMETER/" + section + "/PROJECTED_X.ENERGY.SA1"
+        # ch_energy =  "XFEL.UTIL/BEAM_PARAMETER/" + section + "/PROJECTED_X.ENERGY.SA1"
         tws_dict = {}
         tws_dict['beta_x'] = self.mi.get_value(ch_beta_x)
         tws_dict['beta_y'] = self.mi.get_value(ch_beta_y)
-        tws_dict['alpha_x']  = self.mi.get_value(ch_alpha_x)
-        tws_dict['alpha_y']  = self.mi.get_value(ch_alpha_y)
+        tws_dict['alpha_x'] = self.mi.get_value(ch_alpha_x)
+        tws_dict['alpha_y'] = self.mi.get_value(ch_alpha_y)
         return tws_dict
+
 
 class ChargeDoocs(Device):
     def __init__(self, eid="XFEL.FEEDBACK/FT1.LONGITUDINAL/MONITOR1/TARGET", server="XFEL", subtrain="SA1"):
@@ -85,7 +87,7 @@ class MPS(Device):
 
     def num_bunches_requested(self, num_bunches=1):
         self.mi.set_value(self.server + ".UTIL/BUNCH_PATTERN/CONTROL/NUM_BUNCHES_REQUESTED_1", num_bunches)
-    
+
     def is_beam_on(self):
         val = self.mi.get_value(self.server + ".UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED")
         return val
@@ -106,8 +108,6 @@ class CavityA1(Device):
         ch = self.server + ".RF/LLRF.CONTROLLER/" + self.eid + "/SP.AMPL"
         val = self.mi.get_value(ch)
         return val
-
-
 
 
 class BPMUI:
@@ -142,9 +142,8 @@ class BPMUI:
         self.tableWidget.cellWidget(self.row, 1).setValue(x)
         self.tableWidget.cellWidget(self.row, 2).setValue(y)
 
-
     def check_values(self, vals):
-        if np.max(np.abs(vals)) > 15.:
+        if np.max(np.abs(vals)) > 15.0:
             self.tableWidget.item(self.row, 1).setBackground(QtGui.QColor(255, 0, 0))  # red
             self.tableWidget.item(self.row, 2).setBackground(QtGui.QColor(255, 0, 0))  # red
             self.alarm = True
@@ -177,9 +176,9 @@ class BPMUI:
         return state
 
     def set_hide(self, hide):
-        #if hide:
+        # if hide:
         #    self.uncheck()
-        #else:
+        # else:
         #    self.check()
         self.tableWidget.setRowHidden(self.row, hide)
 
@@ -188,6 +187,7 @@ class BPMUI:
             self.tableWidget.item(self.row, 0).setForeground(QtGui.QColor(255, 101, 101))  # red
         else:
             self.tableWidget.item(self.row, 0).setForeground(QtGui.QColor(255, 255, 255))  # white
+
 
 class BPM(Device):
     def __init__(self, eid, server="XFEL", subtrain="SA1"):
@@ -210,8 +210,6 @@ class BPM(Device):
         x = self.mi.get_value(ch_x)
         y = self.mi.get_value(ch_y)
         return x, y
-
-
 
     def get_mean_pos(self):
         ch_x = self.server + ".DIAG/" + self.bpm_server + "/" + self.eid + "/X.TD"
@@ -253,6 +251,7 @@ class BPM(Device):
         valid, x, y, z_pos, name = self.mi.get_value(ch)[0]
         return valid, x, y
 
+
 class DeviceUI:
     def __init__(self, ui=None):
         self.tableWidget = None
@@ -267,7 +266,7 @@ class DeviceUI:
         self.tableWidget.cellWidget(self.row, self.col).setValue(val)
 
     def set_init_value(self, val):
-        val = np.round(val, 4) # "{:1.4e}".format(val)
+        val = np.round(val, 4)  # "{:1.4e}".format(val)
         self.tableWidget.item(self.row, 1).setText(str(val))
 
     def get_init_value(self):
@@ -290,39 +289,39 @@ class DeviceUI:
         if warn:
             self.tableWidget.item(self.row, 0).setBackground(QtGui.QColor(255, 255, 0))  # yellow
         else:
-            #print("grey")
+            # print("grey")
             self.tableWidget.item(self.row, 0).setBackground(QtGui.QColor(89, 89, 89))  # grey
         self.alarm = False
-        if not(lims[0] <= val <= lims[1]):
+        if not (lims[0] <= val <= lims[1]):
             self.tableWidget.item(self.row, 0).setBackground(QtGui.QColor(255, 0, 0))  # red
             self.alarm = True
-    
+
     def set_fault(self, fault):
         if fault:
-            self.tableWidget.item(self.row, 0).setBackground(QtGui.QColor(255, 255, 0)) # yellow
-            self.tableWidget.item(self.row, 1).setBackground(QtGui.QColor(255, 255, 0)) # yellow
-            self.tableWidget.item(self.row, 3).setBackground(QtGui.QColor(255, 255, 0)) # yellow
+            self.tableWidget.item(self.row, 0).setBackground(QtGui.QColor(255, 255, 0))  # yellow
+            self.tableWidget.item(self.row, 1).setBackground(QtGui.QColor(255, 255, 0))  # yellow
+            self.tableWidget.item(self.row, 3).setBackground(QtGui.QColor(255, 255, 0))  # yellow
         else:
-            self.tableWidget.item(self.row, 0).setBackground(QtGui.QColor(89, 89, 89)) # grey
-            self.tableWidget.item(self.row, 1).setBackground(QtGui.QColor(89, 89, 89)) # grey
-            self.tableWidget.item(self.row, 3).setBackground(QtGui.QColor(89, 89, 89)) # grey
-            
-            
+            self.tableWidget.item(self.row, 0).setBackground(QtGui.QColor(89, 89, 89))  # grey
+            self.tableWidget.item(self.row, 1).setBackground(QtGui.QColor(89, 89, 89))  # grey
+            self.tableWidget.item(self.row, 3).setBackground(QtGui.QColor(89, 89, 89))  # grey
+
     def check_diff(self, tol=0.01):
         ival = self.get_init_value()
         val = self.get_value()
         diff = np.abs(val - ival)
         if diff > tol:
-            self.tableWidget.item(self.row, 1).setForeground(QtGui.QColor(255, 101, 101)) # red
+            self.tableWidget.item(self.row, 1).setForeground(QtGui.QColor(255, 101, 101))  # red
         else:
-            self.tableWidget.item(self.row, 1).setForeground(QtGui.QColor(255, 255, 255)) # white
-    
+            self.tableWidget.item(self.row, 1).setForeground(QtGui.QColor(255, 255, 255))  # white
+
     def set_hide(self, hide):
-        #if hide and uncheck:
+        # if hide and uncheck:
         #    self.uncheck()
-        #else:
+        # else:
         #    self.check()
         self.tableWidget.setRowHidden(self.row, hide)
+
 
 class MICavity(Device):
     def __init__(self, eid=None, server="XFEL", subtrain="SA1"):
@@ -331,33 +330,33 @@ class MICavity(Device):
         self.server = server
 
     def get_value(self):
-        #C.A3.1.1.L2
-        #M4.A4.L2
+        # C.A3.1.1.L2
+        # M4.A4.L2
         parts = self.eid.split(".")
-        eid = "M"+parts[2]+"."+parts[1]+"."+parts[4]
-        ch = self.server + ".RF/LLRF.ENERGYGAIN.ML/" + eid + "/ENERGYGAIN.1" #+ self.subtrain
-        val = self.mi.get_value(ch)/8.
+        eid = "M" + parts[2] + "." + parts[1] + "." + parts[4]
+        ch = self.server + ".RF/LLRF.ENERGYGAIN.ML/" + eid + "/ENERGYGAIN.1"  # + self.subtrain
+        val = self.mi.get_value(ch) / 8.0
         return val
-    
+
     def get_phase(self):
         # XFEL.RF/LLRF.CONTROLLER/CTRL.A1.I1/SP.PHASE
         parts = self.eid.split(".")
-        eid = "CTRL."+parts[1]+"."+parts[4]
-        ch = self.server + ".RF/LLRF.CONTROLLER/" + eid + "/SP.PHASE" #+ self.subtrain
+        eid = "CTRL." + parts[1] + "." + parts[4]
+        ch = self.server + ".RF/LLRF.CONTROLLER/" + eid + "/SP.PHASE"  # + self.subtrain
         phi = self.mi.get_value(ch)
         return phi
-        
+
 
 class MIOrbit(Device, Thread):
     def __init__(self, eid=None, server="XFEL", subtrain="SA1"):
         Device.__init__(self, eid=eid)
         Thread.__init__(self)
-        #super(MIOrbit, self).__init__(eid=eid)
+        # super(MIOrbit, self).__init__(eid=eid)
         self.subtrain = subtrain
         self.server = server
-        self.bpm_server = "ORBIT"     # or "BPM"
-        self.time_delay = 0.1         # sec
-        self.charge_threshold = 0.005 # nC
+        self.bpm_server = "ORBIT"  # or "BPM"
+        self.time_delay = 0.1  # sec
+        self.charge_threshold = 0.005  # nC
         self.subtrain = subtrain
         self.bpm_names = []
         self.x = []
@@ -365,12 +364,12 @@ class MIOrbit(Device, Thread):
         self.mean_x = []
         self.mena_y = []
         self.mean_charge = []
-        #self.charge = []
-    
+        # self.charge = []
+
     def run(self):
         start = time.time()
         print("RUN")
-        #self.read_positions()
+        # self.read_positions()
         self.mi.get_value(self.server + ".DIAG/" + self.bpm_server + "/*/X." + self.subtrain)
         print("RUN FINISH in ", time.time() - start, "sec")
 
@@ -387,18 +386,18 @@ class MIOrbit(Device, Thread):
                 orbit_x = self.mi.get_value(self.server + ".DIAG/" + self.bpm_server + "/*/X." + self.subtrain + suffix)
                 orbit_y = self.mi.get_value(self.server + ".DIAG/" + self.bpm_server + "/*/Y." + self.subtrain + suffix)
                 time.sleep(time_delay)
-                #print(orbit_x)
+                # print(orbit_x)
                 if orbit_x[0][1] != 0 and orbit_y[0][1] != 0:
-                #if not(np.isnan(orbit_x[0]["float1"])) and not(np.isnan(orbit_y[0]["float1"])):
+                    # if not(np.isnan(orbit_x[0]["float1"])) and not(np.isnan(orbit_y[0]["float1"])):
                     print("OK")
                     break
-            #print(self.server + ".DIAG/" + self.bpm_server + "/*/X." + self.subtrain, orbit_x[0])
+            # print(self.server + ".DIAG/" + self.bpm_server + "/*/X." + self.subtrain, orbit_x[0])
         except Exception as e:
             logger.critical("read_positions: self.mi.get_value: " + str(e))
             raise e
         #    print("ERROR: reading from DOOCS")
         #    return False
-        #print(orbit_x)
+        # print(orbit_x)
         try:
             names_x = [data[4] for data in orbit_x]
             names_y = [data[4] for data in orbit_y]
@@ -428,17 +427,16 @@ class MIOrbit(Device, Thread):
         indx = [not ("TORA." in name or "TORC." in name) for name in names_charge]
         names_charge = np.array(names_charge)[indx]
         charge = np.array(charge)[indx]
-        
-        #print( len(names_charge), len(names_xy))
-        #for n_ch, n_xy in zip(names_charge, names_xy):
+
+        # print( len(names_charge), len(names_xy))
+        # for n_ch, n_xy in zip(names_charge, names_xy):
         #    if n_ch != n_xy:
         #       print(n_ch, n_xy)
 
         if not np.array_equal(names_xy, names_charge):
             logger.warning(" MIOrbit: read_orbit: CHARGE reading and POSITIONS are not equal")
-            #return False
+            # return False
         return names_xy, x, y, charge
-
 
     def read_and_average(self, nreadings, take_last_n, reliable_reading=False, suffix=""):
         logger.info(" MIorbit: read_and_average")
@@ -472,7 +470,7 @@ class MIOrbit(Device, Thread):
         """
         if len(self.bpm_names) == 0:
             return False
-        #bpm_names = [bpm.id for bpm in bpms]
+        # bpm_names = [bpm.id for bpm in bpms]
         indxs = []
         valid_bpm_inx = []
         for i, bpm in enumerate(bpms):
@@ -481,13 +479,13 @@ class MIOrbit(Device, Thread):
             else:
                 valid_bpm_inx.append(i)
                 indxs.append(self.bpm_names.index(bpm.id))
-                logger.debug(" MIOrbit: get_bpms: len(bpm)="+ str(len(bpms)) + "  len(indxs) = " + str(len(indxs)))
+                logger.debug(" MIOrbit: get_bpms: len(bpm)=" + str(len(bpms)) + "  len(indxs) = " + str(len(indxs)))
         bpms = [bpms[indx] for indx in valid_bpm_inx]
         for i, bpm in enumerate(bpms):
             inx = indxs[i]
-            bpm.x = self.mean_x[inx]/1000      # [mm] -> [m]
-            bpm.y = self.mean_y[inx]/1000      # [mm] -> [m]
-            bpm.charge = self.mean_charge[inx] # nC
+            bpm.x = self.mean_x[inx] / 1000  # [mm] -> [m]
+            bpm.y = self.mean_y[inx] / 1000  # [mm] -> [m]
+            bpm.charge = self.mean_charge[inx]  # nC
         return True
 
     def read_doocs_ref_orbit(self):
@@ -516,6 +514,7 @@ class MIOrbit(Device, Thread):
         gold_orbit = self.mi.get_value(self.server + ".DIAG/" + "ORBIT" + "/*/POS." + self.subtrain + ".GOLD")
         return gold_orbit
 
+
 class MIAdviser(Device):
     def __init__(self, eid=None, server="XFEL", subtrain="SA1"):
         super(MIAdviser, self).__init__(eid=eid)
@@ -536,17 +535,17 @@ class MIAdviser(Device):
         except Exception as e:
             logger.info("get_y: self.mi.get_value: " + str(e))
             self.orbit_y = []
-        
+
     def get_bpm_z_pos(self):
         try:
             self.bpm_z_pos = self.mi.get_value(self.server + ".DIAG/" + self.bpm_server + "/*/Z_POS")
         except Exception as e:
             logger.info("get_bpm_z_pos: self.mi.get_value: " + str(e))
             self.bpm_z_pos = []
-        #print(self.bpm_z_pos)
+        # print(self.bpm_z_pos)
 
     def get_kicks(self):
-        #"XFEL.MAGNETS/MAGNET.ML/" + self.eid + "/KICK_MRAD.SP"
+        # "XFEL.MAGNETS/MAGNET.ML/" + self.eid + "/KICK_MRAD.SP"
         try:
             self.kicks = self.mi.get_value(self.server + ".MAGNETS/MAGNET.ML/*/KICK_MRAD.SP")
         except Exception as e:
@@ -554,7 +553,7 @@ class MIAdviser(Device):
             raise e
 
     def get_momentums(self):
-        #"XFEL.MAGNETS/MAGNET.ML/" + self.eid + "/KICK_MRAD.SP"
+        # "XFEL.MAGNETS/MAGNET.ML/" + self.eid + "/KICK_MRAD.SP"
         try:
             self.moments = self.mi.get_value(self.server + ".MAGNETS/MAGNET.ML/*/MOMENTUM.SP")
         except Exception as e:
@@ -574,8 +573,8 @@ class MIAdviser(Device):
         self.get_momentums()
         self.get_cor_z_pos()
         names = [x["str"] for x in self.kicks]
-        #print(self.kicks)
-        kicks = np.array([x["float1"] for x in self.kicks])/1000.
+        # print(self.kicks)
+        kicks = np.array([x["float1"] for x in self.kicks]) / 1000.0
         moments = np.array([x["float1"] for x in self.moments])
         z_poss = np.array([x["float1"] for x in self.cor_z_pos])
         indxs = []
@@ -590,9 +589,9 @@ class MIAdviser(Device):
         indxs = []
         for name in ref_names:
             indxs.append(names.index(name))
-        
+
         return z_poss[indxs]
-        
+
     def get_bpm_x(self, ref_names):
 
         self.get_x()
@@ -605,26 +604,26 @@ class MIAdviser(Device):
         for name in ref_names:
             if name in names:
                 indxs.append(names.index(name))
-        
+
         z_pos = self.get_bpm_z_from_ref(ref_names)
         return pos[indxs], z_pos
 
     def get_bpm_y(self, ref_names):
 
         self.get_y()
-        #self.get_bpm_z_pos()
+        # self.get_bpm_z_pos()
 
         if len(self.orbit_y) == 0:
             return None
 
         names = [x["str"] for x in self.orbit_y]
         pos = np.array([x["float1"] for x in self.orbit_y])
-        #z_poss = np.array([x["float"] for x in self.bpm_z_pos])
+        # z_poss = np.array([x["float"] for x in self.bpm_z_pos])
 
         indxs = []
         for name in ref_names:
             indxs.append(names.index(name))
-            
+
         z_pos = self.get_bpm_z_from_ref(ref_names)
         return pos[indxs], z_pos
 
@@ -660,4 +659,3 @@ class MISASE2Feedback(Device):
     def is_running(self):
         status = self.mi.get_value(self.server + ".FEEDBACK/ORBIT.SA2/ORBITFEEDBACK/ACTIVATE_FB")
         return status
-        

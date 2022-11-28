@@ -9,24 +9,27 @@ try:
     #  $ export PYTHONPATH=/home/ttflinac/user/python-2.7/Debian/
     import pydoocs
 except:
-    pass # Show message on Constructor if we try to use it.
+    pass  # Show message on Constructor if we try to use it.
 
-import sys
-import numpy as np
-import subprocess
 import base64
-from mint.interface import MachineInterface, Device
-#from lattices import lattice_manager
-import mint.devices as devices
 import logging
+import subprocess
+import sys
+
+# from lattices import lattice_manager
+import mint.devices as devices
+import numpy as np
+from mint.interface import Device, MachineInterface
+
 logger = logging.getLogger(__name__)
-#from ocelot.cpbd.response_matrix import *
+# from ocelot.cpbd.response_matrix import *
 
 
 class AlarmDevice(Device):
     """
     Devices for getting information about Machine status
     """
+
     def __init__(self, eid=None):
         super(AlarmDevice, self).__init__(eid=eid)
 
@@ -35,6 +38,7 @@ class XFELMachineInterface(MachineInterface):
     """
     Machine Interface for European XFEL
     """
+
     def __init__(self, args=None):
         super(XFELMachineInterface, self).__init__(args=args)
         if 'pydoocs' not in sys.modules:
@@ -48,9 +52,9 @@ class XFELMachineInterface(MachineInterface):
         self.hide_dispersion_tab = False
         self.twiss_periodic = False
         self.analyse_correction = True
-        #self.orm_method = LinacRmatrixRM
-        #self.drm_method = LinacDisperseSimRM
-        #self.lattice_manager = lattice_manager
+        # self.orm_method = LinacRmatrixRM
+        # self.drm_method = LinacDisperseSimRM
+        # self.lattice_manager = lattice_manager
         self.devices = devices
 
     def get_value(self, channel):
@@ -62,8 +66,8 @@ class XFELMachineInterface(MachineInterface):
         """
         logger.debug(" get_value: channel" + channel)
         val = pydoocs.read(channel)
-        #print(channel, "   TIMESTAMP:",  val["timestamp"])
-        
+        # print(channel, "   TIMESTAMP:",  val["timestamp"])
+
         return val["data"]
 
     def set_value(self, channel, val):
@@ -74,7 +78,7 @@ class XFELMachineInterface(MachineInterface):
         :param val: value
         :return: None
         """
-        #print("SETTING")
+        # print("SETTING")
         pydoocs.write(channel, val)
         return
 
@@ -100,8 +104,8 @@ class XFELMachineInterface(MachineInterface):
         :return:
         """
         if element.__class__ in [Hcor, Vcor]:
-            element.mi.phys2hw_factor = 1000    # rad to mrad
-            element.mi.hw2phys_factor = 0.001   # mrad to rad
+            element.mi.phys2hw_factor = 1000  # rad to mrad
+            element.mi.hw2phys_factor = 0.001  # mrad to rad
 
     def send_to_logbook(self, *args, **kwargs):
         """
@@ -159,13 +163,15 @@ class XFELMachineInterface(MachineInterface):
         elogXMLString = '\n'.join(elogXMLStringList)
         # open printer process
         try:
-            lpr = subprocess.Popen(['/usr/bin/lp', '-o', 'raw', '-d', elog],
-                                   stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+            lpr = subprocess.Popen(
+                ['/usr/bin/lp', '-o', 'raw', '-d', elog], stdin=subprocess.PIPE, stdout=subprocess.PIPE
+            )
             # send printer job
             lpr.communicate(elogXMLString.encode('utf-8'))
         except:
             succeded = False
         return succeded
+
 
 # test interface
 
@@ -174,9 +180,10 @@ class TestMachineInterface(XFELMachineInterface):
     """
     Machine interface for testing
     """
+
     def __init__(self, args=None):
         super(TestMachineInterface, self).__init__(args=args)
-        self.data = 1.
+        self.data = 1.0
         self.logbook = "xfellog"
         self.allow_star_operation = False
         self.hide_section_selection = False
@@ -189,7 +196,7 @@ class TestMachineInterface(XFELMachineInterface):
         self.drm_method = LinacDisperseSimRM
 
     def get_alarms(self):
-        return np.random.rand(4)#0.0, 0.0, 0.0, 0.0]
+        return np.random.rand(4)  # 0.0, 0.0, 0.0, 0.0]
 
     def get_value(self, device_name):
         """
@@ -198,9 +205,9 @@ class TestMachineInterface(XFELMachineInterface):
         :param channel: (str) String of the devices name used in doocs
         :return: Data from pydoocs.read(), variable data type depending on channel
         """
-        #if "QUAD" in device_name:
+        # if "QUAD" in device_name:
         #    return 0
-        return np.random.rand(1)[0]-0.5 #self.data
+        return np.random.rand(1)[0] - 0.5  # self.data
 
     def set_value(self, device_name, val):
         """
@@ -210,7 +217,7 @@ class TestMachineInterface(XFELMachineInterface):
         :param val: value
         :return: None
         """
-        #print("set:", device_name,  "-->", val)
+        # print("set:", device_name,  "-->", val)
         self.data += np.sqrt(val**2)
         return 0.0
 
