@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import multiprocessing as mp
 import os
@@ -21,7 +22,7 @@ from scipy.constants import c, e, m_e
 from scipy.optimize import curve_fit
 from uncertainties import ufloat, umath
 
-from esme.calibration import get_tds_voltage
+from esme.calibration import line
 
 IMAGE_PATH_KEY: str = "XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"
 
@@ -91,10 +92,6 @@ def get_slice_properties(image: RawImageT) -> tuple[npt.NDArray, npt.NDArray, np
 
 def gauss(x, a, mu, sigma) -> Any:
     return a * np.exp(-((x - mu) ** 2) / (2.0 * sigma**2))
-
-
-def line(x, a0, a1) -> Any:
-    return a0 + a1 * x
 
 
 def get_cropping_bounds(im: RawImageT, image_index=-1) -> tuple[tuple[int, int], tuple[int, int]]:
@@ -208,7 +205,7 @@ def _tds_magic_number_from_filename(fname: os.PathLike) -> int:
     return tds_magic_number
 
 
-def _tds_slope_from_filename(fname: os.PathLike) -> float:
+def _tds_streak_from_filename(fname: os.PathLike) -> float:
     path = Path(fname)
     match = re.search(r"[0-9]+um_ps", path.stem)
     if not match:
@@ -275,26 +272,17 @@ class TDSScreenImage:
 
 
 class ScanMeasurement:
-    def __init__(self, df_path: os.PathLike, tds_slope=None, tds_voltage=None, bad_image_indices=None):
+    def __init__(self, df_path: os.PathLike, calibrator=None, bad_image_indices=None):
         """bad_image_indices are SKIPPED and not loaded at all."""
         LOG.debug(f"Loading measurement: {df_path=} with {bad_image_indices=}")
         df_path = Path(df_path)
         self.dx = _dispersion_from_filename(df_path)
-        self.tds = _tds_magic_number_from_filename(df_path)
+        self.tds_percentage = _tds_magic_number_from_filename(df_path)
 
-        self.tds_slope = tds_slope
-        if tds_slope is None:
-            try:
-                self.tds_slope = _tds_slope_from_filename(df_path)
-            except MissingMetadataInFileNameError:
-                if tds_voltage is None:
-                    raise TypeError("No TDS voltage/calib info provided.")
-
-        self._tds_voltage = tds_voltage
-
-        # Either directly give the voltage or we calculate it from the calibration.
-        if tds_slope is not None and tds_voltage is not None:
-            raise TypeError("Only one of tds_slope and tds_voltage may be supplied.")
+        self.calibrator = calibrator
+        # self.tds_streak = None
+        with contextlib.suppress(MissingMetadataInFileNameError):
+            self.tds_streak = _tds_streak_from_filename(df_path)
 
         self.images = []
         if bad_image_indices is None:
@@ -327,13 +315,22 @@ class ScanMeasurement:
     def __repr__(self) -> str:
         return f"<Measurement: Dx={self.dx}>"
 
+    # @property
+    # def tds_streak(self) -> float:
+    #     result = self._tds_streak
+    #     if not result:
+    #         metadata = self.images[0].metadata
+    #         return self.calibrator.get_streak(self.tds_percentage, metadata)
+
     @property
     def tds_voltage(self) -> float:
-        if self._tds_voltage is not None:
-            return self._tds_voltage
         metadata = self.images[0].metadata
-        voltage = get_tds_voltage(self.tds_slope, metadata)
-        return voltage
+        return self.calibrator.get_voltage(self.tds_percentage, metadata)
+
+    @property
+    def streak(self) -> float:
+        metadata = self.images[0].metadata
+        return self.calibrator.get_streak(self.percentage, metadata)
 
     @property
     def metadata(self) -> pd.Dataframe:
@@ -408,27 +405,20 @@ class TDSDispersionScan:
     def __init__(
         self,
         files: Iterable[os.PathLike],
-        tds_slopes=None,
-        tds_voltages=None,
+        calibrator=None,
         bad_images_per_measurement=None,
     ):
         # Ideally this voltage, calibration etc. stuff should go in the df.
         # for now, whatever.
         LOG.debug(f"Instantiating {type(self).__name__}")
-        nfiles = len(files)
         if bad_images_per_measurement is None:
-            bad_images_per_measurement = nfiles * [None]
-        if tds_slopes is None:
-            tds_slopes = nfiles * [None]
-        if tds_voltages is None:
-            tds_voltages = nfiles * [None]
+            bad_images_per_measurement = len(files) * [None]
 
         self.measurements = []
         for i, df_path in enumerate(files):
             measurement = ScanMeasurement(
                 df_path,
-                tds_slope=tds_slopes[i],
-                tds_voltage=tds_voltages[i],
+                calibrator=calibrator,
                 bad_image_indices=bad_images_per_measurement[i],
             )
             self.measurements.append(measurement)
@@ -438,12 +428,12 @@ class TDSDispersionScan:
         return np.array([s.dx for s in self.measurements])
 
     @property
-    def tds(self) -> npt.NDArray:
-        return np.array([s.tds for s in self.measurements])
+    def tds_percentage(self) -> npt.NDArray:
+        return np.array([s.tds_percentage for s in self.measurements])
 
     @property
-    def tds_slope(self):
-        return np.array([s.tds_slope for s in self.measurements])
+    def tds_streak(self):
+        return np.array([s.tds_streak for s in self.measurements])
 
     @property
     def tds_voltage(self):

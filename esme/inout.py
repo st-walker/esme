@@ -3,10 +3,10 @@
 import os
 from pathlib import Path
 
-import numpy as np
 import toml
 
 from esme.analysis import DispersionScan, OpticalConfig, SliceEnergySpreadMeasurement, TDSScan
+from esme.calibration import TDSCalibrator, TrivialTDSCalibrator
 
 
 class MalformedESMEConfigFile(RuntimeError):
@@ -48,31 +48,31 @@ def load_config(fname: os.PathLike) -> SliceEnergySpreadMeasurement:
     dscan_paths = _files_from_config(config, "dscan")
     tscan_paths = _files_from_config(config, "tscan")
 
-    slopes = config["optics"]["tds"].get("slopes")
-    slope_units = config["optics"]["tds"].get("slope_units")
-    if slopes and not slope_units:
-        raise MalformedESMEConfigFile("TDS slopes provided but without any units...")
-    if slopes:
-        slopes = np.array(slopes)
-        units = {"m/ps": 1e12}
-        try:
-            scale = units[slope_units]
-        except KeyError:
-            raise MalformedESMEConfigFile(f"Unknown slope units: {slope_units}")
-        else:
-            slopes *= scale
+    try:
+        calib = config["optics"]["tds"]["calibration"]
+    except KeyError:
+        raise MalformedESMEConfigFile("Missing calibration information")
 
-    voltages = config["optics"]["tds"].get("voltages")
+    try:
+        percentages = calib["percentages"]
+    except KeyError:
+        raise MalformedESMEConfigFile("TDS % info is missing from esme file")
+
+    if voltages := calib.get("voltages"):
+        calibrator = TrivialTDSCalibrator(percentages, voltages)
+    else:
+        streaks = calib["streaks"]
+        streaks_units = calib["streak_units"]
+        calibrator = TDSCalibrator(percentages, streaks, streak_units=streaks_units)
+
     dscan = DispersionScan(
         dscan_paths,
-        tds_slopes=slopes,
-        tds_voltages=voltages,
+        calibrator=calibrator,
         bad_images_per_measurement=config["data"]["dscan"].get("bad_images"),
     )
     tscan = TDSScan(
         tscan_paths,
-        tds_slopes=slopes,
-        tds_voltages=voltages,
+        calibrator=calibrator,
         bad_images_per_measurement=config["data"]["tscan"].get("bad_images"),
     )
 

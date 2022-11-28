@@ -10,7 +10,7 @@ import esme.calibration as cal
 import esme.lattice as lat
 
 
-def dump_full_scan(esme: ana.SliceEnergySpreadMeasurement, root_outdir) -> None:
+def dump_full_scan(esme: ana.SliceEnergySpreadMeasurement, root_outdir, show=True) -> None:
 
     dispersion_scan = esme.dscan
     tds_scan = esme.tscan
@@ -18,7 +18,7 @@ def dump_full_scan(esme: ana.SliceEnergySpreadMeasurement, root_outdir) -> None:
     dscan_dir = root_outdir / "dispersion-scan"
     for i, measurement in enumerate(dispersion_scan):
         dx = measurement.dx
-        # tds = dispersion_scan.tds
+        # tds = dispersion_scan.tds_percentage
 
         measurement_outdir = dscan_dir / f"{i=},{dx=}"
         measurement_outdir.mkdir(parents=True, exist_ok=True)
@@ -31,7 +31,7 @@ def dump_full_scan(esme: ana.SliceEnergySpreadMeasurement, root_outdir) -> None:
     dscan_dir = root_outdir / "tds-scan"
     for i, measurement in enumerate(tds_scan):
         # dx = measurement.dx
-        tds = measurement.tds
+        tds = measurement.tds_percentage
 
         measurement_outdir = dscan_dir / f"{i=},{tds=}"
         measurement_outdir.mkdir(parents=True, exist_ok=True)
@@ -39,6 +39,8 @@ def dump_full_scan(esme: ana.SliceEnergySpreadMeasurement, root_outdir) -> None:
         for image_index in range(measurement.nimages):
             fig = show_before_after_processing(measurement, image_index)
             fig.savefig(measurement_outdir / f"{image_index}.png")
+            # if show:
+            #     plt.show()
             plt.close()
 
 
@@ -99,7 +101,9 @@ def show_before_after_processing(measurement: ana.ScanMeasurement, index: int) -
     ax2.set_ylabel("Pixel Brightness")
     ax4.set_ylabel("Pixel Brightness")
     m = measurement
-    fig.suptitle(fr"TDS No. = {m.tds}, $\eta_x={m.dx}\,\mathrm{{m}}$, image {index}, before/after image processing")
+    fig.suptitle(
+        fr"TDS No. = {m.tds_percentage}, $\eta_x={m.dx}\,\mathrm{{m}}$, image {index}, before/after image processing"
+    )
     ax2.legend()
     ax4.legend()
 
@@ -144,7 +148,7 @@ def _set_ylabel_for_scan(ax):
 
 def plot_tds_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> None:
     widths, errors = esme.tscan.max_energy_slice_widths_and_errors(padding=10)
-    voltages = esme.oconfig.tds_voltages
+    voltages = esme.tscan.tds_voltage
 
     voltages2_mv2 = (voltages * 1e-6) ** 2
     widths_um2, errors_um2 = ana.transform_pixel_widths(widths, errors, pixel_units="um")
@@ -194,12 +198,12 @@ def add_info_box(ax, symbol, xunits, c, m) -> None:
     ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=14, verticalalignment='top', bbox=props)
 
 
-def plot_measured_central_widths(esme: ana.SliceEnergySpreadMeasurement, root_outdir=None) -> None:
+def plot_measured_central_widths(esme: ana.SliceEnergySpreadMeasurement, root_outdir=None, show=True) -> None:
     fig, ax = plt.subplots(figsize=(14, 8))
 
     dscan = esme.dscan
     tscan = esme.tscan
-    voltages = esme.oconfig.tds_voltages
+    voltages = esme.tscan.tds_percentage
 
     dx = dscan.dx
 
@@ -214,18 +218,22 @@ def plot_measured_central_widths(esme: ana.SliceEnergySpreadMeasurement, root_ou
     ax1.errorbar(dx, dwidths, yerr=derrors, marker="x")
     ax3.errorbar(dx, dwidths_um, yerr=derrors_um, marker="x")
 
-    ax2.errorbar(voltages * 1e-6, twidths, yerr=terrors, marker="x")
-    ax4.errorbar(voltages * 1e-6, twidths_um, yerr=terrors_um, marker="x")
+    ax2.errorbar(voltages, twidths, yerr=terrors, marker="x")
+    ax4.errorbar(voltages, twidths_um, yerr=terrors_um, marker="x")
 
     ax1.set_ylabel(r"$\sigma_M\,/\,\mathrm{px}$")
     ax3.set_ylabel(r"$\sigma_M\,/\,\mathrm{\mu m}$")
     ax3.set_xlabel("D / m")
-    ax4.set_xlabel("TDS Voltage / MV")
+    # ax4.set_xlabel("TDS Voltage / MV")
+    ax4.set_xlabel("TDS Magic Number / %")
 
     fig.suptitle(fr"Measured maximum-energy slice widths for pixel scale Y = {ana.PIXEL_SCALE_X_UM} $\mathrm{{\mu m}}$")
 
     if root_outdir is not None:
         fig.savefig(root_outdir / "measured-central-widths.png")
+
+    # if show:
+    #     plt.show()
 
 
 def pretty_beam_parameter_table(esme: ana.SliceEnergySpreadMeasurement) -> str:
@@ -306,7 +314,7 @@ def _plot_quad_strengths_tds(esme: ana.SliceEnergySpreadMeasurement, root_outdir
     assert (tscan_dx == esme.tscan.dx).all()
 
     tds_scan_quads = [lat.mean_quad_strengths(df) for df in tscan_all_images_dfs]
-    voltages = esme.oconfig.tds_voltages / 1e6  # to MV
+    voltages = esme.tscan.tds_voltage / 1e6  # to MV
     for voltage, df_actual in zip(voltages, tds_scan_quads):
         ax.errorbar(
             df_actual.s,
@@ -343,10 +351,13 @@ def _plot_quad_strengths(dfs, scan_var, scan_var_name, ax) -> plt.Figure:
     ax.legend()
 
 
-def plot_tds_calibration(sesme, root_outdir):
+def plot_tds_calibration(sesme, root_outdir, show=True):
     plot_r34s(sesme, root_outdir)
-    plot_tds_slopes(sesme, root_outdir)
-    plot_tds_voltages(sesme, root_outdir)
+    # plot_tds_slopes(sesme, root_outdir)
+    plot_calibrated_tds(sesme, root_outdir)
+
+    # if show:
+    #     plt.show()
 
 
 def _r34s_from_scan(scan: ana.TDSDispersionScan):
@@ -359,44 +370,104 @@ def _r34s_from_scan(scan: ana.TDSDispersionScan):
 
 
 def plot_r34s(sesme, root_outdir):
-    fig, (ax1, ax2) = plt.subplots(nrows=2)
+    fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(14, 8))
 
     dscan_r34s = _r34s_from_scan(sesme.dscan)
 
-    ax1.plot(sesme.dscan.dx, dscan_r34s)
+    ax1.plot(sesme.dscan.dx, dscan_r34s, marker="x")
     ax1.set_xlabel(r"$\eta_x\,/\,\mathrm{m}$")
     ax1.set_ylabel(r"$R_{34}\,/\,\mathrm{m\cdot{}rad^{-1}}$")
 
     tscan_r34s = _r34s_from_scan(sesme.tscan)
 
-    ax2.plot(sesme.tscan.tds, tscan_r34s)
+    ax2.plot(sesme.tscan.tds_percentage, tscan_r34s, marker="x")
     ax2.set_xlabel(r'TDS "Power" / %')
     ax2.set_ylabel(r"$R_{34}\,/\,\mathrm{m\cdot{}rad^{-1}}$")
 
-
-def plot_tds_slopes(sesme, root_outdir):
-    fig, ax = plt.subplots()
-
-    tds = sesme.tscan.tds
-    tds_slope = sesme.tscan.tds_slope
-
-    ax.plot(tds, tds_slope * 1e-6)
-    ax.set_xlabel("TDS Magic Number / %")
-    ax.set_ylabel(r"TDS Calibration Slope / $\mathrm{\mu{}mps^{-1}}$")
-
-    if root_outdir is not None:
-        fig.savefig(root_outdir / "tds-calibration-slopes.png")
+    # plt.show()
 
 
-def plot_tds_voltages(sesme, root_outdir):
-    fig, ax = plt.subplots()
+# def plot_tds_slopes(sesme, root_outdir):
+#     tds_percentage = sesme.tscan.tds_percentage
+#         # tds_streak = sesme.tscan.tds_streak
+#     # except AttributeError:
+#     #     from IPython import embed; embed()
+#     #     return
 
-    tds = sesme.tscan.tds
-    tds_voltage = abs(sesme.tscan.tds_voltage * 1e-6)
+#     fig, ax = plt.subplots()
+#     ax.plot(tds_percentage, tds_streak * 1e-6)
+#     ax.set_xlabel("TDS Magic Number / %")
+#     ax.set_ylabel(r"TDS Calibration Slope / $\mathrm{\mu{}mps^{-1}}$")
 
-    ax.plot(tds, tds_voltage)
-    ax.set_xlabel("TDS Magic Number / %")
-    ax.set_ylabel(r"$|V_\mathrm{TDS}|$ / MV")
+#     if root_outdir is not None:
+#         fig.savefig(root_outdir / "tds-calibration-slopes.png")
+
+
+from scipy.optimize import curve_fit
+
+
+def plot_calibrated_tds(sesme, root_outdir):
+    # We plot two things here.  Firstly the stuff Sergey wrote down yesterday.
+
+    # Secondly the derived voltages for the TDS scan.
+
+    # What we actually used in our scan:
+    tds_percentage = sesme.tscan.tds_percentage
+    derived_tds_voltage = abs(sesme.tscan.tds_voltage * 1e-6)  # MV
+
+    # Our pre-calibration
+    sergey_percentages = sesme.tscan[0].calibrator.percentages
+    sergey_voltages = abs(
+        sesme.tscan[0].calibrator.get_voltage(sergey_percentages, sesme.tscan[0].images[0].metadata) * 1e-6
+    )
+
+    # popt, _ = curve_fit(ana.line, sergey_percentages, sergey_sergey_)
+
+    fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(14, 8))
+    ax1.plot(tds_percentage, derived_tds_voltage, marker="x", label="TDS Scan Derived Voltages")
+
+    sergey_streaks = sesme.tscan[0].calibrator.streaks
+    popt, _ = sesme.tscan[0].calibrator.linear_fit()
+
+    ax2.plot(sergey_percentages, sergey_streaks * 1e-6, marker="x", label="TDS Calibration data")
+    ax2.plot(sergey_percentages, ana.line(sergey_percentages, *popt) * 1e-6,
+             marker="x", label="Fit")
+
+    ax2.set_ylabel(r"TDS Calibration Slope / $\mathrm{\mu{}mps^{-1}}$")
+
+    ax2.set_xlabel("TDS Magic Number / %")
+    ax1.set_ylabel(r"$|V_\mathrm{TDS}|$ / MV")
+    ax2.legend()
+
+    fig.suptitle("TDS Calibration data we took beforehand (below) and applied to scan (above)")
+
+    from IPython import embed; embed()
 
     if root_outdir is not None:
         fig.savefig(root_outdir / "derived-tds-voltages.png")
+
+
+def plot_streak(sesme, root_outdir):
+    fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(14, 8))
+
+    dscan_r34s = _r34s_from_scan(sesme.dscan)
+    dscan_voltages = sesme.dscan.tds_voltage
+
+    sesme.dscan.beam_energy
+
+    ax1.plot(sesme.dscan.dx, dscan_r34s, marker="x")
+    ax1.set_xlabel(r"$\eta_x\,/\,\mathrm{m}$")
+    ax1.set_ylabel(r"$R_{34}\,/\,\mathrm{m\cdot{}rad^{-1}}$")
+
+    # tscan_r34s = _r34s_from_scan(sesme.tscan)
+
+    # ax2.plot(sesme.tscan.tds_percentage, tscan_r34s, marker="x")
+    # ax2.set_xlabel(r'TDS "Power" / %')
+    # ax2.set_ylabel(r"$R_{34}\,/\,\mathrm{m\cdot{}rad^{-1}}$")
+
+
+    plt.show()
+
+# def plot_streak(sesme, root_outdir):
+#     tscan
+#     pass

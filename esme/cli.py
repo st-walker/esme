@@ -2,12 +2,11 @@
 
 import logging
 from pathlib import Path
-import pickle
 
 import click
 import matplotlib.pyplot as plt
 
-from esme.analysis import calculate_energy_spread_simple, ScanMeasurement
+from esme.analysis import ScanMeasurement, calculate_energy_spread_simple
 from esme.inout import load_config
 from esme.plot import (
     dump_full_scan,
@@ -16,7 +15,7 @@ from esme.plot import (
     plot_scans,
     plot_tds_calibration,
     pretty_beam_parameter_table,
-    show_before_after_processing
+    show_before_after_processing,
 )
 
 logging.basicConfig()
@@ -81,19 +80,19 @@ def calc(scan_inis, simple):
 @click.option("--magnets", "-m", is_flag=True)
 @click.option("--calibration", "-c", is_flag=True)
 @click.option("--alle", is_flag=True)
-def plot(scan_inis, dump_images, widths, magnets, alle, calibration):
+@click.option("--save", "-s", is_flag=True)
+def plot(scan_inis, dump_images, widths, magnets, alle, calibration, save):
     slice_energy_spread_measurements = [load_config(fname) for fname in scan_inis]
     for fname, sesme in zip(scan_inis, slice_energy_spread_measurements):
         root_outdir = None
         if alle:
             root_outdir = Path(fname).resolve().parent / (Path(fname).stem + "-images")
-            click.echo(f"Writing all plots to {root_outdir}")
-
-        if alle:
-            dump_full_scan(sesme, root_outdir)
+            click.echo(f"Writing plots to {root_outdir}")
+            # dump_full_scan(sesme, root_outdir)
             plot_measured_central_widths(sesme, root_outdir)
             plot_scans(sesme, root_outdir)
             plot_quad_strengths(sesme, root_outdir)
+            plot_tds_calibration(sesme, root_outdir)
             with (root_outdir / "parameters.txt").open("w") as f:
                 f.write(pretty_beam_parameter_table(sesme))
         elif calibration:
@@ -106,6 +105,7 @@ def plot(scan_inis, dump_images, widths, magnets, alle, calibration):
             plot_quad_strengths(sesme, root_outdir)
         else:
             plot_scans(sesme, root_outdir)
+
 
 @main.command()
 @click.argument("tcls", nargs=-1)
