@@ -29,11 +29,17 @@ IMAGE_PATH_KEY: str = "XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"
 
 NOISE_THRESHOLD: float = 0.08  # By eye...
 
+# X means in the dimension of the beam (so the bunch width, which is the y-axis
+# on the image!)
+
+# Z means in the dimension of the beam (so the bunch length, which is the x-axis
+# on the image!)
+
 PIXEL_SCALE_X_UM: float = 13.7369
-PIXEL_SCALE_Y_UM: float = 11.1756
+PIXEL_SCALE_Z_UM: float = 11.1756
 
 PIXEL_SCALE_X_M: float = PIXEL_SCALE_X_UM * 1e-6
-PIXEL_SCALE_Y_M: float = PIXEL_SCALE_Y_UM * 1e-6
+PIXEL_SCALE_Z_M: float = PIXEL_SCALE_Z_UM * 1e-6
 
 LOG = logging.getLogger(__name__)
 
@@ -319,23 +325,6 @@ class ScanMeasurement:
         nbg = len(self.bg)
         return f"<{tname}: Dx={self.dx} nimages = {nimages}, nbg={nbg}>"
 
-    # @property
-    # def tds_slope(self) -> float:
-    #     result = self._tds_slope
-    #     if not result:
-    #         metadata = self.images[0].metadata
-    #         return self.calibrator.get_tds_slope(self.tds_percentage, metadata)
-
-    # @property
-    # def tds_voltage(self) -> float:
-    #     metadata = self.images[0].metadata
-    #     return self.calibrator.get_voltage(self.tds_percentage, self.dx, metadata)
-
-    # @property
-    # def tds_slope(self) -> float:
-    #     metadata = self.images[0].metadata
-    #     return self.calibrator.get_tds_slope(self.percentage, self.dx, metadata)
-
     @property
     def metadata(self) -> pd.Dataframe:
         df = pd.DataFrame([image.metadata for image in self.images])
@@ -383,6 +372,23 @@ class ScanMeasurement:
         LOG.debug(f"Calculated average slice width: {width_with_error}")
 
         return width_with_error.n, width_with_error.s  # To tuple
+
+    def zrms(self, pixel_units="px") -> ValueWithErrorT:
+        sizes = []
+        for i in range(self.nimages):
+            image = self.to_im(i)
+            image = crop_image(image)
+            sizes.append(image.sum(axis=0).std())
+            # Get slice properties for this image
+
+        mean_size = np.mean(sizes)
+        mean_error = mean_size / np.sqrt(len(sizes))
+
+        width, error = transform_pixel_widths([mean_size], [mean_error],
+                                              to_variances=False,
+                                              pixel_units=pixel_units,
+                                              dimension="z")
+        return width.item(), error.item()
 
     def __getitem__(self, key: int) -> TDSScreenImage:
         return self.images[key]
@@ -441,7 +447,6 @@ class TDSDispersionScan:
     def tds_percentage(self) -> npt.NDArray:
         return np.array([s.tds_percentage for s in self.measurements])
 
-
     @property
     def metadata(self) -> list[pd.Dataframe]:
         return [m.metadata for m in self.measurements]
@@ -471,6 +476,8 @@ class TDSDispersionScan:
 
     def __iter__(self):
         return iter(self.measurements)
+
+
 
 
 class DispersionScan(TDSDispersionScan):
@@ -510,7 +517,7 @@ class TDSScan(TDSDispersionScan):
 
 
 def transform_pixel_widths(
-    pixel_widths, pixel_widths_errors, *, pixel_units="px", to_variances=True
+        pixel_widths, pixel_widths_errors, *, pixel_units="px", to_variances=True, dimension="x"
 ) -> tuple[npt.NDArray, npt.NDArray]:
     """The fits used in the paper are linear relationships between the variances
     (i.e. pixel_std^2) and the square of the independent variable (either
@@ -525,12 +532,16 @@ def transform_pixel_widths(
 
     if pixel_units == "px":
         scale = 1
-    elif pixel_units == "um":
+    elif pixel_units == "um" and dimension == "x":
         scale = PIXEL_SCALE_X_UM
-    elif pixel_units == "m":
+    elif pixel_units == "um" and dimension == "z":
+        scale = PIXEL_SCALE_Z_UM
+    elif pixel_units == "m" and dimension == "x":
         scale = PIXEL_SCALE_X_M
+    elif pixel_units == "m" and dimension == "z":
+        scale = PIXEL_SCALE_Z_M
     else:
-        raise ValueError(f"unknown unit width string: {pixel_units}")
+        raise ValueError(f"unknown unit or dimension: {pixel_units=}, {dimension=}")
 
     widths *= scale
     if to_variances:

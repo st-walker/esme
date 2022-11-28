@@ -4,7 +4,7 @@ import latdraw
 import matplotlib.pyplot as plt
 import numpy as np
 import tabulate
-from scipy.constants import e
+from scipy.constants import e, c
 
 import esme.analysis as ana
 import esme.calibration as cal
@@ -357,14 +357,11 @@ def _plot_quad_strengths(dfs, scan_var, scan_var_name, ax) -> plt.Figure:
 
 
 def plot_tds_calibration(sesme, root_outdir, show=True):
-    # plot_r34s(sesme, root_outdir)
-    # plot_tds_slopes(sesme, root_outdir)
-    # plot_calibrated_tds(sesme, root_outdir)
+    plot_r34s(sesme, root_outdir)
+    plot_calibrated_tds(sesme, root_outdir)
     plot_streaking_parameters(sesme, root_outdir)
-    # plot_tds_voltage(sesme, root_outdir)
-
-    # if show:
-    #     plt.show()
+    plot_tds_voltage(sesme, root_outdir)
+    plot_bunch_lengths(sesme, root_outdir)
 
 
 def _r34s_from_scan(scan: ana.TDSDispersionScan):
@@ -470,9 +467,10 @@ def plot_tds_voltage(sesme, root_outdir):
     tscan_dx = sesme.tscan.dx
     assert (tscan_dx == tscan_dx[0]).all()
 
-
-    ax1.set_title(rf"$\eta_\mathrm{{OTR}}$-scan; TDS Amplitude at ${{{dscan_pc[0]}}}\%$")
-    ax2.set_title(rf"TDS-scan; $\eta_\mathrm{{OTR}}={{{tscan_dx[0]}}}\mathrm{{m}}$")
+    tit1 = rf"$\eta_\mathrm{{OTR}}$-scan; TDS Amplitude at ${{{dscan_pc[0]}}}\%$"
+    ax1.set_title(tit1)
+    tit2 = rf"TDS-scan; $\eta_\mathrm{{OTR}}={{{tscan_dx[0]}}}\mathrm{{m}}$"
+    ax2.set_title(tit2)
 
     if root_outdir is not None:
         fig.savefig(root_outdir / "tds-calibration-slopes.png")
@@ -497,4 +495,39 @@ def plot_streaking_parameters(sesme, root_outdir):
     plt.show()
 
 def plot_bunch_lengths(sesme, root_outdir):
-    pass
+    dscan = sesme.dscan
+    zrms = [m.zrms(pixel_units="m") for m in dscan]
+
+    zrms = np.array(zrms)
+    zrmsn = zrms[..., 0]
+    zrmse = zrms[..., 1]
+
+
+    dscan_streak = abs(_streaks_from_scan(dscan))
+    dscan_bunch_length = zrms
+
+
+    fig, (ax1, ax2) = plt.subplots(ncols=2, ncols=2)
+    ax1.errorbar(dscan.dx, 1e12 * zrmsn / dscan_streak / c,
+                 yerr=1e12*zrmse / dscan_streak / c)
+    ax1.set_xlabel(ETA_LABEL)
+    ax1.set_ylabel(r"$\sigma_z\,/\,\mathrm{ps}$")
+
+    tscan = sesme.tscan
+    zrms = [m.zrms(pixel_units="m") for m in tscan]
+
+    zrms = np.array(zrms)
+    zrmsn = zrms[..., 0]
+    zrmse = zrms[..., 1]
+
+    tscan_streak = abs(_streaks_from_scan(tscan))
+    tscan_bunch_length = zrms
+
+
+    ax2.errorbar(1e-6*abs(tscan.tds_voltage), 1e12 * zrmsn / tscan_streak / c,
+                 yerr=1e12*zrmse / tscan_streak / c)
+    ax2.set_xlabel(VOLTAGE_LABEL)
+
+    plt.show()
+
+    from IPython import embed; embed()
