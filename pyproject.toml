@@ -50,7 +50,7 @@ pandas = "^1.5.1"
 scipy = "^1.9.3"
 uncertainties = "^3.1.7"
 opencv-python = "^4.6.0"
-ocelot = {git = "https://github.com/st-walker/ocelot.git", rev = "bigting"}
+# ocelot = {git = "https://github.com/st-walker/ocelot.git", rev = "bigting"}
 
 [tool.poetry.extras]
 test = [

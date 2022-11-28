@@ -204,7 +204,7 @@ def add_info_box(ax, symbol, xunits, c, m) -> None:
 
 
 def plot_measured_central_widths(esme: ana.SliceEnergySpreadMeasurement, root_outdir=None, show=True) -> None:
-    fig, ax = plt.subplots(figsize=(14, 8))
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2, figsize=(14, 8))
 
     dscan = esme.dscan
     tscan = esme.tscan
@@ -212,19 +212,15 @@ def plot_measured_central_widths(esme: ana.SliceEnergySpreadMeasurement, root_ou
 
     dx = dscan.dx
 
-    dwidths, derrors = dscan.max_energy_slice_widths_and_errors(padding=10)
-    twidths, terrors = tscan.max_energy_slice_widths_and_errors(padding=10)
+    if dscan.measurements:
+        dwidths, derrors = dscan.max_energy_slice_widths_and_errors(padding=10)
+        dwidths_um, derrors_um = ana.transform_pixel_widths(dwidths, derrors, pixel_units="um", to_variances=False)
+        plot_scan_central_widths(dscan, dx, ax1, ax3)
 
-    dwidths_um, derrors_um = ana.transform_pixel_widths(dwidths, derrors, pixel_units="um", to_variances=False)
-    twidths_um, terrors_um = ana.transform_pixel_widths(twidths, terrors, pixel_units="um", to_variances=False)
-
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2, figsize=(14, 8))
-
-    ax1.errorbar(dx, dwidths, yerr=derrors, marker="x")
-    ax3.errorbar(dx, dwidths_um, yerr=derrors_um, marker="x")
-
-    ax2.errorbar(voltages, twidths, yerr=terrors, marker="x")
-    ax4.errorbar(voltages, twidths_um, yerr=terrors_um, marker="x")
+    if tscan.measurements:
+        twidths, terrors = tscan.max_energy_slice_widths_and_errors(padding=10)
+        twidths_um, terrors_um = ana.transform_pixel_widths(twidths, terrors, pixel_units="um", to_variances=False)
+        plot_scan_central_widths(tscan, voltages, ax2, ax4)
 
     ax1.set_ylabel(r"$\sigma_M\,/\,\mathrm{px}$")
     ax3.set_ylabel(r"$\sigma_M\,/\,\mathrm{\mu m}$")
@@ -232,10 +228,21 @@ def plot_measured_central_widths(esme: ana.SliceEnergySpreadMeasurement, root_ou
     # ax4.set_xlabel("TDS Voltage / MV")
     ax4.set_xlabel("TDS Amplitude / %")
 
-    fig.suptitle(fr"Measured maximum-energy slice widths for pixel scale Y = {ana.PIXEL_SCALE_X_UM} $\mathrm{{\mu m}}$")
+    fig.suptitle(fr"Measured maximum-energy slice widths for pixel scale X = {ana.PIXEL_SCALE_X_UM} $\mathrm{{\mu m}}$")
+
+    if show:
+        plt.show()
 
     if root_outdir is not None:
         fig.savefig(root_outdir / "measured-central-widths.png")
+
+
+def plot_scan_central_widths(scan: ana.DispersionScan, x, ax1, ax2):
+    widths, errors = scan.max_energy_slice_widths_and_errors(padding=10)
+    widths_um, errors_um = ana.transform_pixel_widths(widths, errors, pixel_units="um", to_variances=False)
+
+    ax1.errorbar(x, widths, yerr=errors, marker="x")
+    ax2.errorbar(x, widths_um, yerr=errors_um, marker="x")
 
 
 def pretty_beam_parameter_table(esme: ana.SliceEnergySpreadMeasurement) -> str:

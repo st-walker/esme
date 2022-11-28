@@ -1,5 +1,6 @@
 """Console script for esme."""
 
+import sys
 import logging
 from pathlib import Path
 
@@ -117,6 +118,24 @@ def diag(tcls):
         for i in range(sm.nimages):
             show_before_after_processing(sm, i)
             plt.show()
+
+# @main.command()
+# @click.argument("--reset_quads", is_flag=True)
+# @click.argument("--dx", nargs=1)
+# @click.argument("--go", )
+# def measurement(reset_quads, dx):
+#     import esme.measurement as mea
+
+#     if reset_quads:
+#         mea.set_initial_optics()
+#         sys.exit(0)
+
+#     if dx:
+#         mea.set_dscan_optics(dx)
+#         sys.exit(0)
+
+    # if take
+
 
 
 if __name__ == "__main__":
