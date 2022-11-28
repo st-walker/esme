@@ -4,10 +4,15 @@ import latdraw
 import matplotlib.pyplot as plt
 import numpy as np
 import tabulate
+from scipy.constants import e
 
 import esme.analysis as ana
 import esme.calibration as cal
 import esme.lattice as lat
+
+
+ETA_LABEL = r"$\eta_\mathrm{{OTR}}\,/\,\mathrm{m}$"
+VOLTAGE_LABEL = r"$|V_\mathrm{TDS}|\,/\,\mathrm{MV}$"
 
 
 def dump_full_scan(esme: ana.SliceEnergySpreadMeasurement, root_outdir, show=True) -> None:
@@ -102,7 +107,7 @@ def show_before_after_processing(measurement: ana.ScanMeasurement, index: int) -
     ax4.set_ylabel("Pixel Brightness")
     m = measurement
     fig.suptitle(
-        fr"TDS No. = {m.tds_percentage}, $\eta_x={m.dx}\,\mathrm{{m}}$, image {index}, before/after image processing"
+        fr"TDS No. = {m.tds_percentage}, $\eta_\mathrm{{OTR}}={m.dx}\,\mathrm{{m}}$, image {index}, before/after image processing"
     )
     ax2.legend()
     ax4.legend()
@@ -225,7 +230,7 @@ def plot_measured_central_widths(esme: ana.SliceEnergySpreadMeasurement, root_ou
     ax3.set_ylabel(r"$\sigma_M\,/\,\mathrm{\mu m}$")
     ax3.set_xlabel("D / m")
     # ax4.set_xlabel("TDS Voltage / MV")
-    ax4.set_xlabel("TDS Magic Number / %")
+    ax4.set_xlabel("TDS Amplitude / %")
 
     fig.suptitle(fr"Measured maximum-energy slice widths for pixel scale Y = {ana.PIXEL_SCALE_X_UM} $\mathrm{{\mu m}}$")
 
@@ -352,9 +357,11 @@ def _plot_quad_strengths(dfs, scan_var, scan_var_name, ax) -> plt.Figure:
 
 
 def plot_tds_calibration(sesme, root_outdir, show=True):
-    plot_r34s(sesme, root_outdir)
+    # plot_r34s(sesme, root_outdir)
     # plot_tds_slopes(sesme, root_outdir)
-    plot_calibrated_tds(sesme, root_outdir)
+    # plot_calibrated_tds(sesme, root_outdir)
+    plot_streaking_parameters(sesme, root_outdir)
+    # plot_tds_voltage(sesme, root_outdir)
 
     # if show:
     #     plt.show()
@@ -366,7 +373,7 @@ def _r34s_from_scan(scan: ana.TDSDispersionScan):
         # Pick a non-bg image.
         im = measurement.images[0]
         result.append(cal.r34_from_tds_to_screen(im.metadata))
-    return result
+    return np.array(result)
 
 
 def plot_r34s(sesme, root_outdir):
@@ -375,35 +382,16 @@ def plot_r34s(sesme, root_outdir):
     dscan_r34s = _r34s_from_scan(sesme.dscan)
 
     ax1.plot(sesme.dscan.dx, dscan_r34s, marker="x")
-    ax1.set_xlabel(r"$\eta_x\,/\,\mathrm{m}$")
+    ax1.set_xlabel(r"$\eta_\mathrm{{OTR}}\,/\,\mathrm{m}$")
     ax1.set_ylabel(r"$R_{34}\,/\,\mathrm{m\cdot{}rad^{-1}}$")
 
     tscan_r34s = _r34s_from_scan(sesme.tscan)
 
     ax2.plot(sesme.tscan.tds_percentage, tscan_r34s, marker="x")
-    ax2.set_xlabel(r'TDS "Power" / %')
+    ax2.set_xlabel(r"TDS Amplitude / %")
     ax2.set_ylabel(r"$R_{34}\,/\,\mathrm{m\cdot{}rad^{-1}}$")
 
     # plt.show()
-
-
-# def plot_tds_slopes(sesme, root_outdir):
-#     tds_percentage = sesme.tscan.tds_percentage
-#         # tds_streak = sesme.tscan.tds_streak
-#     # except AttributeError:
-#     #     from IPython import embed; embed()
-#     #     return
-
-#     fig, ax = plt.subplots()
-#     ax.plot(tds_percentage, tds_streak * 1e-6)
-#     ax.set_xlabel("TDS Magic Number / %")
-#     ax.set_ylabel(r"TDS Calibration Slope / $\mathrm{\mu{}mps^{-1}}$")
-
-#     if root_outdir is not None:
-#         fig.savefig(root_outdir / "tds-calibration-slopes.png")
-
-
-from scipy.optimize import curve_fit
 
 
 def plot_calibrated_tds(sesme, root_outdir):
@@ -426,48 +414,87 @@ def plot_calibrated_tds(sesme, root_outdir):
     fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(14, 8))
     ax1.plot(tds_percentage, derived_tds_voltage, marker="x", label="TDS Scan Derived Voltages")
 
-    sergey_streaks = sesme.tscan[0].calibrator.streaks
+    sergey_tds_slopes = sesme.tscan[0].calibrator.tds_slopes
     popt, _ = sesme.tscan[0].calibrator.linear_fit()
 
-    ax2.plot(sergey_percentages, sergey_streaks * 1e-6, marker="x", label="TDS Calibration data")
+    ax2.plot(sergey_percentages, sergey_tds_slopes * 1e-6, marker="x", label="TDS Calibration data")
     ax2.plot(sergey_percentages, ana.line(sergey_percentages, *popt) * 1e-6,
              marker="x", label="Fit")
 
     ax2.set_ylabel(r"TDS Calibration Slope / $\mathrm{\mu{}mps^{-1}}$")
 
-    ax2.set_xlabel("TDS Magic Number / %")
+    ax2.set_xlabel("TDS Amplitude / %")
     ax1.set_ylabel(r"$|V_\mathrm{TDS}|$ / MV")
     ax2.legend()
 
     fig.suptitle("TDS Calibration data we took beforehand (below) and applied to scan (above)")
 
-    from IPython import embed; embed()
-
     if root_outdir is not None:
         fig.savefig(root_outdir / "derived-tds-voltages.png")
 
 
-def plot_streak(sesme, root_outdir):
-    fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(14, 8))
+def _streaks_from_scan(scan: ana.TDSDispersionScan):
+    scan_voltages = scan.tds_voltage
+    energy = scan.beam_energy() * e # in eV and convert to joules
 
-    dscan_r34s = _r34s_from_scan(sesme.dscan)
-    dscan_voltages = sesme.dscan.tds_voltage
+    k0 = e * abs(scan_voltages) * cal.TDS_WAVENUMBER / energy
+    r34s = _r34s_from_scan(scan)
+    streak = r34s * k0
 
-    sesme.dscan.beam_energy
+    return streak
 
-    ax1.plot(sesme.dscan.dx, dscan_r34s, marker="x")
-    ax1.set_xlabel(r"$\eta_x\,/\,\mathrm{m}$")
-    ax1.set_ylabel(r"$R_{34}\,/\,\mathrm{m\cdot{}rad^{-1}}$")
 
-    # tscan_r34s = _r34s_from_scan(sesme.tscan)
+def plot_tds_voltage(sesme, root_outdir):
+    fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(12.8, 8), sharey=True)
 
-    # ax2.plot(sesme.tscan.tds_percentage, tscan_r34s, marker="x")
-    # ax2.set_xlabel(r'TDS "Power" / %')
-    # ax2.set_ylabel(r"$R_{34}\,/\,\mathrm{m\cdot{}rad^{-1}}$")
+    dscan = sesme.dscan
+    dscan_dx = dscan.dx
+    dscan_voltage = abs(dscan.tds_voltage * 1e-6)
 
+    ax1.plot(dscan_dx, dscan_voltage, marker="x")
+    ax1.set_ylabel(VOLTAGE_LABEL)
+    ax1.set_xlabel(ETA_LABEL)
+    ax2.set_xlabel(r"TDS Amplitude / %")
+
+    tscan = sesme.tscan
+    tscan_percent = tscan.tds_percentage
+    tscan_voltage = abs(tscan.tds_voltage * 1e-6)
+
+    ax2.plot(tscan_percent, tscan_voltage, marker="x")
+    ax2.set_xlabel(r"TDS Amplitude / %")
+
+    # Should have all the same percentages for the dispersion scan.
+    dscan_pc = sesme.dscan.tds_percentage
+    assert (dscan_pc == dscan_pc[0]).all()
+    # Should have same dispersion throughout for the tds scan.
+    tscan_dx = sesme.tscan.dx
+    assert (tscan_dx == tscan_dx[0]).all()
+
+
+    ax1.set_title(rf"$\eta_\mathrm{{OTR}}$-scan; TDS Amplitude at ${{{dscan_pc[0]}}}\%$")
+    ax2.set_title(rf"TDS-scan; $\eta_\mathrm{{OTR}}={{{tscan_dx[0]}}}\mathrm{{m}}$")
+
+    if root_outdir is not None:
+        fig.savefig(root_outdir / "tds-calibration-slopes.png")
+
+
+def plot_streaking_parameters(sesme, root_outdir):
+    fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(14, 8), sharey=True)
+
+    dscan_streak = abs(_streaks_from_scan(sesme.dscan))
+
+    ax1.plot(sesme.dscan.dx, dscan_streak)
+
+    ax1.set_xlabel(ETA_LABEL)
+    ax1.set_ylabel(r"$|S|$")
+
+    ax2.set_xlabel(VOLTAGE_LABEL)
+
+    tscan_streak = abs(_streaks_from_scan(sesme.tscan))
+
+    ax2.plot(abs(sesme.tscan.tds_voltage*1e-6), tscan_streak)
 
     plt.show()
 
-# def plot_streak(sesme, root_outdir):
-#     tscan
-#     pass
+def plot_bunch_lengths(sesme, root_outdir):
+    pass

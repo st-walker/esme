@@ -34,7 +34,6 @@ def _files_from_config(config, scan_name) -> list[Path]:
 
     fnames = config["data"][scan_name]["fnames"]
     paths = [basepath / f for f in fnames]
-
     return paths
 
 
@@ -61,9 +60,12 @@ def load_config(fname: os.PathLike) -> SliceEnergySpreadMeasurement:
     if voltages := calib.get("voltages"):
         calibrator = TrivialTDSCalibrator(percentages, voltages)
     else:
-        streaks = calib["streaks"]
-        streaks_units = calib["streak_units"]
-        calibrator = TDSCalibrator(percentages, streaks, streak_units=streaks_units)
+        tds_slopes = calib["tds_slopes"]
+        tds_slopes_units = calib["tds_slope_units"]
+        screen_dispersion = calib["screen_dispersion"]
+        calibrator = TDSCalibrator(percentages, tds_slopes,
+                                   screen_dispersion,
+                                   tds_slope_units=tds_slopes_units)
 
     dscan = DispersionScan(
         dscan_paths,

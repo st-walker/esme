@@ -205,7 +205,7 @@ def _tds_magic_number_from_filename(fname: os.PathLike) -> int:
     return tds_magic_number
 
 
-def _tds_streak_from_filename(fname: os.PathLike) -> float:
+def _tds_slope_from_filename(fname: os.PathLike) -> float:
     path = Path(fname)
     match = re.search(r"[0-9]+um_ps", path.stem)
     if not match:
@@ -272,17 +272,18 @@ class TDSScreenImage:
 
 
 class ScanMeasurement:
-    def __init__(self, df_path: os.PathLike, calibrator=None, bad_image_indices=None):
+    def __init__(self, df_path: os.PathLike, # calibrator=None,
+                 bad_image_indices=None):
         """bad_image_indices are SKIPPED and not loaded at all."""
         LOG.debug(f"Loading measurement: {df_path=} with {bad_image_indices=}")
         df_path = Path(df_path)
         self.dx = _dispersion_from_filename(df_path)
         self.tds_percentage = _tds_magic_number_from_filename(df_path)
 
-        self.calibrator = calibrator
-        # self.tds_streak = None
+        # self.calibrator = calibrator
+        # self.tds_slope = None
         with contextlib.suppress(MissingMetadataInFileNameError):
-            self.tds_streak = _tds_streak_from_filename(df_path)
+            self.tds_slope = _tds_slope_from_filename(df_path)
 
         self.images = []
         if bad_image_indices is None:
@@ -313,24 +314,27 @@ class ScanMeasurement:
                     self.images.append(image)
 
     def __repr__(self) -> str:
-        return f"<Measurement: Dx={self.dx}>"
+        tname = type(self).__name__
+        nimages = len(self.images)
+        nbg = len(self.bg)
+        return f"<{tname}: Dx={self.dx} nimages = {nimages}, nbg={nbg}>"
 
     # @property
-    # def tds_streak(self) -> float:
-    #     result = self._tds_streak
+    # def tds_slope(self) -> float:
+    #     result = self._tds_slope
     #     if not result:
     #         metadata = self.images[0].metadata
-    #         return self.calibrator.get_streak(self.tds_percentage, metadata)
+    #         return self.calibrator.get_tds_slope(self.tds_percentage, metadata)
 
-    @property
-    def tds_voltage(self) -> float:
-        metadata = self.images[0].metadata
-        return self.calibrator.get_voltage(self.tds_percentage, metadata)
+    # @property
+    # def tds_voltage(self) -> float:
+    #     metadata = self.images[0].metadata
+    #     return self.calibrator.get_voltage(self.tds_percentage, self.dx, metadata)
 
-    @property
-    def streak(self) -> float:
-        metadata = self.images[0].metadata
-        return self.calibrator.get_streak(self.percentage, metadata)
+    # @property
+    # def tds_slope(self) -> float:
+    #     metadata = self.images[0].metadata
+    #     return self.calibrator.get_tds_slope(self.percentage, self.dx, metadata)
 
     @property
     def metadata(self) -> pd.Dataframe:
@@ -396,6 +400,10 @@ class ScanMeasurement:
             yield from self.bg
         yield from self.images
 
+    def __reprr__(self):
+        tname = type(self).__name__
+        return f"<{tname:}, fname={self.name} dx={self.dx}, nimages={len(self.images)}, fname=>"
+
 
 def _f(measurement):
     return measurement.mean_central_slice_width_with_error(padding=10)
@@ -414,11 +422,13 @@ class TDSDispersionScan:
         if bad_images_per_measurement is None:
             bad_images_per_measurement = len(files) * [None]
 
+        self.calibrator = calibrator
+
         self.measurements = []
         for i, df_path in enumerate(files):
             measurement = ScanMeasurement(
                 df_path,
-                calibrator=calibrator,
+                # calibrator=calibrator,
                 bad_image_indices=bad_images_per_measurement[i],
             )
             self.measurements.append(measurement)
@@ -431,13 +441,6 @@ class TDSDispersionScan:
     def tds_percentage(self) -> npt.NDArray:
         return np.array([s.tds_percentage for s in self.measurements])
 
-    @property
-    def tds_streak(self):
-        return np.array([s.tds_streak for s in self.measurements])
-
-    @property
-    def tds_voltage(self):
-        return np.array([s.tds_voltage for s in self.measurements])
 
     @property
     def metadata(self) -> list[pd.Dataframe]:
@@ -471,14 +474,39 @@ class TDSDispersionScan:
 
 
 class DispersionScan(TDSDispersionScan):
-    pass
+    @property
+    def tds_voltage(self):
+        # By definition in the dispersion scan the voltages all stay the same.
+        # Get dispersion at which the calibration was done
+        caldx = self.calibrator.dispersion
+        # Pick
+        idx = np.argmin(abs(self.dx - caldx))
+        measurement = self.measurements[idx]
+
+        metadata = measurement.images[0].metadata
+        voltage = self.calibrator.get_voltage(measurement.tds_percentage,
+                                              metadata)
+        dx = measurement.dx
+        LOG.debug("Deriving constant voltage for dispersion scan.  Calibrator: {self.calibrator} @ Dx={dx}")
+        return np.ones_like(self.measurements) * voltage
 
 
 class TDSScan(TDSDispersionScan):
-    pass
-    # def __init__(self, *args, **kwargs):
-    #     super().__init(*args, **kwargs)
-    #     self.calibrator = TDSCalibration
+    @property
+    def tds_slope(self):
+        return np.array([s.tds_slope for s in self.measurements])
+
+    @property
+    def tds_voltage(self):
+        dx = self.dx
+        # Get metadata associated with first (non-bg) image of each measurement,
+        # and reasonably assume it's the same for every image of the scan.
+        scan_metadata = [m.images[0].metadata for m in self.measurements]
+        voltages = []
+        for percentage, metadata in zip(self.tds_percentage, scan_metadata):
+            voltages.append(self.calibrator.get_voltage(percentage, metadata))
+
+        return np.array(voltages)
 
 
 def transform_pixel_widths(
