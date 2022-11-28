@@ -622,6 +622,7 @@ class SliceEnergySpreadMeasurement:
 
         energy = self.tscan.beam_energy()  # in eV
         dispersion = self.tscan.dx.mean()
+        voltage = self.dscan.tds_voltage[0]
 
         return FittedBeamParameters(
             a_v=a_v,
@@ -630,6 +631,7 @@ class SliceEnergySpreadMeasurement:
             b_d=b_d,
             reference_energy=energy,
             reference_dispersion=dispersion,
+            reference_voltage=voltage,
             oconfig=self.oconfig,
         )
 
@@ -645,6 +647,7 @@ class FittedBeamParameters:
     b_d: ValueWithErrorT
     reference_energy: float
     reference_dispersion: float
+    reference_voltage: float
     oconfig: OpticalConfig
 
     @property
@@ -656,6 +659,18 @@ class FittedBeamParameters:
         av = ufloat(*self.a_v)
         ad = ufloat(*self.a_d)
         result = (energy0 / dx0) * umath.sqrt(av - ad)
+        return result.n, result.s
+
+    @property
+    def sigma_e_alt(self) -> ValueWithErrorT:
+        energy0 = self.reference_energy
+        dx0 = self.reference_dispersion
+        v0 = self.reference_voltage
+        # Convert to ufloat for correct error propagation before converting back
+        # to tuples at the end.
+        bd = ufloat(*self.b_d)
+        bv = ufloat(*self.b_v)
+        result = (energy0 / dx0) * umath.sqrt(bd * dx0**2 - bv * v0**2)
         return result.n, result.s
 
     @property

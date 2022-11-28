@@ -13,7 +13,7 @@ import esme.lattice as lat
 
 ETA_LABEL = r"$\eta_\mathrm{{OTR}}\,/\,\mathrm{m}$"
 VOLTAGE_LABEL = r"$|V_\mathrm{TDS}|\,/\,\mathrm{MV}$"
-TDS_CALIBRATION_LABEL = r"TDS Calibration Slope / $\mathrm{\mu{}mps^{-1}}$"
+TDS_CALIBRATION_LABEL = r"TDS Calibration Gradient / $\mathrm{\mu{}mps^{-1}}$"
 TDS_AMPLITUDE_LABEL = r"TDS Amplitude / %"
 
 
@@ -262,15 +262,19 @@ def pretty_beam_parameter_table(esme: ana.SliceEnergySpreadMeasurement) -> str:
     sige *= 1e-3
     sige_err *= 1e-3
 
+    sige_alt, sige_alt_err = params.sigma_e_alt
+    sige_alt *= 1e-3
+    sige_alt_err *= 1e-3
+
     ex, exe = params.emitx
     ex *= 1e6
     exe *= 1e6
 
     header = ["Variable", "value", "error", "units"]
-    variables = ["A_V", "B_V", "A_D", "B_D", "σ_E", "σ_I", "σ_B", "σ_R", "εₙ"]
-    with_errors = [av, bv, ad, bd, (sige, sige_err), params.sigma_i, params.sigma_b, params.sigma_r, (ex, exe)]
+    variables = ["A_V", "B_V", "A_D", "B_D", "σ_E", "σ_I", "σ_B", "σ_R", "εₙ", "σ_E_alt"]
+    with_errors = [av, bv, ad, bd, (sige, sige_err), params.sigma_i, params.sigma_b, params.sigma_r, (ex, exe), (sige_alt, sige_alt_err)]
 
-    units = ["m²", "m²/V²", "m²", "-", "keV", "m", "m", "m", "mm⋅mrad"]
+    units = ["m²", "m²/V²", "m²", "-", "keV", "m", "m", "m", "mm⋅mrad", "keV"]
     values = [a[0] for a in with_errors]
     errors = [a[1] for a in with_errors]
 
