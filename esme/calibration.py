@@ -92,12 +92,3 @@ def get_tds_voltage(gradient_m_per_s, snapshot: pd.Series):
     energy_joules = energy * e * 1e6  # Convert to joules.
     voltage = (energy_joules / (e * angular_frequency * r34)) * gradient_m_per_s
     return voltage
-
-
-# def get_tds_slope(voltage, snapshot: pd.Series):
-#     from IPython import embed; embed()
-#     r34 = r34_from_tds_to_screen(snapshot)
-#     energy = snapshot[I1D_ENERGY_ADDRESS] * 1e-3
-#     frequency = 3e9 * 2 * np.pi
-#     tds_slope = voltage * e * frequency * r34 / energy
-#     return tds_slope

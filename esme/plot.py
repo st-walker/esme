@@ -139,7 +139,7 @@ def plot_dispersion_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> Non
 
     if ax is None:
         fig, ax = plt.subplots(figsize=(14, 8))
-    ax.errorbar(dx2, widths_um2, yerr=errors_um2, label="Data")
+    ax.errorbar(dx2, widths_um2, yerr=errors_um2, label="Data", marker=".", linestyle="")
     ax.plot(d2sample, sigma2fit, label="Fit")
     ax.legend(loc="lower right")
 
@@ -171,7 +171,7 @@ def plot_tds_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> None:
 
     if ax is None:
         fig, ax = plt.subplots(figsize=(14, 8))
-    ax.errorbar(voltages2_mv2, widths_um2, yerr=errors_um2, label="Data")
+    ax.errorbar(voltages2_mv2, widths_um2, yerr=errors_um2, label="Data", marker=".", linestyle="")
     ax.plot(v2_sample, sigma2fit, label="Fit")
     ax.legend(loc="lower right")
 
@@ -426,6 +426,8 @@ def plot_calibrator_with_fits(calib):
     ax.plot(sample_x, calib.get_tds_slope(sample_x) * 1e-6, label="line(%)")
     calib.fn = cal.sqrt
     ax.plot(sample_x, calib.get_tds_slope(sample_x) * 1e-6, label="sqrt(%)")
+    # Change it back =/..  this is obviously quite error prone...
+    calib.fn = cal.line
 
     ax.legend()
     ax.set_xlabel(TDS_AMPLITUDE_LABEL)
