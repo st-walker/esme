@@ -507,7 +507,7 @@ def plot_bunch_lengths(sesme, root_outdir):
     dscan_bunch_length = zrms
 
 
-    fig, (ax1, ax2) = plt.subplots(ncols=2, ncols=2)
+    fig, (ax1, ax2) = plt.subplots(ncols=2)
     ax1.errorbar(dscan.dx, 1e12 * zrmsn / dscan_streak / c,
                  yerr=1e12*zrmse / dscan_streak / c)
     ax1.set_xlabel(ETA_LABEL)
