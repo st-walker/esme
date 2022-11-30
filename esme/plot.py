@@ -188,7 +188,7 @@ def plot_scans(esme: ana.SliceEnergySpreadMeasurement, root_outdir=None) -> None
     plot_dispersion_scan(esme, ax1)
     plot_tds_scan(esme, ax2)
 
-    fig.suptitle("Dispersion and TDS Scan for a Energy Spread Measurement")
+    fig.suptitle("Dispersion and TDS Scans for an Energy Spread Measurement")
 
     if root_outdir is not None:
         fig.savefig(root_outdir / "scan-fits.png")
@@ -270,11 +270,22 @@ def pretty_beam_parameter_table(esme: ana.SliceEnergySpreadMeasurement) -> str:
     ex *= 1e6
     exe *= 1e6
 
-    header = ["Variable", "value", "error", "units"]
-    variables = ["A_V", "B_V", "A_D", "B_D", "σ_E", "σ_I", "σ_B", "σ_R", "εₙ", "σ_E_alt"]
-    with_errors = [av, bv, ad, bd, (sige, sige_err), params.sigma_i, params.sigma_b, params.sigma_r, (ex, exe), (sige_alt, sige_alt_err)]
+    reference_voltage = params.reference_voltage
+    reference_dispersion = params.reference_dispersion
 
-    units = ["m²", "m²/V²", "m²", "-", "keV", "m", "m", "m", "mm⋅mrad", "keV"]
+    header = ["Variable", "value", "error", "units"]
+    variables = ["A_V", "B_V", "A_D", "B_D", "σ_E",  "σ_E_alt", "σ_I", "σ_B", "σ_R", "εₙ","V_0", "D_0"]
+    with_errors = [av, bv, ad, bd,
+                   (sige, sige_err),
+                   (sige_alt, sige_alt_err),
+                   params.sigma_i,
+                   params.sigma_b,
+                   params.sigma_r,
+                   (ex, exe),
+                   (reference_voltage*1e-6, "-"),
+                   (reference_dispersion, "-")]
+
+    units = ["m²", "m²/V²", "m²", "-", "keV", "keV", "m", "m", "m", "mm⋅mrad", "MV", "m"]
     values = [a[0] for a in with_errors]
     errors = [a[1] for a in with_errors]
 
