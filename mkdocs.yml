@@ -9,7 +9,7 @@ nav:
   - Usage: usage.md
   - Modules: api.md
   - Background: background.md
-  - Contributing: contributing.md
+  - "Measurement Checklist": checklist.md
   - Changelog: changelog.md
 theme:
   name: material
