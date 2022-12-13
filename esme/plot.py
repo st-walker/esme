@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+import logging
+
 import latdraw
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,6 +12,7 @@ import esme.analysis as ana
 import esme.calibration as cal
 import esme.lattice as lat
 
+LOG = logging.getLogger(__name__)
 
 ETA_LABEL = r"$\eta_\mathrm{{OTR}}\,/\,\mathrm{m}$"
 VOLTAGE_LABEL = r"$|V_\mathrm{TDS}|\,/\,\mathrm{MV}$"
@@ -26,16 +29,20 @@ def dump_full_scan(esme: ana.SliceEnergySpreadMeasurement, root_outdir) -> None:
         dx = measurement.dx
         # tds = dispersion_scan.tds_percentage
 
+        LOG.debug(f"starting to plot before/after for dscan, {dx=}m")
+
         measurement_outdir = dscan_dir / f"{i=},{dx=}"
         measurement_outdir.mkdir(parents=True, exist_ok=True)
 
         for image_index in range(measurement.nimages):
+            LOG.debug(f"plotting before/after for image number: {image_index}")
             fig = show_before_after_processing(measurement, image_index)
-        if root_outdir is not None:
-            fig.savefig(measurement_outdir / f"{image_index}.png")
-            plt.close()
-        else:
-            plt.show()
+
+            if root_outdir is not None:
+                fig.savefig(measurement_outdir / f"{image_index}.png")
+                plt.close()
+            else:
+                plt.show()
 
     dscan_dir = root_outdir / "tds-scan"
     for i, measurement in enumerate(tds_scan):
@@ -44,8 +51,10 @@ def dump_full_scan(esme: ana.SliceEnergySpreadMeasurement, root_outdir) -> None:
 
         measurement_outdir = dscan_dir / f"{i=},{tds=}"
         measurement_outdir.mkdir(parents=True, exist_ok=True)
+        LOG.debug(f"starting to plot before/after for tds scan, tds = {tds}%")
 
         for image_index in range(measurement.nimages):
+            LOG.debug(f"plotting before/after for image number: {image_index}")
             fig = show_before_after_processing(measurement, image_index)
             if root_outdir:
                 fig.savefig(measurement_outdir / f"{image_index}.png")
@@ -210,7 +219,7 @@ def add_info_box(ax, symbol, xunits, c, m) -> None:
     ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=14, verticalalignment='top', bbox=props)
 
 
-def plot_measured_central_widths(esme: ana.SliceEnergySpreadMeasurement, root_outdir=None, show=True) -> None:
+def plot_measured_central_widths(esme: ana.SliceEnergySpreadMeasurement, root_outdir=None, show=True, write_widths=True) -> None:
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2, figsize=(14, 8))
 
     dscan = esme.dscan
@@ -224,10 +233,20 @@ def plot_measured_central_widths(esme: ana.SliceEnergySpreadMeasurement, root_ou
         dwidths_um, derrors_um = ana.transform_pixel_widths(dwidths, derrors, pixel_units="um", to_variances=False)
         plot_scan_central_widths(dscan, dx, ax1, ax3)
 
+        if write_widths:
+            data = {"dx": dx, "px_widths": dwidths, "px_errors": derrors, "um_widths": dwidths_um, "um_errors": derrors_um}
+            pd.DataFrame.from_dict(data).to_pickle(hardcoded / "dscan-pixels.pcl")
+
+
     if tscan.measurements:
         twidths, terrors = tscan.max_energy_slice_widths_and_errors(padding=10)
         twidths_um, terrors_um = ana.transform_pixel_widths(twidths, terrors, pixel_units="um", to_variances=False)
         plot_scan_central_widths(tscan, voltages, ax2, ax4)
+
+        if write_widths:
+            data = {"voltage": voltages, "px_widths": twidths, "px_errors": terrors, "um_widths": twidths_um, "um_errors": terrors_um}
+            pd.DataFrame.from_dict(data).to_pickle(hardcoded / "tscan-pixels.pcl")
+
 
     ax1.set_ylabel(r"$\sigma_M\,/\,\mathrm{px}$")
     ax3.set_ylabel(r"$\sigma_M\,/\,\mathrm{\mu m}$")
@@ -295,7 +314,7 @@ def pretty_beam_parameter_table(esme: ana.SliceEnergySpreadMeasurement) -> str:
 def plot_quad_strengths(esme: ana.SliceEnergySpreadMeasurement, root_outdir=None) -> plt.Figure:
     _plot_quad_strengths_dscan(esme, root_outdir=root_outdir)
     _plot_quad_strengths_tds(esme, root_outdir=root_outdir)
-    if root_outdir is not None:
+    if root_outdir is None:
         plt.show()
 
 
@@ -428,6 +447,7 @@ def plot_r34s(sesme):
     ax2.set_xlabel(r"TDS Amplitude / %")
     ax2.set_ylabel(r"$R_{34}\,/\,\mathrm{m\cdot{}rad^{-1}}$")
 
+    return fig
 
 def plot_calibrator_with_fits(calib):
     fig, ax = plt.subplots()
