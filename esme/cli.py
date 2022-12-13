@@ -8,7 +8,7 @@ import click
 import matplotlib.pyplot as plt
 
 from esme.analysis import ScanMeasurement, calculate_energy_spread_simple
-from esme.inout import load_config
+from esme.inout import load_config, add_metadata_to_pcls_in_toml
 from esme.plot import (
     dump_full_scan,
     plot_measured_central_widths,
@@ -37,6 +37,7 @@ def main(debug):
         logging.getLogger("esme.plot").setLevel(logging.DEBUG)
         logging.getLogger("esme.lattice").setLevel(logging.DEBUG)
         logging.getLogger("esme.calibration").setLevel(logging.DEBUG)
+        logging.getLogger("esme.inout").setLevel(logging.DEBUG)
 
 
 @main.command()
@@ -136,6 +137,9 @@ def diag(tcls):
 
     # if take
 
+@click.argument("ftoml", nargs=1)
+def fix(ftoml):
+    add_metadata_to_pcls_in_toml(ftoml)
 
 
 if __name__ == "__main__":
