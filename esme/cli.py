@@ -8,6 +8,7 @@ import click
 import matplotlib.pyplot as plt
 
 from esme.analysis import ScanMeasurement, calculate_energy_spread_simple
+import esme.analysis
 from esme.inout import load_config, add_metadata_to_pcls_in_toml
 from esme.plot import (
     dump_full_scan,
@@ -27,13 +28,17 @@ LOG = logging.getLogger(__name__)
 
 @click.group()
 @click.option("--debug", is_flag=True)
-def main(debug):
+@click.option("--single-threaded", is_flag=True)
+def main(debug, single_threaded):
     """Main entrypoint."""
     click.echo("esme-xfel")
     click.echo("=" * len("esme-xfel"))
     click.echo(
         "Automatic calibration, data taking and analysis for" " uncorrelated energy spread measurements at the EuXFEL"
     )
+
+    if single_threaded:
+        esme.analysis.MULTIPROCESSING = False
 
     if debug:
         logging.getLogger("esme.analysis").setLevel(logging.DEBUG)

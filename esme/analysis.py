@@ -48,6 +48,7 @@ ELECTRON_MASS_EV: float = m_e * c**2 / e
 RawImageT = npt.NDArray
 ValueWithErrorT = tuple[float, float]
 
+MULTIPROCESSING = True
 
 def get_slice_properties(image: RawImageT) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
     #  Get bounds of image (i.e. to remove all fully-zero rows and columns)---this
@@ -419,7 +420,8 @@ class ParameterScan:
     def max_energy_slice_widths_and_errors(
         self, padding: int = 20, do_mp: bool = True
     ) -> tuple[npt.NDArray, npt.NDArray]:
-        if do_mp:
+        global MULTIPROCESSING
+        if MULTIPROCESSING and do_mp:
             with mp.Pool(mp.cpu_count()) as pool:
                 widths_with_errors = np.array(pool.map(_f, self.measurements))
         else:
