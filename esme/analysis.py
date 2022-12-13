@@ -190,37 +190,6 @@ def get_slice_core(pixels) -> tuple[npt.NDArray, npt.NDArray]:
     return pixel_index, pixelcut
 
 
-def _dispersion_from_filename(fname: os.PathLike) -> float:
-    path = Path(fname)
-    match = re.search(r"Dx_[0-9]+", path.stem)
-
-    if not match:
-        raise MissingMetadataInFileNameError(fname)
-    dx = float(match.group(0).split("Dx_")[1])
-    return dx / 1000  # convert to metres
-
-
-def _tds_magic_number_from_filename(fname: os.PathLike) -> int:
-    path = Path(fname)
-    match = re.search(r"tds_[0-9]+", path.stem)
-
-    if not match:
-        raise MissingMetadataInFileNameError(fname)
-    tds_magic_number = int(match.group(0).split("tds_")[1])
-
-    return tds_magic_number
-
-
-def _tds_slope_from_filename(fname: os.PathLike) -> float:
-    path = Path(fname)
-    match = re.search(r"[0-9]+um_ps", path.stem)
-    if not match:
-        raise MissingMetadataInFileNameError(fname)
-    calib_um_per_ps = int(match.group(0).split("um_ps")[0])
-    calib_m_per_s = calib_um_per_ps * 1e-6 * 1e12
-    return calib_m_per_s
-
-
 def get_gaussian_fit(x, y) -> tuple[tuple, tuple]:
     mu0 = y.argmax()
     a0 = y.max()
@@ -239,10 +208,6 @@ def get_gaussian_fit(x, y) -> tuple[tuple, tuple]:
         raise RuntimeError(f"Negative variance detected: {variances}")
     perr = np.sqrt(variances)
     return popt, perr
-
-
-class MissingMetadataInFileNameError(RuntimeError):
-    pass
 
 
 class TDSScreenImage:
@@ -278,18 +243,26 @@ class TDSScreenImage:
 
 
 class ScanMeasurement:
+    DF_DX_SCREEN_KEY = "MY_SCREEN_DX"
+    DF_BETA_SCREEN_KEY = "MY_SCREEN_BETA"
+    DF_TDS_PERCENTAGE_KEY = "MY_TDS_AMPL"
+
     def __init__(self, df_path: os.PathLike, # calibrator=None,
                  bad_image_indices=None):
         """bad_image_indices are SKIPPED and not loaded at all."""
         LOG.debug(f"Loading measurement: {df_path=} with {bad_image_indices=}")
         df_path = Path(df_path)
-        self.dx = _dispersion_from_filename(df_path)
-        self.tds_percentage = _tds_magic_number_from_filename(df_path)
 
-        # self.calibrator = calibrator
-        # self.tds_slope = None
-        with contextlib.suppress(MissingMetadataInFileNameError):
-            self.tds_slope = _tds_slope_from_filename(df_path)
+
+        df = pd.read_pickle(df_path)
+
+        self.dx = _get_constant_key_from_df_safeley(df, self.DF_DX_SCREEN_KEY)
+        self.tds_percentage = _get_constant_key_from_df_safeley(df, self.DF_TDS_PERCENTAGE_KEY)
+
+        try:
+            self.beta = _get_constant_key_from_df_safeley(df, self.DF_BETA_SCREEN_KEY)
+        except KeyError:
+            pass
 
         self.images = []
         if bad_image_indices is None:
@@ -297,33 +270,24 @@ class ScanMeasurement:
         self.bg = []
         self._mean_bg_im: Optional[RawImageT] = None  # For caching.
 
-        with df_path.open("br") as f:
-            df = pickle.load(f)
-
-            for i, relative_path in enumerate(df[IMAGE_PATH_KEY]):
-                abs_path = df_path.parent / relative_path
-                LOG.debug(f"Loading image index {i} @ {relative_path}")
-                if i in bad_image_indices:
-                    LOG.debug(f"Skipping bad image: {i}")
-                    continue
-                # In the df the png paths relative to the pickled dataframe, but
-                # I want to be able to call it from anywhere, so resolve them to
-                # absolute paths.
-                abs_path = df_path.parent / relative_path
-                metadata = df[df[IMAGE_PATH_KEY] == relative_path].squeeze()
-                metadata[IMAGE_PATH_KEY] = abs_path
-                image = TDSScreenImage(metadata)
-                if image.is_bg:
-                    LOG.debug(f"Image{i} is bg")
-                    self.bg.append(image)
-                elif not image.is_bg:
-                    self.images.append(image)
-
-    def __repr__(self) -> str:
-        tname = type(self).__name__
-        nimages = len(self.images)
-        nbg = len(self.bg)
-        return f"<{tname}: Dx={self.dx} nimages = {nimages}, nbg={nbg}>"
+        for i, relative_path in enumerate(df[IMAGE_PATH_KEY]):
+            abs_path = df_path.parent / relative_path
+            LOG.debug(f"Loading image index {i} @ {relative_path}")
+            if i in bad_image_indices:
+                LOG.debug(f"Skipping bad image: {i}")
+                continue
+            # In the df the png paths relative to the pickled dataframe, but
+            # I want to be able to call it from anywhere, so resolve them to
+            # absolute paths.
+            abs_path = df_path.parent / relative_path
+            metadata = df[df[IMAGE_PATH_KEY] == relative_path].squeeze()
+            metadata[IMAGE_PATH_KEY] = abs_path
+            image = TDSScreenImage(metadata)
+            if image.is_bg:
+                LOG.debug(f"Image{i} is bg")
+                self.bg.append(image)
+            elif not image.is_bg:
+                self.images.append(image)
 
     @property
     def metadata(self) -> pd.Dataframe:
@@ -406,16 +370,17 @@ class ScanMeasurement:
             yield from self.bg
         yield from self.images
 
-    def __reprr__(self):
+    def __repr__(self) -> str:
         tname = type(self).__name__
-        return f"<{tname:}, fname={self.name} dx={self.dx}, nimages={len(self.images)}, fname=>"
-
+        nimages = len(self.images)
+        nbg = len(self.bg)
+        return f"<{tname}: Dx={self.dx} nimages = {nimages}, nbg={nbg}>"
 
 def _f(measurement):
     return measurement.mean_central_slice_width_with_error(padding=10)
 
 
-class TDSDispersionScan:
+class ParameterScan:
     def __init__(
         self,
         files: Iterable[os.PathLike],
@@ -478,9 +443,7 @@ class TDSDispersionScan:
         return iter(self.measurements)
 
 
-
-
-class DispersionScan(TDSDispersionScan):
+class DispersionScan(ParameterScan):
     @property
     def tds_voltage(self):
         # By definition in the dispersion scan the voltages all stay the same.
@@ -498,7 +461,7 @@ class DispersionScan(TDSDispersionScan):
         return np.ones_like(self.measurements) * voltage
 
 
-class TDSScan(TDSDispersionScan):
+class TDSScan(ParameterScan):
     @property
     def tds_slope(self):
         return np.array([s.tds_slope for s in self.measurements])
@@ -514,6 +477,13 @@ class TDSScan(TDSDispersionScan):
             voltages.append(self.calibrator.get_voltage(percentage, metadata))
 
         return np.array(voltages)
+
+
+class BetaScan(ParameterScan):
+    @property
+    def beta(self):
+        return np.array([s.beta for s in self.measurements])
+
 
 
 def transform_pixel_widths(
@@ -568,7 +538,7 @@ def calculate_energy_spread_simple(scan: DispersionScan) -> ValueWithErrorT:
     dx, measurement = max((measurement.dx, measurement) for measurement in scan)
     energy = measurement.beam_energy  # in eV
 
-    width_pixels = measurement.mean_central_slice_width_with_error()
+    width_pixels = measurement.mean_central_slice_width_with_error(padding=10)
     # Calculate with uncertainties automatically.
     width_pixels_unc = ufloat(*width_pixels)
     width_unc = width_pixels_unc * PIXEL_SCALE_X_M
@@ -579,6 +549,14 @@ def calculate_energy_spread_simple(scan: DispersionScan) -> ValueWithErrorT:
     value, error = energy_spread_ev.n, energy_spread_ev.s
 
     return value, error  # in eV
+
+
+def _get_constant_key_from_df_safeley(df, key_name):
+    col = df[key_name]
+    value = col.iloc[0]
+    if not (value == col).all():
+        raise MalformedSnapshotDataFrame(f"{key_name} in {df} should be constant but is not")
+    return value
 
 
 @dataclass
@@ -595,10 +573,11 @@ class OpticalConfig:
 
 
 class SliceEnergySpreadMeasurement:
-    def __init__(self, dscan: DispersionScan, tscan: TDSScan, optical_config: OpticalConfig):
+    def __init__(self, dscan: DispersionScan, tscan: TDSScan, optical_config: OpticalConfig, bscan: BetaScan = None):
         self.dscan = dscan
         self.tscan = tscan
         self.oconfig = optical_config
+        self.bscan = bscan
 
     def dispersion_scan_fit(self) -> ValueWithErrorT:
         widths, errors = self.dscan.max_energy_slice_widths_and_errors(padding=10)
@@ -616,6 +595,15 @@ class SliceEnergySpreadMeasurement:
         a_v, b_v = linear_fit(voltages2, widths2_m2, errors2_m2)
         return a_v, b_v
 
+    def beta_scan_fit(self) -> tuple[ValueWithErrorT, ValueWithErrorT]:
+        if not self.bscan:
+            raise TypeError("Missing optional BetaScan instance.")
+        widths, errors = self.bscan.max_energy_slice_widths_and_errors(padding=10)
+        beta = self.bscan.beta
+        widths2_m2, errors2_m2 = transform_pixel_widths(widths, errors, pixel_units="m", to_variances=True)
+        a_beta, b_beta = linear_fit(beta, widths2_m2, errors2_m2)
+        return a_beta, b_beta
+
     def all_fit_parameters(self) -> FittedBeamParameters:
         a_v, b_v = self.tds_scan_fit()
         a_d, b_d = self.dispersion_scan_fit()
@@ -623,6 +611,11 @@ class SliceEnergySpreadMeasurement:
         energy = self.tscan.beam_energy()  # in eV
         dispersion = self.tscan.dx.mean()
         voltage = self.dscan.tds_voltage[0]
+
+        try:
+            a_beta, b_beta = self.beta_scan_fit()
+        except TypeError:
+            a_beta = b_beta = None
 
         return FittedBeamParameters(
             a_v=a_v,
@@ -633,6 +626,8 @@ class SliceEnergySpreadMeasurement:
             reference_dispersion=dispersion,
             reference_voltage=voltage,
             oconfig=self.oconfig,
+            a_beta=a_beta,
+            b_beta=b_beta
         )
 
 
@@ -649,6 +644,8 @@ class FittedBeamParameters:
     reference_dispersion: float
     reference_voltage: float
     oconfig: OpticalConfig
+    a_beta: ValueWithErrorT = None
+    b_beta: ValueWithErrorT = None
 
     @property
     def sigma_e(self) -> ValueWithErrorT:
@@ -688,6 +685,20 @@ class FittedBeamParameters:
         return result.n, result.s
 
     @property
+    def sigma_i_alt(self) -> ValueWithErrorT:
+        """This is the average beamsize in the TDS, returned in metres"""
+        av = ufloat(*self.a_v)
+        ad = ufloat(*self.a_d)
+        bd = ufloat(*self.b_d)
+
+        dx0 = self.reference_dispersion
+        v0 = abs(self.reference_voltage)
+        e0j = self.reference_energy * e # Convert to joules
+        k = self.oconfig.tds_wavenumber
+        result = (e0j / (dx0 * e * k * v0)) * umath.sqrt(ad - av + dx0**2 * bd)
+        return result.n, result.s
+
+    @property
     def sigma_b(self) -> ValueWithErrorT:
         bety = self.oconfig.tds_bety
         alfy = self.oconfig.tds_alfy
@@ -710,4 +721,29 @@ class FittedBeamParameters:
         gam0 = self.reference_energy / ELECTRON_MASS_EV
         sigma_b = ufloat(*self.sigma_b)
         result = sigma_b**2 * gam0 / self.oconfig.ocr_betx
+        return result.n, result.s
+
+    @property
+    def sigma_b_alt(self) -> ValueWithErrorT:
+        ab = ufloat(*self.a_beta)
+        ad = ufloat(*self.a_d)
+        bd = ufloat(*self.b_d)
+        d0 = self.reference_dispersion
+        # result = umath.sqrt(ab + ad + bd * d0**2)
+        result = umath.sqrt(ad + bd * d0**2 - ab)
+        return result.n, result.s
+
+    @property
+    def emitx_alt(self) -> ValueWithErrorT:
+        bb = ufloat(*self.b_beta)
+        gamma0 = self.reference_energy / ELECTRON_MASS_EV
+        result = bb * gamma0
+        return result.n, result.s
+
+    @property
+    def sigma_r_alt(self) -> ValueWithErrorT:
+        ab = ufloat(*self.a_beta)
+        bd = ufloat(*self.b_d)
+        d0 = self.reference_dispersion
+        result = umath.sqrt(ab - bd * d0**2)
         return result.n, result.s

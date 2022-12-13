@@ -328,14 +328,15 @@ def injector_cell_from_snapshot(snapshot: pd.Series, check=True, change_correcto
         sextupole_mask = snapshot.index.str.contains(r"^SC\.")
         other_kickers_mask = snapshot.index.str.contains(r"CB[LB]\.")
         unused_mask = xfel_mask | bpm_mask | timestamp_mask | sextupole_mask | other_kickers_mask
-        the_rest_mask = ~(used_mask | unused_mask)
+        my_added_metadata = snapshot.index.str.startswith("MY_")
+        the_rest_mask = ~(used_mask | unused_mask | my_added_metadata)
         snapshot[the_rest_mask]
 
         the_rest = snapshot[the_rest_mask]
 
-        assert set(the_rest.index) == {"RF.23.I1", "BK.24.I1"}
-
-    # For sanity to make sure we left nothing over
+        expected = {"RF.23.I1", "BK.24.I1"}
+        if set(the_rest.index) != expected:
+            LOG.warning("Unexpected item in DF.  Expected: {expected}, got: {the_rest}")
 
     cell = injector_cell()
     for quad_name, int_strength in snapshot[quad_mask].items():

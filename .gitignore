@@ -1,3 +1,17 @@
+# My stuff
+
+esme/*.toml
+esme/*.toml~
+esme/*.tar.gz
+esme/*.pkl
+esme/emem-*-images*/
+*.py~
+esme/*.png
+notes.org
+notes.org~
+*.csv
+esme/*.pdf
+
 # macOS
 .DS_Store
 .AppleDouble
@@ -112,3 +126,5 @@ ENV/
 
 # mkdocs build dir
 site/
+
+

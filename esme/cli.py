@@ -17,9 +17,12 @@ from esme.plot import (
     plot_tds_calibration,
     pretty_beam_parameter_table,
     show_before_after_processing,
+    compare_results
 )
 
 logging.basicConfig()
+
+LOG = logging.getLogger(__name__)
 
 
 @click.group()
@@ -52,7 +55,8 @@ def optics(scan_ini):
 @click.option(
     "--simple", "-s", is_flag=True, help="Calculate the energy spread without accounting for the impact of the TDS."
 )
-def calc(scan_inis, simple):
+@click.option("--latex", is_flag=True)
+def calc(scan_inis, simple, latex):
 
     slice_energy_spread_measurements = [load_config(fname) for fname in scan_inis]
 
@@ -67,12 +71,13 @@ def calc(scan_inis, simple):
             print(fname)
             print(f"({espread_kev}±{error_kev})keV")
     else:
-        for fname, sesme in zip(scan_inis, slice_energy_spread_measurements):
-            # plot_scans(sesme)
-            # plt.show()
-            print(fname)
-            print(pretty_beam_parameter_table(sesme))
-            plt.show()
+        print(compare_results(slice_energy_spread_measurements, latex))
+        # for fname, sesme in zip(scan_inis, slice_energy_spread_measurements):
+        #     # plot_scans(sesme)
+        #     # plt.show()
+        #     print(fname)
+        #     print(pretty_beam_parameter_table(sesme))
+        #     plt.show()
 
 
 @main.command()
@@ -108,35 +113,7 @@ def plot(scan_inis, dump_images, widths, magnets, alle, calibration, save):
         else:
             plot_scans(sesme, root_outdir)
 
-
 @main.command()
-@click.argument("tcls", nargs=-1)
-def diag(tcls):
-    for f in tcls:
-        sm = ScanMeasurement(f)
-        width, error = sm.mean_central_slice_width_with_error()
-        print(f"{f}: central width: width±error")
-        for i in range(sm.nimages):
-            show_before_after_processing(sm, i)
-            plt.show()
-
-# @main.command()
-# @click.argument("--reset_quads", is_flag=True)
-# @click.argument("--dx", nargs=1)
-# @click.argument("--go", )
-# def measurement(reset_quads, dx):
-#     import esme.measurement as mea
-
-#     if reset_quads:
-#         mea.set_initial_optics()
-#         sys.exit(0)
-
-#     if dx:
-#         mea.set_dscan_optics(dx)
-#         sys.exit(0)
-
-    # if take
-
 @click.argument("ftoml", nargs=1)
 def fix(ftoml):
     add_metadata_to_pcls_in_toml(ftoml)
