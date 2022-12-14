@@ -610,9 +610,11 @@ class SliceEnergySpreadMeasurement:
         a_v, b_v = self.tds_scan_fit()
         a_d, b_d = self.dispersion_scan_fit()
 
-        energy = self.tscan.beam_energy()  # in eV
-        dispersion = self.tscan.dx.mean()
-        voltage = self.dscan.tds_voltage[0]
+        # Values and errors, here we just say there is 0 error in the
+        # dispersion and voltage, not strictly true.
+        energy = self.tscan.beam_energy(), 0.  # in eV
+        dispersion = self.tscan.dx.mean(), 0.
+        voltage = self.dscan.tds_voltage[0], 0.
 
         try:
             a_beta, b_beta = self.beta_scan_fit()
@@ -642,17 +644,17 @@ class FittedBeamParameters:
     b_v: ValueWithErrorT
     a_d: ValueWithErrorT
     b_d: ValueWithErrorT
-    reference_energy: float
-    reference_dispersion: float
-    reference_voltage: float
+    reference_energy: ValueWithErrorT
+    reference_dispersion: ValueWithErrorT
+    reference_voltage: ValueWithErrorT
     oconfig: OpticalConfig
     a_beta: ValueWithErrorT = None
     b_beta: ValueWithErrorT = None
 
     @property
     def sigma_e(self) -> ValueWithErrorT:
-        energy0 = self.reference_energy
-        dx0 = self.reference_dispersion
+        energy0 = ufloat(*self.reference_energy)
+        dx0 = ufloat(*self.reference_dispersion)
         # Convert to ufloat for correct error propagation before converting back
         # to tuples at the end.
         av = ufloat(*self.a_v)
@@ -662,9 +664,9 @@ class FittedBeamParameters:
 
     @property
     def sigma_e_alt(self) -> ValueWithErrorT:
-        energy0 = self.reference_energy
-        dx0 = self.reference_dispersion
-        v0 = self.reference_voltage
+        energy0 = ufloat(*self.reference_energy)
+        dx0 = ufloat(*self.reference_dispersion)
+        v0 = ufloat(*self.reference_voltage)
         # Convert to ufloat for correct error propagation before converting back
         # to tuples at the end.
         bd = ufloat(*self.b_d)
@@ -676,8 +678,8 @@ class FittedBeamParameters:
     def sigma_i(self) -> ValueWithErrorT:
         """This is the average beamsize in the TDS, returned in metres"""
         k = self.oconfig.tds_wavenumber
-        dx0 = self.reference_dispersion
-        energy0 = self.reference_energy
+        dx0 = ufloat(*self.reference_dispersion)
+        energy0 = ufloat(*self.reference_energy)
         e0_joules = energy0 * e
         bv = ufloat(*self.b_v)
         try:
@@ -693,9 +695,9 @@ class FittedBeamParameters:
         ad = ufloat(*self.a_d)
         bd = ufloat(*self.b_d)
 
-        dx0 = self.reference_dispersion
-        v0 = abs(self.reference_voltage)
-        e0j = self.reference_energy * e # Convert to joules
+        dx0 = ufloat(*self.reference_dispersion)
+        v0 = abs(ufloat(*self.reference_voltage))
+        e0j = ufloat(*self.reference_energy) * e # Convert to joules
         k = self.oconfig.tds_wavenumber
         result = (e0j / (dx0 * e * k * v0)) * umath.sqrt(ad - av + dx0**2 * bd)
         return result.n, result.s
@@ -720,7 +722,7 @@ class FittedBeamParameters:
 
     @property
     def emitx(self) -> ValueWithErrorT:
-        gam0 = self.reference_energy / ELECTRON_MASS_EV
+        gam0 = ufloat(*self.reference_energy) / ELECTRON_MASS_EV
         sigma_b = ufloat(*self.sigma_b)
         result = sigma_b**2 * gam0 / self.oconfig.ocr_betx
         return result.n, result.s
@@ -730,15 +732,14 @@ class FittedBeamParameters:
         ab = ufloat(*self.a_beta)
         ad = ufloat(*self.a_d)
         bd = ufloat(*self.b_d)
-        d0 = self.reference_dispersion
-        # result = umath.sqrt(ab + ad + bd * d0**2)
+        d0 = ufloat(*self.reference_dispersion)
         result = umath.sqrt(ad + bd * d0**2 - ab)
         return result.n, result.s
 
     @property
     def emitx_alt(self) -> ValueWithErrorT:
         bb = ufloat(*self.b_beta)
-        gamma0 = self.reference_energy / ELECTRON_MASS_EV
+        gamma0 = ufloat(*self.reference_energy) / ELECTRON_MASS_EV
         result = bb * gamma0
         return result.n, result.s
 
@@ -746,6 +747,68 @@ class FittedBeamParameters:
     def sigma_r_alt(self) -> ValueWithErrorT:
         ab = ufloat(*self.a_beta)
         bd = ufloat(*self.b_d)
-        d0 = self.reference_dispersion
+        d0 = ufloat(*self.reference_dispersion)
         result = umath.sqrt(ab - bd * d0**2)
         return result.n, result.s
+
+    def fit_parameters_to_df(self):
+        dx0 = self.reference_dispersion
+        v0 = self.reference_voltage
+        e0 = self.reference_energy
+
+        av, bv = self.a_v, self.b_v
+        ad, bd = self.a_d, self.b_d
+
+        pdict = {"V_0": v0,
+                 "D_0": dx0,
+                 "E_0": e0,
+                 "A_V": av,
+                 "B_V": bv,
+                 "A_D": ad,
+                 "B_D": bd}
+
+        if self.a_beta and self.b_beta:
+            pdict |= {"A_beta": self.a_beta, "B_beta": self.b_beta}
+
+        values = []
+        errors = []
+        for key, pair in pdict.items():
+            values.append(pair[0])
+            errors.append(pair[1])
+
+        return pd.DataFrame({"values": values, "errors": errors}, index=pdict.keys())
+
+    def _beam_parameters_to_df(self):
+        pdict = {"sigma_e": self.sigma_e,
+                 "sigma_i": self.sigma_i,
+                 "sigma_b": self.sigma_b,
+                 "sigma_r": self.sigma_r,
+                 "emitx": self.emitx}
+
+        values = []
+        errors = []
+        for key, pair in pdict.items():
+            values.append(pair[0])
+            errors.append(pair[1])
+
+        return pd.DataFrame({"values": values, "errors": errors}, index=pdict.keys())
+
+    def _alt_beam_parameters_to_df(self):
+        pdict = {"sigma_e": self.sigma_e_alt,
+                 "sigma_i": self.sigma_i_alt}
+        if self.a_beta and self.b_beta:
+            pdict |= {"sigma_b": self.sigma_b_alt,
+                      "sigma_r": self.sigma_r_alt,
+                      "emitx": self.emitx_alt}
+        values = []
+        errors = []
+        for key, pair in pdict.items():
+            values.append(pair[0])
+            errors.append(pair[1])
+
+        return pd.DataFrame({"alt_values": values, "alt_errors": errors}, index=pdict.keys())
+
+    def beam_parameters_to_df(self):
+        params = self._beam_parameters_to_df()
+        alt_params = self._alt_beam_parameters_to_df()
+        return pd.concat([params, alt_params], axis=1)

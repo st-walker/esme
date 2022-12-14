@@ -342,171 +342,167 @@ def plot_scan_central_widths(scan: ana.DispersionScan, x, ax1, ax2):
 # def _um_tuple(pair):
 #     return pair*-
 
-def compare_both_derivations():
+def compare_both_derivations(test, latex=True):
     pass
 
-def pretty_beam_parameter_table(esme: ana.SliceEnergySpreadMeasurement, latex=False) -> str:
+
+# def _derived_paramaters(params):
+
+def _coefficients_df(params):
+    pass
+
+def formatted_parameter_dfs(esme: ana.SliceEnergySpreadMeasurement, latex=False) -> str:
     params = esme.all_fit_parameters()
 
-    av, bv = params.a_v, params.b_v
-    ad, bd = params.a_d, params.b_d
-
-    sige, sige_err = params.sigma_e
-    sige *= 1e-3
-    sige_err *= 1e-3
-
-    ex, exe = params.emitx
-    ex *= 1e6
-    exe *= 1e6
-
-    reference_voltage = params.reference_voltage
-    reference_dispersion = params.reference_dispersion
-    
-    with_errors = [(reference_voltage*1e-6, 0),
-                   (reference_dispersion, 0),
-                   av,
-                   bv,
-                   ad,
-                   bd,
-                   (np.nan, np.nan), # a_beta
-                   (np.nan, np.nan), # b_beta
-                   (sige, sige_err),
-                   params.sigma_i,
-                   params.sigma_b,
-                   params.sigma_r,
-                   (ex, exe)
-                   ]
-
-    variables_with_units = [("V_0", "MV"),
-                            ("D_0", "m"),
-                            ("A_V", "m²"),
-                            ("B_V", "m²/V²"),
-                            ("A_D", "m²"),
-                            ("B_D", "-"),
-                            ("A_beta", "m²"),
-                            ("B_beta", "m"),
-                            ("σ_E", "keV"),
-                            ("σ_I", "m"),
-                            ("σ_B", "m"),
-                            ("σ_R", "m"),
-                            ("emitx", "mm⋅mrad")]
-
-    latex_variables_with_units = [(r"$V_0$", r"\si{\mega\volt}"),
-                                  (r"$D_0$", r"\si{\metre}"),
-                                  (r"$A_V$", r"\si{\metre\squared}"),
-                                  (r"$B_V$", r"\si{\metre\squared\per\volt\squared}"),
-                                  (r"$A_D$", r"\si{\metre\squared}"),
-                                  (r"$B_D$", ""),
-                                  (r"$A_\beta$", r"\si{\metre\squared}"),
-                                  (r"$B_\beta$", r"\si{\metre}"),
-                                  (r"$\sigma_E$", r"$\kilo\electron\volt$"),
-                                  (r"$\sigma_I$", r"\si{\metre}"),
-                                  (r"$\sigma_B$", r"\si{\metre}"),
-                                  (r"$\sigma_R$", r"\si{\metre}"),
-                                  (r"$\varepsilon_x$", r"\si{\milli\metre{}\cdot{}\milli\radian}")
-                                  ]
-
-    exa, exae = params.emitx_alt
-    exa *= 1e6
-    exae *= 1e6
-    sige_alt, sige_alt_err = params.sigma_e_alt
-    sige_alt *= 1e-3
-    sige_alt_err *= 1e-3
-    with_errors_alt = [(reference_voltage*1e-6, 0),
-                       (reference_dispersion, 0),
-                       av,
-                       bv,
-                       ad,
-                       bd,
-                       (np.nan, np.nan),
-                       (np.nan, np.nan),
-                       (sige_alt, sige_alt_err),
-                       params.sigma_i_alt,
-                       ]
-
-    if esme.bscan:
-        with_errors_alt[-4] = params.a_beta
-        with_errors_alt[-3] = params.b_beta
-
-        with_errors_alt.extend([params.sigma_b_alt,
-                                params.sigma_r_alt,
-                                (exa, exae)
-                                ])
-    else:
-        missing_number = (np.nan, np.nan)
-        with_errors_alt.extend(5 * [missing_number])
-
-        # beta_scan_variables = [(r"$A_beta$", "\si{\metre\squared}"),
-        #                        (r"$B_beta$", "\si{\metre\squared}"),
-        #                        (r"$sigma_b_alt$", "\si{\metre}"), # Needs a_beta
-        #                        (r"$sigma_r_alt$", "\si{\metre}"), # Needs a_beta
-        #                        (r"$emitx_alt$", r"\si{\milli\metre{}\cdot{}\milli\radian}")]
-        # latex_beta_scan_variables = [(r"$A_\beta$", r"\si{\metre\squared}"),
-        #                              (r"$B_\beta$", r"\si{\metre\squared}"),
-        #                              (r"\sigma_b_alt", r"\si{\metre}"), # Needs a_beta
-        #                              (r"\sigma_r_{\beta}", r"\si{\metre}"), # Needs a_beta
-        #                              (r"\varepsilon_{\beta}", r"\si{\milli\metre{}\cdot{}\milli\radian}"),
-        #                              (r"$V_0$", r"\si{\mega\volt}"),
-        #                              (r"$D_0$", r"\si{\metre}")]
-
-        alt_variables_with_units.append(beta_scan_variables)
-        # latex_alt_variables_with_units.append(latex_beta_scan_variables)
 
 
+    beam_params = params.beam_parameters_to_df()
+    fit_params = params.fit_parameters_to_df()
+
+    fit_params.loc[["V_0", "E_0"]] *= 1e-6 # To MV / MeV
+    beam_params.loc[["emitx", "sigma_i", "sigma_b", "sigma_r"]] *= 1e6 # to mm.mrad & um
+    beam_params.loc["sigma_e"] *= 1e-3 # to keV
+
+    units = {'V_0': 'MV',
+             'D_0': 'm',
+             'E_0': 'MeV',
+             'A_V': 'm2',
+             'B_V': 'm2/V2',
+             'A_D': 'm2',
+             'B_D': '-',
+             'A_beta': 'm2',
+             'B_beta': 'm',
+             'sigma_e': 'keV',
+             'sigma_i': 'um',
+             'sigma_b': 'um',
+             'sigma_r': 'um',
+             'emitx': 'mm.mrad'}
+
+    latex_variables = {'V_0': '$V_0$',
+                       'D_0': '$D_0$',
+                       'E_0': '$E_0$',
+                       'A_V': '$A_V$',
+                       'B_V': '$B_V$',
+                       'A_D': '$A_D$',
+                       'B_D': '$B_D$',
+                       'A_beta': '$A_\\beta$',
+                       'B_beta': '$B_\\beta$',
+                       'sigma_e': '$\\sigma_E$',
+                       'sigma_i': '$\\sigma_I$',
+                       'sigma_b': '$\\sigma_B$',
+                       'sigma_r': '$\\sigma_R$',
+                       'emitx': '$\\varepsilon_x$'}
+
+    latex_units = {"m2": r"\si{\metre\squared}",
+                   "MV": r"\si{\mega\volt}",
+                   "m": r"\si{\metre}",
+                   "m2/v2": r"\si{\metre\squared\per\volt\squared}",
+                   "keV": r"$\kilo\electron\volt$",
+                   "mm.mrad": r"\si{\milli\metre{}\cdot{}\milli\radian}"}
+
+    varnames = None
     if latex:
-        variables_with_units = latex_variables_with_units
-        alt_variables_with_units = latex_alt_variables_with_units
+        varnames = latex_variables
+        units = {var_name: latex_units[unit_str] for (var_name, unit_str) in units.items()}
 
-    variables = [v[0] for v in variables_with_units]
-    units = [v[1] for v in variables_with_units]
+    beam_params = _format_df_for_printing(beam_params, [["values", "errors"], ["alt_values", "alt_errors"]], units, new_varnames=varnames, latex=latex)
+    fit_params = _format_df_for_printing(fit_params, [["values", "errors"]], units, new_varnames=varnames, latex=latex)
+
+    return fit_params, beam_params
 
 
-    formatted_strings = []
-
-    for value, error in with_errors:
-        formatted_strings.append(f"{ufloat(value, error):.1u}")
-    formatted_strings_alt = []
-    for value, error in with_errors_alt:
-        formatted_strings_alt.append(f"{ufloat(value, error):.1u}")
-
-    header = ["Variable", "Value", "Alt. Value", "Units"]
-
-    from IPython import embed; embed()
-    
-    return header, variables, formatted_strings, formatted_strings_alt, units
-    # return tabulate.tabulate(np.array([variables, formatted_strings, units]).T, headers=header, tablefmt=tablefmt)
-
-def compare_results(esmes, latex=False):
-    rows = []
-    for esme in esmes:
-        header, variables, values, units = pretty_beam_parameter_table(esme, False)
-        rows.append(values)
+def pretty_parameter_table(esme, latex=False):
+    fit, beam = formatted_parameter_dfs(esme, latex=latex)
 
     tablefmt = "simple"
     if latex:
         tablefmt = "latex_raw"
-    if len(rows) == 1:
-        header = ["Variable", "value"]
-    else:
-        header = ["Variable"] + [f"sim {i}" for (i, _) in enumerate(esmes)]
 
-    pd.DataFrame.from_dict({title: row for title, row in zip(header, rows)})
-    tab = tabulate.tabulate(np.array([variables, units, *rows]).T,
-                             headers=header,
-                             tablefmt=tablefmt)
-    return tab
+    fit_table = tabulate.tabulate(fit, tablefmt=tablefmt, headers=["Variable", "Value", "Units"])
+    beam_table = tabulate.tabulate(beam, tablefmt=tablefmt, headers=["Variable", "Value", "Alt. Value", "Units"])
 
-# import numpy as np
-# def decompose_float(x: np.float32):
-#     """decomposes a float32 into negative, exponent, and significand"""
-#     negative = x < 0
-#     n = np.abs(x).view(np.int32) # discard sign (MSB now 0),
-#                                  # view bit string as int32
-#     exponent = (n >> 23) - 127 # drop significand, correct exponent offset
-#                                # 23 and 127 are specific to float32
-#     significand = n & np.int32(2**23 - 1) # second factor provides mask
-#                                           # to extract significand
-#     return (negative, exponent, significand)
+    return f"{fit_table}\n\n\n{beam_table}"
+
+def _format_df_for_printing(df, value_error_name_pairs, units, new_varnames=None, latex=False):
+    if new_varnames is None:
+        new_varnames = {}
+    # Provide pairs of names of value column with associated error
+    # column that should be combined into a single list of formatted
+    # strings
+    formatted_strings = {}
+    for value_col_name, error_col_name in value_error_name_pairs:
+        formatted_strings[value_col_name] = []
+        values, errors = df[value_col_name], df[error_col_name]
+        for value, error in zip(values, errors):
+            pretty_value = f"{ufloat(value, error):.1u}"
+            if latex: # Typset for siunitx (latex)
+                pm_symbol = "+-"
+                pretty_value = pretty_value.replace("(", r"\num{")
+                pretty_value = pretty_value.replace(")", "}")
+            else: # Typeset for just printing to terminal
+                pm_symbol = "±"
+            pretty_value = pretty_value.replace("+/-", pm_symbol)
+            formatted_strings[value_col_name].append(pretty_value)
+
+    # Add a units column to the df.
+    var_names = df.index
+    df_str = pd.DataFrame(formatted_strings, index=var_names)
+    df_str["units"] = [units[name] for name in var_names]
+
+    # Update the index, maybe to latex variables depending on new_varnames kwarg.
+    new_index = []
+    for name in df.index:
+        try:
+            new_index.append(new_varnames[name])
+        except KeyError:
+            new_index.append(name)
+    df_str.index = new_index
+    return df_str
+
+
+def compare_results(esmes, latex=False):
+    beam_dfs = []
+    fit_dfs = []
+    beam_units = []
+    fit_units = []
+    for i, esme in enumerate(esmes):
+        beam, fit = formatted_parameter_dfs(esme, latex=latex)
+        beam_units.append(beam["units"])
+        fit_units.append(fit["units"])
+        del fit["units"]
+        del beam["units"]
+        for key in beam:
+            beam = beam.rename({key: f"{key.capitalize()} Dataset {i}"}, axis=1)
+        for key in fit:
+            fit = fit.rename({key: f"{key.capitalize()} Dataset {i}"}, axis=1)
+        beam_dfs.append(beam)
+        fit_dfs.append(fit)
+
+
+    # Pick longest units column for consistency, and we only want a single units col.
+    beam_units = beam_units[np.argmax([len(x) for x in beam_units])]
+    fit_units = fit_units[np.argmax([len(x) for x in fit_units])]    
+
+    beam_comparision_df = pd.concat(beam_dfs, axis=1).fillna("-")
+    beam_comparision_df["units"] = beam_units
+    fit_comparision_df = pd.concat(fit_dfs, axis=1).fillna("-")
+    fit_comparision_df["units"] = fit_units
+
+    tablefmt = "simple"
+    if latex:
+        tablefmt = "latex_raw"
+
+    fit_headers = ["Variable"] + list(fit_comparision_df.keys())
+    beam_headers = ["Variable"] + list(beam_comparision_df.keys())    
+    fit_table = tabulate.tabulate(fit_comparision_df, tablefmt=tablefmt, headers=fit_headers)
+    beam_table = tabulate.tabulate(beam_comparision_df, tablefmt=tablefmt, headers=beam_headers)
+
+    return f"{fit_table}\n\n\n{beam_table}"
+
+
+
+def format_latex_quantity():
+    pass
 
 
 def fexp(number):

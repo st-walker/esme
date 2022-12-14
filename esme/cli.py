@@ -16,7 +16,7 @@ from esme.plot import (
     plot_quad_strengths,
     plot_scans,
     plot_tds_calibration,
-    pretty_beam_parameter_table,
+    pretty_parameter_table,
     show_before_after_processing,
     compare_results
 )
@@ -76,7 +76,10 @@ def calc(scan_inis, simple, latex):
             print(fname)
             print(f"({espread_kev}±{error_kev})keV")
     else:
-        print(compare_results(slice_energy_spread_measurements, latex))
+        if len(slice_energy_spread_measurements) == 1:
+            print(pretty_parameter_table(slice_energy_spread_measurements[0], latex))
+        else:
+            print(compare_results(slice_energy_spread_measurements, latex))
         # for fname, sesme in zip(scan_inis, slice_energy_spread_measurements):
         #     # plot_scans(sesme)
         #     # plt.show()
@@ -106,7 +109,7 @@ def plot(scan_inis, dump_images, widths, magnets, alle, calibration, save):
             plot_quad_strengths(sesme, root_outdir)
             plot_tds_calibration(sesme, root_outdir)
             with (root_outdir / "parameters.txt").open("w") as f:
-                f.write(pretty_beam_parameter_table(sesme))
+                f.write(pretty_parameter_table(sesme))
         elif calibration:
             plot_tds_calibration(sesme, root_outdir)
         elif dump_images:
