@@ -79,10 +79,15 @@ def _beta_from_filename(fname: os.PathLike) -> float:
     return beta
 
 
-def add_metadata_to_pickled_df(fname):
+def add_metadata_to_pickled_df(fname, force_dx=None):
     LOG.info(f"Adding metadata to pickled file: {fname}")
     tds_amplitude = _tds_magic_number_from_filename(fname)
-    dispersion = _dispersion_from_filename(fname)
+
+    if not force_dx:
+        dispersion = _dispersion_from_filename(fname)
+    else:
+        dispersion = force_dx
+
     try:
         beta = _beta_from_filename(fname)
     except MissingMetadataInFileNameError:
@@ -111,10 +116,13 @@ def add_metadata_to_pcls_in_toml(ftoml):
     keys = ["dscan", "tscan", "bscan"]
     basepath = data["basepath"]
     for key in keys:
-        with contextlib.suppress(KeyError):
-            paths = data[key]["fnames"]
+        scan = data.get(key)
+        if not scan:
+            continue
+        paths = scan["fnames"]
+        force_dx = scan.get("fix_dx")
         for path in paths:
-            add_metadata_to_pickled_df(basepath / Path(path))
+            add_metadata_to_pickled_df(basepath / Path(path), force_dx=force_dx)
 
 
 def load_config(fname: os.PathLike) -> SliceEnergySpreadMeasurement:
@@ -166,7 +174,7 @@ def load_config(fname: os.PathLike) -> SliceEnergySpreadMeasurement:
 
 
     try:
-        bscan_paths = _files_from_config(config, "bscan")        
+        bscan_paths = _files_from_config(config, "bscan")
     except KeyError:
         bscan = None
     else:
@@ -175,5 +183,5 @@ def load_config(fname: os.PathLike) -> SliceEnergySpreadMeasurement:
             calibrator=calibrator,
             bad_images_per_measurement=config["data"]["bscan"].get("bad_images"),
         )
-        
+
     return SliceEnergySpreadMeasurement(dscan, tscan, oconfig, bscan=bscan)
