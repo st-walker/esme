@@ -369,7 +369,7 @@ def formatted_parameter_dfs(esme: ana.SliceEnergySpreadMeasurement, latex=False)
              'A_V': 'm2',
              'B_V': 'm2/V2',
              'A_D': 'm2',
-             'B_D': '-',
+             'B_D': '',
              'A_beta': 'm2',
              'B_beta': 'm',
              'sigma_e': 'keV',
@@ -396,8 +396,11 @@ def formatted_parameter_dfs(esme: ana.SliceEnergySpreadMeasurement, latex=False)
     latex_units = {"m2": r"\si{\metre\squared}",
                    "MV": r"\si{\mega\volt}",
                    "m": r"\si{\metre}",
-                   "m2/v2": r"\si{\metre\squared\per\volt\squared}",
-                   "keV": r"$\kilo\electron\volt$",
+                   "um": r"\si{\micro\metre}",
+                   "m2/V2": r"\si{\metre\squared\per\volt\squared}",
+                   "keV": r"\si{\kilo\electronvolt}",
+                   "MeV": r"\si{\mega\electronvolt}",
+                   "": "",
                    "mm.mrad": r"\si{\milli\metre{}\cdot{}\milli\radian}"}
 
     varnames = None
@@ -430,6 +433,7 @@ def _format_df_for_printing(df, value_error_name_pairs, units, new_varnames=None
     # column that should be combined into a single list of formatted
     # strings
     formatted_strings = {}
+    trans = str.maketrans({"(": "", ")": ""})
     for value_col_name, error_col_name in value_error_name_pairs:
         formatted_strings[value_col_name] = []
         values, errors = df[value_col_name], df[error_col_name]
@@ -437,8 +441,8 @@ def _format_df_for_printing(df, value_error_name_pairs, units, new_varnames=None
             pretty_value = f"{ufloat(value, error):.1u}"
             if latex: # Typset for siunitx (latex)
                 pm_symbol = "+-"
-                pretty_value = pretty_value.replace("(", r"\num{")
-                pretty_value = pretty_value.replace(")", "}")
+                pretty_value = pretty_value.translate(trans)
+                pretty_value = rf"\num{{{pretty_value}}}"
             else: # Typeset for just printing to terminal
                 pm_symbol = "±"
             pretty_value = pretty_value.replace("+/-", pm_symbol)
