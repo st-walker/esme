@@ -615,15 +615,16 @@ def plot_tds_calibration(sesme, root_outdir):
     fig3 = plot_calibrated_tds(sesme)
     fig4 = plot_streaking_parameters(sesme)
     fig5 = plot_tds_voltage(sesme)
-    fig6 = plot_bunch_lengths(sesme)
 
     if root_outdir is None:
         plt.show()
         return
 
-    fig1.savefig(root_outdir / "calibrator-fits.png")
+    if fig1:
+        fig1.savefig(root_outdir / "calibrator-fits.png")
     fig2.savefig(root_outdir / "r34s.png")
-    fig3.savefig(root_outdir / "derived-tds-voltages.png")
+    if fig3:
+        fig3.savefig(root_outdir / "derived-tds-voltages.png")
     fig4.savefig(root_outdir / "streaking-parameters.png")
     fig5.savefig(root_outdir / "tds-calibration-slopes.png")
     fig6.savefig(root_outdir / "bunch-lengths.png")
@@ -649,26 +650,31 @@ def plot_r34s(sesme):
 def plot_calibrator_with_fits(calib):
     fig, ax = plt.subplots()
 
-    sample_x = np.linspace(min(calib.percentages) * 0.9,
-                           max(calib.percentages) / 0.9,
-                           num=100)
+    x = calib.percentages    
+    sample_x = np.linspace(min(x) * 0.9, max(x) / 0.9, num=100)
 
-    ax.plot(calib.percentages, calib.tds_slopes * 1e-6, marker="x", linestyle="", label="Data")
-    calib.fn = cal.line
-    ax.plot(sample_x, calib.get_tds_slope(sample_x) * 1e-6, label="line(%)")
-    calib.fn = cal.sqrt
-    ax.plot(sample_x, calib.get_tds_slope(sample_x) * 1e-6, label="sqrt(%)")
-    # Change it back =/..  this is obviously quite error prone...
-    calib.fn = cal.line
+    try:
+        y = calib.tds_slopes * 1e-6
+        yfit = calib.get_tds_slope(sample_x) * 1e-6
+        ylabel = TDS_CALIBRATION_LABEL
+    except AttributeError: # Then it's a TrivialTDSCalibrator
+        y = calib.voltages * 1e-6
+        ylabel = VOLTAGE_LABEL
+    else:
+        ax.plot(sample_x, calib.get_tds_slope(sample_x) * 1e-6, label="Fit")
+    ax.plot(x, y, label="Data")
+    ax.set_xlabel(TDS_AMPLITUDE_LABEL)        
+    ax.set_ylabel(ylabel)
 
     ax.legend()
-    ax.set_xlabel(TDS_AMPLITUDE_LABEL)
-    ax.set_ylabel(TDS_CALIBRATION_LABEL)
     return fig
 
 
 def plot_calibrated_tds(sesme):
     # We plot two things here.  Firstly the stuff Sergey wrote down yesterday.
+
+    if isinstance(sesme.tscan.calibrator, cal.TrivialTDSCalibrator):
+        return
 
     # Secondly the derived voltages for the TDS scan.
 
@@ -677,11 +683,6 @@ def plot_calibrated_tds(sesme):
     derived_voltage = abs(sesme.tscan.voltage * 1e-6)  # MV
 
     sergey_percentages = sesme.tscan.calibrator.percentages
-    # sergey_voltages = abs(
-    #     sesme.tscan.calibrator.get_voltage(sergey_percentages, sesme.tscan[0].images[0].metadata) * 1e-6
-    # )
-
-    # popt, _ = curve_fit(ana.line, sergey_percentages, sergey_sergey_)
 
     fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(14, 8))
     ax1.plot(tds_percentage, derived_voltage, marker="x", label="TDS Scan Derived Voltages")
@@ -759,26 +760,22 @@ def plot_streaking_parameters(sesme):
     def to_ps(length):
         return (length / c) * 1e12
 
-    # raw_bl_ps = to_ps(raw_bunch_lengths)
-    # raw_bl_ps_errors = to_ps(raw_bl_errors)
-
-    # true_bl_ps = to_ps(true_bunch_lengths)
-    # true_bl_ps_errors = to_ps(true_bl_errors)
-
     ax3.errorbar(sesme.dscan.dx,
                  to_ps(raw_bunch_lengths),
+                 linestyle="",
                  yerr=to_ps(raw_bl_errors),
                  label="Raw bunch length")
 
     ax3.errorbar(sesme.dscan.dx,
                  to_ps(true_bunch_lengths),
+                 linestyle="",
                  yerr=to_ps(true_bl_errors),
-                 label="true bunch length")
+                 label="True bunch length")
 
     ax3.legend()
     # ax3.plot(sesme.dscan.dx, image_lengths, label="True bunch length")
 
-    ax1.plot(sesme.dscan.dx, dscan_streak)
+    ax1.plot(sesme.dscan.dx, dscan_streak, marker="x", linestyle="")
 
     ax1.set_xlabel(ETA_LABEL)
     ax1.set_ylabel(r"$|S|$")
@@ -787,7 +784,7 @@ def plot_streaking_parameters(sesme):
 
     tscan_streak = abs(_streaks_from_scan(sesme.tscan))
 
-    ax2.plot(abs(sesme.tscan.voltage*1e-6), tscan_streak)
+    ax2.plot(abs(sesme.tscan.voltage*1e-6), tscan_streak, marker="x", linestyle="")
 
     raw_bunch_lengths, raw_bl_errors = beam.apparent_bunch_lengths(sesme.tscan)
     true_bunch_lengths, true_bl_errors = beam.true_bunch_lengths(sesme.tscan)
@@ -795,11 +792,13 @@ def plot_streaking_parameters(sesme):
 
     ax4.errorbar(sesme.tscan.voltage * 1e-6,
                  to_ps(raw_bunch_lengths),
+                 linestyle="",
                  yerr=to_ps(raw_bl_errors),
                  label="Raw bunch length")
 
     ax4.errorbar(sesme.tscan.voltage * 1e-6,
                  to_ps(true_bunch_lengths),
+                 linestyle="",
                  yerr=to_ps(true_bl_errors),
                  label="True bunch length")
 
@@ -807,43 +806,5 @@ def plot_streaking_parameters(sesme):
     ax3.set_xlabel("Dx")
     ax4.set_xlabel("TDS Voltage / MV")
 
-    plt.show()
-
-
-    return fig
-
-def plot_bunch_lengths(sesme):
-    dscan = sesme.dscan
-    zrms = [m.zrms(pixel_units="m") for m in dscan]
-
-    zrms = np.array(zrms)
-    zrmsn = zrms[..., 0]
-    zrmse = zrms[..., 1]
-
-
-    dscan_streak = abs(_streaks_from_scan(dscan))
-    dscan_bunch_length = zrms
-
-
-    fig, (ax1, ax2) = plt.subplots(ncols=2)
-    ax1.errorbar(dscan.dx, 1e12 * zrmsn / dscan_streak / c,
-                 yerr=1e12*zrmse / dscan_streak / c)
-    ax1.set_xlabel(ETA_LABEL)
-    ax1.set_ylabel(r"$\sigma_z\,/\,\mathrm{ps}$")
-
-    tscan = sesme.tscan
-    zrms = [m.zrms(pixel_units="m") for m in tscan]
-
-    zrms = np.array(zrms)
-    zrmsn = zrms[..., 0]
-    zrmse = zrms[..., 1]
-
-    tscan_streak = abs(_streaks_from_scan(tscan))
-    tscan_bunch_length = zrms
-
-
-    ax2.errorbar(1e-6*abs(tscan.voltage), 1e12 * zrmsn / tscan_streak / c,
-                 yerr=1e12*zrmse / tscan_streak / c)
-    ax2.set_xlabel(VOLTAGE_LABEL)
 
     return fig
