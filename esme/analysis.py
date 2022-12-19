@@ -22,24 +22,17 @@ from scipy.constants import c, e, m_e
 from scipy.optimize import curve_fit
 from uncertainties import ufloat, umath
 
-from esme.calibration import line
 
 IMAGE_PATH_KEY: str = "XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"
 
 
 NOISE_THRESHOLD: float = 0.08  # By eye...
 
-# X means in the dimension of the beam (so the bunch width, which is the y-axis
-# on the image!)
-
-# Z means in the dimension of the beam (so the bunch length, which is the x-axis
-# on the image!)
-
 PIXEL_SCALE_X_UM: float = 13.7369
-PIXEL_SCALE_Z_UM: float = 11.1756
+PIXEL_SCALE_Y_UM: float = 11.1756
 
 PIXEL_SCALE_X_M: float = PIXEL_SCALE_X_UM * 1e-6
-PIXEL_SCALE_Z_M: float = PIXEL_SCALE_Z_UM * 1e-6
+PIXEL_SCALE_Y_M: float = PIXEL_SCALE_Y_UM * 1e-6
 
 LOG = logging.getLogger(__name__)
 
@@ -50,6 +43,11 @@ ValueWithErrorT = tuple[float, float]
 
 MULTIPROCESSING = True
 
+
+def line(x, a0, a1) -> Any:
+    return a0 + a1 * x
+
+
 def get_slice_properties(image: RawImageT) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
     #  Get bounds of image (i.e. to remove all fully-zero rows and columns)---this
     # speeds up the fitting procedure a lot by only fitting region of interest.
@@ -58,16 +56,15 @@ def get_slice_properties(image: RawImageT) -> tuple[npt.NDArray, npt.NDArray, np
     # Do the actual cropping
     imcropped = image[irow0:irow1, icol0:icol1]
 
-    columns = imcropped.T
-    row_index = np.arange(columns.shape[1])
+    row_index = np.arange(imcropped.shape[1])
 
-    means = []
-    mean_sigmas = []
-    sigmas = []
-    sigma_sigmas = []
-    for i, column in enumerate(columns):
+    mean_slice_position = []
+    mean_slice_position_error = []
+    sigma_slice = []
+    sigma_slice_error = []
+    for beam_slice in imcropped: # Iterates over the ROWS, so each one is a slice of the beam.
         try:
-            popt, perr = get_gaussian_fit(row_index, column)
+            popt, perr = get_gaussian_fit(row_index, beam_slice)
         except RuntimeError:  # Happens if curve_fit fails to converge.
             # Set parameters to NaN, mask them later from the output
             mu = sigma = sigma_mu = sigma_sigma = np.nan
@@ -75,26 +72,26 @@ def get_slice_properties(image: RawImageT) -> tuple[npt.NDArray, npt.NDArray, np
             _, mu, sigma = popt
             _, sigma_mu, sigma_sigma = perr
 
-        means.append(mu)
-        mean_sigmas.append(sigma_mu)
-        sigmas.append(sigma)
-        sigma_sigmas.append(sigma_sigma)
+        mean_slice_position.append(mu)
+        mean_slice_position_error.append(sigma_mu)
+        sigma_slice.append(sigma)
+        sigma_slice_error.append(sigma_sigma)
 
     # So we get back into the coordinate system of the original, uncropped image:
-    column_index = np.arange(icol0, icol1)
-    means += irow0
+    row_index = np.arange(irow0, irow1)
+    mean_slice_position += icol0
 
     # Deal with nans due to for example
-    nan_mask = ~(np.isnan(means) | np.isnan(mean_sigmas) | np.isnan(sigmas) | np.isnan(sigma_sigmas))
+    nan_mask = ~(np.isnan(mean_slice_position) | np.isnan(mean_slice_position_error) | np.isnan(sigma_slice) | np.isnan(sigma_slice_error))
 
-    means = np.array([ufloat(n, s) for n, s in zip(means, mean_sigmas)])
-    sigmas = np.array([ufloat(n, s) for n, s in zip(sigmas, sigma_sigmas)])
+    mean_slice_position = np.array([ufloat(n, s) for n, s in zip(mean_slice_position, mean_slice_position_error)])
+    slice_width = np.array([ufloat(n, s) for n, s in zip(sigma_slice, sigma_slice_error)])
 
-    column_index = column_index[nan_mask]
-    means = means[nan_mask]
-    sigmas = sigmas[nan_mask]
+    row_index = row_index[nan_mask]
+    mean_slice_position = mean_slice_position[nan_mask]
+    slice_width = slice_width[nan_mask]
 
-    return column_index, means, sigmas
+    return row_index, mean_slice_position, slice_width
 
 
 def gauss(x, a, mu, sigma) -> Any:
@@ -117,9 +114,10 @@ def get_cropping_bounds(im: RawImageT, image_index=-1) -> tuple[tuple[int, int],
     icol0 = non_zero_column_indices[0]
     icol1 = non_zero_column_indices[-1]
 
-    # Add 1 as index is exlusive on the upper bound, and this sometimes matters
-    # and prevents bugs/crashes in the error calculation later, because we can
-    # up with empty rows or columns.
+    # Add 1 as index is exlusive on the upper bound, and this
+    # sometimes matters and prevents bugs/crashes in the error
+    # calculation later, because we can end up with empty rows or
+    # columns.
     return (irow0, irow1 + 1), (icol0, icol1 + 1)
 
 
@@ -192,6 +190,7 @@ def get_slice_core(pixels) -> tuple[npt.NDArray, npt.NDArray]:
 
 
 def get_gaussian_fit(x, y) -> tuple[tuple, tuple]:
+    """popt/perr order: a, mu, sigma"""
     mu0 = y.argmax()
     a0 = y.max()
     sigma0 = 1
@@ -225,7 +224,9 @@ class TDSScreenImage:
         # pcl file.
         fname = Path(self.filename).with_suffix(".pcl")
         im = pickle.load(open(fname, "rb"))
-        return im
+        # Flip to match what we see in the control room.  not sure if
+        # I need an additional flip here or not, but shouldn't matter too much.
+        return im.T
 
     def show(self) -> None:
         im = self.to_im()
@@ -337,23 +338,6 @@ class ScanMeasurement:
         LOG.debug(f"Calculated average slice width: {width_with_error}")
 
         return width_with_error.n, width_with_error.s  # To tuple
-
-    def zrms(self, pixel_units="px") -> ValueWithErrorT:
-        sizes = []
-        for i in range(self.nimages):
-            image = self.to_im(i)
-            image = crop_image(image)
-            sizes.append(image.sum(axis=0).std())
-            # Get slice properties for this image
-
-        mean_size = np.mean(sizes)
-        mean_error = mean_size / np.sqrt(len(sizes))
-
-        width, error = transform_pixel_widths([mean_size], [mean_error],
-                                              to_variances=False,
-                                              pixel_units=pixel_units,
-                                              dimension="z")
-        return width.item(), error.item()
 
     def __getitem__(self, key: int) -> TDSScreenImage:
         return self.images[key]
@@ -506,12 +490,12 @@ def transform_pixel_widths(
         scale = 1
     elif pixel_units == "um" and dimension == "x":
         scale = PIXEL_SCALE_X_UM
-    elif pixel_units == "um" and dimension == "z":
-        scale = PIXEL_SCALE_Z_UM
+    elif pixel_units == "um" and dimension == "y":
+        scale = PIXEL_SCALE_Y_UM
     elif pixel_units == "m" and dimension == "x":
         scale = PIXEL_SCALE_X_M
-    elif pixel_units == "m" and dimension == "z":
-        scale = PIXEL_SCALE_Z_M
+    elif pixel_units == "m" and dimension == "y":
+        scale = PIXEL_SCALE_Y_M
     else:
         raise ValueError(f"unknown unit or dimension: {pixel_units=}, {dimension=}")
 

@@ -69,7 +69,7 @@ def dump_full_scan(esme: ana.SliceEnergySpreadMeasurement, root_outdir) -> None:
     if not bscan:
         return
     bscan_dir = root_outdir / "beta-scan"
-    for i, measurement in enumerate(tds_scan):
+    for i, measurement in enumerate(bscan):
         # dx = measurement.dx
         beta = measurement.beta
 
@@ -100,17 +100,18 @@ def show_before_after_processing(measurement: ana.ScanMeasurement, index: int) -
     ax1.imshow(im, aspect="auto")
     ax3.imshow(imp, aspect="auto")
 
-    x, slice_mus, _ = ana.get_slice_properties(imp)
-    idx_emax = x[np.argmin(slice_mus)]  # Min not max because image index counts from top.
+    y, slice_mus, _ = ana.get_slice_properties(imp)
+    idy_emax = y[np.argmin(slice_mus)]  # Min not max because image index counts from top.
 
-    ax1.axvline(idx_emax, alpha=0.25, color="white")
-    ax3.axvline(idx_emax, alpha=0.25, color="white")
+    ax1.axhline(idy_emax, alpha=0.25, color="white")
+    ax3.axhline(idy_emax, alpha=0.25, color="white")
 
     padding = 10
-    slc = im[..., idx_emax - padding : idx_emax + padding].mean(axis=1)
-    slcp = imp[..., idx_emax - padding : idx_emax + padding].mean(axis=1)
+    central_slice_index = np.s_[idy_emax - padding : idy_emax + padding]
+    slc = im[central_slice_index].mean(axis=0)
+    slcp = imp[central_slice_index].mean(axis=0)
 
-    bg = measurement.mean_bg_im()[..., idx_emax - padding : idx_emax + padding].mean(axis=1)
+    bg = measurement.mean_bg_im()[central_slice_index].mean(axis=0)
 
     ax2.plot(slc, label="Raw")
     ax4.plot(slcp, label="After processing")
@@ -135,17 +136,17 @@ def show_before_after_processing(measurement: ana.ScanMeasurement, index: int) -
 
     # Left plots
     ax1.set_title("Image before and after processing")
-    ax3.set_xlabel("Pixel column index")
-    ax1.set_ylabel("Pixel row index")
-    ax3.set_ylabel("Pixel row index")
+    ax3.set_xlabel("Pixel Column index")
+    ax1.set_ylabel("Pixel Row index")
+    ax3.set_ylabel("Pixel Row index")
     # Right plots
     ax2.set_title("Highest energy column")
-    ax4.set_xlabel("Pixel Row Index")
+    ax4.set_xlabel("Pixel Column Index")
     ax2.set_ylabel("Pixel Brightness")
     ax4.set_ylabel("Pixel Brightness")
     m = measurement
     fig.suptitle(
-        fr"TDS No. = {m.tds_percentage}, $\eta_\mathrm{{OTR}}={m.dx}\,\mathrm{{m}}$, image {index}, before/after image processing"
+        fr"TDS No. = {m.tds_percentage}, D_\mathrm{{OTR}}={m.dx}\,\mathrm{{m}}$, image {index}, before/after image processing"
     )
     ax2.legend()
     ax4.legend()
