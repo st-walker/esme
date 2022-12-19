@@ -98,7 +98,7 @@ def gauss(x, a, mu, sigma) -> Any:
     return a * np.exp(-((x - mu) ** 2) / (2.0 * sigma**2))
 
 
-def get_cropping_bounds(im: RawImageT, image_index=-1) -> tuple[tuple[int, int], tuple[int, int]]:
+def get_cropping_bounds(im: RawImageT) -> tuple[tuple[int, int], tuple[int, int]]:
     non_zero_mask = im != 0
 
     # "Along axis 1" -> each input to np.any is a row (axis 1 "points to the
@@ -179,6 +179,8 @@ def remove_all_disconnected_pixels(im: RawImageT) -> RawImageT:
 
 
 def get_slice_core(pixels) -> tuple[npt.NDArray, npt.NDArray]:
+    # Remove zeroes on either side of the slice and just get the
+    # values where there is signal.
     nonzero_pixels = (pixels != 0).nonzero()[0]
     istart = nonzero_pixels.min()
     iend = nonzero_pixels.max()
