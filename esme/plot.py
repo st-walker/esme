@@ -486,7 +486,7 @@ def compare_results(esmes, latex=False):
 
     # Pick longest units column for consistency, and we only want a single units col.
     beam_units = beam_units[np.argmax([len(x) for x in beam_units])]
-    fit_units = fit_units[np.argmax([len(x) for x in fit_units])]    
+    fit_units = fit_units[np.argmax([len(x) for x in fit_units])]
 
     beam_comparision_df = pd.concat(beam_dfs, axis=1).fillna("-")
     beam_comparision_df["units"] = beam_units
@@ -498,7 +498,7 @@ def compare_results(esmes, latex=False):
         tablefmt = "latex_raw"
 
     fit_headers = ["Variable"] + list(fit_comparision_df.keys())
-    beam_headers = ["Variable"] + list(beam_comparision_df.keys())    
+    beam_headers = ["Variable"] + list(beam_comparision_df.keys())
     fit_table = tabulate.tabulate(fit_comparision_df, tablefmt=tablefmt, headers=fit_headers)
     beam_table = tabulate.tabulate(beam_comparision_df, tablefmt=tablefmt, headers=beam_headers)
 
