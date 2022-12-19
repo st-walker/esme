@@ -14,6 +14,7 @@ import pandas as pd
 import esme.analysis as ana
 import esme.calibration as cal
 import esme.lattice as lat
+import esme.beam as beam
 
 LOG = logging.getLogger(__name__)
 
@@ -628,25 +629,16 @@ def plot_tds_calibration(sesme, root_outdir):
     fig6.savefig(root_outdir / "bunch-lengths.png")
 
 
-def _r34s_from_scan(scan: ana.ParameterScan):
-    result = []
-    for measurement in scan:
-        # Pick a non-bg image.
-        im = measurement.images[0]
-        result.append(cal.r34_from_tds_to_screen(im.metadata))
-    return np.array(result)
-
-
 def plot_r34s(sesme):
     fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(14, 8))
 
-    dscan_r34s = _r34s_from_scan(sesme.dscan)
+    dscan_r34s = cal.r34s_from_scan(sesme.dscan)
 
     ax1.plot(sesme.dscan.dx, dscan_r34s, marker="x")
     ax1.set_xlabel(r"$\eta_\mathrm{{OTR}}\,/\,\mathrm{m}$")
     ax1.set_ylabel(r"$R_{34}\,/\,\mathrm{m\cdot{}rad^{-1}}$")
 
-    tscan_r34s = _r34s_from_scan(sesme.tscan)
+    tscan_r34s = cal.r34s_from_scan(sesme.tscan)
 
     ax2.plot(sesme.tscan.tds_percentage, tscan_r34s, marker="x")
     ax2.set_xlabel(r"TDS Amplitude / %")
@@ -715,13 +707,11 @@ def plot_calibrated_tds(sesme):
 def _streaks_from_scan(scan: ana.ParameterScan):
     scan_voltages = scan.voltage
     energy = scan.beam_energy() * e # in eV and convert to joules
-
     k0 = e * abs(scan_voltages) * cal.TDS_WAVENUMBER / energy
-    r34s = _r34s_from_scan(scan)
+    r34s = cal.r34s_from_scan(scan)
     streak = r34s * k0
 
     return streak
-
 
 def plot_tds_voltage(sesme):
     fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(12.8, 8), sharey=True)
@@ -758,9 +748,35 @@ def plot_tds_voltage(sesme):
 
 
 def plot_streaking_parameters(sesme):
-    fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(14, 8), sharey=True)
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(ncols=2, nrows=2, figsize=(14, 8), sharey=False)
 
     dscan_streak = abs(_streaks_from_scan(sesme.dscan))
+
+    raw_bunch_lengths, raw_bl_errors = beam.apparent_bunch_lengths(sesme.dscan)
+    true_bunch_lengths, true_bl_errors = beam.true_bunch_lengths(sesme.dscan)
+
+    # To ps
+    def to_ps(length):
+        return (length / c) * 1e12
+
+    # raw_bl_ps = to_ps(raw_bunch_lengths)
+    # raw_bl_ps_errors = to_ps(raw_bl_errors)
+
+    # true_bl_ps = to_ps(true_bunch_lengths)
+    # true_bl_ps_errors = to_ps(true_bl_errors)
+
+    ax3.errorbar(sesme.dscan.dx,
+                 to_ps(raw_bunch_lengths),
+                 yerr=to_ps(raw_bl_errors),
+                 label="Raw bunch length")
+
+    ax3.errorbar(sesme.dscan.dx,
+                 to_ps(true_bunch_lengths),
+                 yerr=to_ps(true_bl_errors),
+                 label="true bunch length")
+
+    ax3.legend()
+    # ax3.plot(sesme.dscan.dx, image_lengths, label="True bunch length")
 
     ax1.plot(sesme.dscan.dx, dscan_streak)
 
@@ -771,7 +787,29 @@ def plot_streaking_parameters(sesme):
 
     tscan_streak = abs(_streaks_from_scan(sesme.tscan))
 
-    ax2.plot(abs(sesme.tscan.tds_voltage*1e-6), tscan_streak)
+    ax2.plot(abs(sesme.tscan.voltage*1e-6), tscan_streak)
+
+    raw_bunch_lengths, raw_bl_errors = beam.apparent_bunch_lengths(sesme.tscan)
+    true_bunch_lengths, true_bl_errors = beam.true_bunch_lengths(sesme.tscan)
+
+
+    ax4.errorbar(sesme.tscan.voltage * 1e-6,
+                 to_ps(raw_bunch_lengths),
+                 yerr=to_ps(raw_bl_errors),
+                 label="Raw bunch length")
+
+    ax4.errorbar(sesme.tscan.voltage * 1e-6,
+                 to_ps(true_bunch_lengths),
+                 yerr=to_ps(true_bl_errors),
+                 label="True bunch length")
+
+    ax3.set_ylabel("Bunch Length / ps")
+    ax3.set_xlabel("Dx")
+    ax4.set_xlabel("TDS Voltage / MV")
+
+    plt.show()
+
+
     return fig
 
 def plot_bunch_lengths(sesme):

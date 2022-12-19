@@ -7,6 +7,7 @@ from scipy.constants import e, c
 from scipy.optimize import curve_fit
 
 from esme.lattice import injector_cell_from_snapshot
+import esme.analysis as ana
 
 I1D_ENERGY_ADDRESS = "XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/I1D/ENERGY.ALL"
 
@@ -93,3 +94,12 @@ def get_tds_voltage(gradient_m_per_s, snapshot: pd.Series):
     energy_joules = energy * e * 1e6  # Convert to joules.
     voltage = (energy_joules / (e * angular_frequency * r34)) * gradient_m_per_s
     return voltage
+
+
+def r34s_from_scan(scan: ana.ParameterScan):
+    result = []
+    for measurement in scan:
+        # Pick a non-bg image.
+        im = measurement.images[0]
+        result.append(r34_from_tds_to_screen(im.metadata))
+    return np.array(result)
