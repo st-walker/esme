@@ -22,6 +22,7 @@ from esme.plot import (
 )
 
 logging.basicConfig()
+logging.getLogger("ocelot").setLevel(logging.WARNING) # Try to silence annoying ocelot info
 
 LOG = logging.getLogger(__name__)
 
