@@ -192,7 +192,7 @@ def _set_ylabel_for_scan(ax):
 
 def plot_tds_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> None:
     widths, errors = esme.tscan.max_energy_slice_widths_and_errors(padding=10)
-    voltages = esme.tscan.tds_voltage
+    voltages = esme.tscan.voltage
 
     voltages2_mv2 = (voltages * 1e-6) ** 2
     widths_um2, errors_um2 = ana.transform_pixel_widths(widths, errors, pixel_units="um")
@@ -571,7 +571,7 @@ def _plot_quad_strengths_tds(esme: ana.SliceEnergySpreadMeasurement, root_outdir
     assert (tscan_dx == esme.tscan.dx).all()
 
     tds_scan_quads = [lat.mean_quad_strengths(df) for df in tscan_all_images_dfs]
-    voltages = esme.tscan.tds_voltage / 1e6  # to MV
+    voltages = esme.tscan.voltage / 1e6  # to MV
     for voltage, df_actual in zip(voltages, tds_scan_quads):
         ax.errorbar(
             df_actual.s,
@@ -682,7 +682,7 @@ def plot_calibrated_tds(sesme):
 
     # What we actually used in our scan:
     tds_percentage = sesme.tscan.tds_percentage
-    derived_tds_voltage = abs(sesme.tscan.tds_voltage * 1e-6)  # MV
+    derived_voltage = abs(sesme.tscan.voltage * 1e-6)  # MV
 
     sergey_percentages = sesme.tscan.calibrator.percentages
     # sergey_voltages = abs(
@@ -692,7 +692,7 @@ def plot_calibrated_tds(sesme):
     # popt, _ = curve_fit(ana.line, sergey_percentages, sergey_sergey_)
 
     fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(14, 8))
-    ax1.plot(tds_percentage, derived_tds_voltage, marker="x", label="TDS Scan Derived Voltages")
+    ax1.plot(tds_percentage, derived_voltage, marker="x", label="TDS Scan Derived Voltages")
 
     sergey_tds_slopes = sesme.tscan.calibrator.tds_slopes
     popt, _ = sesme.tscan.calibrator.fit()
@@ -713,7 +713,7 @@ def plot_calibrated_tds(sesme):
 
 
 def _streaks_from_scan(scan: ana.ParameterScan):
-    scan_voltages = scan.tds_voltage
+    scan_voltages = scan.voltage
     energy = scan.beam_energy() * e # in eV and convert to joules
 
     k0 = e * abs(scan_voltages) * cal.TDS_WAVENUMBER / energy
@@ -728,7 +728,7 @@ def plot_tds_voltage(sesme):
 
     dscan = sesme.dscan
     dscan_dx = dscan.dx
-    dscan_voltage = abs(dscan.tds_voltage * 1e-6)
+    dscan_voltage = abs(dscan.voltage * 1e-6)
 
     ax1.plot(dscan_dx, dscan_voltage, marker="x")
     ax1.set_ylabel(VOLTAGE_LABEL)
@@ -737,7 +737,7 @@ def plot_tds_voltage(sesme):
 
     tscan = sesme.tscan
     tscan_percent = tscan.tds_percentage
-    tscan_voltage = abs(tscan.tds_voltage * 1e-6)
+    tscan_voltage = abs(tscan.voltage * 1e-6)
 
     ax2.plot(tscan_percent, tscan_voltage, marker="x")
     ax2.set_xlabel(r"TDS Amplitude / %")
@@ -804,7 +804,7 @@ def plot_bunch_lengths(sesme):
     tscan_bunch_length = zrms
 
 
-    ax2.errorbar(1e-6*abs(tscan.tds_voltage), 1e12 * zrmsn / tscan_streak / c,
+    ax2.errorbar(1e-6*abs(tscan.voltage), 1e12 * zrmsn / tscan_streak / c,
                  yerr=1e12*zrmse / tscan_streak / c)
     ax2.set_xlabel(VOLTAGE_LABEL)
 

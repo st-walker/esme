@@ -431,7 +431,7 @@ class ParameterScan:
 
 class DispersionScan(ParameterScan):
     @property
-    def tds_voltage(self):
+    def voltage(self):
         # By definition in the dispersion scan the voltages all stay the same.
         # Get dispersion at which the calibration was done
         caldx = self.calibrator.dispersion
@@ -453,7 +453,7 @@ class TDSScan(ParameterScan):
         return np.array([s.tds_slope for s in self.measurements])
 
     @property
-    def tds_voltage(self):
+    def voltage(self):
         dx = self.dx
         # Get metadata associated with first (non-bg) image of each measurement,
         # and reasonably assume it's the same for every image of the scan.
@@ -575,7 +575,7 @@ class SliceEnergySpreadMeasurement:
 
     def tds_scan_fit(self) -> tuple[ValueWithErrorT, ValueWithErrorT]:
         widths, errors = self.tscan.max_energy_slice_widths_and_errors(padding=10)
-        voltages2 = self.tscan.tds_voltage**2
+        voltages2 = self.tscan.voltage**2
 
         widths2_m2, errors2_m2 = transform_pixel_widths(widths, errors, pixel_units="m", to_variances=True)
         a_v, b_v = linear_fit(voltages2, widths2_m2, errors2_m2)
@@ -598,7 +598,7 @@ class SliceEnergySpreadMeasurement:
         # dispersion and voltage, not strictly true.
         energy = self.tscan.beam_energy(), 0.  # in eV
         dispersion = self.tscan.dx.mean(), 0.
-        voltage = self.dscan.tds_voltage[0], 0.
+        voltage = self.dscan.voltage[0], 0.
 
         try:
             a_beta, b_beta = self.beta_scan_fit()
