@@ -43,15 +43,17 @@ ValueWithErrorT = tuple[float, float]
 
 MULTIPROCESSING = True
 
+CENTRAL_SLICE_SEARCH_WINDOW_RELATIVE_WIDTH = 9
+
 
 def line(x, a0, a1) -> Any:
     return a0 + a1 * x
 
 
-def get_slice_properties(image: RawImageT) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
+def get_slice_properties(image: RawImageT, fast=True) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
     #  Get bounds of image (i.e. to remove all fully-zero rows and columns)---this
     # speeds up the fitting procedure a lot by only fitting region of interest.
-    (irow0, irow1), (icol0, icol1) = get_cropping_bounds(image)
+    (irow0, irow1), (icol0, icol1) = get_cropping_bounds(image, just_central_slices=fast)
 
     # Do the actual cropping
     imcropped = image[irow0:irow1, icol0:icol1]
@@ -98,7 +100,7 @@ def gauss(x, a, mu, sigma) -> Any:
     return a * np.exp(-((x - mu) ** 2) / (2.0 * sigma**2))
 
 
-def get_cropping_bounds(im: RawImageT) -> tuple[tuple[int, int], tuple[int, int]]:
+def get_cropping_bounds(im: RawImageT, just_central_slices=False) -> tuple[tuple[int, int], tuple[int, int]]:
     non_zero_mask = im != 0
 
     # "Along axis 1" -> each input to np.any is a row (axis 1 "points to the
@@ -113,6 +115,12 @@ def get_cropping_bounds(im: RawImageT) -> tuple[tuple[int, int], tuple[int, int]
     irow1 = non_zero_row_indices[-1]
     icol0 = non_zero_column_indices[0]
     icol1 = non_zero_column_indices[-1]
+
+    if just_central_slices:
+        length = (irow1 - irow0)
+        middle = irow0 + length // 2
+        irow0 = middle - length // CENTRAL_SLICE_SEARCH_WINDOW_RELATIVE_WIDTH
+        irow1 = middle + length // CENTRAL_SLICE_SEARCH_WINDOW_RELATIVE_WIDTH
 
     # Add 1 as index is exlusive on the upper bound, and this
     # sometimes matters and prevents bugs/crashes in the error
