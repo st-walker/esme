@@ -736,6 +736,18 @@ class FittedBeamParameters:
         result = umath.sqrt(ab - bd * d0**2)
         return result.n, result.s
 
+    @property
+    def sigma_e_from_tds(self) -> ValueWithErrorT:
+        sigma_i = ufloat(*self.sigma_i)
+        in_ev = abs(ufloat(*self.reference_voltage)) * TDS_WAVENUMBER * sigma_i
+        return in_ev.n, in_ev.s
+
+    @property
+    def sigma_e_from_tds_alt(self) -> ValueWithErrorT:
+        sigma_i = ufloat(*self.sigma_i_alt)
+        in_ev = abs(ufloat(*self.reference_voltage)) * TDS_WAVENUMBER * sigma_i
+        return in_ev.n, in_ev.s
+
     def fit_parameters_to_df(self):
         dx0 = self.reference_dispersion
         v0 = self.reference_voltage
@@ -766,6 +778,7 @@ class FittedBeamParameters:
     def _beam_parameters_to_df(self):
         pdict = {"sigma_e": self.sigma_e,
                  "sigma_i": self.sigma_i,
+                 "sigma_e_from_tds": self.sigma_e_from_tds,
                  "sigma_b": self.sigma_b,
                  "sigma_r": self.sigma_r,
                  "emitx": self.emitx}
@@ -780,7 +793,8 @@ class FittedBeamParameters:
 
     def _alt_beam_parameters_to_df(self):
         pdict = {"sigma_e": self.sigma_e_alt,
-                 "sigma_i": self.sigma_i_alt}
+                 "sigma_i": self.sigma_i_alt,
+                 "sigma_e_from_tds": self.sigma_e_from_tds_alt}
         if self.a_beta and self.b_beta:
             pdict |= {"sigma_b": self.sigma_b_alt,
                       "sigma_r": self.sigma_r_alt,
@@ -797,6 +811,7 @@ class FittedBeamParameters:
         params = self._beam_parameters_to_df()
         alt_params = self._alt_beam_parameters_to_df()
         return pd.concat([params, alt_params], axis=1)
+
 
 
 def _get_constant_voltage_for_scan(scan):

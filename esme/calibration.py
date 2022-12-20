@@ -54,8 +54,6 @@ class TDSCalibrator:
         dx = self.dispersion
         return f"<{cname}: {dx=}, %={repr(self.percentages)}, grds={self.tds_slopes}>"
 
-    # def get_voltage_for_dispersion_scan(percentage, snapshot: pd.Series)
-
 
 class TrivialTDSCalibrator:
     def __init__(self, percentages, voltages, dispersion):
@@ -85,6 +83,7 @@ def r34_from_tds_to_screen(snapshot: pd.Series):
     _, rmat, _ = lat.transfer_maps(energy * 1e-3)
     r34 = rmat[2, 3]
     return r34
+
 
 def get_tds_voltage(gradient_m_per_s, snapshot: pd.Series):
     r34 = r34_from_tds_to_screen(snapshot)

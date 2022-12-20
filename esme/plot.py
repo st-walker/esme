@@ -364,7 +364,7 @@ def formatted_parameter_dfs(esme: ana.SliceEnergySpreadMeasurement, latex=False)
 
     beam_params = params.beam_parameters_to_df()
     beam_params.loc[["emitx", "sigma_i", "sigma_b", "sigma_r"]] *= 1e6 # to mm.mrad & um
-    beam_params.loc["sigma_e"] *= 1e-3 # to keV
+    beam_params.loc[["sigma_e", "sigma_e_from_tds"]] *= 1e-3 # to keV
 
     units = {'V_0': 'MV',
              'D_0': 'm',
@@ -378,6 +378,7 @@ def formatted_parameter_dfs(esme: ana.SliceEnergySpreadMeasurement, latex=False)
              "sigma_z": "mm",
              "sigma_t": "ps",
              'sigma_e': 'keV',
+             'sigma_e_from_tds': 'keV',
              'sigma_i': 'um',
              'sigma_b': 'um',
              'sigma_r': 'um',
@@ -396,6 +397,7 @@ def formatted_parameter_dfs(esme: ana.SliceEnergySpreadMeasurement, latex=False)
                        "sigma_t": r"$\sigma_t$",
                        'sigma_e': '$\\sigma_E$',
                        'sigma_i': '$\\sigma_I$',
+                       'sigma_e_from_tds': '$\\sigma_E^{\mathrm{TDS}}$',
                        'sigma_b': '$\\sigma_B$',
                        'sigma_r': '$\\sigma_R$',
                        'emitx': '$\\varepsilon_x$'}
