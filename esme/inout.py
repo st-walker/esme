@@ -29,8 +29,6 @@ def _optics_config_from_dict(config: dict) -> OpticalConfig:
     screen_betax = config["optics"]["screen"]["betx"]
 
     return OpticalConfig(
-        tds_length=tds["length"],
-        tds_wavenumber=tds["wavenumber"],
         tds_bety=tds["bety"],
         tds_alfy=tds["alfy"],
         ocr_betx=screen_betax,

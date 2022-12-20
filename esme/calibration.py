@@ -14,7 +14,7 @@ I1D_ENERGY_ADDRESS = "XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/I1D/ENERGY.ALL"
 TDS_FREQUENCY = 3e9
 TDS_WAVELENGTH = c / TDS_FREQUENCY
 TDS_WAVENUMBER = 2 * np.pi / TDS_WAVELENGTH
-
+TDS_LENGTH = 0.7 # metres
 
 
 def line(x, a0, a1) -> Any:
@@ -86,7 +86,6 @@ def r34_from_tds_to_screen(snapshot: pd.Series):
     r34 = rmat[2, 3]
     return r34
 
-
 def get_tds_voltage(gradient_m_per_s, snapshot: pd.Series):
     r34 = r34_from_tds_to_screen(snapshot)
     energy = snapshot[I1D_ENERGY_ADDRESS]
@@ -96,7 +95,7 @@ def get_tds_voltage(gradient_m_per_s, snapshot: pd.Series):
     return voltage
 
 
-def r34s_from_scan(scan: ana.ParameterScan):
+def r34s_from_scan(scan):
     result = []
     for measurement in scan:
         # Pick a non-bg image.

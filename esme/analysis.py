@@ -22,6 +22,8 @@ from scipy.constants import c, e, m_e
 from scipy.optimize import curve_fit
 from uncertainties import ufloat, umath
 
+from esme.calibration import TDS_WAVENUMBER, TDS_LENGTH
+
 
 IMAGE_PATH_KEY: str = "XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"
 
@@ -549,8 +551,6 @@ def _get_constant_key_from_df_safeley(df, key_name):
 @dataclass
 class OpticalConfig:
     ocr_betx: float
-    tds_length: float
-    tds_wavenumber: float
     tds_bety: float
     tds_alfy: float
 
@@ -662,7 +662,7 @@ class FittedBeamParameters:
     @property
     def sigma_i(self) -> ValueWithErrorT:
         """This is the average beamsize in the TDS, returned in metres"""
-        k = self.oconfig.tds_wavenumber
+        k = TDS_WAVENUMBER
         dx0 = ufloat(*self.reference_dispersion)
         energy0 = ufloat(*self.reference_energy)
         e0_joules = energy0 * e
@@ -683,7 +683,7 @@ class FittedBeamParameters:
         dx0 = ufloat(*self.reference_dispersion)
         v0 = abs(ufloat(*self.reference_voltage))
         e0j = ufloat(*self.reference_energy) * e # Convert to joules
-        k = self.oconfig.tds_wavenumber
+        k = TDS_WAVENUMBER
         result = (e0j / (dx0 * e * k * v0)) * umath.sqrt(ad - av + dx0**2 * bd)
         return result.n, result.s
 
@@ -692,7 +692,7 @@ class FittedBeamParameters:
         bety = self.oconfig.tds_bety
         alfy = self.oconfig.tds_alfy
         gamy = self.oconfig.tds_gamy
-        length = self.oconfig.tds_length
+        length = TDS_LENGTH
         sigma_i = ufloat(*self.sigma_i)
         b_beta = sigma_i**2 / (bety + 0.25 * length**2 * gamy - length * alfy)
         result = umath.sqrt(b_beta * self.oconfig.ocr_betx)
