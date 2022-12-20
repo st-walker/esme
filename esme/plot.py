@@ -356,12 +356,13 @@ def _coefficients_df(params):
 def formatted_parameter_dfs(esme: ana.SliceEnergySpreadMeasurement, latex=False) -> str:
     params = esme.all_fit_parameters()
 
-
+    fit_params = params.fit_parameters_to_df()
+    fit_params.loc["sigma_z"] = beam.mean_bunch_length(esme)
+    fit_params.loc["sigma_z"] *= 1e3 # to mm
+    fit_params.loc["sigma_t"] = fit_params.loc["sigma_z"] * 1e-3 * 1e12 / c # to ps
+    fit_params.loc[["V_0", "E_0"]] *= 1e-6 # To MV / MeV
 
     beam_params = params.beam_parameters_to_df()
-    fit_params = params.fit_parameters_to_df()
-
-    fit_params.loc[["V_0", "E_0"]] *= 1e-6 # To MV / MeV
     beam_params.loc[["emitx", "sigma_i", "sigma_b", "sigma_r"]] *= 1e6 # to mm.mrad & um
     beam_params.loc["sigma_e"] *= 1e-3 # to keV
 
@@ -374,6 +375,8 @@ def formatted_parameter_dfs(esme: ana.SliceEnergySpreadMeasurement, latex=False)
              'B_D': '',
              'A_beta': 'm2',
              'B_beta': 'm',
+             "sigma_z": "mm",
+             "sigma_t": "ps",
              'sigma_e': 'keV',
              'sigma_i': 'um',
              'sigma_b': 'um',
@@ -389,6 +392,8 @@ def formatted_parameter_dfs(esme: ana.SliceEnergySpreadMeasurement, latex=False)
                        'B_D': '$B_D$',
                        'A_beta': '$A_\\beta$',
                        'B_beta': '$B_\\beta$',
+                       "sigma_z": r"$\sigma_z$",
+                       "sigma_t": r"$\sigma_t$",
                        'sigma_e': '$\\sigma_E$',
                        'sigma_i': '$\\sigma_I$',
                        'sigma_b': '$\\sigma_B$',
@@ -398,10 +403,12 @@ def formatted_parameter_dfs(esme: ana.SliceEnergySpreadMeasurement, latex=False)
     latex_units = {"m2": r"\si{\metre\squared}",
                    "MV": r"\si{\mega\volt}",
                    "m": r"\si{\metre}",
+                   "mm": r"\si{\milli\metre}",
                    "um": r"\si{\micro\metre}",
                    "m2/V2": r"\si{\metre\squared\per\volt\squared}",
                    "keV": r"\si{\kilo\electronvolt}",
                    "MeV": r"\si{\mega\electronvolt}",
+                   "ps": r"\si{\pico\second}",
                    "": "",
                    "mm.mrad": r"\si{\milli\metre{}\cdot{}\milli\radian}"}
 
@@ -650,7 +657,7 @@ def plot_r34s(sesme):
 def plot_calibrator_with_fits(calib):
     fig, ax = plt.subplots()
 
-    x = calib.percentages    
+    x = calib.percentages
     sample_x = np.linspace(min(x) * 0.9, max(x) / 0.9, num=100)
 
     try:
@@ -663,7 +670,7 @@ def plot_calibrator_with_fits(calib):
     else:
         ax.plot(sample_x, calib.get_tds_slope(sample_x) * 1e-6, label="Fit")
     ax.plot(x, y, label="Data")
-    ax.set_xlabel(TDS_AMPLITUDE_LABEL)        
+    ax.set_xlabel(TDS_AMPLITUDE_LABEL)
     ax.set_ylabel(ylabel)
 
     ax.legend()

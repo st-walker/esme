@@ -442,20 +442,7 @@ class ParameterScan:
 class DispersionScan(ParameterScan):
     @property
     def voltage(self):
-        # By definition in the dispersion scan the voltages all stay the same.
-        # Get dispersion at which the calibration was done
-        caldx = self.calibrator.dispersion
-        # Pick
-        idx = np.argmin(abs(self.dx - caldx))
-        measurement = self.measurements[idx]
-
-        metadata = measurement.images[0].metadata
-        voltage = self.calibrator.get_voltage(measurement.tds_percentage,
-                                              metadata)
-        dx = measurement.dx
-        LOG.debug("Deriving constant voltage for dispersion scan.  Calibrator: {self.calibrator} @ Dx={dx}")
-        return np.ones_like(self.measurements) * voltage
-
+        return _get_constant_voltage_for_scan(self)
 
 class TDSScan(ParameterScan):
     @property
@@ -479,6 +466,10 @@ class BetaScan(ParameterScan):
     @property
     def beta(self):
         return np.array([s.beta for s in self.measurements])
+
+    @property
+    def voltage(self):
+        return _get_constant_voltage_for_scan(self)
 
 
 
@@ -806,3 +797,19 @@ class FittedBeamParameters:
         params = self._beam_parameters_to_df()
         alt_params = self._alt_beam_parameters_to_df()
         return pd.concat([params, alt_params], axis=1)
+
+
+def _get_constant_voltage_for_scan(scan):
+    # By definition in the dispersion scan the voltages all stay the same.
+    # Get dispersion at which the calibration was done
+    caldx = scan.calibrator.dispersion
+    # Pick
+    idx = np.argmin(abs(scan.dx - caldx))
+    measurement = scan.measurements[idx]
+
+    metadata = measurement.images[0].metadata
+    voltage = scan.calibrator.get_voltage(measurement.tds_percentage,
+                                          metadata)
+    dx = measurement.dx
+    LOG.debug("Deriving constant voltage for dispersion scan.  Calibrator: {scan.calibrator} @ Dx={dx}")
+    return np.ones_like(scan.measurements) * voltage
