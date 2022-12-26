@@ -9,14 +9,15 @@ import os
 import pickle
 import time
 from datetime import datetime
+import logging
 
-import imageio
 import matplotlib
 import numpy as np
 import pandas as pd
-from mint.devices import Device
-from mint.xfel_interface import XFELMachineInterface
+from .devices import Device
+from .xfel_interface import XFELMachineInterface
 
+LOG = logging.getLogger(__name__)
 
 class MPS(Device):
     def __init__(self, eid=None, server="XFEL", subtrain="SA1"):
@@ -217,29 +218,33 @@ class Machine:
         #    time.sleep(2)
         #    return None
         if check_if_online:
-
             self.wait_machine_online()
 
         data = np.array([time.time()], dtype=object)
         all_names = np.array(["timestamp"])
         data, all_names = self.get_orbit(data, all_names)
         if len(data) == 0:
+            LOG.warning("Missing orbit information, snapshot failed")
             return None
         data, all_names = self.get_magnets(data, all_names)
         if len(data) == 0:
+            LOG.warning("Missing magnet information, snapshot failed")
             return None
         data, all_names = self.get_phase_shifters(data, all_names)
         if len(data) == 0:
+            LOG.warning("Missing phase shift information, snapshot failed")
             return None
         data, all_names = self.get_undulators(data, all_names)
         if len(data) == 0:
+            LOG.warning("Missing undulator information, snapshot failed")
             return None
         data, all_names = self.get_channels(data, all_names)
         if len(data) == 0:
+            LOG.warning("Missing other channels, snapshot failed")
             return None
         data, all_names = self.get_images(data, all_names)
         if len(data) == 0:
-            print("get_images bad")
+            LOG.warning("Missing images, snapshot failed")
             return None
         # print(len(data), len(all_names))
         data_dict = {}
@@ -248,13 +253,3 @@ class Machine:
 
         df = pd.DataFrame(data_dict, columns=data_dict.keys())
         return df
-
-
-if __name__ is "__main__":
-    df = pd.DataFrame()
-    df2 = pd.DataFrame(data={"a": 2, "b": 4}, index=[0])
-    df3 = pd.DataFrame(data={"b": [5], "a": [6], "c": [3]})
-    df = df.append(df2)
-    print("1", df)
-    df = df.append(df3)
-    print("2", df)

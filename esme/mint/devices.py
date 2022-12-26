@@ -6,7 +6,7 @@ import time
 from threading import Event, Thread
 
 import numpy as np
-from mint.interface import Device
+from .interface import Device
 from PyQt5 import QtCore, QtGui
 
 logger = logging.getLogger(__name__)

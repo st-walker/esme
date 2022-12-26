@@ -17,9 +17,9 @@ import subprocess
 import sys
 
 # from lattices import lattice_manager
-import mint.devices as devices
+from . import devices
 import numpy as np
-from mint.interface import Device, MachineInterface
+from .interface import Device, MachineInterface
 
 logger = logging.getLogger(__name__)
 # from ocelot.cpbd.response_matrix import *
