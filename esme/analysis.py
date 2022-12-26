@@ -23,9 +23,7 @@ from scipy.optimize import curve_fit
 from uncertainties import ufloat, umath
 
 from esme.calibration import TDS_WAVENUMBER, TDS_LENGTH
-
-
-IMAGE_PATH_KEY: str = "XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"
+from esme.measurement import I1_DUMP_SCREEN_ADDRESS
 
 
 NOISE_THRESHOLD: float = 0.08  # By eye...
@@ -229,7 +227,7 @@ class TDSScreenImage:
 
     @property
     def filename(self) -> str:
-        return self.metadata[IMAGE_PATH_KEY]
+        return self.metadata[I1_DUMP_SCREEN_ADDRESS]
 
     def to_im(self, process=True) -> RawImageT:
         # path to png is in the df, but actuallt we want path to the adjacent
@@ -284,7 +282,7 @@ class ScanMeasurement:
         self.bg = []
         self._mean_bg_im: Optional[RawImageT] = None  # For caching.
 
-        for i, relative_path in enumerate(df[IMAGE_PATH_KEY]):
+        for i, relative_path in enumerate(df[I1_DUMP_SCREEN_ADDRESS]):
             abs_path = df_path.parent / relative_path
             LOG.debug(f"Loading image index {i} @ {relative_path}")
             if i in bad_image_indices:
@@ -294,8 +292,8 @@ class ScanMeasurement:
             # I want to be able to call it from anywhere, so resolve them to
             # absolute paths.
             abs_path = df_path.parent / relative_path
-            metadata = df[df[IMAGE_PATH_KEY] == relative_path].squeeze()
-            metadata[IMAGE_PATH_KEY] = abs_path
+            metadata = df[df[I1_DUMP_SCREEN_ADDRESS] == relative_path].squeeze()
+            metadata[I1_DUMP_SCREEN_ADDRESS] = abs_path
             image = TDSScreenImage(metadata)
             if image.is_bg:
                 LOG.debug(f"Image{i} is bg")

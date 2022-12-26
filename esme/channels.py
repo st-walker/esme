@@ -25,7 +25,7 @@ SNAPSHOT_TEMPL.add_magnet_section("I1", tol=0.01, track=False)
 SNAPSHOT_TEMPL.add_magnet_section("I1D", tol=0.01, track=False)
 
 # add camera
-SNAPSHOT_TEMPL.add_image("XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ", folder="./tds_images")
+
 #SNAPSHOT_TEMPL.add_image("XFEL.DIAG/CAMERA/OTRA.473.B2D/IMAGE_EXT_ZMQ", folder="./tds_images")
 # solenoid
 SNAPSHOT_TEMPL.add_channel("XFEL.MAGNETS/MAGNET.ML/SOLB.23.I1/CURRENT.SP")

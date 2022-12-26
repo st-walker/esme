@@ -44,6 +44,8 @@ from esme.channels import SNAPSHOT_TEMPL
 
 LOG = logging.getLogger(__name__)
 
+I1_DUMP_SCREEN_ADDRESS: str = "XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"
+SNAPSHOT_TEMPL.add_image(I1_DUMP_SCREEN_ADDRESS, folder="./tds_images")
 
 class MeasurementPrompt:
     pass
