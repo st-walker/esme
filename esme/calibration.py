@@ -8,6 +8,7 @@ from scipy.optimize import curve_fit
 
 from esme.lattice import injector_cell_from_snapshot
 import esme.analysis as ana
+from esme.maths import line
 
 I1D_ENERGY_ADDRESS = "XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/I1D/ENERGY.ALL"
 
@@ -17,17 +18,13 @@ TDS_WAVENUMBER = 2 * np.pi / TDS_WAVELENGTH
 TDS_LENGTH = 0.7 # metres
 
 
-def line(x, a0, a1) -> Any:
-    return a0 + a1 * x
-
-
 def sqrt(x, a0, a1) -> Any:
     return a0 + a1 * np.sqrt(x)
 
 
 class TDSCalibrator:
     def __init__(self, percentages, tds_slopes, dispersion,
-                 tds_slope_units=None, fn=line):
+                 tds_slope_units=None):
         self.percentages = np.array(percentages)
         self.tds_slopes = np.array(tds_slopes)
         self.dispersion = dispersion
@@ -35,15 +32,14 @@ class TDSCalibrator:
             self.tds_slopes = self.tds_slopes * 1e6
         elif tds_slope_units is not None:
             raise TypeError(f"Wrong tds_slope_units: {tds_slope_units}")
-        self.fn = fn
 
     def fit(self):
-        popt, pcov = curve_fit(self.fn, self.percentages, self.tds_slopes)
+        popt, pcov = curve_fit(line, self.percentages, self.tds_slopes)
         return popt, pcov
 
     def get_tds_slope(self, percentage):
         popt, _ = self.fit()
-        return self.fn(percentage, *popt)
+        return line(percentage, *popt)
 
     def get_voltage(self, percentage, snapshot: pd.Series):
         tds_slope = self.get_tds_slope(percentage)

@@ -24,6 +24,7 @@ from uncertainties import ufloat, umath
 
 from esme.calibration import TDS_WAVENUMBER, TDS_LENGTH
 from esme.measurement import I1_DUMP_SCREEN_ADDRESS
+from esme.maths import linear_fit, ValueWithErrorT
 
 
 NOISE_THRESHOLD: float = 0.08  # By eye...
@@ -39,15 +40,12 @@ LOG = logging.getLogger(__name__)
 ELECTRON_MASS_EV: float = m_e * c**2 / e
 
 RawImageT = npt.NDArray
-ValueWithErrorT = tuple[float, float]
 
 MULTIPROCESSING = True
 
 CENTRAL_SLICE_SEARCH_WINDOW_RELATIVE_WIDTH = 9
 
 
-def line(x, a0, a1) -> Any:
-    return a0 + a1 * x
 
 
 def get_slice_properties(image: RawImageT, fast=True) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
@@ -507,17 +505,6 @@ def transform_pixel_widths(
     # Extract errors form ufloats to go back to a 2-tuple of arrays.
     widths, errors = zip(*[(w.nominal_value, w.std_dev) for w in widths])
     return np.array(widths), np.array(errors)
-
-
-def linear_fit(indep_var, dep_var, dep_var_err) -> tuple[ValueWithErrorT, ValueWithErrorT]:
-    popt, pcov = curve_fit(line, indep_var, dep_var, sigma=dep_var_err, absolute_sigma=True)
-    perr = np.sqrt(np.diag(pcov))
-
-    # Present as tuples
-    a0 = popt[0], perr[0]
-    a1 = popt[1], perr[1]
-
-    return a0, a1
 
 
 def calculate_energy_spread_simple(scan: DispersionScan) -> ValueWithErrorT:

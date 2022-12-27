@@ -5,42 +5,49 @@ import pytest
 import pandas as pd
 
 from esme.measurement import (QuadrupoleSetting,
-                              InjectorScanOpticsConfiguration,
+                              DispersionScanConfiguration,
+                              TDSScanConfiguration,
                               ScreenPhotographer,
-                              pop_df_row)
+                              pop_df_row,
+                              MeasurementRunner)
 
 
 @pytest.fixture
 def quad_setting():
     names = ["quad1", "quad2", "quad3"]
     strengths = [1, 2, 3]
-    dispersion = 0.5
+    dispersion = 123
+    return QuadrupoleSetting(names, strengths, dispersion)
+
+@pytest.fixture
+def quad_setting2():
+    names = ["quad4", "quad5", "quad6"]
+    strengths = [4, 5, 6]
+    dispersion = 456
+    return QuadrupoleSetting(names, strengths, dispersion)
+
+@pytest.fixture
+def quad_setting3():
+    names = ["quad7", "quad8", "quad9"]
+    strengths = [7, 8, 9]
+    dispersion = 789
     return QuadrupoleSetting(names, strengths, dispersion)
 
 def test_QuadrupoleSetting_init(quad_setting):
     assert quad_setting.names == ["quad1", "quad2", "quad3"]
     assert quad_setting.strengths == [1, 2, 3]
-    assert quad_setting.dispersion == 0.5
-
-def test_ScanOpticsConfiguration_init(quad_setting):
-    qs2 = copy.deepcopy(quad_setting)
-    qs3 = copy.deepcopy(quad_setting)
-    qs2.dispersion = 0.4
-    qs3.dispersion = 0.2
-
-    inst = InjectorScanOpticsConfiguration(quad_setting, [qs2, qs3])
+    assert quad_setting.dispersion == 123
+    
+def test_ScanOpticsConfiguration_init(quad_setting, quad_setting2, quad_setting3):
+    inst = DispersionScanConfiguration(quad_setting, [quad_setting2, quad_setting3])
 
     assert inst.reference_setting == quad_setting
-    assert inst.scan_settings == [qs2, qs3]
+    assert inst.scan_settings == [quad_setting2, quad_setting3]
 
 @pytest.fixture
 def photographer():
     return ScreenPhotographer(mps=MagicMock(name="MPS_mock"),
                               machine=MagicMock(name="Machine_mock"))
-
-# @pytest.fixture
-# def df():
-#     return MagicMock(name="df_mock")
 
 def test_ScreenPhotographer_switch_beam_on(photographer):
     photographer.switch_beam_on()
@@ -82,7 +89,33 @@ def test_pop_df_row():
 def test_ScreenPhotographer_is_machine_off(photographer):
     machine_mock = photographer.machine
     machine_mock.is_machine_online.return_value = True
-    result = photographer.is_machine_off()
+    result = photographer.is_machine_offline()
     # Should call self.machine.get_machine_snapshot()
     machine_mock.is_machine_online.assert_called_once()
     assert result == False
+
+@pytest.fixture
+def quad_scan_config(quad_setting, quad_setting2, quad_setting3):
+    return DispersionScanConfiguration(quad_setting, [quad_setting2, quad_setting3])
+
+@pytest.fixture
+def tscan_config():
+    return TDSScanConfiguration(17, [11, 14, 17, 20], 1.2)
+
+@pytest.fixture
+def runner(quad_scan_config, tscan_config):
+    return MeasurementRunner("basename", quad_scan_config, tscan_config, MagicMock(name="Machine_mock"))
+
+def test_MeasurementRunner_set_reference_quads(runner):
+    nref_quads = len(runner.quad_config.reference_setting.names)
+    runner.set_reference_quads()
+    assert runner.machine.set_quad.call_count == nref_quads
+    assert runner.machine.set_quad.call_args_list == [call('quad1', 1),
+                                                      call('quad2', 2),
+                                                      call('quad3', 3)]
+
+    
+def test_TDSScanConfiguration(tscan_config):
+    assert tscan_config.reference_amplitude == 17
+    assert tscan_config.scan_amplitudes == [11, 14, 17, 20]
+    assert tscan_config.scan_dispersion == 1.2 
