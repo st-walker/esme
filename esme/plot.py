@@ -1,4 +1,5 @@
-#!/usr/bin/env python3
+"""Set of functions for plotting and make results tables"""
+
 
 import logging
 
@@ -9,12 +10,14 @@ import tabulate
 from scipy.constants import e, c
 from uncertainties import ufloat
 import pandas as pd
+import numpy.typing as npt
 
 
 import esme.analysis as ana
 import esme.calibration as cal
 import esme.lattice as lat
 import esme.beam as beam
+from esme.inout import tds_magic_number_from_filename
 
 LOG = logging.getLogger(__name__)
 
@@ -120,7 +123,7 @@ def show_before_after_processing(measurement: ana.ScanMeasurement, index: int) -
     ax2.plot((slc - bg).clip(min=0), label="Raw - background")
 
     shift = np.argmax(slcp)
-    xcore, ycore = ana.get_slice_core(slcp)
+    xcore, ycore = get_slice_core(slcp)
     popt, perr = ana.get_gaussian_fit(xcore, ycore)
 
     popt[1] = shift  # Shift mean back to whatever it was.
@@ -435,7 +438,7 @@ def pretty_parameter_table(esme, latex=False):
     fit_table = tabulate.tabulate(fit, tablefmt=tablefmt, headers=["Variable", "Value", "Units"])
     beam_table = tabulate.tabulate(beam, tablefmt=tablefmt, headers=["Variable", "Value", "Alt. Value", "Units"])
 
-    return f"{fit_table}\n\n\n{beam_table}"
+    return f"{beam_table}\n\n\n{fit_table}"
 
 def _format_df_for_printing(df, value_error_name_pairs, units, new_varnames=None, latex=False):
     if new_varnames is None:
@@ -817,3 +820,52 @@ def plot_streaking_parameters(sesme):
 
 
     return fig
+
+
+def get_slice_core(pixels) -> tuple[npt.NDArray, npt.NDArray]:
+    # Remove zeroes on either side of the slice and just get the
+    # values where there is signal.
+    nonzero_pixels = (pixels != 0).nonzero()[0]
+    istart = nonzero_pixels.min()
+    iend = nonzero_pixels.max()
+
+    pixelcut = pixels[istart : iend + 1]
+    pixel_index = np.arange(len(pixelcut))
+
+    return pixel_index, pixelcut
+
+
+def plot_tds_set_point_vs_readback(dscan_files, tscan_files, title=""):
+    fname_amplitudes = []
+    setpoint_amplitudes = []
+    rb_amplitudes = []
+    rb_stdevs = []
+    for fname in tscan_files:
+        ampl_fname = tds_magic_number_from_filename(fname)
+        amp_rb = pd.read_pickle(fname)["XFEL.RF/LLRF.CONTROLLER/VS.LLTDSI1/AMPL.SAMPLE"]
+        amp = pd.read_pickle(fname)["XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/SP.AMPL"]
+
+        fname_amplitudes.append(ampl_fname)
+        setpoint_amplitudes.append(amp.mean())
+        rb_amplitudes.append(amp_rb.mean())
+        rb_stdevs.append(amp_rb.std())
+
+
+
+    fig, ax1 = plt.subplots()
+    sample = np.arange(0, 1.5 * max(fname_amplitudes))
+
+    ax1.errorbar(fname_amplitudes, setpoint_amplitudes, label="Setpoint")
+    ax1.errorbar(fname_amplitudes, rb_amplitudes, yerr=rb_stdevs, label="Readback")
+    ax1.errorbar(sample, sample, label="$y=x$", linestyle="--")
+
+
+
+
+    ax1.set_xlim(0.9 * min(fname_amplitudes), max(fname_amplitudes) + 0.1 * min(fname_amplitudes))
+    ax1.legend()
+    ax1.set_xlabel("TDS setpoint from file name")
+    ax1.set_ylabel("TDS Amplitude from DOOCs")
+    ax1.set_title(title)
+
+    plt.show()

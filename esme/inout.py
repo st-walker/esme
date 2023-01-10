@@ -5,6 +5,7 @@ import re
 import os
 from pathlib import Path
 import contextlib
+from typing import Union
 
 import toml
 import pandas as pd
@@ -12,6 +13,7 @@ import pandas as pd
 from esme.analysis import (DispersionScan, OpticalConfig,
                            SliceEnergySpreadMeasurement, TDSScan, BetaScan, ScanMeasurement)
 from esme.calibration import TDSCalibrator, TrivialTDSCalibrator
+from esme.injector_channels import TDS_AMPLITUDE_READBACK_ADDRESS
 
 LOG = logging.getLogger(__name__)
 
@@ -57,7 +59,7 @@ def _dispersion_from_filename(fname: os.PathLike) -> float:
     return dx / 1000  # convert to metres
 
 
-def _tds_magic_number_from_filename(fname: os.PathLike) -> int:
+def tds_magic_number_from_filename(fname: os.PathLike) -> int:
     path = Path(fname)
     match = re.search(r"tds_[0-9]+", path.stem)
 
@@ -95,7 +97,7 @@ def add_metadata_to_pickled_df(fname, force_dx=None):
 
     LOG.info(f"Adding dx, tds: {dispersion=}, {tds_amplitude=}")
     df[ScanMeasurement.DF_DX_SCREEN_KEY] = dispersion
-    df[ScanMeasurement.DF_TDS_PERCENTAGE_KEY] = tds_amplitude
+    df[TDS_AMPLITUDE_READBACK_ADDRESS] = tds_amplitude
 
     if beta:
         LOG.info(f"Adding BETA metadata to pickled file: {beta=}")
@@ -123,15 +125,41 @@ def add_metadata_to_pcls_in_toml(ftoml):
             add_metadata_to_pickled_df(basepath / Path(path), force_dx=force_dx)
 
 
+def scan_files_from_toml(tom: Union[os.PathLike, dict]) -> tuple:
+    try:
+        tom = toml.load(tom)
+    except TypeError:
+        pass
+
+    dscan_paths = _files_from_config(tom, "dscan")
+    tscan_paths = _files_from_config(tom, "tscan")
+
+    try:
+        bscan_paths = _files_from_config(tom, "bscan")
+    except KeyError:
+        bscan = None
+
+    return dscan_paths, tscan_paths, bscan_paths
+
+def title_from_toml(tom: Union[os.PathLike, dict]) -> tuple:
+    try:
+        tom = toml.load(tom)
+    except TypeError:
+        pass
+
+    try:
+        return tom["title"]
+    except KeyError:
+        return ""
+
+
 def load_config(fname: os.PathLike) -> SliceEnergySpreadMeasurement:
 
     config = toml.load(fname)
 
     oconfig = _optics_config_from_dict(config)
 
-    # Expand fnames by prepending the provided base path
-    dscan_paths = _files_from_config(config, "dscan")
-    tscan_paths = _files_from_config(config, "tscan")
+    dscan_paths, tscan_paths, bscan_paths = scan_files_from_toml(config)
 
     try:
         calib = config["optics"]["tds"]["calibration"]
@@ -161,25 +189,19 @@ def load_config(fname: os.PathLike) -> SliceEnergySpreadMeasurement:
     dscan = DispersionScan(
         dscan_paths,
         calibrator=calibrator,
-        bad_images_per_measurement=config["data"]["dscan"].get("bad_images"),
     )
 
     tscan = TDSScan(
         tscan_paths,
         calibrator=calibrator,
-        bad_images_per_measurement=config["data"]["tscan"].get("bad_images"),
     )
 
 
-    try:
-        bscan_paths = _files_from_config(config, "bscan")
-    except KeyError:
-        bscan = None
-    else:
+    bscan = None
+    if bscan_paths:
         bscan = BetaScan(
             bscan_paths,
             calibrator=calibrator,
-            bad_images_per_measurement=config["data"]["bscan"].get("bad_images"),
         )
 
     return SliceEnergySpreadMeasurement(dscan, tscan, oconfig, bscan=bscan)

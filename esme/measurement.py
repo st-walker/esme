@@ -1,36 +1,34 @@
 # Priority:
 
-# Take data automatically.
-# Should be able to turn TDS on/off
-# Should be able to recover from TDS turning off randomly.
-# Should keep track of good images/bad images.  Ignore bad ones.
-# Should also write metadata nicely.
-# Should automatically change voltage for TDS scan.
-# Should automatically change quads for dispersion scan.
-# Turn beam on and off
+# Should keep track of good images/bad images.  Ignore bad ones.  Should already be possible?  using TDS ampl rb, etc...
 # Should check TDS is on, check beam is on, check screen is out.
-# Autogain?
 
 
-# maybe read the description metadata directly?
+# Checklist:
 
-# this is a hobby, let's be honest..  let's go home and use our brain
-# on something harder and do this in the evenings.
+# Do the dispersion measurement
+# Image processing.
+# Make sure it is fully mocked and tested
 
-# Then do, say, measure dispersion automatically
-# Finally, say, calibrate the TDS automatically
+# Do the TDS Scan
+# Automatically change the TDS voltage
+# Make sure it is fully mocked and tested
 
-# Needs to handle:
-# Beam turning off.
-# TDS turning off.
-# Repeating a measurement.
+# Do the Dispersion scan
+# Automatically change quad strengths
+# Make sure it is fully mocked and tested
 
+# Misc:
+# Writ metadata: measured dispersion, measured beta_x (if we do that)
+# Detect when there is no TDS RF power.
+# Detect when the TDS is on or off beam.
+# Handle the TDS turning on/off randomly.
+# Handle the beam turning off randomly.
+# Check screen is out.
+# Autogain for images.
 
-
-# TODO:
-# Add "Was TDS on?" to the DF, also "TDS %" to the DF
-# Add Dispersion and Beta ? to the DF.
-
+# Dream:
+# Automatic TDS Calibration (one day).
 
 import logging
 import time
@@ -104,10 +102,7 @@ class DispersionScanConfiguration:
             scan_settings.append(QuadrupoleSetting(scan_names,
                                                    settings["strengths"],
                                                    settings["dispersion"]))
-        return cls(reference_optics, scan_settings)
-
-    def quads_for_dispersion(self, dispersion):
-        return next(x for x in self.scan_settings if x.dispersion == dispersion)
+        return cls(reference_setting, scan_settings)
 
 
 @dataclass
@@ -135,39 +130,62 @@ class MeasurementRunner:
             self.machine = EnergySpreadMeasuringMachine(SNAPSHOT_TEMPL)
         self.outdir = Path(outdir)
 
-    def run(self):
-        tds_scan()
-        quad_scan()
+        self.dispersion_measurer = BasicDispersionMeasurer()
 
-    def tds_scan(self, bg_shots, data_shots):
+    def run(self):
+        self.tds_scan(5, 30, delay=1)
+        self.dispersion_scan(5, 30, delay=1)
+
+    def tds_scan(self, bg_shots, data_shots, delay):
+        """Do the TDS scan for this energy spread measurement"""
         LOG.info("Setting up TDS scan")
 
         self.set_reference_quads()
 
         LOG.info("Measing dispersion at start of TDS scan")
-        dispersion = self.measure_dispersion()
+        dispersion, dispersion_unc = self.dispersion_measurer.measure()
 
         tds_amplitudes = self.tds_config.scan_amplitudes
         LOG.info(f"starting TDS scan: {tds_amplitudes=}, {bg_shots=}, {data_shots=}")
 
         for ampl in tds_amplitudes:
-            self.set_tds_amplitude(ampl)
+            self.machine.set_tds_amplitude(ampl)
             photographer = ScreenPhotographer()
-            bg = photographer.take_background(bg_shots)
-            data = photographer.take_data(data_shots)
+            scan_df = photographer.take_data(bg_shots, data_shots, delay=delay)
 
-            scan_df = pd.concat([bg, data])
+            save_snapshot_df(scan_df, dispersion=dispersion, dispersion_unc=dispersion_unc)
 
-            save_snapshot_df(scan_df, dispersion=dispersion, tds=ampl)
+    def dispersion_scan(self, bg_shots, data_shots, delay):
+        """Do the dispersion scan for this energy spread measurement"""
+        LOG.info("Setting up dispersion scan")
 
-            # scan_dfs.append(scan_df)
+        self.set_reference_quads()
+
+        ndispersions = len(self.quad_config.scan_settings)
+
+        for i, setting in enumerate(self.quad_config.scan_settings):
+            LOG.info(f"Starting dispersion scan measurement {i} / {ndispersions - 1}")
+            design_dispersion = setting.dispersion
+            self._apply_quad_setting(setting)
+            dispersion, dispersion_unc = self.dispersion_measurer.measure()
+
+            photographer = ScreenPhotographer()
+            scan_df = photographer.take_data(bg_shots, data_shots, delay=delay)
+
+            save_snapshot_df(scan_df, dispersion=dispersion, dispersion_unc=dispersion_unc)
+
+    def beta_scan(self, bg_shots, data_shots):
+        pass
 
     def set_reference_tds_amplitude(self):
+        """Set the TDS amplitude to the reference value, i.e. the
+        value used for the dispersion scan."""
         refampl = self.tds_config.reference_amplitude
         LOG.info(f"Setting reference TDS amplitude: {refampl}")
         self.machine.set_tds_amplitude(refampl)
 
     def set_reference_quads(self):
+        """Set the full set of quadrupoles including the upstream matching ones."""
         LOG.info("Applying reference quadrupole settings to machine")
         self._apply_quad_setting(self.quad_config.reference_setting)
 
@@ -179,22 +197,18 @@ class MeasurementRunner:
             raise EnergySpreadMeasuringMachine("Unknown quad setting @ D={dispersion}")
         self._apply_quad_setting(quad_setpoints)
 
-    def dispersion_scan(self):
-        self.set_reference_tds_amplitude()
-
-    def tds_scan(self, dispersion):
-        self.set_quads(dispersion)
-
-    def _apply_quad_setting(self, setting):
+    def _apply_quad_setting(self, setting: QuadrupoleSetting):
+        """Apply an individual QuadrupoleSetting consisting of one or
+        more quadrupole names, with strengths, to the machine."""
         for name, strength in zip(setting.names, setting.strengths):
-            LOG.info("Setting quad: {name} to {strength} mm.mrad")
+            LOG.info("Setting quad: {name} to {strength}")
             self.machine.set_quad(name, strength)
 
     def make_df_file_name(self, tds_amplitude, dispersion):
-        time = time.strftime("%Y-%m-%d@%H:%M:%S")
-        fname = f"{time}>>>D={dispersion},TDS={tds_amplitude}%.pcl"
+        """Make a human readnable name for the output dataframe"""
+        timestamp = time.strftime("%Y-%m-%d@%H:%M:%S")
+        fname = f"{timestamp}>>>D={dispersion},TDS={tds_amplitude}%.pcl"
         return self.outdir / self.basename / fname
-
 
 class ScreenPhotographer:
     def __init__(self, mps=None, machine=None):
@@ -216,8 +230,8 @@ class ScreenPhotographer:
         self.switch_beam_on()
         return pd.DataFrame(snapshots)
 
-    def take_data(self, total_shots, delay=1):
-        LOG.info("Taking data")
+    def take_beam_images(self, total_shots, delay=1):
+        LOG.info("Taking beam images")
         self.switch_beam_on()
         snapshots = []
 
@@ -238,6 +252,12 @@ class ScreenPhotographer:
             ishot += 1
 
         return pd.DataFrame(snapshots)
+
+    def take_data(self, bg_shots, beam_shots, delay=1):
+        bg = self.take_background(bg_shots, delay=delay)
+        data = self.take_beam_images(data_shots, delay=delay)
+        return pd.concat([bg, data])
+
 
     def take_machine_snapshot(self):
         LOG.info("Taking machine snapshot")
@@ -284,16 +304,23 @@ class ScreenPhotographer:
 
 class BasicDispersionMeasurer:
     def measure(self):
-        pass
+        dispersion = float(input("Enter dispersion in m:"))
+        dispersion_unc = float(input("Enter dispersion unc in m:"))
+        return dispersion, dispersion_unc
 
 
 def handle_sigint():
     pass
 
 
-def save_snapshot_df(df, fname, **metadata):
+def save_snapshot_df(df, fname, dispersion=None, dispersion_unc=None):
     LOG.info("Saving snapshot to df: {fname} with metadata: {metadata}")
     # df.attrs = metadata
+    if dispersion is not None:
+        df["dispersion"] = dispersion
+    if dispersion_unc is not None:
+        df["dispersion_uncertainty"] = dispersion_unc
+
     df.to_pickle(fname)
 
 
@@ -312,14 +339,16 @@ class EnergySpreadMeasuringMachine(Machine):
     # # # For TDS I guess ?  Not sure
     # TIME_EVENT10 = "XEL.SDTIMER.CENTRAL/MASTER/EVENT10TL"
 
-    TDS_CONTROL = "XFEL.SDIAG/SPECIAL_BUNCHES.ML/I1/CONTROL"
+    # TDS_CONTROL = "XFEL.SDIAG/SPECIAL_BUNCHES.ML/I1/CONTROL"
 
     SCREEN_CHANNEL = I1_DUMP_SCREEN_ADDRESS
+    SCREEN_GAIN_CHANNEL = "!__placeholder__!"
 
     def __init__(self, snapshot):
         super().__init__(self, snapshot)
 
     def set_quad(self, name, value):
+        """Set a particular quadrupole given by its name to the given value."""
         channel = f"{self.QUAD_FACILITY}/{self.QUAD_DEVICE}/{name}/{self.QUAD_PROPERTY}"
         LOG.debug(f"Setting {channel} @ {value}")
         self.mi.set_value(channel, value)
@@ -329,8 +358,8 @@ class EnergySpreadMeasuringMachine(Machine):
         self.mi.set_value(self.TDS_AMPLITUDE_SP, amplitude)
 
     def read_tds_amplitude(self):
-        result = self.mi.get_value(self.TDS_AMPLITUDE_SAMPLE)
-        LOG.debug(f"Reading TDS amplitude: {self.TDS_AMPLITUDE_SAMPLE} @ {result}")
+        result = self.mi.get_value(self.TDS_AMPLITUDE_RB)
+        LOG.debug(f"Reading TDS amplitude: {self.TDS_AMPLITUDE_RB} @ {result}")
         return result
 
     def set_a1_voltage(self, voltage):
@@ -338,8 +367,8 @@ class EnergySpreadMeasuringMachine(Machine):
         self.mi.set_value(self.A1_VOLTAGE_SP, voltage)
 
     def read_a1_voltage(self):
-        result = self.mi.get_value(self.A1_VOLTAGE_SAMPLE)
-        LOG.debug(f"Reading A1 voltage: {self.A1_VOLTAGE_SAMPLE} @ {result}")
+        result = self.mi.get_value(self.A1_VOLTAGE_RB)
+        LOG.debug(f"Reading A1 voltage: {self.A1_VOLTAGE_RB} @ {result}")
         return result
 
     def turn_tds_off_beam(self):
@@ -366,3 +395,7 @@ class EnergySpreadMeasuringMachine(Machine):
         channel = self.SCREEN_CHANNEL
         LOG.debug(f"Reading image from {channel}")
         return self.mi.get_value(channel)
+
+    def set_screen_gain(self, gain):
+        LOG.debug("Setting screen gain: {gain}.")
+        pass

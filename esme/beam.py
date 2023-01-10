@@ -1,10 +1,10 @@
 import numpy as np
 from scipy.constants import e
 
-from esme.analysis import (ScanMeasurement, ParameterScan, crop_image,
+from esme.analysis import (ScanMeasurement, ParameterScan,
                            SliceEnergySpreadMeasurement,
-                           transform_pixel_widths, get_gaussian_fit,
-                           gauss)
+                           transform_pixel_widths)
+from esme.image import crop_image, get_gaussian_fit, gauss
 from esme.calibration import r34s_from_scan, TDS_WAVENUMBER
 
 

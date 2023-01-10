@@ -9,7 +9,8 @@ import matplotlib.pyplot as plt
 
 from esme.analysis import ScanMeasurement, calculate_energy_spread_simple
 import esme.analysis
-from esme.inout import load_config, add_metadata_to_pcls_in_toml
+from esme.inout import (load_config, add_metadata_to_pcls_in_toml,
+                        scan_files_from_toml, title_from_toml)
 from esme.plot import (
     dump_full_scan,
     plot_measured_central_widths,
@@ -18,7 +19,8 @@ from esme.plot import (
     plot_tds_calibration,
     pretty_parameter_table,
     show_before_after_processing,
-    compare_results
+    compare_results,
+    plot_tds_set_point_vs_readback
 )
 
 logging.basicConfig()
@@ -81,12 +83,6 @@ def calc(scan_inis, simple, latex):
             print(pretty_parameter_table(slice_energy_spread_measurements[0], latex))
         else:
             print(compare_results(slice_energy_spread_measurements, latex))
-        # for fname, sesme in zip(scan_inis, slice_energy_spread_measurements):
-        #     # plot_scans(sesme)
-        #     # plt.show()
-        #     print(fname)
-        #     print(pretty_beam_parameter_table(sesme))
-        #     plt.show()
 
 
 @main.command()
@@ -126,6 +122,38 @@ def plot(scan_inis, dump_images, widths, magnets, alle, calibration, save):
 @click.argument("ftoml", nargs=1)
 def fix(ftoml):
     add_metadata_to_pcls_in_toml(ftoml)
+
+
+@main.command()
+@click.argument("ftoml", nargs=1)
+def compsp(ftoml):
+    dscan, tscan, bscan = scan_files_from_toml(ftoml)
+    title = title_from_toml(ftoml)
+    plot_tds_set_point_vs_readback(dscan, tscan, title=title)
+
+
+@main.command
+@click.option("--name")
+@click.option("--dispersion", is_flag=True,
+              help="Just measure the dispersion (used for debugging purposes)")
+@click.option("--bscan", is_flag=True,
+              help="Only do the beta scan")
+@click.option("--dscan", is_flag=True,
+              help="Only do the dispersion scan")
+@click.option("--tscan", is_flag=True,
+              help="Only do the TDS scan")
+def measure(name, dispersion, bscan, dscan, tscan):
+    if dispersion:
+        pass
+    if bscan:
+        pass
+    if dscan:
+        pass
+    if tscan:
+        pass
+    measurement = MeasurementRunner(name, )
+
+    # measurement.save(name)
 
 
 if __name__ == "__main__":

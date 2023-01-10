@@ -1,4 +1,22 @@
-"""Units: everything is in eV, volts, etc."""
+"""Main script for describing measurements (consisting of TDS voltage
+scans and dispersion scans, as well as possible beta scans).  The full
+set of measurements is reified with the SliceEnergySpreadMeasurement
+class.  Each instance has at most one DispersionScan, at most one
+TDSScan and at most one BetaScan instance, each class corresponding to
+that scan.  Each scan consists of multiple measurements, represented
+by ScanMeasurement instances.  Each ScanMeasurement consists of zero
+or more TDSScreenImage instance, each of which can either be a
+background image or a beam image (checked by calling is_bg on the
+instance).
+
+To get "the result", populate a SliceEnergySpreadMeasurement instance
+with scans and call the all_fit_parameters method.  Probably needs
+both a dispersion scan and a tds scan, but the beta scan is always
+optional (but provides additional parameters in the final result).
+
+Units: everything is in SI, except energy which is in eV.
+
+"""
 
 from __future__ import annotations
 
@@ -10,24 +28,26 @@ import pickle
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Generator, Iterable, Optional
+from typing import Generator, Iterable, Optional
 
-import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
-import scipy.ndimage as ndi
 from scipy.constants import c, e, m_e
-from scipy.optimize import curve_fit
 from uncertainties import ufloat, umath
 
 from esme.calibration import TDS_WAVENUMBER, TDS_LENGTH
 from esme.measurement import I1_DUMP_SCREEN_ADDRESS
 from esme.maths import linear_fit, ValueWithErrorT
+from esme.image import get_slice_properties, process_image
+from esme.injector_channels import (TDS_AMPLITUDE_READBACK_ADDRESS,
+                                    BEAM_ALLOWED_ADDRESS,
+                                    BEAM_ENERGY_ADDRESS,
+                                    EVENT10_CHANNEL,
+                                    TDS_ON_BEAM_EVENT10)
 
 
-NOISE_THRESHOLD: float = 0.08  # By eye...
 
 PIXEL_SCALE_X_UM: float = 13.7369
 PIXEL_SCALE_Y_UM: float = 11.1756
@@ -43,180 +63,6 @@ RawImageT = npt.NDArray
 
 MULTIPROCESSING = True
 
-CENTRAL_SLICE_SEARCH_WINDOW_RELATIVE_WIDTH = 9
-
-
-
-
-def get_slice_properties(image: RawImageT, fast=True) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
-    #  Get bounds of image (i.e. to remove all fully-zero rows and columns)---this
-    # speeds up the fitting procedure a lot by only fitting region of interest.
-    (irow0, irow1), (icol0, icol1) = get_cropping_bounds(image, just_central_slices=fast)
-
-    # Do the actual cropping
-    imcropped = image[irow0:irow1, icol0:icol1]
-
-    row_index = np.arange(imcropped.shape[1])
-
-    mean_slice_position = []
-    mean_slice_position_error = []
-    sigma_slice = []
-    sigma_slice_error = []
-    for beam_slice in imcropped: # Iterates over the ROWS, so each one is a slice of the beam.
-        try:
-            popt, perr = get_gaussian_fit(row_index, beam_slice)
-        except RuntimeError:  # Happens if curve_fit fails to converge.
-            # Set parameters to NaN, mask them later from the output
-            mu = sigma = sigma_mu = sigma_sigma = np.nan
-        else:
-            _, mu, sigma = popt
-            _, sigma_mu, sigma_sigma = perr
-
-        mean_slice_position.append(mu)
-        mean_slice_position_error.append(sigma_mu)
-        sigma_slice.append(sigma)
-        sigma_slice_error.append(sigma_sigma)
-
-    # So we get back into the coordinate system of the original, uncropped image:
-    row_index = np.arange(irow0, irow1)
-    mean_slice_position += icol0
-
-    # Deal with nans due to for example
-    nan_mask = ~(np.isnan(mean_slice_position) | np.isnan(mean_slice_position_error) | np.isnan(sigma_slice) | np.isnan(sigma_slice_error))
-
-    mean_slice_position = np.array([ufloat(n, s) for n, s in zip(mean_slice_position, mean_slice_position_error)])
-    slice_width = np.array([ufloat(n, s) for n, s in zip(sigma_slice, sigma_slice_error)])
-
-    row_index = row_index[nan_mask]
-    mean_slice_position = mean_slice_position[nan_mask]
-    slice_width = slice_width[nan_mask]
-
-    return row_index, mean_slice_position, slice_width
-
-
-def gauss(x, a, mu, sigma) -> Any:
-    return a * np.exp(-((x - mu) ** 2) / (2.0 * sigma**2))
-
-
-def get_cropping_bounds(im: RawImageT, just_central_slices=False) -> tuple[tuple[int, int], tuple[int, int]]:
-    non_zero_mask = im != 0
-
-    # "Along axis 1" -> each input to np.any is a row (axis 1 "points to the
-    # right"), so gives indices for axis 0, i.e. rows!
-    non_zero_row_indices = np.squeeze(np.where(non_zero_mask.any(axis=1)))
-    # "Along axis 0" -> each input to np.any is a column (axis 0 "points down"
-    # (im[0] gives a row of pixels for example, not a column)), so gives indices
-    # for axis 1, i.e. columns!
-    non_zero_column_indices = np.squeeze(np.where(non_zero_mask.any(axis=0)))
-
-    irow0 = non_zero_row_indices[0]
-    irow1 = non_zero_row_indices[-1]
-    icol0 = non_zero_column_indices[0]
-    icol1 = non_zero_column_indices[-1]
-
-    if just_central_slices:
-        length = (irow1 - irow0)
-        middle = irow0 + length // 2
-        irow0 = middle - length // CENTRAL_SLICE_SEARCH_WINDOW_RELATIVE_WIDTH
-        irow1 = middle + length // CENTRAL_SLICE_SEARCH_WINDOW_RELATIVE_WIDTH
-
-    # Add 1 as index is exlusive on the upper bound, and this
-    # sometimes matters and prevents bugs/crashes in the error
-    # calculation later, because we can end up with empty rows or
-    # columns.
-    return (irow0, irow1 + 1), (icol0, icol1 + 1)
-
-
-def get_cropping_slice(im: RawImageT) -> tuple:
-    (row0, row1), (col0, col1) = get_cropping_bounds(im)
-    return np.s_[row0, row1:col0, col1]
-
-
-def crop_image(im: RawImageT) -> RawImageT:
-    (idx_row0, idx_row1), (idx_col0, idx_col1) = get_cropping_bounds(im)
-    return im[idx_row0:idx_row1, idx_col0:idx_col1]
-
-
-def process_image(im0: RawImageT, bg: RawImageT) -> RawImageT:
-    # Subtract bg from image.
-    im = im0 - bg
-
-    # Set negative due to bg subtraction to zero.
-    im0bg = im.clip(min=0)
-
-    # Apply uniform filter to try and smear out the big, isolated (background)
-    # values
-    im0bgu = ndi.uniform_filter(im0bg, size=100)
-
-    # Get mask for all pixels which, when smeared out, are below some max value
-    # of the image. This should result in very isolated pixels getting set to 0,
-    # and leave core beam pixels untouched, because they have many neighbours.
-    mask = im0bgu < NOISE_THRESHOLD * im0bgu.max()
-
-    # img2 = ndi.median_filter(im0bg, size=10)
-    img1 = ndi.uniform_filter(im0bg, size=3)
-    inds_hi = (1.5 * img1) < im0bg
-
-    # Apply mask to original bg-subtracted image.
-    im0bg[mask | inds_hi] = 0
-
-    im_no_outliers = remove_all_disconnected_pixels(im0bg)
-
-    return im_no_outliers
-
-
-def remove_all_disconnected_pixels(im: RawImageT) -> RawImageT:
-    # normalize. usine 16bit usigned int because that's what the original raw
-    # image (pcl) files come as. Keep lower and upper bounds the same as the
-    # original image so that in principle different processed images are perhaps
-    # comparable.
-    imu8 = cv2.normalize(im, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
-
-    _, thresh = cv2.threshold(imu8, 0, 255, cv2.THRESH_BINARY)
-    _, markers = cv2.connectedComponents(thresh)
-    ranked_markers, counts = np.unique(markers.flatten(), return_counts=True)
-    # marker corresponds to the background, the second one corresponds to the
-    # main contiguous space occupied by the beam
-    beam_blob_marker = np.argpartition(-counts, kth=1)[1]
-    mask = markers == beam_blob_marker
-    masked_image = np.where(mask, im, 0)
-
-    return masked_image
-
-
-def get_slice_core(pixels) -> tuple[npt.NDArray, npt.NDArray]:
-    # Remove zeroes on either side of the slice and just get the
-    # values where there is signal.
-    nonzero_pixels = (pixels != 0).nonzero()[0]
-    istart = nonzero_pixels.min()
-    iend = nonzero_pixels.max()
-
-    pixelcut = pixels[istart : iend + 1]
-    pixel_index = np.arange(len(pixelcut))
-
-    return pixel_index, pixelcut
-
-
-def get_gaussian_fit(x, y) -> tuple[tuple, tuple]:
-    """popt/perr order: a, mu, sigma"""
-    mu0 = y.argmax()
-    a0 = y.max()
-    sigma0 = 1
-
-    # Bounds argument of curve_fit slows the fitting procedure down too much
-    # (>2x worse), so avoid using it here.
-    popt, pcov = curve_fit(
-        gauss,
-        x,
-        y,
-        p0=[a0, mu0, sigma0],
-    )
-    variances = np.diag(pcov)
-    if (variances < 0).any():
-        raise RuntimeError(f"Negative variance detected: {variances}")
-    perr = np.sqrt(variances)
-    return popt, perr
-
 
 class TDSScreenImage:
     def __init__(self, metadata):
@@ -228,46 +74,54 @@ class TDSScreenImage:
         return self.metadata[I1_DUMP_SCREEN_ADDRESS]
 
     def to_im(self, process=True) -> RawImageT:
-        # path to png is in the df, but actuallt we want path to the adjacent
-        # pcl file.
+        # path to png is in the df, but actually we want path to the adjacent
+        # pcl file.  the pngs are just for debugging.
         fname = Path(self.filename).with_suffix(".pcl")
-        im = pickle.load(open(fname, "rb"))
+        with open(fname, "rb") as f:
+            im = pickle.load(f)
         # Flip to match what we see in the control room.  not sure if
         # I need an additional flip here or not, but shouldn't matter too much.
         return im.T
 
-    def show(self) -> None:
-        im = self.to_im()
+    def show(self, raw=False) -> None:
+        im = self.to_im(process=not raw)
         fig, ax = plt.subplots()
-        ax.imdraw(im)
+        ax.imshow(im)
         plt.show()
 
     @property
     def is_bg(self) -> bool:
-        return not bool(self.metadata["XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED"])
+        return not bool(self.metadata[BEAM_ALLOWED_ADDRESS])
 
     @property
     def beam_energy(self) -> float:
         eV = 1e6  # Energy is given in MeV which we convert to eV for consistency.
-        return self.metadata["XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/I1D/ENERGY.ALL"] * eV
+        return self.metadata[BEAM_ENERGY_ADDRESS] * eV
 
+    @property
+    def is_bad(self):
+        beam_on = not self.is_bg
+        tds_off = not self.tds_was_on
+        return beam_on and tds_off
+
+    @property
+    def tds_was_on(self):
+        return self.metadata[EVENT10_CHANNEL] == TDS_ON_BEAM_EVENT10
 
 class ScanMeasurement:
     DF_DX_SCREEN_KEY = "MY_SCREEN_DX"
     DF_BETA_SCREEN_KEY = "MY_SCREEN_BETA"
-    DF_TDS_PERCENTAGE_KEY = "MY_TDS_AMPL"
 
-    def __init__(self, df_path: os.PathLike, # calibrator=None,
-                 bad_image_indices=None):
+    def __init__(self, df_path: os.PathLike):
         """bad_image_indices are SKIPPED and not loaded at all."""
-        LOG.debug(f"Loading measurement: {df_path=} with {bad_image_indices=}")
+        LOG.debug(f"Loading measurement: {df_path=}")
         df_path = Path(df_path)
 
 
         df = pd.read_pickle(df_path)
 
         self.dx = _get_constant_key_from_df_safeley(df, self.DF_DX_SCREEN_KEY)
-        self.tds_percentage = _get_constant_key_from_df_safeley(df, self.DF_TDS_PERCENTAGE_KEY)
+        self.tds_percentage = df[TDS_AMPLITUDE_READBACK_ADDRESS].mean()
 
         try:
             self.beta = _get_constant_key_from_df_safeley(df, self.DF_BETA_SCREEN_KEY)
@@ -275,17 +129,13 @@ class ScanMeasurement:
             pass
 
         self.images = []
-        if bad_image_indices is None:
-            bad_image_indices = []
         self.bg = []
         self._mean_bg_im: Optional[RawImageT] = None  # For caching.
 
         for i, relative_path in enumerate(df[I1_DUMP_SCREEN_ADDRESS]):
             abs_path = df_path.parent / relative_path
             LOG.debug(f"Loading image index {i} @ {relative_path}")
-            if i in bad_image_indices:
-                LOG.debug(f"Skipping bad image: {i}")
-                continue
+
             # In the df the png paths relative to the pickled dataframe, but
             # I want to be able to call it from anywhere, so resolve them to
             # absolute paths.
@@ -293,8 +143,13 @@ class ScanMeasurement:
             metadata = df[df[I1_DUMP_SCREEN_ADDRESS] == relative_path].squeeze()
             metadata[I1_DUMP_SCREEN_ADDRESS] = abs_path
             image = TDSScreenImage(metadata)
+
+            if image.is_bad:
+                LOG.info(f"Skipping bad image: {i} (TDS was off whilst beam was on)")
+                continue
+
             if image.is_bg:
-                LOG.debug(f"Image{i} is bg")
+                LOG.debug(f"Image {i} is bg")
                 self.bg.append(image)
             elif not image.is_bg:
                 self.images.append(image)
@@ -378,24 +233,12 @@ class ParameterScan:
         self,
         files: Iterable[os.PathLike],
         calibrator=None,
-        bad_images_per_measurement=None,
     ):
         # Ideally this voltage, calibration etc. stuff should go in the df.
         # for now, whatever.
         LOG.debug(f"Instantiating {type(self).__name__}")
-        if bad_images_per_measurement is None:
-            bad_images_per_measurement = len(files) * [None]
-
         self.calibrator = calibrator
-
-        self.measurements = []
-        for i, df_path in enumerate(files):
-            measurement = ScanMeasurement(
-                df_path,
-                # calibrator=calibrator,
-                bad_image_indices=bad_images_per_measurement[i],
-            )
-            self.measurements.append(measurement)
+        self.measurements = [ScanMeasurement(df_path) for df_path in files]
 
     @property
     def dx(self) -> npt.NDArray:
