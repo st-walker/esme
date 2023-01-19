@@ -9,11 +9,19 @@ from typing import Union
 
 import toml
 import pandas as pd
+import numpy as np
 
-from esme.analysis import (DispersionScan, OpticalConfig,
-                           SliceEnergySpreadMeasurement, TDSScan, BetaScan, ScanMeasurement)
+from esme.analysis import (
+    DispersionScan,
+    OpticalConfig,
+    SliceEnergySpreadMeasurement,
+    TDSScan,
+    BetaScan,
+    ScanMeasurement,
+)
 from esme.calibration import TDSCalibrator, TrivialTDSCalibrator
-from esme.injector_channels import TDS_AMPLITUDE_READBACK_ADDRESS
+from esme.injector_channels import TDS_AMPLITUDE_READBACK_ADDRESS, DUMP_SCREEN_ADDRESS
+from esme.measurement import MeasurementRunner, DispersionScanConfiguration, TDSScanConfiguration, DispersionMeasurer
 
 LOG = logging.getLogger(__name__)
 
@@ -48,7 +56,6 @@ def _files_from_config(config, scan_name) -> list[Path]:
     return paths
 
 
-
 def _dispersion_from_filename(fname: os.PathLike) -> float:
     path = Path(fname)
     match = re.search(r"Dx_[0-9]+", path.stem)
@@ -81,7 +88,7 @@ def _beta_from_filename(fname: os.PathLike) -> float:
 
 def add_metadata_to_pickled_df(fname, force_dx=None):
     LOG.info(f"Adding metadata to pickled file: {fname}")
-    tds_amplitude = _tds_magic_number_from_filename(fname)
+    tds_amplitude = tds_magic_number_from_filename(fname)
 
     if not force_dx:
         dispersion = _dispersion_from_filename(fname)
@@ -141,6 +148,7 @@ def scan_files_from_toml(tom: Union[os.PathLike, dict]) -> tuple:
 
     return dscan_paths, tscan_paths, bscan_paths
 
+
 def title_from_toml(tom: Union[os.PathLike, dict]) -> tuple:
     try:
         tom = toml.load(tom)
@@ -174,17 +182,14 @@ def load_config(fname: os.PathLike) -> SliceEnergySpreadMeasurement:
     try:
         screen_dispersion = calib["screen_dispersion"]
     except KeyError:
-        raise MalformedESMEConfigFile("Dispersion at which TDS was calibrated is"
-                                      " missing from esme run file")
+        raise MalformedESMEConfigFile("Dispersion at which TDS was calibrated is" " missing from esme run file")
 
     if voltages := calib.get("voltages"):
         calibrator = TrivialTDSCalibrator(percentages, voltages, screen_dispersion)
     else:
         tds_slopes = calib["tds_slopes"]
         tds_slopes_units = calib["tds_slope_units"]
-        calibrator = TDSCalibrator(percentages, tds_slopes,
-                                   screen_dispersion,
-                                   tds_slope_units=tds_slopes_units)
+        calibrator = TDSCalibrator(percentages, tds_slopes, screen_dispersion, tds_slope_units=tds_slopes_units)
 
     dscan = DispersionScan(
         dscan_paths,
@@ -196,7 +201,6 @@ def load_config(fname: os.PathLike) -> SliceEnergySpreadMeasurement:
         calibrator=calibrator,
     )
 
-
     bscan = None
     if bscan_paths:
         bscan = BetaScan(
@@ -205,3 +209,54 @@ def load_config(fname: os.PathLike) -> SliceEnergySpreadMeasurement:
         )
 
     return SliceEnergySpreadMeasurement(dscan, tscan, oconfig, bscan=bscan)
+
+
+def make_measurement_runner(name, fconfig, outdir="./", measure_dispersion=False):
+    config = toml.load(fconfig)
+    LOG.debug(f"Making MeasurementRunner instance from config file: {fconfig}")
+    tscan_config = TDSScanConfiguration.from_config_file(fconfig)
+    dscan_config = DispersionScanConfiguration.from_config_file(fconfig)
+
+    if measure_dispersion is not None:
+        measure_dispersion = make_dispersion_measurer(fconfig)
+
+    return MeasurementRunner(name, dscan_config, tscan_config, outdir=outdir, dispersion_measurer=measure_dispersion)
+
+
+def make_dispersion_measurer(fconfig):
+    config = toml.load(fconfig)
+    confd = config["dispersion"]
+    a1_voltages = np.linspace(confd["a1_voltage_min"], confd["a1_voltage_max"], num=confd["a1_npoints"])
+    return DispersionMeasurer(a1_voltages)
+
+
+def find_scan_config(fconfig: Path, default_name):
+    if fconfig.exists():
+        return fconfig
+    else:
+        return Path(default_name)
+
+
+def rm_pcl(fpcl: os.PathLike, dry_run=True):
+    """Delete a .pcl snapshots file and all images it refers to."""
+    fpcl = Path(fpcl)
+    pdir = fpcl.resolve().parent
+
+    df = pd.read_pickle(fpcl)
+
+    image_file_names = df[DUMP_SCREEN_ADDRESS]
+
+    for image_name in image_file_names:
+        image_path = pdir / image_name
+        if dry_run:
+            print(f"would rm '{image_path}'")
+        else:
+            try:
+                image_path.unlink()
+            except FileNotFoundError as exc:
+                LOG.warning(f"{exc.strerror}: {image_path}")
+
+    if dry_run:
+        print(f"would rm {fpcl}")
+    else:
+        fpcl.unlink()

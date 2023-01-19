@@ -17,7 +17,7 @@ class Snapshot:
     def __init__(self):
         self.sase_sections = ["SA1", "SA2", "SA3"]
         # or list of magnet prefix to check if they are vary
-        self.magnet_prefix = None  # ["QA.", "CBY.", "CAX.", "Q.", "CY.", "CX.", "CIX.", "CIY.", "QI.", "BL."]
+        self.magnet_prefix = []  # ["QA.", "CBY.", "CAX.", "Q.", "CY.", "CX.", "CIX.", "CIY.", "QI.", "BL."]
 
         self.orbit_sections = {}
         self.magnet_sections = {}
@@ -119,7 +119,7 @@ class Snapshot:
         for sec_id in self.magnet_sections:
             if self.magnet_sections[sec_id]["track"]:
                 for name in snap1.columns.values:
-                    if self.magnet_prefix is not None and any(x in name for x in self.magnet_prefix) and sec_id in name:
+                    if any(x in name for x in self.magnet_prefix) and sec_id in name:
                         # print("debug X: ", name, "."+sec_id + ".X" in name)
                         tol = self.magnet_sections[sec_id]["tol"]
                         if np.abs(snap1[name][0] - snap2[name][0]) > tol:

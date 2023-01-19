@@ -19,6 +19,7 @@ from .xfel_interface import XFELMachineInterface
 
 LOG = logging.getLogger(__name__)
 
+
 class MPS(Device):
     def __init__(self, eid=None, server="XFEL", subtrain="SA1"):
         super(MPS, self).__init__(eid=eid)

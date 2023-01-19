@@ -1,5 +1,10 @@
-from ocelot.cpbd.elements import Drift, Marker, Monitor, Quadrupole, SBend
-from ocelot.utils.section_track import SectionCell
+import warnings
+
+
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    from ocelot.cpbd.elements import Drift, Marker, Monitor, Quadrupole, SBend
+    from ocelot.utils.section_track import SectionCell
 
 # drifts
 di_2 = Drift(l=0.002879 * 0, eid='D_2')

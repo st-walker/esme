@@ -9,6 +9,7 @@ import cv2
 from scipy.optimize import curve_fit
 from uncertainties import ufloat
 
+import esme.maths as maths
 
 
 CENTRAL_SLICE_SEARCH_WINDOW_RELATIVE_WIDTH = 9
@@ -36,7 +37,7 @@ def get_cropping_bounds(im: RawImageT, just_central_slices=False) -> tuple[tuple
     icol1 = non_zero_column_indices[-1]
 
     if just_central_slices:
-        length = (irow1 - irow0)
+        length = irow1 - irow0
         middle = irow0 + length // 2
         irow0 = middle - length // CENTRAL_SLICE_SEARCH_WINDOW_RELATIVE_WIDTH
         irow1 = middle + length // CENTRAL_SLICE_SEARCH_WINDOW_RELATIVE_WIDTH
@@ -119,9 +120,9 @@ def get_slice_properties(image: RawImageT, fast=True) -> tuple[npt.NDArray, npt.
     mean_slice_position_error = []
     sigma_slice = []
     sigma_slice_error = []
-    for beam_slice in imcropped: # Iterates over the ROWS, so each one is a slice of the beam.
+    for beam_slice in imcropped:  # Iterates over the ROWS, so each one is a slice of the beam.
         try:
-            popt, perr = get_gaussian_fit(row_index, beam_slice)
+            popt, perr = maths.get_gaussian_fit(row_index, beam_slice)
         except RuntimeError:  # Happens if curve_fit fails to converge.
             # Set parameters to NaN, mask them later from the output
             mu = sigma = sigma_mu = sigma_sigma = np.nan
@@ -139,7 +140,12 @@ def get_slice_properties(image: RawImageT, fast=True) -> tuple[npt.NDArray, npt.
     mean_slice_position += icol0
 
     # Deal with nans due to for example
-    nan_mask = ~(np.isnan(mean_slice_position) | np.isnan(mean_slice_position_error) | np.isnan(sigma_slice) | np.isnan(sigma_slice_error))
+    nan_mask = ~(
+        np.isnan(mean_slice_position)
+        | np.isnan(mean_slice_position_error)
+        | np.isnan(sigma_slice)
+        | np.isnan(sigma_slice_error)
+    )
 
     mean_slice_position = np.array([ufloat(n, s) for n, s in zip(mean_slice_position, mean_slice_position_error)])
     slice_width = np.array([ufloat(n, s) for n, s in zip(sigma_slice, sigma_slice_error)])
@@ -149,29 +155,3 @@ def get_slice_properties(image: RawImageT, fast=True) -> tuple[npt.NDArray, npt.
     slice_width = slice_width[nan_mask]
 
     return row_index, mean_slice_position, slice_width
-
-
-
-def get_gaussian_fit(x, y) -> tuple[tuple, tuple]:
-    """popt/perr order: a, mu, sigma"""
-    mu0 = y.argmax()
-    a0 = y.max()
-    sigma0 = 1
-
-    # Bounds argument of curve_fit slows the fitting procedure down too much
-    # (>2x worse), so avoid using it here.
-    popt, pcov = curve_fit(
-        gauss,
-        x,
-        y,
-        p0=[a0, mu0, sigma0],
-    )
-    variances = np.diag(pcov)
-    if (variances < 0).any():
-        raise RuntimeError(f"Negative variance detected: {variances}")
-    perr = np.sqrt(variances)
-    return popt, perr
-
-
-def gauss(x, a, mu, sigma) -> Any:
-    return a * np.exp(-((x - mu) ** 2) / (2.0 * sigma**2))

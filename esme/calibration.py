@@ -1,10 +1,14 @@
 from typing import Any
+import warnings
 
 import numpy as np
 import pandas as pd
-from ocelot.cpbd.magnetic_lattice import MagneticLattice
 from scipy.constants import e, c
 from scipy.optimize import curve_fit
+
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    from ocelot.cpbd.magnetic_lattice import MagneticLattice
 
 from esme.lattice import injector_cell_from_snapshot
 import esme.analysis as ana
@@ -15,7 +19,7 @@ I1D_ENERGY_ADDRESS = "XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/I1D/ENERGY.ALL"
 TDS_FREQUENCY = 3e9
 TDS_WAVELENGTH = c / TDS_FREQUENCY
 TDS_WAVENUMBER = 2 * np.pi / TDS_WAVELENGTH
-TDS_LENGTH = 0.7 # metres
+TDS_LENGTH = 0.7  # metres
 
 
 def sqrt(x, a0, a1) -> Any:
@@ -23,8 +27,7 @@ def sqrt(x, a0, a1) -> Any:
 
 
 class TDSCalibrator:
-    def __init__(self, percentages, tds_slopes, dispersion,
-                 tds_slope_units=None):
+    def __init__(self, percentages, tds_slopes, dispersion, tds_slope_units=None):
         self.percentages = np.array(percentages)
         self.tds_slopes = np.array(tds_slopes)
         self.dispersion = dispersion

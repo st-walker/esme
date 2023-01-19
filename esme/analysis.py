@@ -36,21 +36,23 @@ import numpy.typing as npt
 import pandas as pd
 from scipy.constants import c, e, m_e
 from uncertainties import ufloat, umath
+from uncertainties.umath import sqrt as usqrt # pylint: disable=no-name-in-module
 
 from esme.calibration import TDS_WAVENUMBER, TDS_LENGTH
-from esme.measurement import I1_DUMP_SCREEN_ADDRESS
 from esme.maths import linear_fit, ValueWithErrorT
 from esme.image import get_slice_properties, process_image
 from esme.injector_channels import (TDS_AMPLITUDE_READBACK_ADDRESS,
                                     BEAM_ALLOWED_ADDRESS,
                                     BEAM_ENERGY_ADDRESS,
                                     EVENT10_CHANNEL,
-                                    TDS_ON_BEAM_EVENT10)
+                                    TDS_ON_BEAM_EVENT10,
+                                    DUMP_SCREEN_ADDRESS)
 
 
 
 PIXEL_SCALE_X_UM: float = 13.7369
 PIXEL_SCALE_Y_UM: float = 11.1756
+
 
 PIXEL_SCALE_X_M: float = PIXEL_SCALE_X_UM * 1e-6
 PIXEL_SCALE_Y_M: float = PIXEL_SCALE_Y_UM * 1e-6
@@ -71,7 +73,7 @@ class TDSScreenImage:
 
     @property
     def filename(self) -> str:
-        return self.metadata[I1_DUMP_SCREEN_ADDRESS]
+        return self.metadata[DUMP_SCREEN_ADDRESS]
 
     def to_im(self, process=True) -> RawImageT:
         # path to png is in the df, but actually we want path to the adjacent
@@ -132,7 +134,7 @@ class ScanMeasurement:
         self.bg = []
         self._mean_bg_im: Optional[RawImageT] = None  # For caching.
 
-        for i, relative_path in enumerate(df[I1_DUMP_SCREEN_ADDRESS]):
+        for i, relative_path in enumerate(df[DUMP_SCREEN_ADDRESS]):
             abs_path = df_path.parent / relative_path
             LOG.debug(f"Loading image index {i} @ {relative_path}")
 
@@ -140,8 +142,8 @@ class ScanMeasurement:
             # I want to be able to call it from anywhere, so resolve them to
             # absolute paths.
             abs_path = df_path.parent / relative_path
-            metadata = df[df[I1_DUMP_SCREEN_ADDRESS] == relative_path].squeeze()
-            metadata[I1_DUMP_SCREEN_ADDRESS] = abs_path
+            metadata = df[df[DUMP_SCREEN_ADDRESS] == relative_path].squeeze()
+            metadata[DUMP_SCREEN_ADDRESS] = abs_path
             image = TDSScreenImage(metadata)
 
             if image.is_bad:
@@ -472,7 +474,7 @@ class FittedBeamParameters:
         # to tuples at the end.
         av = ufloat(*self.a_v)
         ad = ufloat(*self.a_d)
-        result = (energy0 / dx0) * umath.sqrt(av - ad)
+        result = (energy0 / dx0) * usqrt(av - ad)
         return result.n, result.s
 
     @property
@@ -484,7 +486,7 @@ class FittedBeamParameters:
         # to tuples at the end.
         bd = ufloat(*self.b_d)
         bv = ufloat(*self.b_v)
-        result = (energy0 / dx0) * umath.sqrt(bd * dx0**2 - bv * v0**2)
+        result = (energy0 / dx0) * usqrt(bd * dx0**2 - bv * v0**2)
         return result.n, result.s
 
     @property
@@ -496,7 +498,7 @@ class FittedBeamParameters:
         e0_joules = energy0 * e
         bv = ufloat(*self.b_v)
         try:
-            result = (e0_joules / (dx0 * e * k)) * umath.sqrt(bv)
+            result = (e0_joules / (dx0 * e * k)) * usqrt(bv)
         except ValueError:
             return np.nan, np.nan
         return result.n, result.s
@@ -512,7 +514,7 @@ class FittedBeamParameters:
         v0 = abs(ufloat(*self.reference_voltage))
         e0j = ufloat(*self.reference_energy) * e # Convert to joules
         k = TDS_WAVENUMBER
-        result = (e0j / (dx0 * e * k * v0)) * umath.sqrt(ad - av + dx0**2 * bd)
+        result = (e0j / (dx0 * e * k * v0)) * usqrt(ad - av + dx0**2 * bd)
         return result.n, result.s
 
     @property
@@ -523,14 +525,14 @@ class FittedBeamParameters:
         length = TDS_LENGTH
         sigma_i = ufloat(*self.sigma_i)
         b_beta = sigma_i**2 / (bety + 0.25 * length**2 * gamy - length * alfy)
-        result = umath.sqrt(b_beta * self.oconfig.ocr_betx)
+        result = usqrt(b_beta * self.oconfig.ocr_betx)
         return result.n, result.s
 
     @property
     def sigma_r(self) -> ValueWithErrorT:
         ad = ufloat(*self.a_d)
         sigma_b = ufloat(*self.sigma_b)
-        result = umath.sqrt(ad - sigma_b**2)
+        result = usqrt(ad - sigma_b**2)
         return result.n, result.s
 
     @property
@@ -546,7 +548,7 @@ class FittedBeamParameters:
         ad = ufloat(*self.a_d)
         bd = ufloat(*self.b_d)
         d0 = ufloat(*self.reference_dispersion)
-        result = umath.sqrt(ad + bd * d0**2 - ab)
+        result = usqrt(ad + bd * d0**2 - ab)
         return result.n, result.s
 
     @property
@@ -561,7 +563,7 @@ class FittedBeamParameters:
         ab = ufloat(*self.a_beta)
         bd = ufloat(*self.b_d)
         d0 = ufloat(*self.reference_dispersion)
-        result = umath.sqrt(ab - bd * d0**2)
+        result = usqrt(ab - bd * d0**2)
         return result.n, result.s
 
     @property

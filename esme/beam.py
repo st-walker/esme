@@ -1,11 +1,10 @@
 import numpy as np
 from scipy.constants import e
 
-from esme.analysis import (ScanMeasurement, ParameterScan,
-                           SliceEnergySpreadMeasurement,
-                           transform_pixel_widths)
-from esme.image import crop_image, get_gaussian_fit, gauss
+from esme.analysis import ScanMeasurement, ParameterScan, SliceEnergySpreadMeasurement, transform_pixel_widths
+from esme.image import crop_image
 from esme.calibration import r34s_from_scan, TDS_WAVENUMBER
+from esme.maths import gauss, get_gaussian_fit
 
 
 def bunch_lengths_from_scan_measurement(measurement: ScanMeasurement, pixel_units="m"):
@@ -14,12 +13,11 @@ def bunch_lengths_from_scan_measurement(measurement: ScanMeasurement, pixel_unit
     for i in range(measurement.nimages):
         image = measurement.to_im(i)
         image = crop_image(image)
-        pixel_indices = np.arange(image.shape[0]) # Assumes streaking is in image Y
+        pixel_indices = np.arange(image.shape[0])  # Assumes streaking is in image Y
         projection = image.sum(axis=1)
         popt, perr = get_gaussian_fit(pixel_indices, projection)
         sigma = popt[2]
         # sigma = np.sqrt(np.cov(pixel_indices, aweights=projection))
-
 
         lengths.append(sigma)
 
@@ -27,10 +25,9 @@ def bunch_lengths_from_scan_measurement(measurement: ScanMeasurement, pixel_unit
     mean_error = mean_length / np.sqrt(len(lengths))
 
     # Transform units from px to whatever was chosen
-    mean_length, mean_error = transform_pixel_widths([mean_length], [mean_error],
-                                                     to_variances=False,
-                                                     pixel_units=pixel_units,
-                                                     dimension="y")
+    mean_length, mean_error = transform_pixel_widths(
+        [mean_length], [mean_error], to_variances=False, pixel_units=pixel_units, dimension="y"
+    )
     return mean_length, mean_error
 
 
