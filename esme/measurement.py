@@ -80,14 +80,16 @@ import time
 import os
 from pathlib import Path
 import pickle
-from typing import TypeVar
+from typing import TypeVar, Optional, Type, Union
+from enum import Enum, auto
+
 
 import toml
 import pandas as pd
+from textwrap import dedent
 
 from esme.mint.machine import MPS, Machine
 from esme.injector_channels import SNAPSHOT_TEMPL, DUMP_SCREEN_ADDRESS, TDS_AMPLITUDE_READBACK_ADDRESS
-from esme.maths import line
 
 TDSScanConfigurationSelf = TypeVar("TDSScanConfigurationSelfType", bound="TDSScanConfiguration")
 DispersionScanConfigurationSelf = TypeVar("DispersionScanConfigurationSelfType", bound="DispersionScanConfiguration")
@@ -98,7 +100,6 @@ LOG = logging.getLogger(__name__)
 DELAY_AFTER_BEAM_OFF: float = 5.0
 
 
-# I1_DUMP_SCREEN_ADDRESS: str =
 SCREEN_NAME: Path = Path("XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ").parent.name
 SNAPSHOT_TEMPL.add_image(DUMP_SCREEN_ADDRESS, folder=f"./images-{SCREEN_NAME}")
 
@@ -190,10 +191,10 @@ class MeasurementRunner:
         name,
         dscan_config: DispersionScanConfiguration,
         tds_config: TDSScanConfiguration,
-        outdir: os.PathLike = "./",
-        machine: EnergySpreadMeasuringMachine = None,
-        mps: MPS = None,
-        dispersion_measurer=None,
+        outdir: Union[os.PathLike, str] = "./",
+        machine: Optional[EnergySpreadMeasuringMachine] = None,
+        mps: Optional[MPS] = None,
+        dispersion_measurer: Optional[Type[BaseDispersionMeasurer]] = None,
     ):
         """name is used for the output file name"""
         self.name = name
@@ -253,7 +254,7 @@ class MeasurementRunner:
         image being taken.
         """
         LOG.debug(f"Beginning TDS scan measurement @ TDS ampl = {tds_amplitude}%")
-        self.machine.set_tds_amplitude(tds_amplitude)
+        self.machine.tds.set_amplitude(tds_amplitude)
         time.sleep(self.SLEEP_AFTER_TDS_SETTING)
         scan_df = self.photographer.take_data(
             bg_shots=bg_shots, beam_shots=beam_shots, delay=self.SLEEP_BETWEEN_SNAPSHOTS
@@ -307,7 +308,7 @@ class MeasurementRunner:
         value used for the dispersion scan."""
         refampl = self.tds_config.reference_amplitude
         LOG.info(f"Setting reference TDS amplitude: {refampl}")
-        self.machine.set_tds_amplitude(refampl)
+        self.machine.tds.set_amplitude(refampl)
         time.sleep(self.SLEEP_AFTER_TDS_SETTING)
 
     def set_reference_quads(self) -> None:

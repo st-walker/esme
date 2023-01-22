@@ -4,8 +4,6 @@ Sergey Tomin
 
 Script to collect tuning data
 """
-import time
-from esme.mint.machine import Machine
 from esme.mint.snapshot import Snapshot
 
 
@@ -35,8 +33,15 @@ EVENT12_CHANNEL = "XFEL.DIAG/TIMER.CENTRAL/MASTER/EVENT12"
 # himself (last time, at time of writing, 2 years ago).  I assume this
 # is correct for a given machine configuration
 # Each tick here is in units of 9.23 nanoseconds
-BUNCH_ONE_TDS_I1 = "XFEL.SDIAG/SPECIAL_BUNCHES.ML/TDSA.52.I1/BUNCH_ONE"
-BUNCH_ONE_TDS_BC2 = "XFEL.SDIAG/SPECIAL_BUNCHES.ML/TDSB.428.B2/BUNCH_ONE"
+BUNCH_ONE_TDS_I1 = "XFEL.SDIAG/SPECIAL_BUNCHES.ML/TDSA.52.I1/BUNCH_ONE"   # 4_597_792
+BUNCH_ONE_TDS_BC2 = "XFEL.SDIAG/SPECIAL_BUNCHES.ML/TDSB.428.B2/BUNCH_ONE" # 6_540_490
+
+BUNCH_ONE_TOLERANCE = 0.05
+
+
+PULSES_ACTIVE = "XFEL.SDIAG/SPECIAL_BUNCHES.ML/TDSB.428.B2/PULSES.ACTIVE"
+
+off_beam_time = 4_592_892
 
 # "XFEL.SDIAG/SPECIAL_BUNCHES.ML/TDSA.428.B2/PULSES.ACTIVE"
 # "XFEL.SDIAG/SPECIAL_BUNCHES.ML/TDSA.428.B2/PULSES.START"
@@ -46,7 +51,7 @@ BUNCH_ONE_TDS_BC2 = "XFEL.SDIAG/SPECIAL_BUNCHES.ML/TDSB.428.B2/BUNCH_ONE"
 TDS_ON_BEAM_EVENT10 = [
     1,  # Enabled
     111,  # Some "Event number", all events are numbered.  TDS injector has 111.
-    4597792,  # Delay in units of 9.23ns
+    4_597_792,  # Delay in units of 9.23ns
     2,  # Mask, not sure what this is for...  in any case just change the delay.
 ]
 

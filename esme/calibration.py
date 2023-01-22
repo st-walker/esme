@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Sequence, Union, Optional
 import warnings
 
 import numpy as np
@@ -11,7 +11,6 @@ with warnings.catch_warnings():
     from ocelot.cpbd.magnetic_lattice import MagneticLattice
 
 from esme.lattice import injector_cell_from_snapshot
-import esme.analysis as ana
 from esme.maths import line
 
 I1D_ENERGY_ADDRESS = "XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/I1D/ENERGY.ALL"
@@ -27,7 +26,9 @@ def sqrt(x, a0, a1) -> Any:
 
 
 class TDSCalibrator:
-    def __init__(self, percentages, tds_slopes, dispersion, tds_slope_units=None):
+    def __init__(
+        self, percentages: Sequence[float], tds_slopes: Sequence[float], dispersion: float, tds_slope_units: Optional[str] = None
+    ):
         self.percentages = np.array(percentages)
         self.tds_slopes = np.array(tds_slopes)
         self.dispersion = dispersion
@@ -40,27 +41,29 @@ class TDSCalibrator:
         popt, pcov = curve_fit(line, self.percentages, self.tds_slopes)
         return popt, pcov
 
-    def get_tds_slope(self, percentage):
+    def get_tds_slope(self, percentage: float) -> float:
         popt, _ = self.fit()
         return line(percentage, *popt)
 
-    def get_voltage(self, percentage, snapshot: pd.Series):
+    def get_voltage(
+        self, percentage: Union[float, Sequence[float]], snapshot: pd.Series
+    ) -> Union[float, Sequence[float]]:
         tds_slope = self.get_tds_slope(percentage)
         return get_tds_voltage(tds_slope, snapshot)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         cname = type(self).__name__
         dx = self.dispersion
         return f"<{cname}: {dx=}, %={repr(self.percentages)}, grds={self.tds_slopes}>"
 
 
 class TrivialTDSCalibrator:
-    def __init__(self, percentages, voltages, dispersion):
+    def __init__(self, percentages: Sequence[float], voltages: Sequence[float], dispersion: float):
         self.percentages = np.array(percentages)
         self.voltages = np.array(voltages)
         self.dispersion = np.squeeze(dispersion)
 
-    def get_voltage(self, percentage, snapshot):
+    def get_voltage(self, percentage, snapshot) -> float:
         return dict(zip(self.percentages, self.voltages))[percentage]
 
 
@@ -74,7 +77,7 @@ def lat_from_tds_to_screen(snapshot: pd.Series):
     return lat
 
 
-def r34_from_tds_to_screen(snapshot: pd.Series):
+def r34_from_tds_to_screen(snapshot: pd.Series) -> float:
     lat = lat_from_tds_to_screen(snapshot)
     energy = snapshot[I1D_ENERGY_ADDRESS].mean()
 
@@ -84,7 +87,7 @@ def r34_from_tds_to_screen(snapshot: pd.Series):
     return r34
 
 
-def get_tds_voltage(gradient_m_per_s, snapshot: pd.Series):
+def get_tds_voltage(gradient_m_per_s: Union[float, Sequence[float]], snapshot: pd.Series) -> Union[float, Sequence[float]]:
     r34 = r34_from_tds_to_screen(snapshot)
     energy = snapshot[I1D_ENERGY_ADDRESS]
     angular_frequency = TDS_FREQUENCY * 2 * np.pi  # to rad/s
