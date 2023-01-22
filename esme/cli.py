@@ -1,23 +1,22 @@
 """Console script for esme."""
 
-import sys
 import logging
 from pathlib import Path
 
-import click
-import matplotlib.pyplot as plt
+from click import command, option, Option, UsageError, group, argument, echo
 
-from esme.analysis import ScanMeasurement, calculate_energy_spread_simple
+from esme.analysis import calculate_energy_spread_simple
 import esme.analysis
 from esme.inout import (
     load_config,
-    add_metadata_to_pcls_in_toml,
     scan_files_from_toml,
     title_from_toml,
     make_measurement_runner,
     make_dispersion_measurer,
     find_scan_config,
     rm_pcl,
+    toml_dfs_to_setpoint_snapshots,
+    add_metadata_to_pcls_in_toml
 )
 
 from esme.plot import (
@@ -27,24 +26,56 @@ from esme.plot import (
     plot_scans,
     plot_tds_calibration,
     pretty_parameter_table,
-    show_before_after_processing,
     compare_results,
     plot_tds_set_point_vs_readback,
 )
 
 
 logging.basicConfig()
+logging.getLogger().setLevel(logging.INFO)
 LOG = logging.getLogger(__name__)
 
 
-@click.group()
-@click.option("--debug", is_flag=True, help="Run all subcommands in debug mode")
-@click.option("--single-threaded", is_flag=True, help="Run in a single process")
+
+class MutuallyExclusiveOption(Option):
+    # From https://stackoverflow.com/a/37491504
+    def __init__(self, *args, **kwargs):
+        self.mutually_exclusive = set(kwargs.pop('mutually_exclusive', []))
+        help = kwargs.get('help', '')
+        if self.mutually_exclusive:
+            ex_str = ', '.join(self.mutually_exclusive)
+            kwargs['help'] = help + (
+                ' NOTE: This argument is mutually exclusive with '
+                f' arguments: [{ex_str}].'
+            )
+        super(MutuallyExclusiveOption, self).__init__(*args, **kwargs)
+
+    def handle_parse_result(self, ctx, opts, args):
+        if self.mutually_exclusive.intersection(opts) and self.name in opts:
+            raise UsageError(
+                "Illegal usage: `{}` is mutually exclusive with "
+                "arguments `{}`.".format(
+                    self.name,
+                    ', '.join(self.mutually_exclusive)
+                )
+            )
+
+        return super(MutuallyExclusiveOption, self).handle_parse_result(
+            ctx,
+            opts,
+            args
+        )
+
+
+
+@group()
+@option("--debug", is_flag=True, help="Run all subcommands in debug mode")
+@option("--single-threaded", is_flag=True, help="Run in a single process")
 def main(debug, single_threaded):
     """Main entrypoint."""
-    click.echo("esme-xfel")
-    click.echo("=" * len("esme-xfel"))
-    click.echo(
+    echo("esme-xfel")
+    echo("=" * len("esme-xfel"))
+    echo(
         "Automatic calibration, data taking and analysis for" " uncorrelated energy spread measurements at the EuXFEL"
     )
 
@@ -61,11 +92,11 @@ def main(debug, single_threaded):
 
 
 @main.command(no_args_is_help=True)
-@click.argument("scan-tomls", nargs=-1)
-@click.option(
+@argument("scan-tomls", nargs=-1)
+@option(
     "--simple", "-s", is_flag=True, help="Calculate the energy spread without accounting for the impact of the TDS."
 )
-@click.option("--latex", is_flag=True)
+@option("--latex", is_flag=True)
 def calc(scan_tomls, simple, latex):
     """Calculate the slice energy spread using a toml analysis file"""
 
@@ -73,7 +104,7 @@ def calc(scan_tomls, simple, latex):
 
     # sesme = load_config() # Load the slice energy spread measurement instance.
 
-    click.echo("Calculation of energy spread")
+    echo("Calculation of energy spread")
     if simple:
         for fname, sesme in zip(scan_tomls, slice_energy_spread_measurements):
             espread_ev, error_ev = calculate_energy_spread_simple(sesme.dscan)
@@ -89,13 +120,13 @@ def calc(scan_tomls, simple, latex):
 
 
 @main.command(no_args_is_help=True)
-@click.argument("scan-tomls", nargs=-1)
-@click.option("--dump-images", "-d", is_flag=True, help="Dump all images used in the calculation to file")
-@click.option("--widths", "-w", is_flag=True, help="Dump all images used in the calculation to file")
-@click.option("--magnets", "-m", is_flag=True)
-@click.option("--calibration", "-c", is_flag=True)
-@click.option("--alle", is_flag=True)
-@click.option("--save", "-s", is_flag=True)
+@argument("scan-tomls", nargs=-1)
+@option("--dump-images", "-d", is_flag=True, help="Dump all images used in the calculation to file")
+@option("--widths", "-w", is_flag=True, help="Dump all images used in the calculation to file")
+@option("--magnets", "-m", is_flag=True)
+@option("--calibration", "-c", is_flag=True)
+@option("--alle", is_flag=True)
+@option("--save", "-s", is_flag=True)
 def plot(scan_tomls, dump_images, widths, magnets, alle, calibration, save):
     """Make lots of different plots from toml analysis files"""
     slice_energy_spread_measurements = [load_config(fname) for fname in scan_tomls]
@@ -103,7 +134,7 @@ def plot(scan_tomls, dump_images, widths, magnets, alle, calibration, save):
         root_outdir = None
         if alle:
             root_outdir = Path(fname).resolve().parent / (Path(fname).stem + "-images")
-            click.echo(f"Writing plots to {root_outdir}")
+            echo(f"Writing plots to {root_outdir}")
             dump_full_scan(sesme, root_outdir)
             plot_measured_central_widths(sesme, root_outdir, show=False)
             plot_scans(sesme, root_outdir)
@@ -124,14 +155,28 @@ def plot(scan_tomls, dump_images, widths, magnets, alle, calibration, save):
 
 
 @main.command(no_args_is_help=True, hidden=True)
-@click.argument("ftoml", nargs=1)
-def fix(ftoml):
+@argument("ftoml", nargs=1)
+@option("--new-columns", is_flag=True, cls=MutuallyExclusiveOption, mutually_exclusive=["to_snapshot"])
+@option("--to-snapshots", is_flag=True, cls=MutuallyExclusiveOption, mutually_exclusive=["new_columns"])
+@option("--alle", is_flag=True, cls=MutuallyExclusiveOption, mutually_exclusive=["new_columns", "to_snapshot"])
+def fix(ftoml, new_columns, to_snapshots, alle):
     """Update metadata in old pcl snapshot files to match newer formats"""
-    add_metadata_to_pcls_in_toml(ftoml)
+    if new_columns:
+        echo(f"Adding columns to files in {ftoml}.")
+        add_metadata_to_pcls_in_toml(ftoml)
+    elif to_snapshots:
+        echo(f"Converting pcl files in {ftoml} to SetpointSnapshot instances.")        
+        toml_dfs_to_setpoint_snapshots(ftoml)
+    elif alle:
+        add_metadata_to_pcls_in_toml(ftoml)
+        toml_dfs_to_setpoint_snapshots(ftoml)        
+    else:
+        raise UsageError("No flags provided")
+
 
 
 @main.command(no_args_is_help=True, hidden=True)
-@click.argument("ftoml", nargs=1)
+@argument("ftoml", nargs=1)
 def compsp(ftoml):
     """Compare TDS amplitude readbacks to setpoints"""
     dscan, tscan, bscan = scan_files_from_toml(ftoml)
@@ -140,13 +185,13 @@ def compsp(ftoml):
 
 
 @main.command(no_args_is_help=True)
-@click.argument("name", nargs=1)
-@click.option("--dispersion", is_flag=True, help="Just measure the dispersion (used for debugging purposes)")
-@click.option("--bscan", is_flag=True, help="Only do the beta scan")
-@click.option("--dscan", is_flag=True, help="Only do the dispersion scan")
-@click.option("--tscan", is_flag=True, help="Only do the TDS scan")
-@click.option("--config", help="Explicitly set the config to be used.", type=Path)
-# @click.argument("--continue", n) # continue_ file...
+@argument("name", nargs=1)
+@option("--dispersion", is_flag=True, help="Just measure the dispersion (used for debugging purposes)")
+@option("--bscan", is_flag=True, help="Only do the beta scan")
+@option("--dscan", is_flag=True, help="Only do the dispersion scan")
+@option("--tscan", is_flag=True, help="Only do the TDS scan")
+@option("--config", help="Explicitly set the config to be used.", type=Path)
+# @argument("--continue", n) # continue_ file...
 def measure(name, dispersion, bscan, dscan, tscan, config):
     """Measure the slice energy spread in the EuXFEL on the command line"""
 
@@ -175,8 +220,8 @@ def measure(name, dispersion, bscan, dscan, tscan, config):
 
 
 @main.command(no_args_is_help=True)
-@click.argument("pcl-files", nargs=-1)
-@click.option(
+@argument("pcl-files", nargs=-1)
+@option(
     "--dry-run",
     "-n",
     is_flag=True,

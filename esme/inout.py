@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import pickle
 import logging
 import re
 import os
@@ -21,7 +22,7 @@ from esme.analysis import (
 )
 from esme.calibration import TDSCalibrator, TrivialTDSCalibrator
 from esme.injector_channels import TDS_AMPLITUDE_READBACK_ADDRESS, DUMP_SCREEN_ADDRESS
-from esme.measurement import MeasurementRunner, DispersionScanConfiguration, TDSScanConfiguration, DispersionMeasurer
+from esme.measurement import MeasurementRunner, DispersionScanConfiguration, TDSScanConfiguration, DispersionMeasurer, SetpointSnapshots, ScanType
 
 LOG = logging.getLogger(__name__)
 
@@ -87,7 +88,16 @@ def _beta_from_filename(fname: os.PathLike) -> float:
 
 
 def add_metadata_to_pickled_df(fname, force_dx=None):
-    LOG.info(f"Adding metadata to pickled file: {fname}")
+
+    LOG.debug(f"Adding metadata to pickled file: {fname}")
+
+    df = pd.read_pickle(fname)
+    if isinstance(df, SetpointSnapshots):
+        LOG.debug(f"{fname} is a pickled SetpointSnapshots instance, not a raw df.")
+        return
+    elif df is None:
+        import ipdb; ipdb.set_trace()
+
     tds_amplitude = tds_magic_number_from_filename(fname)
 
     if not force_dx:
@@ -100,20 +110,17 @@ def add_metadata_to_pickled_df(fname, force_dx=None):
     except MissingMetadataInFileNameError:
         beta = None
 
-    df = pd.read_pickle(fname)
-
-    LOG.info(f"Adding dx, tds: {dispersion=}, {tds_amplitude=}")
-    df[ScanMeasurement.DF_DX_SCREEN_KEY] = dispersion
-    df[TDS_AMPLITUDE_READBACK_ADDRESS] = tds_amplitude
+    LOG.debug(f"Adding dx, tds: {dispersion=}, {tds_amplitude=}")
+    df["MY_SCREEN_DX"] = dispersion
 
     if beta:
         LOG.info(f"Adding BETA metadata to pickled file: {beta=}")
-        df[ScanMeasurement.DF_BETA_SCREEN_KEY] = beta
+        df["MY_SCREEN_BETA"] = beta
     else:
         with contextlib.suppress(KeyError):
-            del df[ScanMeasurement.DF_BETA_SCREEN_KEY]
+            del df["MY_SCREEN_BETA"]
 
-    LOG.info(f"Writing metadata to pickled file: {fname}")
+    LOG.debug(f"Writing metadata to pickled file: {fname}")
     df.to_pickle(fname)
 
 
@@ -144,7 +151,7 @@ def scan_files_from_toml(tom: Union[os.PathLike, dict]) -> tuple:
     try:
         bscan_paths = _files_from_config(tom, "bscan")
     except KeyError:
-        bscan = None
+        bscan_paths = None
 
     return dscan_paths, tscan_paths, bscan_paths
 
@@ -159,6 +166,7 @@ def title_from_toml(tom: Union[os.PathLike, dict]) -> tuple:
         return tom["title"]
     except KeyError:
         return ""
+
 
 
 def load_config(fname: os.PathLike) -> SliceEnergySpreadMeasurement:
@@ -211,6 +219,14 @@ def load_config(fname: os.PathLike) -> SliceEnergySpreadMeasurement:
     return SliceEnergySpreadMeasurement(dscan, tscan, oconfig, bscan=bscan)
 
 
+def setpoint_snapshots_from_pcls(pcl_files):
+    result = []
+    for path in pcl_files:
+        with path.open("rb") as f:
+            result.append(pickle.load(f))
+    return result
+
+
 def make_measurement_runner(name, fconfig, outdir="./", measure_dispersion=False):
     config = toml.load(fconfig)
     LOG.debug(f"Making MeasurementRunner instance from config file: {fconfig}")
@@ -260,3 +276,58 @@ def rm_pcl(fpcl: os.PathLike, dry_run=True):
         print(f"would rm {fpcl}")
     else:
         fpcl.unlink()
+
+
+def _loop_pcl_df_files(paths, scan_type):
+    for fdf in paths:
+        try:
+            snapshot = raw_df_pcl_to_setpoint_snapshots(fdf, scan_type)
+        except TypeError:
+            continue
+        else:
+            with fdf.open("wb") as f:
+                pickle.dump(snapshot, f)
+
+
+def raw_df_pcl_to_setpoint_snapshots(fpcl, scan_type):
+    # try:
+    df = pd.read_pickle(fpcl)
+    # except EOFError:
+
+
+    if isinstance(df, SetpointSnapshots):
+        LOG.info(f"{fpcl} is already a pickled SetpointSnapshots instance")
+        raise TypeError("already a SetpointSnapshot")
+
+    # Measured dispersion
+    dx = df["MY_SCREEN_DX"].iloc[0]
+
+    try:
+        beta = df["MY_SCREEN_BETA"]
+    except KeyError:
+        beta = None
+    else:
+        beta = beta.iloc[0]
+        df = df.drop(columns="MY_SCREEN_BETA")
+
+    df = df.drop(columns="MY_SCREEN_DX")
+
+    dispersion_setpoints = np.array([0.6, 0.8, 1.0, 1.2])
+    isetpoint = np.abs(dispersion_setpoints - dx).argmin()
+
+    dispersion_setpoint = dispersion_setpoints[isetpoint]
+
+    return SetpointSnapshots(df, scan_type, dispersion_setpoint=dispersion_setpoint,
+                             measured_dispersion=(dx, 0.0),
+                             beta=beta)
+
+
+
+def toml_dfs_to_setpoint_snapshots(ftoml):
+    dscan_paths, tscan_paths, bscan_paths = scan_files_from_toml(ftoml)
+    if dscan_paths:
+        _loop_pcl_df_files(dscan_paths, ScanType.DISPERSION)
+    if tscan_paths:
+        _loop_pcl_df_files(tscan_paths, ScanType.TDS)
+    if bscan_paths:
+        _loop_pcl_df_files(bscan_paths, ScanType.BETA)

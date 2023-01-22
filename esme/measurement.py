@@ -417,7 +417,11 @@ class ScreenPhotographer:
         return not self.machine.is_machine_online()
 
 
-class DispersionMeasurer:
+class BaseDispersionMeasurer:
+    pass
+
+
+class DispersionMeasurer(BaseDispersionMeasurer):
     def __init__(self, a1_voltages: list[float], machine=None):
         self.a1_voltages = a1_voltages
         if machine is None:
@@ -449,7 +453,7 @@ class DispersionMeasurer:
     #     return x, y
 
 
-class BasicDispersionMeasurer:
+class BasicDispersionMeasurer(BaseDispersionMeasurer):
     def measure(self) -> tuple[float, float]:
         dispersion = float(input("Enter dispersion in m:"))
         dispersion_unc = float(input("Enter dispersion unc in m:"))
@@ -460,47 +464,84 @@ def handle_sigint():
     pass
 
 
+class TDS:
+    RB_SP_TOLERANCE = 0.02
+    AMPLITUDE_SP = "XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/SP.AMPL"
+    AMPLITUDE_RB = "XFEL.RF/LLRF.CONTROLLER/VS.LLTDSI1/AMPL.SAMPLE"
+    EVENT = "XFEL.DIAG/TIMER.CENTRAL/MASTER/EVENT10"
+
+    def __init__(self, mi=None):
+        self.mi = mi
+
+    def set_amplitude(self, amplitude: float) -> None:
+        """Set the TDS amplitude"""
+        LOG.debug(f"Setting TDS amplitude: {self.AMPLITUDE_SP} @ {amplitude}")
+        self.mi.set_value(self.AMPLITUDE_SP, amplitude)
+
+    def read_rb_amplitude(self) -> float:
+        """Read back the TDS amplitude"""
+        result = self.mi.get_value(self.AMPLITUDE_RB)
+        LOG.debug(f"Reading TDS amplitude: {self.AMPLITUDE_RB} @ {result}")
+        return result
+
+    def read_sp_amplitude(self) -> float:
+        """Read back the TDS amplitude"""
+        result = self.mi.get_value(self.AMPLITUDE_SP)
+        LOG.debug(f"Reading TDS amplitude: {self.AMPLITUDE_RB} @ {result}")
+        return result
+
+    def is_powered(self) -> bool:
+        LOG.debug("Checking if TDS is powered")
+        rb = self.read_rb_amplitude()
+        sp = self.read_sp_amplitude()
+        relative_difference = abs(rb - sp) / sp
+        powered = relative_difference < self.RB_SP_TOLERANCE
+        LOG.debug(f"TDS RB ampl = {rb}; TDS SP = {sp}: {relative_difference=} -> {powered}")
+        return powered
+
+    def is_on_beam(self) -> bool:
+        pass
+
+    def switch_off_beam(self) -> None:
+        """Turn the TDS off beam (whilst keeping RF power)"""
+        LOG.debug(f"Setting TDS off beam")
+        self._switch_tds_on_off_beam(on=False)
+
+    def switch_on_beam(self) -> None:
+        """Turn the TDS on beam"""
+        LOG.debug(f"Setting TDS on beam")
+        self._switch_tds_on_off_beam(on=True)
+
+    def _switch_tds_on_off_beam(self, *, on: bool) -> None:
+        bunch_number = 1 # Hardcoded, always nuch
+        on_data = [bunch_number, int(on), 0, 0]  # 3rd: "kicker", 4th: "WS-subtrain"
+
+        self.mi.set_value("XFEL.SDIAG/SPECIAL_BUNCHES.ML/I1/CONTROL", on_data)
+        # "How many pulses to kick" (???)  Not sure why 1000 in particular
+        self.mi.set_value('XFEL.SDIAG/SPECIAL_BUNCHES.ML/I1/PULSES.ACTIVE', 1000)
+        time.sleep(0.1)
+        # "Start kicking"
+        self.mi.set_value('XFEL.SDIAG/SPECIAL_BUNCHES.ML/I1/START', 1)
+        time.sleep(0.2)
+
+
 class EnergySpreadMeasuringMachine(Machine):
-    TDS_AMPLITUDE_SP = "XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/SP.AMPL"
-    # ? instead ? "XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/SP.POWER"
-    TDS_AMPLITUDE_RB = "XFEL.RF/LLRF.CONTROLLER/VS.LLTDSI1/AMPL.SAMPLE"
 
     A1_VOLTAGE_SP = "XFEL.RF/LLRF.CONTROLLER/CTRL.A1.I1/SP.AMPL"
     A1_VOLTAGE_RB = "XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/AMPL.SAMPLE"
-
-    # # # For TDS I guess ?  Not sure
-    # TIME_EVENT10 = "XEL.SDTIMER.CENTRAL/MASTER/EVENT10TL"
-
-    # TDS_CONTROL = "XFEL.SDIAG/SPECIAL_BUNCHES.ML/I1/CONTROL"
 
     SCREEN_CHANNEL = DUMP_SCREEN_ADDRESS
     SCREEN_GAIN_CHANNEL = "!__placeholder__!"
 
     def __init__(self, snapshot):
         super().__init__(snapshot)
+        self.tds = TDS(self.mi)
 
     def set_quad(self, name: str, value: float) -> None:
         """Set a particular quadrupole given by its name to the given value."""
         channel = f"XFEL.MAGNETS/MAGNET.ML/{name}/KICK_MRAD.SP"
         LOG.debug(f"Setting {channel} @ {value}")
         self.mi.set_value(channel, value)
-
-    def set_tds_amplitude(self, amplitude: float) -> None:
-        """Set the TDS amplitude"""
-        LOG.debug(f"Setting TDS amplitude: {self.TDS_AMPLITUDE_SP} @ {amplitude}")
-        self.mi.set_value(self.TDS_AMPLITUDE_SP, amplitude)
-
-    def read_tds_rb_amplitude(self) -> float:
-        """Read back the TDS amplitude"""
-        result = self.mi.get_value(self.TDS_AMPLITUDE_RB)
-        LOG.debug(f"Reading TDS amplitude: {self.TDS_AMPLITUDE_RB} @ {result}")
-        return result
-
-    def read_tds_sp_amplitude(self) -> float:
-        """Read back the TDS amplitude"""
-        result = self.mi.get_value(self.TDS_AMPLITUDE_SP)
-        LOG.debug(f"Reading TDS amplitude: {self.TDS_AMPLITUDE_RB} @ {result}")
-        return result
 
     def set_a1_voltage(self, voltage: float) -> float:
         """Set the A1 voltage (used for dispersion measurements)"""
@@ -512,28 +553,6 @@ class EnergySpreadMeasuringMachine(Machine):
         result = self.mi.get_value(self.A1_VOLTAGE_RB)
         LOG.debug(f"Reading A1 voltage: {self.A1_VOLTAGE_RB} @ {result}")
         return result
-
-    def turn_tds_off_beam(self) -> None:
-        """Turn the TDS off beam (whilst keeping RF power)"""
-        LOG.debug(f"Setting TDS off beam")
-        self._switch_tds_on_off_beam(on=False)
-
-    def turn_tds_on_beam(self) -> None:
-        """Turn the TDS on beam"""
-        LOG.debug(f"Setting TDS on beam")
-        self._switch_tds_on_off_beam(on=True)
-
-    def _switch_tds_on_off_beam(self, *, on: bool) -> None:
-        bunch_number = 1
-        on_data = [bunch_number, int(on), 0, 0]  # 3rd: "kicker", 4th: "WS-subtrain"
-
-        self.mi.set_value("XFEL.SDIAG/SPECIAL_BUNCHES.ML/I1/CONTROL", on_data)
-        # "How many pulses to kick" (???)  Not sure why 1000 in particular
-        self.mi.set_value('XFEL.SDIAG/SPECIAL_BUNCHES.ML/I1/PULSES.ACTIVE', 1000)
-        time.sleep(0.1)
-        # "Start kicking"
-        self.mi.set_value('XFEL.SDIAG/SPECIAL_BUNCHES.ML/I1/START', 1)
-        time.sleep(0.2)
 
     def get_screen_image(self):
         """Get screen image"""
@@ -559,10 +578,31 @@ class EnergySpreadMeasuringMachine(Machine):
 #     # we've actually got by looking at the TDS amplitude setpoints,  dispersion setpoints and sc
 
 
+class ScanType(Enum):
+    DISPERSION = auto()
+    TDS = auto()
+    BETA = auto()
+
+    @classmethod
+    @property
+    def ALT_NAME_MAP(cls):
+        return {cls.DISPERSION: "dscan", cls.TDS: "tscan", cls.BETA: "bscan"}
+
+    def alt_name(self):
+        return self.ALT_NAME_MAP[self]
+
+
 @dataclass
 class SetpointSnapshots:
+    """Class for representing a set of snapshots at a single machine
+    setpoint.  On top of the data read directly from the machine (the
+    pd.DataFrame), there's also the scan_type, the dispersion setpoint
+    and the corresponding measured dispersion.
+
+    """
+
     snapshots: pd.DataFrame
-    scan_type: str
+    scan_type: ScanType
     dispersion_setpoint: float
     measured_dispersion: tuple[float, float]
     beta: float = None
@@ -574,14 +614,55 @@ class SetpointSnapshots:
         timestamp = time.strftime("%Y-%m-%d@%H:%M:%S")
         ampl_sp = _tds_amplitude_setpoint_from_df(self.snapshots)
         dispersion = self.dispersion_setpoint
-        scan_type = self.scan_type
+        scan_name = self.scan_type.alt_name()
         return f"{timestamp}>>{scan_type}>>D={dispersion},TDS={ampl_sp}%.pcl"
 
+    @property
+    def tds_amplitude_setpoint(self) -> float:
+        setpoints = self.snapshots[TDS_AMPLITUDE_READBACK_ADDRESS]
+        one_setpoint = setpoints.iloc[0]
 
-def _tds_amplitude_setpoint_from_df(df: pd.DataFrame) -> float:
-    sps = df[TDS_AMPLITUDE_READBACK_ADDRESS]
-    sp = sps.mode().item()
+        if not (setpoints == one_setpoint).all():
+            raise ValueError("Setpoint is not consistent across snapshots")
+        return one_setpoint
 
-    if not (sp == sps).all():
-        raise ValueError("Setpoint is not consistent across snapshots")
-    return sp
+    def __repr__(self):
+        tname = type(self).__name__
+        dx0 = self.dispersion_setpoint
+        dx1, dx1e = self.measured_dispersion
+        bstring = ", beta={self.beta}" if self.beta else ""
+        out = (f"<{tname}: scan_type={self.scan_type.name}, {dx0=}, dxm=({dx1}±{dx1e})m,"
+               f" nsnapshots={len(self)}{bstring}>")
+        return out
+
+
+def resume_from_output_directory(dirname: Union[os.PathLike, str]):
+    """Resume a measurement from the output directory"""
+    LOG.info(f"Trying to resume measurement in {dirname}")
+
+    fname = dirname / "scan.toml"
+    tconf = TDSScanConfiguration.from_config_file(fname)
+    dconf = DispersionScanConfiguration.from_config_file(fname)
+
+
+    # What we want, judging by the scan.toml
+    tscan_amplitudes = set(tconf.scan_amplitudes)
+    dscan_dispersions = set(s.dispersion for s in dconf.scan_settings)
+    LOG.info(f"In scan.toml (desired machine setpoints): TDS scan amplitudes:"
+             f" {tscan_amplitudes}, dispersion scan amplitudes: {dscan_amplitudes}")
+
+    # What we have, judging by the output.
+    for fpcl in dirname.glob("*.pcl"):
+        with pcl.open("rb") as f:
+            snapshots = pickle.load(fpcl)
+
+            if not _is_complete_snapshot(snapshot, nbg, nbeam):
+                continue
+
+            tscan_amplitudes.discard(snapshots.tds_amplitude_setpoint)
+            dscan_amplitudes.discard(snapshots.dispersion_setpoint)
+
+
+
+def _is_complete_snapshot(snapshot):
+    pass
