@@ -20,12 +20,10 @@ Units: everything is in SI, except energy which is in eV.
 
 from __future__ import annotations
 
-import contextlib
 import logging
 import multiprocessing as mp
 import os
 import pickle
-import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Generator, Iterable, Optional
@@ -35,7 +33,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 from scipy.constants import c, e, m_e
-from uncertainties import ufloat, umath
+from uncertainties import ufloat
 from uncertainties.umath import sqrt as usqrt # pylint: disable=no-name-in-module
 
 from esme.calibration import TDS_WAVENUMBER, TDS_LENGTH
@@ -47,7 +45,6 @@ from esme.injector_channels import (TDS_AMPLITUDE_READBACK_ADDRESS,
                                     EVENT10_CHANNEL,
                                     TDS_ON_BEAM_EVENT10,
                                     DUMP_SCREEN_ADDRESS)
-
 
 
 PIXEL_SCALE_X_UM: float = 13.7369
@@ -215,7 +212,7 @@ class ScanMeasurement:
     def beam_energy(self) -> float:
         return np.mean([im.beam_energy for im in self.images])
 
-    def flatten(self, include_bg: bool = True) -> Generator[TDSScreenImage]:
+    def flatten(self, include_bg: bool = True) -> Generator[TDSScreenImage, None, None]:
         if include_bg:
             yield from self.bg
         yield from self.images
@@ -274,7 +271,7 @@ class ParameterScan:
     def beam_energy(self) -> float:
         return np.mean([m.beam_energy for m in self])
 
-    def flatten(self, include_bg: bool = False) -> Generator[TDSScreenImage]:
+    def flatten(self, include_bg: bool = False) -> Generator[TDSScreenImage, None, None]:
         for measurement in self.measurements():
             yield from measurement.flatten(include_bg)
 
@@ -390,7 +387,7 @@ class OpticalConfig:
 
 
 class SliceEnergySpreadMeasurement:
-    def __init__(self, dscan: DispersionScan, tscan: TDSScan, optical_config: OpticalConfig, bscan: BetaScan = None):
+    def __init__(self, dscan: DispersionScan, tscan: TDSScan, optical_config: OpticalConfig, bscan: Optional[BetaScan] = None):
         self.dscan = dscan
         self.tscan = tscan
         self.oconfig = optical_config
