@@ -1,12 +1,9 @@
 """The image processing module"""
 
-from typing import Any
-
 import numpy as np
 import numpy.typing as npt
 import scipy.ndimage as ndi
 import cv2
-from scipy.optimize import curve_fit
 from uncertainties import ufloat
 
 import esme.maths as maths
@@ -106,7 +103,7 @@ def remove_all_disconnected_pixels(im: RawImageT) -> RawImageT:
     return masked_image
 
 
-def get_slice_properties(image: RawImageT, fast=True) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
+def get_slice_properties(image: RawImageT, fast: bool = True) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
     #  Get bounds of image (i.e. to remove all fully-zero rows and columns)---this
     # speeds up the fitting procedure a lot by only fitting region of interest.
     (irow0, irow1), (icol0, icol1) = get_cropping_bounds(image, just_central_slices=fast)

@@ -14,7 +14,6 @@ import logging
 import subprocess
 
 from . import devices
-import numpy as np
 from .interface import Device, MachineInterface
 
 LOG = logging.getLogger(__name__)

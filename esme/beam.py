@@ -4,7 +4,7 @@ from scipy.constants import e
 from esme.analysis import ScanMeasurement, ParameterScan, SliceEnergySpreadMeasurement, transform_pixel_widths
 from esme.image import crop_image
 from esme.calibration import r34s_from_scan, TDS_WAVENUMBER
-from esme.maths import gauss, get_gaussian_fit
+from esme.maths import get_gaussian_fit
 
 
 def bunch_lengths_from_scan_measurement(measurement: ScanMeasurement, pixel_units="m"):

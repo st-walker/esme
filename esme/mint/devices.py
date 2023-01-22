@@ -3,7 +3,7 @@ Sergey Tomin, XFEL/DESY, 2017
 """
 import logging
 import time
-from threading import Event, Thread
+from threading import Thread
 
 import numpy as np
 from .interface import Device
