@@ -475,36 +475,3 @@ class MIAdviser(Device):
 
         z_pos = self.get_bpm_z_from_ref(ref_names)
         return pos[indxs], z_pos
-
-
-class MIStandardFeedback(Device):
-    def __init__(self, eid=None, server="XFEL", subtrain="SA1"):
-        super(MIStandardFeedback, self).__init__(eid=eid)
-        self.subtrain = subtrain
-        self.server = server
-
-    def is_running(self):
-        status = self.mi.get_value(self.server + ".FEEDBACK/ORBIT.SA1/ORBITFEEDBACK/ACTIVATE_FB")
-        return status
-
-
-class MISASE3Feedback(Device):
-    def __init__(self, eid=None, server="XFEL", subtrain="SA1"):
-        super(MISASE3Feedback, self).__init__(eid=eid)
-        self.subtrain = subtrain
-        self.server = server
-
-    def is_running(self):
-        status = self.mi.get_value(self.server + ".FEEDBACK/ORBIT.SA3/ORBITFEEDBACK/ACTIVATE_FB")
-        return status
-
-
-class MISASE2Feedback(Device):
-    def __init__(self, eid=None, server="XFEL", subtrain="SA1"):
-        super(MISASE2Feedback, self).__init__(eid=eid)
-        self.subtrain = subtrain
-        self.server = server
-
-    def is_running(self):
-        status = self.mi.get_value(self.server + ".FEEDBACK/ORBIT.SA2/ORBITFEEDBACK/ACTIVATE_FB")
-        return status
