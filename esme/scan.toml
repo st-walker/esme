@@ -1,0 +1,48 @@
+[measurement]
+
+nbackground = 5
+nbeam = 30
+
+[dispersion] # dispersion measurement
+
+a1_voltage_min = 129
+a1_voltage_max = 131
+a1_npoints = 4
+
+[tds]
+
+location = "i1" # or bc2 Not used yet actually..  maybe won't keep this.
+
+reference_amplitude = 17
+scan_amplitudes = [11, 14, 17, 20, 23, 25]
+scan_dispersion = 1.2
+
+[quads]
+
+# The reference optics that should be set at the start of the every scan.
+[quads.reference_optics]
+
+dispersion = 1.2
+
+names = [ "QI.52.I1", "QI.53.I1", "QI.54.I1", "QI.55.I1", "QI.57.I1",
+      "QI.59.I1", "QI.60.I1", "QI.61.I1", "QI.63.I1D", "QI.64.I1D", ]
+
+strengths = [-83.7203, 500.308, 188.82, -712.48, 712.48, -712.48, -509.559, 832.63, -249.585, 831.95]
+
+[quads.dscan]
+
+# The quadrupoles used in the dispersion scan.
+
+names = ["QI.60.I1", "QI.61.I1", "QI.63.I1D", "QI.64.I1D"]
+dispersions = [1.2, 1.0, 0.8, 0.6]
+# measure_each_time = false
+strengths = [[-509.559, 832.63, -249.585, 831.95], [-509.0345, 832.175, 106.965, 475.4], [-508.965, 820.2076, 582.365, 0.0], [-508.749, 789.625, 1046.306, -475.4]]
+
+
+[quads.bscan]
+
+# Values used in the 28/11/20222 measurement
+names = ["QI.61.I1"]
+betas = [0.6, 5.4, 9.6, 15.0]
+strengths = [[832.63], [964.86], [1021.23], [1077.03]]
+
