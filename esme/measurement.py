@@ -214,6 +214,7 @@ class MeasurementRunner:
         self.photographer = ScreenPhotographer(machine=self.machine, mps=mps)
         self.dispersion_measurer = dispersion_measurer
         if self.dispersion_measurer is None:
+            LOG.debug("Using BasicDispersionMeasurer: will not automatically measure dispersion.")
             self.dispersion_measurer = BasicDispersionMeasurer()
 
     def run(self, *, bg_shots: int, beam_shots: int) -> None:
@@ -228,6 +229,7 @@ class MeasurementRunner:
 
         tds_amplitudes = self.tds_config.scan_amplitudes
         LOG.info(f"starting TDS scan: {tds_amplitudes=}, {bg_shots=}, {beam_shots=}")
+        self.machine.tds.switch_on_beam()
         filenames = []
         for ampl in tds_amplitudes:
             setpoint_snapshots = self.tds_scan_one_measurement(
@@ -258,6 +260,7 @@ class MeasurementRunner:
         (bg_shots), beam images (beam_shots) and a delay between each
         image being taken.
         """
+        self.machine.tds.switch_on_beam()
         LOG.debug(f"Beginning TDS scan measurement @ TDS ampl = {tds_amplitude}%")
         self.machine.tds.set_amplitude(tds_amplitude)
         time.sleep(self.SLEEP_AFTER_TDS_SETTING)
@@ -278,6 +281,7 @@ class MeasurementRunner:
             f"Starting dispersion scan: dispersions={self.dscan_config.dispersions}," f" {bg_shots=}, {beam_shots=}"
         )
         filenames = []
+        self.machine.tds.switch_on_beam()
         for qsetting in self.dscan_config.scan_settings:
             snapshots = self.dispersion_scan_one_measurement(qsetting, bg_shots=bg_shots, beam_shots=beam_shots)
             fname = self.save_setpoint_snapshots(snapshots)
@@ -296,6 +300,7 @@ class MeasurementRunner:
         LOG.debug(f"Beginning dispersion scan measurement @ D = {quad_setting.dispersion}m")
         dispersion, dispersion_unc = self.set_quads_and_get_dispersion(quad_setting)
 
+        self.machine.tds.switch_on_beam()
         scan_df = self.photographer.take_data(
             bg_shots=bg_shots, beam_shots=beam_shots, delay=self.SLEEP_BETWEEN_SNAPSHOTS
         )
@@ -304,7 +309,7 @@ class MeasurementRunner:
         )
 
     def set_quads_and_get_dispersion(self, quadrupole_setting: QuadrupoleSetting) -> tuple[float, float]:
-        LOG.info("Setting dispersion for quad setting: at intended dispersion = {}.")
+        LOG.info(f"Setting dispersion for quad setting: at intended dispersion = {quadrupole_setting}.")
         self._apply_quad_setting(quadrupole_setting)
         return self.dispersion_measurer.measure()
 
@@ -332,7 +337,7 @@ class MeasurementRunner:
     def make_snapshots_filename(self, snapshot):
         """Make a human readnable name for the output dataframe"""
         timestamp = time.strftime("%Y-%m-%d@%H:%M:%S")
-        ampl = self.machine.read_tds_sp_amplitude()
+        ampl = self.machine.tds.read_sp_amplitude()
         dispersion = snapshot.dispersion_setpoint
         scan_type = snapshot.scan_type
         fname = f"{timestamp}>>{scan_type}>>D={dispersion},TDS={ampl}%.pcl"
@@ -344,7 +349,7 @@ class MeasurementRunner:
     def save_setpoint_snapshots(self, setpoint_snapshot: SetpointSnapshots) -> str:
         fname = self.make_snapshots_filename(setpoint_snapshot)
         fname.parent.mkdir(exist_ok=True, parents=True)
-        with fname.open("rb") as f:
+        with fname.open("wb") as f:
             pickle.dump(setpoint_snapshot, f)
         LOG.info(f"Wrote measurement SetpointSnapshots (of {len(setpoint_snapshot)} snapshots) to: {fname}")
         return fname
@@ -369,11 +374,11 @@ class ScreenPhotographer:
         snapshots = []
         for i in range(nshots):
             LOG.info(f"Background snapshot: {i} / {nshots - 1}")
-            snapshots.append(self.take_machine_snapshot())
+            snapshots.append(self.take_machine_snapshot(check_if_online=False))
             time.sleep(delay)
         LOG.info("Finished taking background")
         self.switch_beam_on()
-        return pd.DataFrame(snapshots)
+        return pd.concat(snapshots)
 
     def take_beam_images(self, total_shots: int, *, delay: float = 1) -> pd.DataFrame:
         LOG.info("Taking beam images")
@@ -383,7 +388,7 @@ class ScreenPhotographer:
         ishot = 0
         while ishot < total_shots:
             LOG.info(f"Taking snapshot {ishot} / {total_shots - 1}")
-            snapshots.append(self.take_machine_snapshot())
+            snapshots.append(self.take_machine_snapshot(check_if_online=True))
 
             # Check if the snapshot failed and we need to repeat the
             # snapshot procedure.
@@ -392,19 +397,28 @@ class ScreenPhotographer:
                 self.switch_beam_on()
                 time.sleep(DELAY_AFTER_BEAM_OFF)
                 continue
+            self.machine.tds.switch_on_beam()
+
+            time.sleep(0.2)
+            if not self.machine.tds.is_on_beam():
+                print("!!!!!!!!!!!!!!!!!!!!!!!!! TDS WAS OFF BEAM")
+                self.machine.tds.switch_on_beam()
+                time.sleep(0.1)
+                print(f"is now on beam? {self.machine.tds.is_on_beam()}")
 
             ishot += 1
 
-        return pd.DataFrame(snapshots)
+        return pd.concat(snapshots)
 
     def take_data(self, *, bg_shots: int, beam_shots: int, delay: float = 1) -> pd.DataFrame:
         bg = self.take_background_images(bg_shots, delay=delay)
+        self.machine.tds.switch_on_beam()
         data = self.take_beam_images(beam_shots, delay=delay)
         return pd.concat([bg, data])
 
-    def take_machine_snapshot(self) -> pd.DataFrame:
+    def take_machine_snapshot(self, check_if_online=True) -> pd.DataFrame:
         LOG.debug("Taking machine snapshot")
-        return self.machine.get_machine_snapshot(check_if_online=True)
+        return self.machine.get_machine_snapshot(check_if_online=check_if_online)
 
     def switch_beam_off(self) -> None:
         LOG.debug("Switching beam off")
@@ -503,7 +517,7 @@ class TDS:
 
     def is_on_beam(self) -> bool:
         LOG.debug("Checking if TDS is on beam")
-        event10_timing = self.mi.get_value(EVENT10_CHANNEL)
+        event10_timing = self.mi.get_value(EVENT10_CHANNEL)[2]
         relative_offset = (event10_timing - self.bunch_one_timing) / self.bunch_one_timing
         on_beam = relative_offset < BUNCH_ONE_TOLERANCE
         LOG.debug(f"TDS {event10_timing=}, {self.bunch_one_timing=}, {relative_offset=}, {BUNCH_ONE_TOLERANCE=}")
@@ -668,8 +682,8 @@ def resume_from_output_directory(dirname: Union[os.PathLike, str]):
         with fpcl.open("rb") as f:
             snapshots = pickle.load(fpcl)
 
-            if not _is_complete_snapshot(snapshots, nbg, nbeam):
-                continue
+            # if not _is_complete_setpoint_measurement(snapshots, nbg, nbeam):
+            #     continue
 
             tscan_amplitudes.discard(snapshots.tds_amplitude_setpoint)
             dscan_amplitudes.discard(snapshots.dispersion_setpoint)
@@ -683,7 +697,10 @@ def _tds_amplitude_setpoint_from_df(df):
         raise MalformedSnapshotDataFrame(f"{key_name} in {df} should be constant but is not")
     return value
 
-def _is_complete_snapshot(snapshot, nbg, nbeam):
+def _is_complete_setpoint_measurement(snapshot, nbg, nbeam):
+    # Given the generally >1 len pd.DataFrame, did i take all the data here?
+    # actually I just redo it right?  If it was written, it worked!  This function will only have meaning when I eventually have some way to handle interruprs.
+    # If the file exists, it's fine!
     from IPython import embed; embed()
 
 
