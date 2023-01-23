@@ -7,7 +7,6 @@ from threading import Thread
 
 import numpy as np
 from .interface import Device
-from PyQt5 import QtCore, QtGui
 
 logger = logging.getLogger(__name__)
 
@@ -110,85 +109,6 @@ class CavityA1(Device):
         return val
 
 
-class BPMUI:
-    def __init__(self, ui=None):
-        self.tableWidget = None
-        self.row = 0
-        self.col = 0
-        self.alarm = False
-
-    def get_value(self):
-        x = float(self.tableWidget.item(self.row, 1).text())
-        y = float(self.tableWidget.item(self.row, 2).text())
-        return (x, y)
-
-    def set_value(self, val):
-        x = val[0]
-        y = val[1]
-        x = np.round(x, 4)
-        y = np.round(y, 4)
-        self.tableWidget.item(self.row, 1).setText(str(x))
-        self.tableWidget.item(self.row, 2).setText(str(y))
-        self.check_values(val)
-
-    def get_spin_values(self):
-        x = self.tableWidget.cellWidget(self.row, 1).value()
-        y = self.tableWidget.cellWidget(self.row, 2).value()
-        return (x, y)
-
-    def set_spin_values(self, val):
-        x = np.round(val[0], 5)
-        y = np.round(val[1], 5)
-        self.tableWidget.cellWidget(self.row, 1).setValue(x)
-        self.tableWidget.cellWidget(self.row, 2).setValue(y)
-
-    def check_values(self, vals):
-        if np.max(np.abs(vals)) > 15.0:
-            self.tableWidget.item(self.row, 1).setBackground(QtGui.QColor(255, 0, 0))  # red
-            self.tableWidget.item(self.row, 2).setBackground(QtGui.QColor(255, 0, 0))  # red
-            self.alarm = True
-        elif vals[0] == 0 and vals[1] == 0:
-            self.tableWidget.item(self.row, 1).setBackground(QtGui.QColor(255, 0, 0))  # red
-            self.tableWidget.item(self.row, 2).setBackground(QtGui.QColor(255, 0, 0))  # red
-            self.alarm = True
-        else:
-            self.tableWidget.item(self.row, 1).setBackground(QtGui.QColor(89, 89, 89))  # grey
-            self.tableWidget.item(self.row, 2).setBackground(QtGui.QColor(89, 89, 89))  # grey
-            self.alarm = False
-
-    def set_init_value(self, val):
-        self.tableWidget.item(self.row, 1).setText(str(val))
-
-    def get_init_value(self):
-        return float(self.tableWidget.item(self.row, 1).text())
-
-    def uncheck(self):
-        item = self.tableWidget.item(self.row, 3)
-        item.setCheckState(False)
-
-    def check(self):
-        item = self.tableWidget.item(self.row, 3)
-        item.setCheckState(QtCore.Qt.Checked)
-
-    def state(self):
-        item = self.tableWidget.item(self.row, 3)
-        state = item.checkState()
-        return state
-
-    def set_hide(self, hide):
-        # if hide:
-        #    self.uncheck()
-        # else:
-        #    self.check()
-        self.tableWidget.setRowHidden(self.row, hide)
-
-    def is_touched(self, state):
-        if state:
-            self.tableWidget.item(self.row, 0).setForeground(QtGui.QColor(255, 101, 101))  # red
-        else:
-            self.tableWidget.item(self.row, 0).setForeground(QtGui.QColor(255, 255, 255))  # white
-
-
 class BPM(Device):
     def __init__(self, eid, server="XFEL", subtrain="SA1"):
         super(BPM, self).__init__(eid=eid)
@@ -250,77 +170,6 @@ class BPM(Device):
         ch = self.server + ".DIAG/ORBIT/" + self.eid + "/POS." + self.subtrain + ".GOLD"
         valid, x, y, z_pos, name = self.mi.get_value(ch)[0]
         return valid, x, y
-
-
-class DeviceUI:
-    def __init__(self, ui=None):
-        self.tableWidget = None
-        self.row = 0
-        self.col = 0
-        self.alarm = False
-
-    def get_value(self):
-        return self.tableWidget.cellWidget(self.row, self.col).value()
-
-    def set_value(self, val):
-        self.tableWidget.cellWidget(self.row, self.col).setValue(val)
-
-    def set_init_value(self, val):
-        val = np.round(val, 4)  # "{:1.4e}".format(val)
-        self.tableWidget.item(self.row, 1).setText(str(val))
-
-    def get_init_value(self):
-        return float(self.tableWidget.item(self.row, 1).text())
-
-    def uncheck(self):
-        item = self.tableWidget.item(self.row, 3)
-        item.setCheckState(False)
-
-    def check(self):
-        item = self.tableWidget.item(self.row, 3)
-        item.setCheckState(QtCore.Qt.Checked)
-
-    def state(self):
-        item = self.tableWidget.item(self.row, 3)
-        state = item.checkState()
-        return state
-
-    def check_values(self, val, lims, warn=False):
-        if warn:
-            self.tableWidget.item(self.row, 0).setBackground(QtGui.QColor(255, 255, 0))  # yellow
-        else:
-            # print("grey")
-            self.tableWidget.item(self.row, 0).setBackground(QtGui.QColor(89, 89, 89))  # grey
-        self.alarm = False
-        if not (lims[0] <= val <= lims[1]):
-            self.tableWidget.item(self.row, 0).setBackground(QtGui.QColor(255, 0, 0))  # red
-            self.alarm = True
-
-    def set_fault(self, fault):
-        if fault:
-            self.tableWidget.item(self.row, 0).setBackground(QtGui.QColor(255, 255, 0))  # yellow
-            self.tableWidget.item(self.row, 1).setBackground(QtGui.QColor(255, 255, 0))  # yellow
-            self.tableWidget.item(self.row, 3).setBackground(QtGui.QColor(255, 255, 0))  # yellow
-        else:
-            self.tableWidget.item(self.row, 0).setBackground(QtGui.QColor(89, 89, 89))  # grey
-            self.tableWidget.item(self.row, 1).setBackground(QtGui.QColor(89, 89, 89))  # grey
-            self.tableWidget.item(self.row, 3).setBackground(QtGui.QColor(89, 89, 89))  # grey
-
-    def check_diff(self, tol=0.01):
-        ival = self.get_init_value()
-        val = self.get_value()
-        diff = np.abs(val - ival)
-        if diff > tol:
-            self.tableWidget.item(self.row, 1).setForeground(QtGui.QColor(255, 101, 101))  # red
-        else:
-            self.tableWidget.item(self.row, 1).setForeground(QtGui.QColor(255, 255, 255))  # white
-
-    def set_hide(self, hide):
-        # if hide and uncheck:
-        #    self.uncheck()
-        # else:
-        #    self.check()
-        self.tableWidget.setRowHidden(self.row, hide)
 
 
 class MICavity(Device):
