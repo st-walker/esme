@@ -89,7 +89,12 @@ import pandas as pd
 from textwrap import dedent
 
 from esme.mint.machine import MPS, Machine
-from esme.injector_channels import SNAPSHOT_TEMPL, DUMP_SCREEN_ADDRESS, TDS_AMPLITUDE_READBACK_ADDRESS
+from esme.injector_channels import (SNAPSHOT_TEMPL,
+                                    DUMP_SCREEN_ADDRESS,
+                                    TDS_AMPLITUDE_READBACK_ADDRESS,
+                                    BUNCH_ONE_TDS_I1,
+                                    EVENT10_CHANNEL,
+                                    BUNCH_ONE_TOLERANCE)
 
 TDSScanConfigurationSelf = TypeVar("TDSScanConfigurationSelfType", bound="TDSScanConfiguration")
 DispersionScanConfigurationSelf = TypeVar("DispersionScanConfigurationSelfType", bound="DispersionScanConfiguration")
@@ -337,16 +342,12 @@ class MeasurementRunner:
         return (self.outdir / self.name).resolve()
 
     def save_setpoint_snapshots(self, setpoint_snapshot: SetpointSnapshots) -> str:
-        outdir = self.abs_output_directory()
         fname = self.make_snapshots_filename(setpoint_snapshot)
         fname.parent.mkdir(exist_ok=True, parents=True)
         with fname.open("rb") as f:
             pickle.dump(setpoint_snapshot, f)
         LOG.info(f"Wrote measurement SetpointSnapshots (of {len(setpoint_snapshot)} snapshots) to: {fname}")
         return fname
-
-    def progress_file_name(self) -> Path:
-        return self.name / "progress.toml"
 
     # def self_update_progress_file(self, scan_type: str, scan_setpoint: S, pcl_filename):
     #     from IPython import embed
@@ -472,6 +473,7 @@ class TDS:
 
     def __init__(self, mi=None):
         self.mi = mi
+        self.bunch_one_timing = self.mi.get_value(BUNCH_ONE_TDS_I1)
 
     def set_amplitude(self, amplitude: float) -> None:
         """Set the TDS amplitude"""
@@ -500,7 +502,14 @@ class TDS:
         return powered
 
     def is_on_beam(self) -> bool:
-        pass
+        LOG.debug("Checking if TDS is on beam")
+        event10_timing = self.mi.get_value(EVENT10_CHANNEL)
+        relative_offset = (event10_timing - self.bunch_one_timing) / self.bunch_one_timing
+        on_beam = relative_offset < BUNCH_ONE_TOLERANCE
+        LOG.debug(f"TDS {event10_timing=}, {self.bunch_one_timing=}, {relative_offset=}, {BUNCH_ONE_TOLERANCE=}")
+        LOG.debug(f"TDS {on_beam=}")
+
+        return on_beam
 
     def switch_off_beam(self) -> None:
         """Turn the TDS off beam (whilst keeping RF power)"""
@@ -615,7 +624,7 @@ class SetpointSnapshots:
         ampl_sp = _tds_amplitude_setpoint_from_df(self.snapshots)
         dispersion = self.dispersion_setpoint
         scan_name = self.scan_type.alt_name()
-        return f"{timestamp}>>{scan_type}>>D={dispersion},TDS={ampl_sp}%.pcl"
+        return f"{timestamp}>>{scan_name}>>D={dispersion},TDS={ampl_sp}%.pcl"
 
     @property
     def tds_amplitude_setpoint(self) -> float:
@@ -652,20 +661,40 @@ def resume_from_output_directory(dirname: Union[os.PathLike, str]):
     tscan_amplitudes = set(tconf.scan_amplitudes)
     dscan_dispersions = set(s.dispersion for s in dconf.scan_settings)
     LOG.info(f"In scan.toml (desired machine setpoints): TDS scan amplitudes:"
-             f" {tscan_amplitudes}, dispersion scan amplitudes: {dscan_amplitudes}")
+             f" {tscan_amplitudes}, dispersion scan dispersions: {dscan_dispersions}")
 
     # What we have, judging by the output.
     for fpcl in dirname.glob("*.pcl"):
-        with pcl.open("rb") as f:
+        with fpcl.open("rb") as f:
             snapshots = pickle.load(fpcl)
 
-            if not _is_complete_snapshot(snapshot, nbg, nbeam):
+            if not _is_complete_snapshot(snapshots, nbg, nbeam):
                 continue
 
             tscan_amplitudes.discard(snapshots.tds_amplitude_setpoint)
             dscan_amplitudes.discard(snapshots.dispersion_setpoint)
 
 
+def _tds_amplitude_setpoint_from_df(df):
+    key_name = TDS.AMPLITUDE_RB
+    col = df[key_name]
+    value = col.iloc[0]
+    if not (value == col).all():
+        raise MalformedSnapshotDataFrame(f"{key_name} in {df} should be constant but is not")
+    return value
 
-def _is_complete_snapshot(snapshot):
-    pass
+def _is_complete_snapshot(snapshot, nbg, nbeam):
+    from IPython import embed; embed()
+
+
+
+
+# here is the AUTOGAIN on/off address for OTRC.55.I1 camera (as an
+# example) - "XFEL.DIAG/CAMERA/OTRC.58.I1/GAINAUTO.NUM". There are 3
+# options: 0 - OFF, 1 - Once, 2 - Continuous. You may set it either to
+# 1 before each of your measurement series or to 2 and then it would
+# be adjusted more or less at each image. The readout address (also
+# OTRC.55.I1 example) - "XFEL.DIAG/CAMERA/OTRC.58.I1/GAINRAW". I
+# believe it is all you need. Also, for instance, mAtthias as I know
+# uses the AUTOGAIN in his emmitance measurement tool and it works
+# fine. Though I don't know which exactly Once or Continuous one.

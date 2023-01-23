@@ -205,8 +205,8 @@ def measure(name, dispersion, bscan, dscan, tscan, config):
 
     measurer = make_measurement_runner(name, config)
 
-    bg_shots = 5
-    beam_shots = 30
+    bg_shots = config["nbackground"]
+    beam_shots = config["nbeam"]
 
     if dscan:
         measurer.dispersion_scan(bg_shots=bg_shots, beam_shots=beam_shots)

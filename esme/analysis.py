@@ -45,6 +45,7 @@ from esme.injector_channels import (TDS_AMPLITUDE_READBACK_ADDRESS,
                                     EVENT10_CHANNEL,
                                     TDS_ON_BEAM_EVENT10,
                                     DUMP_SCREEN_ADDRESS)
+from esme.measurement import SetpointSnapshots
 
 
 PIXEL_SCALE_X_UM: float = 13.7369
@@ -352,12 +353,6 @@ def calculate_energy_spread_simple(scan: DispersionScan) -> ValueWithErrorT:
     return value, error  # in eV
 
 
-def _get_constant_key_from_df_safeley(df, key_name):
-    col = df[key_name]
-    value = col.iloc[0]
-    if not (value == col).all():
-        raise MalformedSnapshotDataFrame(f"{key_name} in {df} should be constant but is not")
-    return value
 
 
 @dataclass

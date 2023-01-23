@@ -227,7 +227,7 @@ def setpoint_snapshots_from_pcls(pcl_files):
     return result
 
 
-def make_measurement_runner(name, fconfig, outdir="./", measure_dispersion=False):
+def make_measurement_runner(name, fconfig, outdir="./", measure_dispersion=False, copy_scan_config=True):
     config = toml.load(fconfig)
     LOG.debug(f"Making MeasurementRunner instance from config file: {fconfig}")
     tscan_config = TDSScanConfiguration.from_config_file(fconfig)
@@ -237,6 +237,7 @@ def make_measurement_runner(name, fconfig, outdir="./", measure_dispersion=False
         measure_dispersion = make_dispersion_measurer(fconfig)
 
     return MeasurementRunner(name, dscan_config, tscan_config, outdir=outdir, dispersion_measurer=measure_dispersion)
+
 
 
 def make_dispersion_measurer(fconfig):
