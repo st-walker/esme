@@ -111,36 +111,27 @@ class ScanMeasurement:
     DF_DX_SCREEN_KEY = "MY_SCREEN_DX"
     DF_BETA_SCREEN_KEY = "MY_SCREEN_BETA"
 
-    def __init__(self, df_path: os.PathLike):
-        """bad_image_indices are SKIPPED and not loaded at all."""
-        LOG.debug(f"Loading measurement: {df_path=}")
-        df_path = Path(df_path)
+    def __init__(self, setpoint: SetpointSnapshots):
+        self.setpoint = setpoint
 
+        self.dx = self.setpoint.measured_dispersion[0]
+        self.tds_percentage = self.setpoint.tds_amplitude_setpoint
 
-        df = pd.read_pickle(df_path)
-
-        self.dx = _get_constant_key_from_df_safeley(df, self.DF_DX_SCREEN_KEY)
-        self.tds_percentage = df[TDS_AMPLITUDE_READBACK_ADDRESS].mean()
-
-        try:
-            self.beta = _get_constant_key_from_df_safeley(df, self.DF_BETA_SCREEN_KEY)
-        except KeyError:
-            pass
+        if self.setpoint.beta:
+            self.beta = self.setpoint.beta
 
         self.images = []
         self.bg = []
         self._mean_bg_im: Optional[RawImageT] = None  # For caching.
 
-        for i, relative_path in enumerate(df[DUMP_SCREEN_ADDRESS]):
-            abs_path = df_path.parent / relative_path
-            LOG.debug(f"Loading image index {i} @ {relative_path}")
+        df = self.setpoint.snapshots
+        for i, path in enumerate(df[DUMP_SCREEN_ADDRESS]):
+            LOG.debug(f"Loading image index {i} @ {path}")
 
             # In the df the png paths relative to the pickled dataframe, but
             # I want to be able to call it from anywhere, so resolve them to
             # absolute paths.
-            abs_path = df_path.parent / relative_path
-            metadata = df[df[DUMP_SCREEN_ADDRESS] == relative_path].squeeze()
-            metadata[DUMP_SCREEN_ADDRESS] = abs_path
+            metadata = df[df[DUMP_SCREEN_ADDRESS] == path].squeeze()
             image = TDSScreenImage(metadata)
 
             if image.is_bad:
@@ -228,16 +219,10 @@ def _f(measurement):
 
 
 class ParameterScan:
-    def __init__(
-        self,
-        files: Iterable[os.PathLike],
-        calibrator=None,
-    ):
-        # Ideally this voltage, calibration etc. stuff should go in the df.
-        # for now, whatever.
+    def __init__(self, setpoints: Iterable[SetpointSnapshots], calibrator=None):
         LOG.debug(f"Instantiating {type(self).__name__}")
         self.calibrator = calibrator
-        self.measurements = [ScanMeasurement(df_path) for df_path in files]
+        self.measurements = [ScanMeasurement(sp) for sp in setpoints]
 
     @property
     def dx(self) -> npt.NDArray:

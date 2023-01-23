@@ -200,19 +200,19 @@ def load_config(fname: os.PathLike) -> SliceEnergySpreadMeasurement:
         calibrator = TDSCalibrator(percentages, tds_slopes, screen_dispersion, tds_slope_units=tds_slopes_units)
 
     dscan = DispersionScan(
-        dscan_paths,
+        load_pickled_snapshots(dscan_paths),
         calibrator=calibrator,
     )
 
     tscan = TDSScan(
-        tscan_paths,
+        load_pickled_snapshots(tscan_paths),
         calibrator=calibrator,
     )
 
     bscan = None
     if bscan_paths:
         bscan = BetaScan(
-            bscan_paths,
+            load_pickled_snapshots(bscan_paths),
             calibrator=calibrator,
         )
 
@@ -331,3 +331,14 @@ def toml_dfs_to_setpoint_snapshots(ftoml):
         _loop_pcl_df_files(tscan_paths, ScanType.TDS)
     if bscan_paths:
         _loop_pcl_df_files(bscan_paths, ScanType.BETA)
+
+
+def load_pickled_snapshots(paths):
+    result = []
+    for path in paths:
+        with path.open("rb") as f:
+            snapshot = pickle.load(f)
+            snapshot.resolve_image_path(path.parent)
+            result.append(snapshot)
+    return result
+

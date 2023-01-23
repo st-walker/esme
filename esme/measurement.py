@@ -635,6 +635,9 @@ class SetpointSnapshots:
                f" nsnapshots={len(self)}{bstring}>")
         return out
 
+    def resolve_image_path(self, dirname):
+        paths = self.snapshots["XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"]
+        self.snapshots["XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"] = dirname / paths
 
 def resume_from_output_directory(dirname: Union[os.PathLike, str]):
     """Resume a measurement from the output directory"""
