@@ -56,27 +56,19 @@ def true_bunch_lengths(scan: ParameterScan):
 def mean_bunch_length(esme: SliceEnergySpreadMeasurement):
     lengths = []
     uncertainties = []
-    try:
+
+    if esme.dscan is not None:
         dlengths, dlengths_unc = true_bunch_lengths(esme.dscan)
-    except AttributeError:
-        pass
-    else:
         lengths.extend(dlengths)
         uncertainties.extend(dlengths_unc)
 
-    try:
+    if esme.tscan is not None:
         tlengths, tlengths_unc = true_bunch_lengths(esme.tscan)
-    except AttributeError:
-        pass
-    else:
         lengths.extend(tlengths)
         uncertainties.extend(tlengths_unc)
 
-    try:
+    if esme.bscan is not None:
         blengths, blengths_unc = true_bunch_lengths(esme.bscan)
-    except AttributeError:
-        pass
-    else:
         lengths.extend(blengths)
         uncertainties.extend(blengths_unc)
 

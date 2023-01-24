@@ -3,7 +3,7 @@
 import logging
 from pathlib import Path
 
-from click import command, option, Option, UsageError, group, argument, echo
+from click import command, option, Option, UsageError, group, argument, echo, UsageError
 
 from esme.analysis import calculate_energy_spread_simple
 import esme.analysis
@@ -15,6 +15,7 @@ from esme.inout import (
     make_dispersion_measurer,
     find_scan_config,
     rm_pcl,
+    rm_ims_from_pcl,
     toml_dfs_to_setpoint_snapshots,
     add_metadata_to_pcls_in_toml
 )
@@ -132,6 +133,8 @@ def plot(scan_tomls, dump_images, widths, magnets, alle, calibration, save):
     slice_energy_spread_measurements = [load_config(fname) for fname in scan_tomls]
     for fname, sesme in zip(scan_tomls, slice_energy_spread_measurements):
         root_outdir = None
+        root_outdir = Path(fname).resolve().parent / (Path(fname).stem + "-images")
+        echo(f"Writing to outdir: {root_outdir}")
         if alle:
             root_outdir = Path(fname).resolve().parent / (Path(fname).stem + "-images")
             echo(f"Writing plots to {root_outdir}")
@@ -227,11 +230,16 @@ def measure(name, dispersion, bscan, dscan, tscan, config):
     is_flag=True,
     help="Don’t actually remove any file(s). Instead, just show if they exist in the index and would otherwise be removed by the command.",
 )
-def rm(pcl_files, dry_run):
+@option("--imname", "-i", multiple=True)
+def rm(pcl_files, imname, dry_run):
     """Delete a .pcl snapshots file and all images it refers to"""
+    if not pcl_files:
+        raise UsageError("No .pcl files provided")
     for fpcl in pcl_files:
-        rm_pcl(fpcl, dry_run)
-
+        if imname is None:
+            rm_pcl(fpcl, dry_run)
+        else:
+            rm_ims_from_pcl(fpcl, imname, dry_run)
 
 @main.command(no_args_is_help=True)
 def gui():

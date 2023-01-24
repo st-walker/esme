@@ -100,13 +100,25 @@ class TDSScreenImage:
 
     @property
     def is_bad(self):
+        # If the beam was nominally on
         beam_on = not self.is_bg
+        # But the TDS was apparently off beam
         tds_off = not self.tds_was_on
-        return beam_on and tds_off
+        # or the TDS was on but all the BPMs give nonsense readings (all NaNs)
+        no_bpm_data = self.is_no_bpm_data
+        # Then this image should not be used
+        return beam_on and (tds_off or no_bpm_data)
 
     @property
     def tds_was_on(self):
-        return self.metadata[EVENT10_CHANNEL] == TDS_ON_BEAM_EVENT10
+        return self.metadata[EVENT10_CHANNEL][2] == TDS_ON_BEAM_EVENT10[2]
+
+    @property
+    def is_no_bpm_data(self):
+        series = self.metadata
+        columns = list(series.keys()[series.keys().str.startswith("BPM")])
+        bpm_data = series[columns]
+        return bpm_data.isnull().all()
 
 class ScanMeasurement:
     DF_DX_SCREEN_KEY = "MY_SCREEN_DX"
@@ -115,7 +127,11 @@ class ScanMeasurement:
     def __init__(self, setpoint: SetpointSnapshots):
         self.setpoint = setpoint
 
-        self.dx = self.setpoint.measured_dispersion[0]
+        try:
+            self.dx = self.setpoint.measured_dispersion[0]
+        except TypeError:
+            self.dx = self.setpoint.measured_dispersion
+
         self.tds_percentage = self.setpoint.tds_amplitude_setpoint
 
         if self.setpoint.beta:
@@ -186,6 +202,7 @@ class ScanMeasurement:
 
             sigma = np.mean(sigmas[centre_index - padding : centre_index + padding])
             image_fitted_sigmas.append(sigma)
+
 
         width_with_error = np.mean(image_fitted_sigmas)
 
@@ -384,7 +401,6 @@ class SliceEnergySpreadMeasurement:
     def tds_scan_fit(self) -> tuple[ValueWithErrorT, ValueWithErrorT]:
         widths, errors = self.tscan.max_energy_slice_widths_and_errors(padding=10)
         voltages2 = self.tscan.voltage**2
-
         widths2_m2, errors2_m2 = transform_pixel_widths(widths, errors, pixel_units="m", to_variances=True)
         a_v, b_v = linear_fit(voltages2, widths2_m2, errors2_m2)
         return a_v, b_v

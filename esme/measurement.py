@@ -88,8 +88,8 @@ import toml
 import pandas as pd
 from textwrap import dedent
 
-from esme.mint.machine import MPS, Machine
-from esme.injector_channels import (SNAPSHOT_TEMPL,
+from esme.mint import MPS, Machine
+from esme.injector_channels import (make_injector_snapshot_template,
                                     DUMP_SCREEN_ADDRESS,
                                     TDS_AMPLITUDE_READBACK_ADDRESS,
                                     BUNCH_ONE_TDS_I1,
@@ -105,8 +105,7 @@ LOG = logging.getLogger(__name__)
 DELAY_AFTER_BEAM_OFF: float = 5.0
 
 
-SCREEN_NAME: Path = Path("XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ").parent.name
-SNAPSHOT_TEMPL.add_image(DUMP_SCREEN_ADDRESS, folder=f"./images-{SCREEN_NAME}")
+
 
 PIXEL_SCALE_X_M: float = 13.7369e-6
 PIXEL_SCALE_Y_M: float = 11.1756e-6
@@ -209,7 +208,7 @@ class MeasurementRunner:
 
         self.machine = machine
         if self.machine is None:
-            self.machine = EnergySpreadMeasuringMachine(SNAPSHOT_TEMPL)
+            self.machine = EnergySpreadMeasuringMachine(make_injector_snapshot_template())
 
         self.photographer = ScreenPhotographer(machine=self.machine, mps=mps)
         self.dispersion_measurer = dispersion_measurer
@@ -652,9 +651,19 @@ class SetpointSnapshots:
     def __repr__(self):
         tname = type(self).__name__
         dx0 = self.dispersion_setpoint
-        dx1, dx1e = self.measured_dispersion
+        try:
+            dx1, dx1e = self.measured_dispersion
+        except TypeError:
+            dx1 = self.measured_dispersion
+            dx1e = 0.0
         bstring = ", beta={self.beta}" if self.beta else ""
-        out = (f"<{tname}: scan_type={self.scan_type.name}, {dx0=}, dxm=({dx1}±{dx1e})m,"
+
+        try:
+            sname = self.scan_type.name
+        except AttributeError:
+            sname = self.scan_type
+
+        out = (f"<{tname}: scan_type={sname}, dxm=({dx1}±{dx1e})m,"
                f" nsnapshots={len(self)}{bstring}>")
         return out
 

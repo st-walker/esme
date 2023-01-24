@@ -33,6 +33,7 @@ def dump_full_scan(esme: ana.SliceEnergySpreadMeasurement, root_outdir) -> None:
     tds_scan = esme.tscan
 
     dscan_dir = root_outdir / "dispersion-scan"
+
     for i, measurement in enumerate(dispersion_scan):
         dx = measurement.dx
         # tds = dispersion_scan.tds_percentage
@@ -150,8 +151,9 @@ def show_before_after_processing(measurement: ana.ScanMeasurement, index: int) -
     ax2.set_ylabel("Pixel Brightness")
     ax4.set_ylabel("Pixel Brightness")
     m = measurement
+    fname = measurement.metadata["XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"].iloc[index].name
     fig.suptitle(
-        fr"TDS No. = {m.tds_percentage}, D_\mathrm{{OTR}}={m.dx}\,\mathrm{{m}}$, image {index}, before/after image processing"
+        fr"TDS Ampl. = {m.tds_percentage}%, $D_\mathrm{{OTR}}={m.dx}\,\mathrm{{m}}$, image {index}, before/after image processing: {fname}"
     )
     ax2.legend()
     ax4.legend()

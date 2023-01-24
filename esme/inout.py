@@ -21,8 +21,9 @@ from esme.analysis import (
     ScanMeasurement,
 )
 from esme.calibration import TDSCalibrator, TrivialTDSCalibrator
-from esme.injector_channels import TDS_AMPLITUDE_READBACK_ADDRESS, DUMP_SCREEN_ADDRESS
+from esme.injector_channels import TDS_AMPLITUDE_READBACK_ADDRESS, I1_DUMP_SCREEN_ADDRESS
 from esme.measurement import MeasurementRunner, DispersionScanConfiguration, TDSScanConfiguration, DispersionMeasurer, SetpointSnapshots, ScanType
+
 
 LOG = logging.getLogger(__name__)
 
@@ -261,7 +262,7 @@ def rm_pcl(fpcl: os.PathLike, dry_run=True):
 
     df = pd.read_pickle(fpcl)
 
-    image_file_names = df[DUMP_SCREEN_ADDRESS]
+    image_file_names = df[I1_DUMP_SCREEN_ADDRESS]
 
     for image_name in image_file_names:
         image_path = pdir / image_name
@@ -277,6 +278,41 @@ def rm_pcl(fpcl: os.PathLike, dry_run=True):
         print(f"would rm {fpcl}")
     else:
         fpcl.unlink()
+
+def rm_ims_from_pcl(fpcl: os.PathLike, im_names, dry_run=True):
+    fpcl = Path(fpcl)
+    pdir = fpcl.resolve().parent
+
+    with fpcl.open("rb") as f:
+        setpoint = pickle.load(f)
+
+    paths = setpoint.snapshots[I1_DUMP_SCREEN_ADDRESS]
+    mask = []
+    to_delete = []
+    for path in paths:
+        png_fname = Path(path).with_suffix(".png")
+        pcl_fname = Path(path).with_suffix(".pcl")
+        png_name = png_fname.name
+        pcl_name = pcl_fname.name
+        mask.append(png_name in im_names or pcl_name in im_names)
+        if mask[-1]:
+            to_delete.extend([pdir / png_fname, pdir / pcl_fname])
+
+    new_df = setpoint.snapshots[np.logical_not(mask)]
+    setpoint.snapshots = new_df
+
+    for fname in to_delete:
+        if dry_run:
+            print(f"Would delete: {fname}")
+        else:
+            fname.unlink()
+
+    if dry_run:
+        print(f"Would overrite {fpcl}")
+    else:
+        with fpcl.open("wb") as f:
+            pickle.dump(setpoint, f)
+
 
 
 def _loop_pcl_df_files(paths, scan_type):
@@ -342,4 +378,3 @@ def load_pickled_snapshots(paths):
             snapshot.resolve_image_path(path.parent)
             result.append(snapshot)
     return result
-

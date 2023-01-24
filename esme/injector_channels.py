@@ -4,10 +4,11 @@ Sergey Tomin
 
 Script to collect tuning data
 """
-from esme.mint.snapshot import Snapshot
+from esme.mint import Snapshot, BasicAlarm
 
 
 DUMP_SCREEN_ADDRESS: str = "XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"
+I1_DUMP_SCREEN_ADDRESS = DUMP_SCREEN_ADDRESS
 
 TDS_AMPLITUDE_READBACK_ADDRESS = "XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/SP.AMPL"
 TDS_AMPLITUDE_SAMPLE_ADDRESS = "XFEL.RF/LLRF.CONTROLLER/VS.LLTDSI1/AMPL.SAMPLE"
@@ -27,8 +28,7 @@ EVENT12_CHANNEL = "XFEL.DIAG/TIMER.CENTRAL/MASTER/EVENT12"
 # should be switched to BUNCH_ONE, off beam should be whatever it was
 # before (so just toggle between the two).
 
-
-# The hardcoded (in the machine) timing of the first stable bunch
+# timing of the first stable bunch
 # going into each TDS.  This changes over time.  Bolko updates this
 # himself (last time, at time of writing, 2 years ago).  I assume this
 # is correct for a given machine configuration
@@ -37,7 +37,6 @@ BUNCH_ONE_TDS_I1 = "XFEL.SDIAG/SPECIAL_BUNCHES.ML/TDSA.52.I1/BUNCH_ONE"   # 4_59
 BUNCH_ONE_TDS_BC2 = "XFEL.SDIAG/SPECIAL_BUNCHES.ML/TDSB.428.B2/BUNCH_ONE" # 6_540_490
 
 BUNCH_ONE_TOLERANCE = 0.05
-
 
 PULSES_ACTIVE = "XFEL.SDIAG/SPECIAL_BUNCHES.ML/TDSB.428.B2/PULSES.ACTIVE"
 
@@ -59,7 +58,8 @@ TDS_ON_BEAM_EVENT10 = [
 
 # time of flight can be a problem.  if i have a crazy time.
 # e.g. wrong energy in chicanes, looks like it is coming at the right
-# time.  probably only a problem at BC2.
+# time.  probably only a problem at BC2...
+# might need new r56
 
 # confirm that the setpoint is matching the rb!  this is a good way of
 # checkign the TDS is on!
@@ -68,83 +68,75 @@ I1D_SCREEN = "XFEL.DIAG/SCREEN.ML/OTRC.64.I1D/ONAXIS_LYSO"
 B2D_SCREEN = "XFEL.DIAG/SCREEN.ML/OTRA.473.B2D/ONAXIS_LYSO"
 SCREEN_NOT_IN = 0
 
-SNAPSHOT_TEMPL = Snapshot()
-SNAPSHOT_TEMPL.sase_sections = []
-SNAPSHOT_TEMPL.magnet_prefix = None
+def make_injector_snapshot_template():
+    template = Snapshot()
 
+    screen_name = Path("XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ").parent.name
+    template.add_image(DUMP_SCREEN_ADDRESS, folder=f"./images-{screen_name}")
 
-SNAPSHOT_TEMPL.add_alarm_channels("XFEL.DIAG/TOROID/TORA.60.I1/CHARGE.ALL", min=0.005, max=1.5)
+    # Alarms
+    template.alarms.append(BasicAlarm("XFEL.DIAG/TOROID/TORA.60.I1/CHARGE.ALL",
+                                      vmin=0.005, message="Charge too small, no beam?"))
 
-SNAPSHOT_TEMPL.add_channel(BEAM_ALLOWED_ADDRESS)
+    # Beam on/off
+    template.add_channel(BEAM_ALLOWED_ADDRESS)
 
-SNAPSHOT_TEMPL.add_orbit_section("I1", tol=0.1, track=False)
-SNAPSHOT_TEMPL.add_orbit_section("I1D", tol=0.1, track=False)
+    # Orbit
+    template.add_orbit_section("I1", tol=0.1)
+    template.add_orbit_section("I1D", tol=0.1)
 
-SNAPSHOT_TEMPL.add_magnet_section("I1", tol=0.01, track=False)
-SNAPSHOT_TEMPL.add_magnet_section("I1D", tol=0.01, track=False)
+    # Magnet settings
+    template.add_magnet_section("I1", tol=0.01)
+    template.add_magnet_section("I1D", tol=0.01)
 
-# add camera
+    # add camera
+    # template.add_image("XFEL.DIAG/CAMERA/OTRA.473.B2D/IMAGE_EXT_ZMQ", folder="./tds_images")
+    # solenoid
+    template.add_channel("XFEL.MAGNETS/MAGNET.ML/SOLB.23.I1/CURRENT.SP")
 
-# SNAPSHOT_TEMPL.add_image("XFEL.DIAG/CAMERA/OTRA.473.B2D/IMAGE_EXT_ZMQ", folder="./tds_images")
-# solenoid
-SNAPSHOT_TEMPL.add_channel("XFEL.MAGNETS/MAGNET.ML/SOLB.23.I1/CURRENT.SP")
+    # A1
+    template.add_channel("XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/PHASE.SAMPLE", tol=0.02)
+    template.add_channel("XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/AMPL.SAMPLE", tol=0.1)
+    template.add_channel("XFEL.RF/LLRF.CONTROLLER/CTRL.A1.I1/SP.PHASE")
+    template.add_channel("XFEL.RF/LLRF.CONTROLLER/CTRL.A1.I1/SP.AMPL")
 
-# A1  XFEL.RF/LLRF.CONTROLLER/CTRL.A1.I1/SP.AMPL
-SNAPSHOT_TEMPL.add_channel("XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/PHASE.SAMPLE", tol=0.02)
-SNAPSHOT_TEMPL.add_channel("XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/AMPL.SAMPLE", tol=0.1)
-SNAPSHOT_TEMPL.add_channel("XFEL.RF/LLRF.CONTROLLER/CTRL.A1.I1/SP.PHASE")
-SNAPSHOT_TEMPL.add_channel("XFEL.RF/LLRF.CONTROLLER/CTRL.A1.I1/SP.AMPL")
+    # Gun
+    template.add_channel("XFEL.RF/LLRF.CONTROLLER/VS.GUN.I1/PHASE.SAMPLE", tol=0.03)
+    template.add_channel("XFEL.RF/LLRF.CONTROLLER/CTRL.GUN.I1/SP.PHASE", tol=0.01)
+    template.add_channel("XFEL.RF/LLRF.CONTROLLER/CTRL.GUN.I1/SP.AMPL")
+    template.add_channel("XFEL.RF/LLRF.CONTROLLER/VS.GUN.I1/AMPL.SAMPLE")
 
-# gun phase
-SNAPSHOT_TEMPL.add_channel("XFEL.RF/LLRF.CONTROLLER/VS.GUN.I1/PHASE.SAMPLE", tol=0.03)
-SNAPSHOT_TEMPL.add_channel("XFEL.RF/LLRF.CONTROLLER/CTRL.GUN.I1/SP.PHASE", tol=0.01)
-SNAPSHOT_TEMPL.add_channel("XFEL.RF/LLRF.CONTROLLER/CTRL.GUN.I1/SP.AMPL")
-SNAPSHOT_TEMPL.add_channel("XFEL.RF/LLRF.CONTROLLER/VS.GUN.I1/AMPL.SAMPLE")
+    # AH1
+    template.add_channel("XFEL.RF/LLRF.CONTROLLER/VS.AH1.I1/PHASE.SAMPLE", tol=0.03)
+    template.add_channel("XFEL.RF/LLRF.CONTROLLER/VS.AH1.I1/AMPL.SAMPLE", tol=0.1)
+    template.add_channel("XFEL.RF/LLRF.CONTROLLER/CTRL.AH1.I1/SP.PHASE")
+    template.add_channel("XFEL.RF/LLRF.CONTROLLER/CTRL.AH1.I1/SP.AMPL")
 
+    # charge
+    template.add_channel("XFEL.FEEDBACK/FT1.LONGITUDINAL/MONITOR1/TARGET")
+    template.add_channel("XFEL.DIAG/CHARGE.ML/TORA.25.I1/CHARGE.ALL")
 
-# AH1
-SNAPSHOT_TEMPL.add_channel("XFEL.RF/LLRF.CONTROLLER/VS.AH1.I1/PHASE.SAMPLE", tol=0.03)
-SNAPSHOT_TEMPL.add_channel("XFEL.RF/LLRF.CONTROLLER/VS.AH1.I1/AMPL.SAMPLE", tol=0.1)
-SNAPSHOT_TEMPL.add_channel("XFEL.RF/LLRF.CONTROLLER/CTRL.AH1.I1/SP.PHASE")
-SNAPSHOT_TEMPL.add_channel("XFEL.RF/LLRF.CONTROLLER/CTRL.AH1.I1/SP.AMPL")
+    # Energy
+    template.add_channel("XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/LH/ENERGY.ALL", tol=0.2)
+    template.add_channel("XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/I1D/ENERGY.ALL", tol=0.2)
 
-# charge
+    # BC settings
+    template.add_channel("XFEL.MAGNETS/CHICANE/LH/ANGLE")  # mrad
+    template.add_channel("XFEL.MAGNETS/CHICANE/BC0/ANGLE")
+    template.add_channel("XFEL.MAGNETS/CHICANE/BC1/ANGLE")
+    template.add_channel("XFEL.MAGNETS/CHICANE/BC2/ANGLE")
 
-SNAPSHOT_TEMPL.add_channel("XFEL.FEEDBACK/FT1.LONGITUDINAL/MONITOR1/TARGET")
-SNAPSHOT_TEMPL.add_channel("XFEL.DIAG/CHARGE.ML/TORA.25.I1/CHARGE.ALL")
+    # Laser Heater
+    template.add_channel("XFEL.UTIL/LASERHEATER.MOTOR/P1X.LHOS0/FPOS")  # Laser position x compare with BPM.48 and .52
+    template.add_channel("XFEL.UTIL/LASERHEATER.MOTOR/P1Z.LHOS0/FPOS")  # Laser position y
+    template.add_channel("XFEL.UTIL/LASERHEATER.MOTOR/LAMBDA2.LHOS0/POS")  # laser intensity, min at 0 max at 7000
+    template.add_channel("XFEL.UTIL/LASERHEATER.MOTOR/DL.LHLVL5/FPOS")  # delay line, on beam at -241
+    template.add_channel("XFEL.UTIL/LASERINT/GUN/SH3_OPEN")  # UG5 shutter open
+    template.add_channel("XFEL.UTIL/LASERINT/GUN/SH4_OPEN")  # UG7 shutter open
+    # template.add_channel("XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSB2/SP.PHASE")
 
-
-# SNAPSHOT_TEMPL.add_channel("XFEL.RF/LINAC_ENERGY_MANAGER/XFEL/ENERGY.2", tol=5)
-
-SNAPSHOT_TEMPL.add_channel("XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/LH/ENERGY.ALL", tol=0.2)
-
-SNAPSHOT_TEMPL.add_channel("XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/I1D/ENERGY.ALL", tol=0.2)
-
-
-# BCs
-SNAPSHOT_TEMPL.add_channel("XFEL.MAGNETS/CHICANE/LH/ANGLE")  # mrad
-SNAPSHOT_TEMPL.add_channel("XFEL.MAGNETS/CHICANE/BC0/ANGLE")
-SNAPSHOT_TEMPL.add_channel("XFEL.MAGNETS/CHICANE/BC1/ANGLE")
-SNAPSHOT_TEMPL.add_channel("XFEL.MAGNETS/CHICANE/BC2/ANGLE")
-
-# Laser Heater
-SNAPSHOT_TEMPL.add_channel("XFEL.UTIL/LASERHEATER.MOTOR/P1X.LHOS0/FPOS")  # Laser position x compare with BPM.48 and .52
-SNAPSHOT_TEMPL.add_channel("XFEL.UTIL/LASERHEATER.MOTOR/P1Z.LHOS0/FPOS")  # Laser position y
-SNAPSHOT_TEMPL.add_channel("XFEL.UTIL/LASERHEATER.MOTOR/LAMBDA2.LHOS0/POS")  # laser intensity, min at 0 max at 7000
-SNAPSHOT_TEMPL.add_channel("XFEL.UTIL/LASERHEATER.MOTOR/DL.LHLVL5/FPOS")  # delay line, on beam at -241
-SNAPSHOT_TEMPL.add_channel("XFEL.UTIL/LASERINT/GUN/SH3_OPEN")  # UG5 shutter open
-SNAPSHOT_TEMPL.add_channel("XFEL.UTIL/LASERINT/GUN/SH4_OPEN")  # UG7 shutter open
-# SNAPSHOT_TEMPL.add_channel("XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSB2/SP.PHASE")
-
-# TDS injector
-SNAPSHOT_TEMPL.add_channel(TDS_AMPLITUDE_SAMPLE_ADDRESS)
-SNAPSHOT_TEMPL.add_channel(TDS_AMPLITUDE_READBACK_ADDRESS)
-SNAPSHOT_TEMPL.add_channel("XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/SP.PHASE")
-SNAPSHOT_TEMPL.add_channel(EVENT10_CHANNEL)  # indication if TDS is on beam
-
-
-# BAM
-# SNAPSHOT_TEMPL.add_channel("XFEL.SDIAG/BAM/47.I1/LOW_CHARGE.RESOLUTION")
-# SNAPSHOT_TEMPL.add_channel("XFEL.SDIAG/BAM/47.I1/LOW_CHARGE_SINGLEBUNCH_ARRIVAL_TIME.1")
-# SNAPSHOT_TEMPL.add_channel("XFEL.SDIAG/BAM/47.I1/LOW_CHARGE_SINGLEBUNCH_ARRIVAL_TIME.2")
-# SNAPSHOT_TEMPL.add_channel("XFEL.SDIAG/BAM/47.I1/LOW_CHARGE_SINGLEBUNCH_ARRIVAL_TIME.3")
+    # TDS injector
+    template.add_channel(TDS_AMPLITUDE_SAMPLE_ADDRESS)
+    template.add_channel(TDS_AMPLITUDE_READBACK_ADDRESS)
+    template.add_channel("XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/SP.PHASE")
+    template.add_channel(EVENT10_CHANNEL) # TDS timing (returns 4-tuple)

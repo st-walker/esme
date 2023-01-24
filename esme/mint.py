@@ -28,6 +28,9 @@ except ImportError:
 LOG = logging.getLogger(__name__)
 
 
+class EuXFELMachineError(RuntimeError):
+    pass
+
 class Device(object):
     def __init__(self, eid=None):
         self.eid = eid
@@ -253,27 +256,26 @@ class Machine:
         self.subtrain = "ALL"
         self.suffix = ""
 
-    def is_machine_online(self):
+    def is_machine_online(self) -> bool:
         """
         method to check if machine is online
 
-        :return: True if online
+        :return: True if online, False otherwise
+
         """
 
-        alarm_status = []
-        for i, alarm in enumerate(self.snapshot.alarm_channels):
+        for alarm in self.snapshot.alarms:
             try:
                 val = self.mi.get_value(alarm)
-            except Exception as e:
-                print("id: " + alarm + " ERROR: " + str(e))
-                val = 0
-            min_val, max_val = self.snapshot.alarm_bounds[i]
-            if min_val < val < max_val:
-                alarm_status.append(True)
-            else:
-                alarm_status.append(False)
-        if not np.array(alarm_status).all():
-            return False
+            except Exception as exc:
+                msg = f"Couldn't read alarm channel: {alarm.channel}"
+                LOG.error(msg, exc_info=True)
+                raise EuXFELMachineError(msg) from exc
+
+            if not alarm.is_ok(val):
+                log.info(f"Machine is offline. Reason: {alarm.offline_message()}")
+                return False
+        
         return True
 
     def get_orbit(self, data, all_names):
@@ -495,24 +497,26 @@ class CavityA1(Device):
         ch = self.server + ".RF/LLRF.CONTROLLER/" + self.eid + "/SP.AMPL"
         val = self.mi.get_value(ch)
         return val
-    
 
 
-
-class Alarm:
-    def __init__(self, channel, xmin, xmax, message):
+class BasicAlarm:
+    def __init__(self, channel, vmin=-np.inf, vmax=+np.inf, explanation=""):
         self.channel = channel
-        self.xmin = xmin
-        self.xmax = xmax
-        self.message = message
+        self.vmin = vmin
+        self.vmax = vmax
+        explanation = ""
+
+    def is_ok(self, value):
+        return (value >= self.vmin) and (value < self.vmax)
+
+    def offline_message(self) -> str:
+        return (f"{self.channel} out of bounds, bounds = {(self.vmin, self.vmax)}."
+                f" explanation:  {self.explanation}")
 
 
 class Snapshot:
-    def __init__(self):
-        self.sase_sections = ["SA1", "SA2", "SA3"]
-        # or list of magnet prefix to check if they are vary
-        self.magnet_prefix = []  # ["QA.", "CBY.", "CAX.", "Q.", "CY.", "CX.", "CIX.", "CIY.", "QI.", "BL."]
-
+    def __init__(self, sase_sections=None):
+        self.sase_sections = []
         self.orbit_sections = {}
         self.magnet_sections = {}
         self.phase_shifter_sections = {}
