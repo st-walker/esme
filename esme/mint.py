@@ -246,6 +246,15 @@ class XFELMachineInterface:
         except:
             succeded = False
         return succeded
+
+
+class ReadOnlyMachine:
+    def __init__(self, mi):
+        self._mi = mi
+
+    def read(self, channel):
+        return self.mi.get_value(channel)
+
     
 class Machine:
     def __init__(self, snapshot):
@@ -499,6 +508,8 @@ class CavityA1(Device):
         return val
 
 
+# Channel returns [a,b,c,d], we need C!  third element.  so BasicAlarm
+    
 class BasicAlarm:
     def __init__(self, channel, vmin=-np.inf, vmax=+np.inf, explanation=""):
         self.channel = channel
@@ -513,6 +524,17 @@ class BasicAlarm:
         return (f"{self.channel} out of bounds, bounds = {(self.vmin, self.vmax)}."
                 f" explanation:  {self.explanation}")
 
+        
+
+class LambaAlarm:
+    def __init__(self, channels, fn):
+        self.channels = channels
+        self.fn = fn
+
+    def is_ok(self, machine, fn):
+        values = [machine.read_value(ch) for ch in channels]
+        
+        
 
 class Snapshot:
     def __init__(self, sase_sections=None):

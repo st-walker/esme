@@ -4,6 +4,9 @@ Sergey Tomin
 
 Script to collect tuning data
 """
+
+import os
+
 from esme.mint import Snapshot, BasicAlarm
 
 
@@ -68,15 +71,18 @@ I1D_SCREEN = "XFEL.DIAG/SCREEN.ML/OTRC.64.I1D/ONAXIS_LYSO"
 B2D_SCREEN = "XFEL.DIAG/SCREEN.ML/OTRA.473.B2D/ONAXIS_LYSO"
 SCREEN_NOT_IN = 0
 
-def make_injector_snapshot_template():
+def make_injector_snapshot_template(outdir: os.PathLike):
     template = Snapshot()
 
     screen_name = Path("XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ").parent.name
-    template.add_image(DUMP_SCREEN_ADDRESS, folder=f"./images-{screen_name}")
+    image_dir = Path(outdir) / f"images-{screen_name}"
+    template.add_image(DUMP_SCREEN_ADDRESS, folder=image_dir)
 
     # Alarms
     template.alarms.append(BasicAlarm("XFEL.DIAG/TOROID/TORA.60.I1/CHARGE.ALL",
                                       vmin=0.005, message="Charge too small, no beam?"))
+
+    # template.alarms.append(BinaryOpAlarm(), 
 
     # Beam on/off
     template.add_channel(BEAM_ALLOWED_ADDRESS)
@@ -140,3 +146,8 @@ def make_injector_snapshot_template():
     template.add_channel(TDS_AMPLITUDE_READBACK_ADDRESS)
     template.add_channel("XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/SP.PHASE")
     template.add_channel(EVENT10_CHANNEL) # TDS timing (returns 4-tuple)
+    template.add_channel(BUNCH_ONE_TDS_I1) # Timing of TDS for first on-beam bunch.
+
+
+def make_bc2_snapshot_template():
+    pass

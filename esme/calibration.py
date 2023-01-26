@@ -27,11 +27,11 @@ def sqrt(x, a0, a1) -> Any:
 
 class TDSCalibrator:
     def __init__(
-        self, percentages: Sequence[float], tds_slopes: Sequence[float], dispersion: float, tds_slope_units: Optional[str] = None
+        self, percentages: Sequence[float], tds_slopes: Sequence[float], dispersion_setpoint: float, tds_slope_units: Optional[str] = None
     ):
         self.percentages = np.array(percentages)
         self.tds_slopes = np.array(tds_slopes)
-        self.dispersion = dispersion
+        self.dispersion_setpoint = dispersion_setpoint
         if tds_slope_units == "um/ps":
             self.tds_slopes = self.tds_slopes * 1e6
         elif tds_slope_units is not None:
@@ -53,15 +53,15 @@ class TDSCalibrator:
 
     def __repr__(self) -> str:
         cname = type(self).__name__
-        dx = self.dispersion
-        return f"<{cname}: {dx=}, %={repr(self.percentages)}, grds={self.tds_slopes}>"
+        dx0 = self.dispersion_setpoint
+        return f"<{cname}: {dx0=}, %={repr(self.percentages)}, grds={self.tds_slopes}>"
 
 
 class TrivialTDSCalibrator:
-    def __init__(self, percentages: Sequence[float], voltages: Sequence[float], dispersion: float):
+    def __init__(self, percentages: Sequence[float], voltages: Sequence[float], dispersion_setpoint: float):
         self.percentages = np.array(percentages)
         self.voltages = np.array(voltages)
-        self.dispersion = np.squeeze(dispersion)
+        self.dispersion_setpoint = np.squeeze(dispersion_setpoint)
 
     def get_voltage(self, percentage, snapshot) -> float:
         return dict(zip(self.percentages, self.voltages))[percentage]

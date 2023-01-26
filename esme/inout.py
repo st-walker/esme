@@ -189,16 +189,16 @@ def load_config(fname: os.PathLike) -> SliceEnergySpreadMeasurement:
         raise MalformedESMEConfigFile("TDS % info is missing from esme file")
 
     try:
-        screen_dispersion = calib["screen_dispersion"]
+        dispersion_setpoint = calib["dispersion_setpoint"]
     except KeyError:
         raise MalformedESMEConfigFile("Dispersion at which TDS was calibrated is" " missing from esme run file")
 
     if voltages := calib.get("voltages"):
-        calibrator = TrivialTDSCalibrator(percentages, voltages, screen_dispersion)
+        calibrator = TrivialTDSCalibrator(percentages, voltages, dispersion_setpoint)
     else:
         tds_slopes = calib["tds_slopes"]
         tds_slopes_units = calib["tds_slope_units"]
-        calibrator = TDSCalibrator(percentages, tds_slopes, screen_dispersion, tds_slope_units=tds_slopes_units)
+        calibrator = TDSCalibrator(percentages, tds_slopes, dispersion_setpoint, tds_slope_units=tds_slopes_units)
 
     dscan = DispersionScan(
         load_pickled_snapshots(dscan_paths),

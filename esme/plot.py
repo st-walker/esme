@@ -2,6 +2,7 @@
 
 
 import logging
+import pickle
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -374,7 +375,7 @@ def formatted_parameter_dfs(esme: ana.SliceEnergySpreadMeasurement, latex=False)
     params = esme.all_fit_parameters()
 
     fit_params = params.fit_parameters_to_df()
-    fit_params.loc["sigma_z"] = beam.mean_bunch_length(esme)
+    fit_params.loc["sigma_z"] = beam.mean_bunch_length_from_time_calibration(esme)
     fit_params.loc["sigma_z"] *= 1e3  # to mm
     fit_params.loc["sigma_t"] = fit_params.loc["sigma_z"] * 1e-3 * 1e12 / c  # to ps
     fit_params.loc[["V_0", "E_0"]] *= 1e-6  # To MV / MeV
@@ -645,11 +646,11 @@ def _plot_quad_strengths(dfs, scan_var, scan_var_name, ax) -> plt.Figure:
 
 
 def plot_tds_calibration(sesme, root_outdir):
-    fig1 = plot_calibrator_with_fits(sesme.dscan.calibrator)
-    fig2 = plot_r34s(sesme)
-    fig3 = plot_calibrated_tds(sesme)
-    fig4 = plot_streaking_parameters(sesme)
-    fig5 = plot_tds_voltage(sesme)
+    fig1, dikt1 = plot_calibrator_with_fits(sesme.dscan.calibrator)
+    fig2, dikt2 = plot_r34s(sesme)
+    fig3, dikt3 = plot_calibrated_tds(sesme)
+    fig4, df4 = plot_streaking_parameters(sesme)
+    fig5, dikt5 = plot_tds_voltage(sesme)
 
     if root_outdir is None:
         plt.show()
@@ -657,11 +658,25 @@ def plot_tds_calibration(sesme, root_outdir):
 
     if fig1:
         fig1.savefig(root_outdir / "calibrator-fits.png")
-    fig2.savefig(root_outdir / "r34s.png")
+    if fig2:
+        path2 = root_outdir / "r34s.png"
+        fig2.savefig(path2)
+        with path2.with_suffix(".pcl").open("wb") as f:
+            pickle.dump(dikt2, f)
+
     if fig3:
-        fig3.savefig(root_outdir / "derived-tds-voltages.png")
+        path3 = root_outdir / "derived-tds-voltages.png"
+        fig3.savefig(path3)
+        with path3.with_suffix(".pcl").open("wb") as f:
+            pickle.dump(dikt3, f)
+
     fig4.savefig(root_outdir / "streaking-parameters.png")
-    fig5.savefig(root_outdir / "tds-calibration-slopes.png")
+
+    path5 = root_outdir / "tds-calibration-slopes.png"
+    fig5.savefig(path5)
+    with path5.with_suffix(".pcl").open("wb") as f:
+        pickle.dump(dikt5, f)
+
 
 
 def plot_r34s(sesme):
@@ -679,7 +694,9 @@ def plot_r34s(sesme):
     ax2.set_xlabel(r"TDS Amplitude / %")
     ax2.set_ylabel(r"$R_{34}\,/\,\mathrm{m\cdot{}rad^{-1}}$")
 
-    return fig
+    dikt = {"dscan_dx": sesme.dscan.dx, "dscan_r34s": dscan_r34s, "tscan_percentage": sesme.tscan.tds_percentage, "tscan_r34s": tscan_r34s}
+
+    return fig, dikt
 
 
 def plot_calibrator_with_fits(calib):
@@ -702,7 +719,8 @@ def plot_calibrator_with_fits(calib):
     ax.set_ylabel(ylabel)
 
     ax.legend()
-    return fig
+    df = None
+    return fig, df
 
 
 def plot_calibrated_tds(sesme):
@@ -736,7 +754,9 @@ def plot_calibrated_tds(sesme):
 
     fig.suptitle("TDS Calibration data we took beforehand (below) and applied to scan (above)")
 
-    return fig
+    dikt = {"tds_scan_percentages": tds_percentage, "tds_scan_voltage": derived_voltage}
+
+    return fig, dikt
 
 
 def _streaks_from_scan(scan: ana.ParameterScan):
@@ -780,11 +800,15 @@ def plot_tds_voltage(sesme):
     tit2 = rf"TDS-scan; $\eta_\mathrm{{OTR}}={{{tscan_dx[0]}}}\mathrm{{m}}$"
     ax2.set_title(tit2)
 
-    return fig
+    dikt = {"dscan_dx": dscan_dx, "dscan_voltage": dscan_voltage, "tscan_percent": tscan_percent, "tscan_voltage": tscan_voltage}
+
+    return fig, dikt
 
 
 def plot_streaking_parameters(sesme):
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(ncols=2, nrows=2, figsize=(14, 8), sharey=False)
+
+    from IPython import embed; embed()
 
     dscan_streak = abs(_streaks_from_scan(sesme.dscan))
 
@@ -796,11 +820,11 @@ def plot_streaking_parameters(sesme):
         return (length / c) * 1e12
 
     ax3.errorbar(
-        sesme.dscan.dx, to_ps(raw_bunch_lengths), linestyle="", yerr=to_ps(raw_bl_errors), label="Raw bunch length"
+        sesme.dscan.dx, to_ps(raw_bunch_lengths), linestyle="", yerr=to_ps(raw_bl_errors), label="Raw bunch length", marker=".",
     )
 
     ax3.errorbar(
-        sesme.dscan.dx, to_ps(true_bunch_lengths), linestyle="", yerr=to_ps(true_bl_errors), label="True bunch length"
+        sesme.dscan.dx, to_ps(true_bunch_lengths), linestyle="", yerr=to_ps(true_bl_errors), label="True bunch length", marker=".",
     )
 
     ax3.legend()
@@ -808,10 +832,10 @@ def plot_streaking_parameters(sesme):
 
     ax1.plot(sesme.dscan.dx, dscan_streak, marker="x", linestyle="")
 
-    ax1.set_xlabel(ETA_LABEL)
+
     ax1.set_ylabel(r"$|S|$")
 
-    ax2.set_xlabel(VOLTAGE_LABEL)
+
 
     tscan_streak = abs(_streaks_from_scan(sesme.tscan))
 
@@ -821,26 +845,30 @@ def plot_streaking_parameters(sesme):
     true_bunch_lengths, true_bl_errors = beam.true_bunch_lengths(sesme.tscan)
 
     ax4.errorbar(
-        sesme.tscan.voltage * 1e-6,
+        abs(sesme.tscan.voltage * 1e-6),
         to_ps(raw_bunch_lengths),
         linestyle="",
+        marker=".",
         yerr=to_ps(raw_bl_errors),
         label="Raw bunch length",
     )
 
     ax4.errorbar(
-        sesme.tscan.voltage * 1e-6,
+        abs(sesme.tscan.voltage * 1e-6),
         to_ps(true_bunch_lengths),
         linestyle="",
+        marker=".",
         yerr=to_ps(true_bl_errors),
         label="True bunch length",
     )
 
     ax3.set_ylabel("Bunch Length / ps")
-    ax3.set_xlabel("Dx")
-    ax4.set_xlabel("TDS Voltage / MV")
+    ax3.set_xlabel(ETA_LABEL)
+    ax4.set_xlabel(VOLTAGE_LABEL)
 
-    return fig
+    df = None
+
+    return fig, df
 
 
 def get_slice_core(pixels) -> tuple[npt.NDArray, npt.NDArray]:

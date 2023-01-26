@@ -10,28 +10,9 @@
 # Image processing.
 # Make sure it is fully mocked and tested
 
-# Do the TDS Scan
-# Automatically change the TDS voltage: DONE
-# Make sure it is fully mocked and tested
+# Handle the case when the TDS was off.  and don't increment the counter!
 
-# Do the Dispersion scan
-# Automatically change quad strengths: DONE
-# Make sure it is fully mocked and tested
-
-# Interrupt handler
-# Restore measurement process so don't always have to start from scratch!
-# How about a file that goes in the output directory that stores progress?
-# And then I read that back in and try and resume.
-# (also stores scan.toml used path etc... or indeed maybe just copy this to the destination?).
-
-# Copy the scan.toml to the output directory.  do a set difference to find what is missing.
-# maybe there are also images missing.
-
-# only need a true sig int handler I think when it's a GUI (interrupt
-# current measurement), can go again, or do "new measurement" button.
-
-# Do I even really need a fancy sigint handler if I just simply repeat
-# any measurement that didn't perfectly complete?
+# Automatically calibrate the TDS.
 
 # Misc:
 # Write metadata: measured dispersion, measured beta_x (if we do that): DONE
@@ -50,19 +31,7 @@
 # Also assert there's only one beam in the machine please.
 # MAke a checklist for me to test these features/checks!
 
-# Dream:
-# Automatic TDS Calibration (one day).
-
 # Questions for Bolko:
-# Is EVENT10_CHANNEL and TDS_ON_BEAM_EVENT10 in injector_channel.py correct?  Good.
-# How to tell if TDS RF power is on?  Check Rb.
-# How to set gain?  ?
-# How long to sleep for quads to adjust? ?
-# How to tell if the screen is out? Done.
-
-# Nice to have one day:
-# Warn if laser heater is on.
-# Warn if AH1 is on.
 
 # Priority:
 # Dispersion and TDS scans robustly, without measuring the dispersion
@@ -192,23 +161,22 @@ class MeasurementRunner:
 
     def __init__(
         self,
-        name,
+            outdir: Union[os.PathLike, str],
         dscan_config: DispersionScanConfiguration,
         tds_config: TDSScanConfiguration,
-        outdir: Union[os.PathLike, str] = "./",
         machine: Optional[EnergySpreadMeasuringMachine] = None,
         mps: Optional[MPS] = None,
         dispersion_measurer: Optional[Type[BaseDispersionMeasurer]] = None,
     ):
         """name is used for the output file name"""
-        self.name = name
+        self.outdir = Path(outdir)
         self.dscan_config = dscan_config
         self.tds_config = tds_config
-        self.outdir = Path(outdir)
 
         self.machine = machine
         if self.machine is None:
-            self.machine = EnergySpreadMeasuringMachine(make_injector_snapshot_template())
+            templ = make_injector_snapshot_template(self.abs_output_directory())
+            self.machine = EnergySpreadMeasuringMachine(templ)
 
         self.photographer = ScreenPhotographer(machine=self.machine, mps=mps)
         self.dispersion_measurer = dispersion_measurer
@@ -343,7 +311,7 @@ class MeasurementRunner:
         return self.abs_output_directory() / fname
 
     def abs_output_directory(self) -> Path:
-        return (self.outdir / self.name).resolve()
+        return self.outpath.resolve()
 
     def save_setpoint_snapshots(self, setpoint_snapshot: SetpointSnapshots) -> str:
         fname = self.make_snapshots_filename(setpoint_snapshot)
@@ -469,9 +437,21 @@ class DispersionMeasurer(BaseDispersionMeasurer):
 
 class BasicDispersionMeasurer(BaseDispersionMeasurer):
     def measure(self) -> tuple[float, float]:
-        dispersion = float(input("Enter dispersion in m:"))
-        dispersion_unc = float(input("Enter dispersion unc in m:"))
+        dispersion = _repeat_float_input_until_valid("Enter dispersion in m: ")
+        dispersion_unc = _repeat_float_input_until_valid("Enter dispersion unc in m: ")
         return dispersion, dispersion_unc
+
+
+def _repeat_float_input_until_valid(prompt):
+    while True:
+        given = input(prompt)
+        try:
+            dispersion = float(given)
+        except ValueError:
+            print(f"Invalid dispersion: {given=}, go again")
+            continue
+        else:
+            return dispersion
 
 
 def handle_sigint():

@@ -46,6 +46,7 @@ from esme.injector_channels import (TDS_AMPLITUDE_READBACK_ADDRESS,
                                     TDS_ON_BEAM_EVENT10,
                                     DUMP_SCREEN_ADDRESS)
 from esme.measurement import SetpointSnapshots
+from esme.exceptions import TDSCalibrationError, EnergySpreadCalculationError
 
 
 PIXEL_SCALE_X_UM: float = 13.7369
@@ -294,7 +295,23 @@ class TDSScan(ParameterScan):
 
     @property
     def voltage(self):
-        dx = self.dx
+        scan_dx = self.dx
+
+        # Check if the dispersion setpoint we use for the TDS scan
+        # differs too much from the dispersion setpoint we did the
+        # calibration at.  If it's too much, then we have a problem.
+        calibrator_dx = self.calibrator.dispersion_setpoint
+
+        if not (scan_dx[0] == scan_dx).all():
+            raise EnergySpreadCalculationError(f"TDS Scan dispersions should all be equal: {scan_dx}")
+
+        if (scan_dx[0] / calibrator_dx) > 0.2:
+            scan_dx = np.array2string(scan_dx, separator=", ")
+            raise TDSCalibrationError("Optics setpoint used differs"
+                                      " too much from the scan setpoint used to calculate R34:"
+                                      f" {calibrator_dx=} & {scan_dx=}")
+
+
         # Get metadata associated with first (non-bg) image of each measurement,
         # and reasonably assume it's the same for every image of the scan.
         scan_metadata = [m.images[0].metadata for m in self.measurements]
@@ -636,18 +653,35 @@ class FittedBeamParameters:
         return pd.concat([params, alt_params], axis=1)
 
 
-
 def _get_constant_voltage_for_scan(scan):
     # By definition in the dispersion scan the voltages all stay the same.
     # Get dispersion at which the calibration was done
-    caldx = scan.calibrator.dispersion
+    caldx = scan.calibrator.dispersion_setpoint
     # Pick
     idx = np.argmin(abs(scan.dx - caldx))
     measurement = scan.measurements[idx]
 
+    tds_ampl = scan.tds_percentage
+    if not (tds_ampl[0] != tds_ampl).all():
+        raise EnergySpreadCalculationError(f"Dispersion scan TDS voltages should all be equal: {tds_ampl}")
+
+
     metadata = measurement.images[0].metadata
-    voltage = scan.calibrator.get_voltage(measurement.tds_percentage,
-                                          metadata)
-    dx = measurement.dx
+    voltage = scan.calibrator.get_voltage(measurement.tds_percentage, metadata)
+    scan_dx = measurement.dx
+
+    # Need to check the optics setpoint is more or less the same.  If
+    # they're very different then there is a problem: namely the R34
+    # (that we get from the *scan*) will be different from the R34
+    # used for the *calibration*.  We will then end up with incorrect
+    # voltages.
+    calibrator_dx = self.scan.dispersion_setpoint
+    scan_dx = np.array2string(scan_dx, separator=", ")
+    if abs((calibrator_dx - scan_dx) / calibrator_dx) > 0.2:
+        raise TDSCalibrationError("Optics setpoint used differs"
+                                  " too much from the scan setpoint used to calculate R34:"
+                                  f" {calibrator_dx=} & {scan_dx=}")
+
+
     LOG.debug("Deriving constant voltage for dispersion scan.  Calibrator: {scan.calibrator} @ Dx={dx}")
     return np.ones_like(scan.measurements) * voltage

@@ -2,7 +2,7 @@ import numpy as np
 from scipy.constants import e
 
 from esme.analysis import ScanMeasurement, ParameterScan, SliceEnergySpreadMeasurement, transform_pixel_widths
-from esme.image import crop_image
+from esme.image import crop_image, get_slice_properties
 from esme.calibration import r34s_from_scan, TDS_WAVENUMBER
 from esme.maths import get_gaussian_fit
 
@@ -38,7 +38,7 @@ def apparent_bunch_lengths(scan: ParameterScan):
         mean_size, mean_error = bunch_lengths_from_scan_measurement(measurement)
         average_lengths.append(mean_size.item())
         average_lengths_errors.append(mean_error.item())
-    return np.array(average_lengths), np.array(mean_error)
+    return np.array(average_lengths), np.array(average_lengths_errors)
 
 
 def true_bunch_lengths(scan: ParameterScan):
@@ -53,7 +53,7 @@ def true_bunch_lengths(scan: ParameterScan):
     return true_bl, true_bl_err
 
 
-def mean_bunch_length(esme: SliceEnergySpreadMeasurement):
+def mean_bunch_length_from_time_calibration(esme: SliceEnergySpreadMeasurement):
     lengths = []
     uncertainties = []
 
