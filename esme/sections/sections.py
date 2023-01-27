@@ -15,7 +15,9 @@ from ocelot.cpbd.wake3D import Wake, WakeTable
 from ocelot.utils.section_track import SectionTrack, SectionLattice
 
 
-SmoothPar = 1000
+BEAM_SMOOTHER = SmoothBeam()
+BEAM_SMOOTHER.mslice = 1000
+
 LHE = 11000e-9 * 0.74 / 0.8  # GeV
 WakeSampling = 500
 WakeFilterOrder = 20
@@ -24,6 +26,22 @@ CSRSigmaFactor = 0.1
 SCmesh = [63, 63, 63]
 bISR = True
 bRandomMesh = True
+
+
+
+def make_space_charge(step, nmesh_xyz):
+    sc = SpaceCharge()
+    sc.step = step
+    sc.nmesh_xyz = nmesh_xyz
+    return sc
+
+def make_wake(rel_path, factor, step):
+    wake = Wake()
+    wake.wake_table = WakeTable(Path(__file__).parent /  rel_path)
+    wake.factor = factor
+    wake.step = step
+
+    return wake
 
 
 class A1(SectionTrack):
@@ -37,9 +55,11 @@ class A1(SectionTrack):
         self.tws_file = self.tws_dir + "tws_section_A1.npz"
         # init tracking lattice
         i1_cell = i1.make_cell()
-        from IPython import embed; embed()
-        start_sim = next(ele for ele in i1_cell if ele.id == "START_SIM")
-        acc1_sim = next(ele for ele in i1_cell if ele.id == "START_SIM")
+
+        # Simply the start, just after gun
+        a1_start = next(ele for ele in i1_cell if ele.id == "START_SIM")
+        # just after last cavity module of A1
+        a1_stop = next(ele for ele in i1_cell if ele.id == "a1_sim_stop")
 
         if "coupler_kick" in kwargs:
             self.coupler_kick = kwargs["coupler_kick"]
@@ -52,28 +72,24 @@ class A1(SectionTrack):
             filename, file_extension = os.path.splitext(self.tws_file)
             self.tws_file = filename + str(kwargs["suffix"]) + file_extension
 
-        self.lattice = MagneticLattice(i1_cell, start=start_sim, stop=acc1_stop, method=self.method)
+        self.lattice = MagneticLattice(i1_cell, start=a1_start, stop=a1_stop, method=self.method)
         # init physics processes
-        sc = SpaceCharge()
-        sc.step = 1
-        sc.nmesh_xyz = [63, 63, 63]
-        sc2 = SpaceCharge()
-        sc2.step = 1
-        sc2.nmesh_xyz = [63, 63, 63]
-        wake = Wake()
-        wake.wake_table = WakeTable(Path(__file__).parent /  Path('mod_TESLA_MODULE_WAKE_TAYLOR.dat'))
-        wake.factor = 1
-        wake.step = 50
-        smooth = SmoothBeam()
-        smooth.mslice = SmoothPar
+        sc = make_space_charge(1, [63, 63, 63])
+        sc2 = make_space_charge(1, [63, 63, 63])
+        wake = make_wake('mod_TESLA_MODULE_WAKE_TAYLOR.dat', 1, 50)
         # adding physics processes
-        acc1_1_stop = i1.a1_1_stop
-        acc1_wake_kick = acc1_stop
-        self.add_physics_process(smooth, start=start_sim, stop=start_sim)
-        self.add_physics_process(sc, start=start_sim, stop=acc1_1_stop)
-        self.add_physics_process(sc2, start=acc1_1_stop, stop=acc1_wake_kick)
-        #self.add_physics_process(wake, start=acc1_wake_kick, stop=acc1_wake_kick)
-        self.add_physics_process(wake, start=i1.c_a1_1_1_i1, stop=acc1_wake_kick)
+        # just after the first A1 cavity.
+        just_after_first_a1_cavity = next(ele for ele in i1_cell if ele.id == "just-after-first-a1-cavity")
+        first_cavity = next(ele for ele in i1_cell if ele.id == "C.A1.1.1.I1")
+        # beam is immediately smoothed right at the start of the simulation in an instant
+        self.add_physics_process(BEAM_SMOOTHER, start=a1_start, stop=a1_start)
+
+        # Attach a SC instance from start (just after gun) to just after first module
+        self.add_physics_process(sc, start=a1_start, stop=just_after_first_a1_cavity)
+        # Attach a different SC instance between before 2nd module and end of last module.
+        self.add_physics_process(sc2, start=just_after_first_a1_cavity, stop=a1_stop)
+        # From start of A1 cavities to end of A1 (just after last cavity), attach wake kick.
+        self.add_physics_process(wake, start=first_cavity, stop=a1_stop)
 
 
 class AH1(SectionTrack):
@@ -86,6 +102,7 @@ class AH1(SectionTrack):
         self.output_beam_file = self.particle_dir + 'section_AH1.npz'
         self.tws_file = self.tws_dir + "tws_section_AH1.npz"
         # init tracking lattice
+        i1_cell = i1.make_cell()
         acc1_stop = i1.a1_sim_stop
         acc39_stop = i1.stlat_47_i1
         self.lattice = MagneticLattice(i1.cell, start=acc1_stop, stop=acc39_stop, method=self.method)

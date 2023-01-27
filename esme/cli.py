@@ -243,10 +243,24 @@ def rm(pcl_files, imname, dry_run):
         else:
             rm_ims_from_pcl(fpcl, imname, dry_run)
 
+
 @main.command(no_args_is_help=True)
 def gui():
     """Start the measurement GUI"""
     pass
+
+
+@main.command(no_args_is_help=True)
+@argument("fscan", nargs=1)
+@option("--i1d", is_flag=True)
+@option("--optics", is_flag=True)
+def sim(fscan, i1d, optics):
+    from .sim import run_i1d_dispersion_scan
+
+    # tscan_conf = tscan_config_from_scan_config_file(fscan)
+    dscan_conf = dscan_config_from_scan_config_file(fscan)
+
+    run_i1d_dispersion_scan(dscan_conf)
 
 
 if __name__ == "__main__":
