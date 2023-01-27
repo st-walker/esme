@@ -22,7 +22,17 @@ from esme.analysis import (
 )
 from esme.calibration import TDSCalibrator, TrivialTDSCalibrator
 from esme.injector_channels import TDS_AMPLITUDE_READBACK_ADDRESS, I1_DUMP_SCREEN_ADDRESS
-from esme.measurement import MeasurementRunner, DispersionScanConfiguration, TDSScanConfiguration, DispersionMeasurer, SetpointSnapshots, ScanType
+from esme.measurement import (
+    MeasurementRunner,
+    DispersionScanConfiguration,
+    TDSScanConfiguration,
+    DispersionMeasurer,
+    SetpointSnapshots,
+    ScanType,
+    DispersionScanConfiguration,
+    TDSScanConfiguration,
+    QuadrupoleSetting
+)
 
 
 LOG = logging.getLogger(__name__)
@@ -96,8 +106,6 @@ def add_metadata_to_pickled_df(fname, force_dx=None):
     if isinstance(df, SetpointSnapshots):
         LOG.debug(f"{fname} is a pickled SetpointSnapshots instance, not a raw df.")
         return
-    elif df is None:
-        import ipdb; ipdb.set_trace()
 
     tds_amplitude = tds_magic_number_from_filename(fname)
 
@@ -167,7 +175,6 @@ def title_from_toml(tom: Union[os.PathLike, dict]) -> tuple:
         return tom["title"]
     except KeyError:
         return ""
-
 
 
 def load_config(fname: os.PathLike) -> SliceEnergySpreadMeasurement:
@@ -240,7 +247,6 @@ def make_measurement_runner(name, fconfig, outdir="./", measure_dispersion=False
     return MeasurementRunner(name, dscan_config, tscan_config, outdir=outdir, dispersion_measurer=measure_dispersion)
 
 
-
 def make_dispersion_measurer(fconfig):
     config = toml.load(fconfig)
     confd = config["dispersion"]
@@ -279,6 +285,7 @@ def rm_pcl(fpcl: os.PathLike, dry_run=True):
     else:
         fpcl.unlink()
 
+
 def rm_ims_from_pcl(fpcl: os.PathLike, im_names, dry_run=True):
     fpcl = Path(fpcl)
     pdir = fpcl.resolve().parent
@@ -314,7 +321,6 @@ def rm_ims_from_pcl(fpcl: os.PathLike, im_names, dry_run=True):
             pickle.dump(setpoint, f)
 
 
-
 def _loop_pcl_df_files(paths, scan_type):
     for fdf in paths:
         try:
@@ -330,7 +336,6 @@ def raw_df_pcl_to_setpoint_snapshots(fpcl, scan_type):
     # try:
     df = pd.read_pickle(fpcl)
     # except EOFError:
-
 
     if isinstance(df, SetpointSnapshots):
         LOG.info(f"{fpcl} is already a pickled SetpointSnapshots instance")
@@ -354,13 +359,16 @@ def raw_df_pcl_to_setpoint_snapshots(fpcl, scan_type):
 
     dispersion_setpoint = dispersion_setpoints[isetpoint]
 
-    return SetpointSnapshots(df, scan_type, dispersion_setpoint=dispersion_setpoint,
-                             measured_dispersion=(dx, 0.0),
-                             beta=beta)
-
+    return SetpointSnapshots(
+        df, scan_type, dispersion_setpoint=dispersion_setpoint, measured_dispersion=(dx, 0.0), beta=beta
+    )
 
 
 def toml_dfs_to_setpoint_snapshots(ftoml):
+    """This is for porting old pure dataframes (referred to in the
+    toml files) to the newer SetpointSnapshots instances.
+
+    """
     dscan_paths, tscan_paths, bscan_paths = scan_files_from_toml(ftoml)
     if dscan_paths:
         _loop_pcl_df_files(dscan_paths, ScanType.DISPERSION)
@@ -378,3 +386,28 @@ def load_pickled_snapshots(paths):
             snapshot.resolve_image_path(path.parent)
             result.append(snapshot)
     return result
+
+
+def dscan_config_from_scan_config_file(config_path: os.PathLike) -> DispersionScanConfiguration:
+    # dscan_quads = []
+    conf = toml.load(config_path)
+    quads = conf["quads"]
+
+    ref = quads["reference_optics"]
+    reference_setting = QuadrupoleSetting(ref["names"], ref["strengths"], ref["dispersion"])
+
+    scan_settings = []
+    dscan = quads["dscan"]
+    dscan_quad_names = dscan["names"]
+    for dispersion, scan_strengths in zip(dscan["dispersions"], dscan["strengths"]):
+        scan_settings.append(QuadrupoleSetting(dscan_quad_names, scan_strengths, dispersion))
+    return DispersionScanConfiguration(reference_setting, scan_settings)
+
+
+def tscan_config_from_scan_config_file(config_path: os.PathLike) -> TDSScanConfiguration:
+    conf = toml.load(config_path)
+    tds = conf["tds"]
+    return TDSScanConfiguration(
+        reference_amplitude=tds["reference_amplitude"],
+        scan_amplitudes=tds["scan_amplitudes"],
+        scan_dispersion=tds["scan_dispersion"])

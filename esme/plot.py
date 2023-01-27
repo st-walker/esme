@@ -599,7 +599,7 @@ def _plot_quad_strengths_tds(esme: ana.SliceEnergySpreadMeasurement, root_outdir
     # fig, ax = plt.subplots()
     import latdraw  # pylint: disable=import-error
 
-    cell = lat.injector_cell()
+    cell = lat.cell_to_injector_dump()
     fig, (axm, ax) = latdraw.subplots_with_lattices(
         [latdraw.interfaces.lattice_from_ocelot(cell), None], figsize=(14, 8)
     )

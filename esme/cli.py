@@ -17,7 +17,9 @@ from esme.inout import (
     rm_pcl,
     rm_ims_from_pcl,
     toml_dfs_to_setpoint_snapshots,
-    add_metadata_to_pcls_in_toml
+    add_metadata_to_pcls_in_toml,
+    tscan_config_from_scan_config_file,
+    dscan_config_from_scan_config_file
 )
 
 from esme.plot import (

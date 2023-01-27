@@ -114,22 +114,6 @@ class DispersionScanConfiguration:
     reference_setting: QuadrupoleSetting
     scan_settings: list[QuadrupoleSetting]
 
-    @classmethod
-    def from_config_file(cls, config_path: os.PathLike) -> DispersionScanConfigurationSelf:
-        # dscan_quads = []
-        conf = toml.load(config_path)
-        quads = conf["quads"]
-
-        ref = quads["reference_optics"]
-        reference_setting = QuadrupoleSetting(ref["names"], ref["strengths"], ref["dispersion"])
-
-        scan_settings = []
-        dscan = quads["dscan"]
-        dscan_quad_names = dscan["names"]
-        for dispersion, scan_strengths in zip(dscan["dispersions"], dscan["strengths"]):
-            scan_settings.append(QuadrupoleSetting(dscan_quad_names, scan_strengths, dispersion))
-        return cls(reference_setting, scan_settings)
-
     @property
     def dispersions(self) -> list[float]:
         return [qsetting.dispersion for qsetting in self.scan_settings]
@@ -137,21 +121,9 @@ class DispersionScanConfiguration:
 
 @dataclass
 class TDSScanConfiguration:
-    """"""
-
     reference_amplitude: float
     scan_amplitudes: list
     scan_dispersion: float
-
-    @classmethod
-    def from_config_file(cls, config_path: os.PathLike) -> TDSScanConfigurationSelf:
-        conf = toml.load(config_path)
-        tds = conf["tds"]
-        return cls(
-            reference_amplitude=tds["reference_amplitude"],
-            scan_amplitudes=tds["scan_amplitudes"],
-            scan_dispersion=tds["scan_dispersion"],
-        )
 
 
 class MeasurementRunner:

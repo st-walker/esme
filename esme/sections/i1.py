@@ -18,27 +18,28 @@ with warnings.catch_warnings():
     )
     from ocelot.utils.section_track import SectionCell
 
+def make_twiss0():
+    tws = Twiss()
 
-tws = Twiss()
+    tws.E = 0.005
+    # tws.beta_x  = 53.35971898
+    # tws.beta_y  = 58.31307349
+    # tws.alpha_x = 17.3149486
+    # tws.alpha_y = 19.09296961
 
+    # Matthias
+    tws.beta_x = 55.79833393
+    tws.beta_y = 60.51694434
+    tws.alpha_x = 18.18878035
+    tws.alpha_y = 19.71372429
+    # Nina
+    tws.beta_x = 55.79798872
+    tws.beta_y = 60.52230841
+    tws.alpha_x = 18.18856743
+    tws.alpha_y = 19.71550368
+    tws.s = 23.2
 
-tws.E = 0.005
-# tws.beta_x  = 53.35971898
-# tws.beta_y  = 58.31307349
-# tws.alpha_x = 17.3149486
-# tws.alpha_y = 19.09296961
-
-# Matthias
-tws.beta_x = 55.79833393
-tws.beta_y = 60.51694434
-tws.alpha_x = 18.18878035
-tws.alpha_y = 19.71372429
-# Nina
-tws.beta_x = 55.79798872
-tws.beta_y = 60.52230841
-tws.alpha_x = 18.18856743
-tws.alpha_y = 19.71550368
-tws.s = 23.2
+    return tws
 
 
 # Drifts

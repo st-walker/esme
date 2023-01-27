@@ -1,8 +1,12 @@
 """L2 lattice section definition"""
+from copy import deepcopy
+import warnings
 
-from ocelot.cpbd.beam import Twiss
-from ocelot.cpbd.elements import Cavity, Drift, Hcor, Marker, Monitor, Quadrupole, SBend, TDCavity, Vcor
-from ocelot.utils.section_track import SectionCell
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    from ocelot.cpbd.beam import Twiss
+    from ocelot.cpbd.elements import Cavity, Drift, Hcor, Marker, Monitor, Quadrupole, SBend, TDCavity, Vcor
+    from ocelot.utils.section_track import SectionCell
 
 tws = Twiss()
 # tws.beta_x  = 6.669645808992628
@@ -1741,7 +1745,7 @@ bb_413_b2.ps_id = 'BB.1.B2'
 
 def make_cell():
 
-    return SectionCell(
+    return deepcopy(SectionCell(
         # Lattice
         cell=[
             d_1,
@@ -2190,3 +2194,4 @@ def make_cell():
             ensub_466_b2,
         ]
     )
+)
