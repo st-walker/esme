@@ -168,11 +168,11 @@ def fix(ftoml, new_columns, to_snapshots, alle):
         echo(f"Adding columns to files in {ftoml}.")
         add_metadata_to_pcls_in_toml(ftoml)
     elif to_snapshots:
-        echo(f"Converting pcl files in {ftoml} to SetpointSnapshot instances.")        
+        echo(f"Converting pcl files in {ftoml} to SetpointSnapshot instances.")
         toml_dfs_to_setpoint_snapshots(ftoml)
     elif alle:
         add_metadata_to_pcls_in_toml(ftoml)
-        toml_dfs_to_setpoint_snapshots(ftoml)        
+        toml_dfs_to_setpoint_snapshots(ftoml)
     else:
         raise UsageError("No flags provided")
 
