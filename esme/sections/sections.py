@@ -29,17 +29,26 @@ bRandomMesh = True
 
 
 
-def make_space_charge(step, nmesh_xyz):
+def make_space_charge(step, nmesh_xyz=None, random_mesh=None):
     sc = SpaceCharge()
     sc.step = step
+    if nmesh_xyz is None:
+        nmesh_xyz = SCmesh
     sc.nmesh_xyz = nmesh_xyz
+    if random_mesh is not None:
+        sc.random_mesh = random_mesh
     return sc
 
-def make_wake(rel_path, factor, step):
+def make_wake(rel_path, factor, step, *, w_sampling=None, filter_order=None):
     wake = Wake()
     wake.wake_table = WakeTable(Path(__file__).parent /  rel_path)
     wake.factor = factor
     wake.step = step
+
+    if w_sampling is not None:
+        wake.w_sampling = w_sampling
+    if filter_order is not None:
+        wake.filter_order = filter_order
 
     return wake
 
@@ -103,23 +112,21 @@ class AH1(SectionTrack):
         self.tws_file = self.tws_dir + "tws_section_AH1.npz"
         # init tracking lattice
         i1_cell = i1.make_cell()
-        acc1_stop = i1.a1_sim_stop
-        acc39_stop = i1.stlat_47_i1
-        self.lattice = MagneticLattice(i1.cell, start=acc1_stop, stop=acc39_stop, method=self.method)
+        a1_stop = next(ele for ele in i1_cell if ele.id == "a1_sim_stop")
+        # This is just before the first laser heater chicane magnet.
+        just_before_lh_first_dipole = next(ele for ele in i1_cell if ele.id == "just-before-first-laser-heater-dipole")
+        self.lattice = MagneticLattice(i1_cell, start=a1_stop,
+                                       stop=just_before_lh_first_dipole,
+                                       method=self.method)
         # init physics processes
-        sc = SpaceCharge()
-        sc.step = 5
-        sc.nmesh_xyz = SCmesh
-        sc.random_mesh = bRandomMesh
-        wake = Wake()
-        wake.wake_table = WakeTable('accelerator/wakes/RF/wake_table_AH1.dat')
-        wake.factor = 1
-        wake.step = 10
-        wake.w_sampling = WakeSampling
-        wake.filter_order = WakeFilterOrder
+        sc = make_space_charge(step=5, random_mesh=bRandomMesh)
+        wake = make_wake("wake_table_AH1.dat", factor=1, step=10,
+                         w_sampling=WakeSampling,
+                         filter_order=WakeFilterOrder)
+
         # adding physics processes
-        self.add_physics_process(sc, start=acc1_stop, stop=acc39_stop)
-        self.add_physics_process(wake, start=i1.c3_ah1_1_1_i1, stop=acc39_stop)
+        self.add_physics_process(sc, start=a1_stop, stop=just_before_lh_first_dipole)
+        self.add_physics_process(wake, start=i1.c3_ah1_1_1_i1, stop=just_before_lh_first_dipole)
 
 
 class LH(SectionTrack):

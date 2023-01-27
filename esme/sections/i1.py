@@ -438,7 +438,7 @@ tmp_m = Marker()
 a1_1_stop = Marker(eid="just-after-first-a1-cavity")
 dump_csr_start = Marker(eid="DUMP.CSR.START")
 d_35_1 = Drift(l=0.08115, eid='D_46')
-stlat_47_i1 = Marker()
+stlat_47_i1 = Marker(eid="just-before-first-laser-heater-dipole")
 d_35_2 = Drift(l=d_35.l - d_35_1.l)
 
 d_35_n = (d_35_1, stlat_47_i1, d_35_2)
