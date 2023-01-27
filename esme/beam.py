@@ -41,10 +41,11 @@ def apparent_bunch_lengths(scan: ParameterScan):
     return np.array(average_lengths), np.array(average_lengths_errors)
 
 
-def true_bunch_lengths(scan: ParameterScan):
+def true_bunch_lengths(scan: ParameterScan, voltages=None):
     raw_bl, raw_bl_err = apparent_bunch_lengths(scan)
     r34s = abs(r34s_from_scan(scan))
-    voltages = abs(scan.voltage)
+    if voltages is None:
+        voltages = abs(scan.voltage)
     energy = scan.beam_energy() * e
 
     true_bl = (energy / (e * voltages * TDS_WAVENUMBER)) * raw_bl / r34s

@@ -20,6 +20,7 @@ import esme.beam as beam
 from esme.inout import tds_magic_number_from_filename
 import esme.maths as maths
 import esme.image as image
+from esme.exceptions import TDSCalibrationError
 
 LOG = logging.getLogger(__name__)
 
@@ -200,7 +201,7 @@ def _set_ylabel_for_scan(ax):
 
 def plot_tds_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> None:
     widths, errors = esme.tscan.max_energy_slice_widths_and_errors(padding=10)
-    voltages = esme.tscan.voltage
+    voltages = _get_tds_tscan_abs_voltage_in_mv_from_scans(esme)
 
     voltages2_mv2 = (voltages * 1e-6) ** 2
     widths_um2, errors_um2 = ana.transform_pixel_widths(widths, errors, pixel_units="um")
@@ -608,7 +609,7 @@ def _plot_quad_strengths_tds(esme: ana.SliceEnergySpreadMeasurement, root_outdir
     assert (tscan_dx == esme.tscan.dx).all()
 
     tds_scan_quads = [lat.mean_quad_strengths(df) for df in tscan_all_images_dfs]
-    voltages = esme.tscan.voltage / 1e6  # to MV
+    voltages = _get_tds_tscan_abs_voltage_in_mv_from_scans(esme)
     for voltage, df_actual in zip(voltages, tds_scan_quads):
         ax.errorbar(
             df_actual.s,
@@ -731,9 +732,9 @@ def plot_calibrated_tds(sesme):
 
     # Secondly the derived voltages for the TDS scan.
 
-    # What we actually used in our scan:
+
     tds_percentage = sesme.tscan.tds_percentage
-    derived_voltage = abs(sesme.tscan.voltage * 1e-6)  # MV
+    derived_voltage = _get_tds_tscan_abs_voltage_in_mv_from_scans(sesme)
 
     sergey_percentages = sesme.tscan.calibrator.percentages
 
@@ -759,8 +760,9 @@ def plot_calibrated_tds(sesme):
     return fig, dikt
 
 
-def _streaks_from_scan(scan: ana.ParameterScan):
-    scan_voltages = scan.voltage
+def _streaks_from_scan(scan: ana.ParameterScan, scan_voltages=None):
+    if scan_voltages is None:
+        scan_voltages = scan.voltage
     energy = scan.beam_energy() * e  # in eV and convert to joules
     k0 = e * abs(scan_voltages) * cal.TDS_WAVENUMBER / energy
     r34s = cal.r34s_from_scan(scan)
@@ -783,7 +785,7 @@ def plot_tds_voltage(sesme):
 
     tscan = sesme.tscan
     tscan_percent = tscan.tds_percentage
-    tscan_voltage = abs(tscan.voltage * 1e-6)
+    tscan_voltage = _get_tds_tscan_abs_voltage_in_mv_from_scans(sesme)
 
     ax2.plot(tscan_percent, tscan_voltage, marker="x")
     ax2.set_xlabel(r"TDS Amplitude / %")
@@ -807,8 +809,6 @@ def plot_tds_voltage(sesme):
 
 def plot_streaking_parameters(sesme):
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(ncols=2, nrows=2, figsize=(14, 8), sharey=False)
-
-    from IPython import embed; embed()
 
     dscan_streak = abs(_streaks_from_scan(sesme.dscan))
 
@@ -835,17 +835,18 @@ def plot_streaking_parameters(sesme):
 
     ax1.set_ylabel(r"$|S|$")
 
+    tscan_streak = abs(_streaks_from_scan(
+        sesme.tscan,
+        scan_voltages=_get_tds_tscan_abs_voltage_in_mv_from_scans(sesme) * 1e6)
+                       )
 
-
-    tscan_streak = abs(_streaks_from_scan(sesme.tscan))
-
-    ax2.plot(abs(sesme.tscan.voltage * 1e-6), tscan_streak, marker="x", linestyle="")
+    ax2.plot(_get_tds_tscan_abs_voltage_in_mv_from_scans(sesme), tscan_streak, marker="x", linestyle="")
 
     raw_bunch_lengths, raw_bl_errors = beam.apparent_bunch_lengths(sesme.tscan)
-    true_bunch_lengths, true_bl_errors = beam.true_bunch_lengths(sesme.tscan)
+    true_bunch_lengths, true_bl_errors = beam.true_bunch_lengths(sesme.tscan, _get_tds_tscan_abs_voltage_in_mv_from_scans(sesme)*1e6)
 
     ax4.errorbar(
-        abs(sesme.tscan.voltage * 1e-6),
+        _get_tds_tscan_abs_voltage_in_mv_from_scans(sesme),
         to_ps(raw_bunch_lengths),
         linestyle="",
         marker=".",
@@ -854,7 +855,7 @@ def plot_streaking_parameters(sesme):
     )
 
     ax4.errorbar(
-        abs(sesme.tscan.voltage * 1e-6),
+        _get_tds_tscan_abs_voltage_in_mv_from_scans(sesme),
         to_ps(true_bunch_lengths),
         linestyle="",
         marker=".",
@@ -913,3 +914,22 @@ def plot_tds_set_point_vs_readback(dscan_files, tscan_files, title=""):
     ax1.set_title(title)
 
     plt.show()
+
+
+def _get_tds_tscan_abs_voltage_in_mv_from_scans(sesme):
+    """this is simply to handle the case where i accidentally
+    calibrated the TDS at a different dispersion to what i did the
+    tds scan at"""
+    # What we actually used in our scan:    
+    tds_percentage = sesme.tscan.tds_percentage
+    try:
+        derived_voltage = abs(sesme.tscan.voltage * 1e-6)  # MV
+    except TDSCalibrationError:
+        # Then I guess I accidentally calibrated the TDS at the wrong
+        # dispersion sp.  oops!  Calculate it more "by hand" by
+        # getting the correct snapshot (and therefore R34) from the
+        # *dispersion* scan, and then use that to calculate the TDS voltage.
+        correct_snapshot = np.array(sesme.dscan.measurements)[sesme.dscan.dx == sesme.dscan.calibrator.dispersion_setpoint].item().metadata.iloc[0]
+        derived_voltage = abs(sesme.tscan.calibrator.get_voltage(tds_percentage, correct_snapshot)) * 1e-6
+    return derived_voltage
+    
