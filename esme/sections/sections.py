@@ -19,13 +19,13 @@ BEAM_SMOOTHER = SmoothBeam()
 BEAM_SMOOTHER.mslice = 1000
 
 LHE = 11000e-9 * 0.74 / 0.8  # GeV
-WakeSampling = 500
-WakeFilterOrder = 20
-CSRBin = 400
+WAKE_SAMPLING = 500
+WAKE_FILTER_ORDER = 20
+CSR_BIN = 400
 CSRSigmaFactor = 0.1
-SCmesh = [63, 63, 63]
-bISR = True
-bRandomMesh = True
+SC_MESH = [63, 63, 63]
+# bISR = True
+SC_RANDOM_MESH = True
 
 
 
@@ -33,7 +33,7 @@ def make_space_charge(step, nmesh_xyz=None, random_mesh=None):
     sc = SpaceCharge()
     sc.step = step
     if nmesh_xyz is None:
-        nmesh_xyz = SCmesh
+        nmesh_xyz = SC_MESH
     sc.nmesh_xyz = nmesh_xyz
     if random_mesh is not None:
         sc.random_mesh = random_mesh
@@ -112,6 +112,7 @@ class AH1(SectionTrack):
         self.tws_file = self.tws_dir + "tws_section_AH1.npz"
         # init tracking lattice
         i1_cell = i1.make_cell()
+        # just after last cavity module of A1 (see class A1 above)
         a1_stop = next(ele for ele in i1_cell if ele.id == "a1_sim_stop")
         # This is just before the first laser heater chicane magnet.
         just_before_lh_first_dipole = next(ele for ele in i1_cell if ele.id == "just-before-first-laser-heater-dipole")
@@ -119,93 +120,22 @@ class AH1(SectionTrack):
                                        stop=just_before_lh_first_dipole,
                                        method=self.method)
         # init physics processes
-        sc = make_space_charge(step=5, random_mesh=bRandomMesh)
+        sc = make_space_charge(step=5, random_mesh=SC_RANDOM_MESH)
         wake = make_wake("wake_table_AH1.dat", factor=1, step=10,
-                         w_sampling=WakeSampling,
-                         filter_order=WakeFilterOrder)
+                         w_sampling=WAKE_SAMPLING,
+                         filter_order=WAKE_FILTER_ORDER)
 
         # adding physics processes
         self.add_physics_process(sc, start=a1_stop, stop=just_before_lh_first_dipole)
         self.add_physics_process(wake, start=i1.c3_ah1_1_1_i1, stop=just_before_lh_first_dipole)
 
 
-class LH(SectionTrack):
-    def __init__(self, data_dir, *args, **kwargs):
-        super().__init__(data_dir)
-        # setting parameters
-        self.lattice_name = 'LASER HEATER MAGNETS'
-        self.unit_step = 0.02
-        self.input_beam_file = self.particle_dir + 'section_AH1.npz'
-        self.output_beam_file = self.particle_dir + 'section_LH.npz'
-        self.tws_file = self.tws_dir + "tws_section_LH.npz"
-        # init tracking lattice
-        acc39_stop = i1.stlat_47_i1
-        # lhm_stop = l1.id_90904668_ #for s2e
-        # lhm_stop = l1.cix_65_i1    #approx. corresponds to the position of the screen in I1D.
-        lhm_stop = i1.dump_csr_start  # for going in I1D
-        self.lattice = MagneticLattice(i1.cell + l1.cell, start=acc39_stop, stop=lhm_stop, method=self.method)
-        # init physics processes
-        csr = CSR()
-        csr.sigma_min = Sig_Z[0] * CSRSigmaFactor
-        csr.traj_step = 0.0005
-        csr.apply_step = 0.005
-        sc = SpaceCharge()
-        sc.step = 5
-        sc.nmesh_xyz = SCmesh
-        sc.random_mesh = bRandomMesh
-        wake = Wake()
-        wake.wake_table = WakeTable('accelerator/wakes/RF/wake_table_TDS1.dat')
-        wake.factor = 1
-        wake.step = 10
-        wake.w_sampling = WakeSampling
-        wake.filter_order = WakeFilterOrder
-
-        lh = LaserModulator()
-        lh.dE = LHE
-        lh.sigma_l = 300
-        lh.sigma_x = 300e-6
-        lh.sigma_y = 300e-6
-        lh.z_waist = None
-
-        filename_tds1 = self.particle_dir + "tds1.npz"
-        filename_tds2 = self.particle_dir + "tds2.npz"
-        filename_tds3 = self.particle_dir + "tds3.npz"
-        if "suffix" in kwargs:
-            filename, file_extension = os.path.splitext(filename_tds1)
-            filename_tds1 = filename + str(kwargs["suffix"]) + file_extension
-            filename, file_extension = os.path.splitext(filename_tds2)
-            filename_tds2 = filename + str(kwargs["suffix"]) + file_extension
-            filename, file_extension = os.path.splitext(filename_tds3)
-            filename_tds3 = filename + str(kwargs["suffix"]) + file_extension
-
-        sv_tds1 = SaveBeam(filename=filename_tds1)
-        # sv_tds2 = SaveBeam(filename=filename_tds2)
-        # sv_tds3 = SaveBeam(filename=filename_tds3)
-
-        tws_52 = Twiss()
-        tws_52.beta_x = 3.131695851
-        tws_52.beta_y = 5.417462794
-        tws_52.alpha_x = -0.9249364470
-        tws_52.alpha_y = 1.730107901
-        tws_52.gamma_x = (1 + tws_52.alpha_x**2) / tws_52.beta_x
-
-        tr = BeamTransform(tws=tws_52)
-        # tr.bounds = [-0.5, 0.5]
-        tr.slice = "Emax"
-        self.add_physics_process(sc, start=acc39_stop, stop=lhm_stop)
-        self.add_physics_process(csr, start=acc39_stop, stop=lhm_stop)
-        self.add_physics_process(wake, start=acc39_stop, stop=lhm_stop)
-        self.add_physics_process(sv_tds1, start=i1.tds1, stop=i1.tds1)
-        # self.add_physics_process(sv_tds2, start=i1.tds2, stop=i1.tds2)
-        # self.add_physics_process(sv_tds3, start=i1.tds3, stop=i1.tds3)
-        self.add_physics_process(tr, i1.tmp_m, i1.tmp_m)
-
 
 class I1D_Screen(SectionTrack):
     def __init__(self, data_dir, *args, **kwargs):
         super().__init__(data_dir)
         # setting parameters
-        self.lattice_name = 'I1 DUMP'
+        self.lattice_name = 'Injector Dump Line'
         self.unit_step = 0.02
         self.input_beam_file = self.particle_dir + 'section_LH.npz'
         self.output_beam_file = self.particle_dir + 'section_I1D.npz'
@@ -234,8 +164,8 @@ class I1D_Screen(SectionTrack):
 
         sc = SpaceCharge()
         sc.step = 5
-        sc.nmesh_xyz = SCmesh
-        sc.random_mesh = bRandomMesh
+        sc.nmesh_xyz = SC_MESH
+        sc.random_mesh = SC_RANDOM_MESH
 
         self.add_physics_process(sc, start=i1d_start, stop=i1d_stop)
         self.add_physics_process(csr, start=i1d_start, stop=i1d.bpma_63_i1d)
@@ -277,6 +207,79 @@ class I1D(SectionTrack):
 
         self.add_physics_process(sc, start=i1d_start, stop=i1d_stop)
         self.add_physics_process(csr, start=i1d_start, stop=i1d.bpma_63_i1d)
+
+
+class LH(SectionTrack):
+    def __init__(self, data_dir, *args, **kwargs):
+        super().__init__(data_dir)
+        # setting parameters
+        self.lattice_name = 'LASER HEATER MAGNETS'
+        self.unit_step = 0.02
+        self.input_beam_file = self.particle_dir + 'section_AH1.npz'
+        self.output_beam_file = self.particle_dir + 'section_LH.npz'
+        self.tws_file = self.tws_dir + "tws_section_LH.npz"
+        # init tracking lattice
+
+        i1_cell = i1.make_cell()
+
+        just_before_lh_first_dipole = next(ele for ele in i1_cell if ele.id == "just-before-first-laser-heater-dipole")
+        lhm_stop = i1.dump_csr_start  # for going in I1D
+        self.lattice = MagneticLattice(i_.cell + l1.cell, start=just_before_lh_first_dipole, stop=lhm_stop, method=self.method)
+        # init physics processes
+        csr = CSR()
+        csr.sigma_min = Sig_Z[0] * CSRSigmaFactor
+        csr.traj_step = 0.0005
+        csr.apply_step = 0.005
+        sc = SpaceCharge()
+        sc.step = 5
+        sc.nmesh_xyz = SC_MESH
+        sc.random_mesh = SC_RANDOM_MESH
+        wake = Wake()
+        wake.wake_table = WakeTable('accelerator/wakes/RF/wake_table_TDS1.dat')
+        wake.factor = 1
+        wake.step = 10
+        wake.w_sampling = WAKE_SAMPLING
+        wake.filter_order = WAKE_FILTER_ORDER
+
+        lh = LaserModulator()
+        lh.dE = LHE
+        lh.sigma_l = 300
+        lh.sigma_x = 300e-6
+        lh.sigma_y = 300e-6
+        lh.z_waist = None
+
+        filename_tds1 = self.particle_dir + "tds1.npz"
+        filename_tds2 = self.particle_dir + "tds2.npz"
+        filename_tds3 = self.particle_dir + "tds3.npz"
+        if "suffix" in kwargs:
+            filename, file_extension = os.path.splitext(filename_tds1)
+            filename_tds1 = filename + str(kwargs["suffix"]) + file_extension
+            filename, file_extension = os.path.splitext(filename_tds2)
+            filename_tds2 = filename + str(kwargs["suffix"]) + file_extension
+            filename, file_extension = os.path.splitext(filename_tds3)
+            filename_tds3 = filename + str(kwargs["suffix"]) + file_extension
+
+        sv_tds1 = SaveBeam(filename=filename_tds1)
+        # sv_tds2 = SaveBeam(filename=filename_tds2)
+        # sv_tds3 = SaveBeam(filename=filename_tds3)
+
+        tws_52 = Twiss()
+        tws_52.beta_x = 3.131695851
+        tws_52.beta_y = 5.417462794
+        tws_52.alpha_x = -0.9249364470
+        tws_52.alpha_y = 1.730107901
+        tws_52.gamma_x = (1 + tws_52.alpha_x**2) / tws_52.beta_x
+
+        tr = BeamTransform(tws=tws_52)
+        # tr.bounds = [-0.5, 0.5]
+        tr.slice = "Emax"
+        self.add_physics_process(sc, start=just_before_lh_first_dipole, stop=lhm_stop)
+        self.add_physics_process(csr, start=just_before_lh_first_dipole, stop=lhm_stop)
+        self.add_physics_process(wake, start=just_before_lh_first_dipole, stop=lhm_stop)
+        self.add_physics_process(sv_tds1, start=i1.tds1, stop=i1.tds1)
+        # self.add_physics_process(sv_tds2, start=i1.tds2, stop=i1.tds2)
+        # self.add_physics_process(sv_tds3, start=i1.tds3, stop=i1.tds3)
+        self.add_physics_process(tr, i1.tmp_m, i1.tmp_m)
 
 
 class DL_New(SectionTrack):
