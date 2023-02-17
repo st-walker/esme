@@ -94,15 +94,21 @@ class QuadrupoleSetting:
     quadrupole scan, as well as the intended dispersion it is supposed
     to achieve at the screen.
 
+    The integrated strengths and are assumed throughout this package to have units of m^{-1}.
+
     """
 
     names: list
-    strengths: list
+    k1ls: list
     dispersion: float
 
     def __post_init__(self):  # TODO: test this!
-        if len(self.names) != len(self.strengths):
-            raise ValueError("Length mismatch between names and strengths")
+        if len(self.names) != len(self.k1ls):
+            raise ValueError("Length mismatch between names and integrated strengths")
+
+    def k1l_from_name(self, name):
+        index = self.names.index(name)
+        return self.k1ls[index]
 
 
 @dataclass
@@ -117,7 +123,6 @@ class DispersionScanConfiguration:
     @property
     def dispersions(self) -> list[float]:
         return [qsetting.dispersion for qsetting in self.scan_settings]
-
 
 @dataclass
 class TDSScanConfiguration:
@@ -267,10 +272,11 @@ class MeasurementRunner:
 
     def _apply_quad_setting(self, setting: QuadrupoleSetting) -> None:
         """Apply an individual QuadrupoleSetting consisting of one or
-        more quadrupole names, with strengths, to the machine."""
-        for name, strength in zip(setting.names, setting.strengths):
-            LOG.info("Setting quad: {name} to {strength}")
-            self.machine.set_quad(name, strength)
+        more quadrupole names, with k1ls, to the machine."""
+        for name, k1l in zip(setting.names, setting.k1ls):
+            k1l *= 1e3
+            LOG.info("Setting quad: {name} to {k1l}")
+            self.machine.set_quad(name, k1l)
         time.sleep(self.SLEEP_AFTER_QUAD_SETTING)
 
     def make_snapshots_filename(self, snapshot):

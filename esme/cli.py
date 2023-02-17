@@ -19,7 +19,8 @@ from esme.inout import (
     toml_dfs_to_setpoint_snapshots,
     add_metadata_to_pcls_in_toml,
     tscan_config_from_scan_config_file,
-    dscan_config_from_scan_config_file
+    i1_dscan_config_from_scan_config_file,
+    b2_dscan_config_from_scan_config_file
 )
 
 from esme.plot import (
@@ -92,6 +93,9 @@ def main(debug, single_threaded):
         logging.getLogger("esme.calibration").setLevel(logging.DEBUG)
         logging.getLogger("esme.inout").setLevel(logging.DEBUG)
         logging.getLogger("esme.measurement").setLevel(logging.DEBUG)
+        logging.getLogger("esme.sim").setLevel(logging.DEBUG)
+        logging.getLogger("esme.simplot").setLevel(logging.DEBUG)
+        logging.getLogger("ocelot.utils.fel_track").setLevel(logging.DEBUG)
 
 
 @main.command(no_args_is_help=True)
@@ -249,18 +253,33 @@ def gui():
     """Start the measurement GUI"""
     pass
 
-
 @main.command(no_args_is_help=True)
 @argument("fscan", nargs=1)
-@option("--i1d", is_flag=True)
-@option("--optics", is_flag=True)
-def sim(fscan, i1d, optics):
-    from .sim import run_i1d_dispersion_scan
+@argument("parray", nargs=1, required=False)
+@option("--outdir", "-o", nargs=1, default="./", show_default=True, help="where to write output files to")
+@option("--i1", is_flag=True, cls=MutuallyExclusiveOption, mutually_exclusive=["b2d"])
+@option("--b2", is_flag=True, cls=MutuallyExclusiveOption, mutually_exclusive=["i1d"])
+@option("--dscan", is_flag=True)
+@option("--tscan", is_flag=True)
+@option("--escan", is_flag=True)
+@option("--fast", is_flag=True)
+def sim(fscan, i1, b2, dscan, tscan, escan, parray, outdir, fast):
+    # from .sim import run_i1_dispersion_scan
+    from . import simplot
+    from . import sim
+    from . import simplot
 
-    # tscan_conf = tscan_config_from_scan_config_file(fscan)
-    dscan_conf = dscan_config_from_scan_config_file(fscan)
+    if i1:
+        simplot.cathode_to_first_a1_cavity()
+        simplot.a1_to_i1d_design_optics()
+        simplot.a1_to_q52_matching_point_measurement_optics()
 
-    run_i1d_dispersion_scan(dscan_conf)
+        i1_dscan_conf = i1_dscan_config_from_scan_config_file(fscan)
+        simplot.qi52_to_i1d_dscan_optics(i1_dscan_conf)
+        simplot.a1_to_i1d_piecewise_measurement_optics(i1_dscan_conf)
+    # elif b2:
+    #     b2_dscan_conf = b2_dscan_config_from_scan_config_file(fscan)
+    #     b2_dscan_optics(b2_dscan_conf)
 
 
 if __name__ == "__main__":

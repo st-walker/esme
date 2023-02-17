@@ -33,6 +33,7 @@ from esme.measurement import (
     TDSScanConfiguration,
     QuadrupoleSetting
 )
+from esme.lattice import make_dummy_lookup_sequence
 
 
 LOG = logging.getLogger(__name__)
@@ -388,19 +389,41 @@ def load_pickled_snapshots(paths):
     return result
 
 
-def dscan_config_from_scan_config_file(config_path: os.PathLike) -> DispersionScanConfiguration:
-    # dscan_quads = []
+def i1_dscan_config_from_scan_config_file(config_path: os.PathLike):
     conf = toml.load(config_path)
-    quads = conf["quads"]
+    return _dscan_config_from_scan_config_file(conf["i1"]["quads"])
 
+
+def b2_dscan_config_from_scan_config_file(config_path: os.PathLike):
+    conf = toml.load(config_path)
+    return _dscan_config_from_scan_config_file(conf["b2"]["quads"])
+
+
+def _dscan_config_from_scan_config_file(quads: dict) -> DispersionScanConfiguration:
     ref = quads["reference_optics"]
-    reference_setting = QuadrupoleSetting(ref["names"], ref["strengths"], ref["dispersion"])
 
-    scan_settings = []
+    try:
+        ref_k1s = ref["k1s"]
+    except KeyError:
+        ref_k1ls = ref["k1ls"]
+    else:
+        ref_k1ls = named_k1s_to_k1ls(ref["names"], ref_k1s)
+
+    reference_setting = QuadrupoleSetting(ref["names"], ref_k1ls, ref["dispersion"])
+
     dscan = quads["dscan"]
     dscan_quad_names = dscan["names"]
-    for dispersion, scan_strengths in zip(dscan["dispersions"], dscan["strengths"]):
-        scan_settings.append(QuadrupoleSetting(dscan_quad_names, scan_strengths, dispersion))
+    try:
+        dscan_k1s = dscan["k1s"]
+    except KeyError:
+        dscan_k1ls = dscan["k1ls"]
+    else:
+        dscan_k1ls = named_k1s_to_k1ls(dscan_quad_names, dscan_k1s)
+
+
+    scan_settings = []
+    for dispersion, scan_k1ls in zip(dscan["dispersions"], dscan_k1ls):
+        scan_settings.append(QuadrupoleSetting(dscan_quad_names, scan_k1ls, dispersion))
     return DispersionScanConfiguration(reference_setting, scan_settings)
 
 
@@ -411,3 +434,9 @@ def tscan_config_from_scan_config_file(config_path: os.PathLike) -> TDSScanConfi
         reference_amplitude=tds["reference_amplitude"],
         scan_amplitudes=tds["scan_amplitudes"],
         scan_dispersion=tds["scan_dispersion"])
+
+
+def named_k1s_to_k1ls(names, k1s):
+    lookup_cell = make_dummy_lookup_sequence()
+    lengths = np.array([lookup_cell[name].l for name in names])
+    return lengths * k1s

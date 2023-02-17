@@ -1,14 +1,11 @@
 import warnings
-
+from copy import deepcopy
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
-    from ocelot.cpbd.elements import Drift, Marker, Monitor, Quadrupole, SBend
-    from ocelot.utils.section_track import SectionCell
-
-from ocelot.cpbd.beam import Twiss
-from ocelot.cpbd.elements import Cavity, Drift, Hcor, Marker, Monitor, Quadrupole, SBend, Sextupole, TDCavity, Vcor
-from ocelot.utils.section_track import SectionCell
+    from ocelot.cpbd.elements import Drift, Marker, Monitor, Quadrupole, SBend, Hcor, Vcor
+    from ocelot.utils.fel_track import MachineSequence
+    from ocelot.cpbd.beam import Twiss
 
 
 tws = Twiss()
@@ -22,6 +19,7 @@ tws.beta_y = 4.944806181828621
 tws.alpha_x = 3.1533658737638484
 tws.alpha_y = -1.1409018335223686
 tws.E = 2.4
+
 # Drifts
 d_1 = Drift(l=0.00145, eid='D_1')
 d_2 = Drift(l=0.58145, eid='D_2')
@@ -74,6 +72,7 @@ otra_473_b2d = Marker(eid='OTRA.473.B2D')
 otrd_478_b2d = Marker(eid='OTRD.478.B2D')
 ensec_480_b2d = Marker(eid='ENSEC.480.B2D')
 
+
 # power supplies
 
 #
@@ -95,45 +94,47 @@ bg_474_b2d.ps_id = 'BG.1.B2D'
 
 
 def make_cell():
-    return SectionCell(
-        [
-            d_1,
-            bg_467_b2d,
-            d_2,
-            cfy_468_b2d,
-            d_3,
-            qf_469_b2d,
-            d_4,
-            bpma_469_b2d,
-            d_5,
-            cfx_470_b2d,
-            d_6,
-            qe_471_b2d,
-            d_7,
-            bpma_471_b2d,
-            d_8,
-            cfy_471_b2d,
-            d_9,
-            qf_472_b2d,
-            d_10,
-            otra_473_b2d,
-            d_11,
-            bg_474_b2d,
-            d_12,
-            cfy_476_b2d,
-            d_13,
-            qf_476_b2d,
-            d_14,
-            bpma_477_b2d,
-            d_15,
-            cfx_477_b2d,
-            d_16,
-            qf_477_b2d,
-            d_17,
-            otrd_478_b2d,
-            qd_18,
-            bpmd_479_b2d,
-            d_19,
-            ensec_480_b2d,
-        ]
+    return deepcopy(
+        MachineSequence(
+            [
+                d_1,
+                bg_467_b2d,
+                d_2,
+                cfy_468_b2d,
+                d_3,
+                qf_469_b2d,
+                d_4,
+                bpma_469_b2d,
+                d_5,
+                cfx_470_b2d,
+                d_6,
+                qe_471_b2d,
+                d_7,
+                bpma_471_b2d,
+                d_8,
+                cfy_471_b2d,
+                d_9,
+                qf_472_b2d,
+                d_10,
+                otra_473_b2d,
+                d_11,
+                bg_474_b2d,
+                d_12,
+                cfy_476_b2d,
+                d_13,
+                qf_476_b2d,
+                d_14,
+                bpma_477_b2d,
+                d_15,
+                cfx_477_b2d,
+                d_16,
+                qf_477_b2d,
+                d_17,
+                otrd_478_b2d,
+                d_18,
+                bpmd_479_b2d,
+                d_19,
+                ensec_480_b2d,
+            ]
+        )
     )

@@ -1,10 +1,10 @@
 import warnings
-
+from copy import deepcopy
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     from ocelot.cpbd.elements import Drift, Marker, Monitor, Quadrupole, SBend
-    from ocelot.utils.section_track import SectionCell
+    from ocelot.utils.fel_track import MachineSequence
 
 # drifts
 di_2 = Drift(l=0.002879 * 0, eid='D_2')
@@ -66,33 +66,35 @@ bb_62_i1d.ps_id = 'BB.5.I1D'
 
 
 def make_cell():
-    return SectionCell(
-        [
-            stsec_62_i1d,
-            di_2,
-            bb_62_i1d,
-            di_3,
-            qi_63_i1d,
-            di_4,
-            bpma_63_i1d,
-            di_5,
-            otrc_64_i1d,
-            di_6,
-            qi_64_i1d,
-            di_7,
-            otrd_64_i1d,
-            di_8,
-            torc_64_i1d,
-            di_9,
-            bpmd_64_i1d,
-            di_10,
-            duflange_65_i1d,
-            di_11,
-            duconcrete_65_i1d,
-            di_12,
-            bhm_66_i1d,
-            di_13,
-            duabsorb_66_i1d,
-            ensec_66_i1d,
-        ]
+    return deepcopy(
+        MachineSequence(
+            [
+                stsec_62_i1d,
+                di_2,
+                bb_62_i1d,
+                di_3,
+                qi_63_i1d,
+                di_4,
+                bpma_63_i1d,
+                di_5,
+                otrc_64_i1d,
+                di_6,
+                qi_64_i1d,
+                di_7,
+                otrd_64_i1d,
+                di_8,
+                torc_64_i1d,
+                di_9,
+                bpmd_64_i1d,
+                di_10,
+                duflange_65_i1d,
+                di_11,
+                duconcrete_65_i1d,
+                di_12,
+                bhm_66_i1d,
+                di_13,
+                duabsorb_66_i1d,
+                ensec_66_i1d,
+            ]
+        )
     )
