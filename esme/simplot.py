@@ -14,8 +14,6 @@ LOG = logging.getLogger(__name__)
 
 MAD8 = "/Users/stuartwalker/physics/gpt-csr/mad8DesyPublic/TWISS_I1D"
 
-# import pand8
-
 
 Z_LABEL_STRING = r"$z$ / m"
 E_LABEL_STRING = r"$E$ / MeV"
@@ -24,22 +22,9 @@ BETX_LABEL_STRING = r"$\beta_x$ / m"
 DX_LABEL_STRING = "$D_x$ / m"
 D_LABEL_STRING = "$D$ / m"
 
-# OK.  What do I want to do.
 
-# I know that I need tws_52 in front of QI.52.I1.
-# I know my initial optics at the cathode.
-# Should I match the quads inbetween to get this?
-# Actually yes I would like to...  It's much nicer.
+# Do I need to also simulate TDS Scan?
 
-# I still need an artificial matching, because of collective effects,
-# this is obvious.  But if at least in principle it's vaguely correct
-# in the linear approximation, this is still good!
-
-# So:  It seems I can't come up with good optics to even match in front of QI 52.  Forget about it.
-# Track and then do artificial matching.  Simple.
-# Email Nina and ask about matching in front of TDS in BC2
-
-# Do simulation in two stages (at least: for dscans): track to just to matching point before TDS.
 
 from ocelot.cpbd.optics import twiss as twissc, Twiss
 
@@ -177,15 +162,15 @@ def qi52_to_i1d_dscan_optics(dscan_conf, outdir=None):
 
 
 def a1_to_i1d_piecewise_measurement_optics(dscan_conf, outdir=None):
-
+    full_sequence = lattice.make_to_i1d_lattice().get_sequence()
 
     all_twiss, mlat = sim.a1_to_q52_matching_point_measurement_optics()
 
-    full_mlat = lattice.make_to_i1d_lattice().to_magnetic_lattice()
+    # from IPython import embed; embed()
 
     s_offset = all_twiss.iloc[0].s
 
-    bl = latdraw.interfaces.lattice_from_ocelot(full_mlat.sequence, initial_offset=[0, 0, 23.2])
+    bl = latdraw.interfaces.lattice_from_ocelot(full_sequence, initial_offset=[0, 0, 23.2])
     fig, (mx, axt, axd, axe) = latdraw.subplots_with_lattice(bl, nrows=3)
 
     axt.plot(all_twiss.s, all_twiss.beta_x)
@@ -217,73 +202,73 @@ def a1_to_i1d_piecewise_measurement_optics(dscan_conf, outdir=None):
 
 
 
-def b2_dscan_optics(dscan_conf, outdir=None):
-    # fig, (ax0, ax, ax2) = plt.subplots(nrows=3, sharex=True)
+# def b2_dscan_optics(dscan_conf, outdir=None):
+#     # fig, (ax0, ax, ax2) = plt.subplots(nrows=3, sharex=True)
 
 
-    sequence = lattice.make_to_b2d_lattice().to_magnetic_lattice().sequence
-    bl = latdraw.interfaces.lattice_from_ocelot(sequence)
-    # bl = latdraw.interfaces.lattice_from_ocelosequence())
-    bl.add_offset([0, 0, sim.S_START])
-    fig, (mx, ax0, ax, ax2) = latdraw.subplots_with_lattice(bl, nrows=3)
+#     sequence = lattice.make_to_b2d_lattice().to_magnetic_lattice().sequence
+#     bl = latdraw.interfaces.lattice_from_ocelot(sequence)
+#     # bl = latdraw.interfaces.lattice_from_ocelosequence())
+#     bl.add_offset([0, 0, sim.S_START])
+#     fig, (mx, ax0, ax, ax2) = latdraw.subplots_with_lattice(bl, nrows=3)
 
-    screen_s, _ = sim.get_element_s_bounds("OTRA.473.B2D")
+#     screen_s, _ = sim.get_element_s_bounds("OTRA.473.B2D")
 
-    # from IPython import embed; embed()
+#     # from IPython import embed; embed()
 
-    bc2_tds_1_start, _ = sim.get_element_s_bounds("TDSB.428.B2")
+#     bc2_tds_1_start, _ = sim.get_element_s_bounds("TDSB.428.B2")
 
-    twisses = []
+#     twisses = []
 
-    for i, (dispersion, twiss, _) in enumerate(sim.calculate_b2_dscan_optics(dscan_conf)):
-        twisses.append(twiss)
-        ax.plot(twiss.s, twiss.Dy, label=fr"$D_y\,=\,{dispersion}\,\mathrm{{m}}$")
-        # from IPython import embed; embed()
-        xlabel = ylabel = None
-        if i == 3:
-            xlabel = "$x$"
-            ylabel = "$y$"
+#     for i, (dispersion, twiss, _) in enumerate(sim.calculate_b2_dscan_optics(dscan_conf)):
+#         twisses.append(twiss)
+#         ax.plot(twiss.s, twiss.Dy, label=fr"$D_y\,=\,{dispersion}\,\mathrm{{m}}$")
+#         # from IPython import embed; embed()
+#         xlabel = ylabel = None
+#         if i == 3:
+#             xlabel = "$x$"
+#             ylabel = "$y$"
 
-        (line,) = ax0.plot(twiss.s, twiss.beta_y, label=ylabel)
-        # colour = line.get_color()
-        # ax0.plot(twiss.s, twiss.beta_x, color=colour, linestyle="--", label=xlabel)
-        ax2.plot(twiss.s, twiss.E * 1e3)
-    ax.legend()
-    ax0.legend()
-
-
-    ax0.axhline(2.875)
-
-    ax0.set_xlim(bc2_tds_1_start-2.5, screen_s+2.5)
-    twisses = pd.concat(twisses)
-    twisses = twisses[(twisses.s > bc2_tds_1_start) & (twisses.s < screen_s)]
-
-    ax0.set_ylim(-5, max(twisses.beta_y * 1.1))
-    ax.set_ylim(-0.1, max(twisses.Dy * 1.2))
+#         (line,) = ax0.plot(twiss.s, twiss.beta_y, label=ylabel)
+#         # colour = line.get_color()
+#         # ax0.plot(twiss.s, twiss.beta_x, color=colour, linestyle="--", label=xlabel)
+#         ax2.plot(twiss.s, twiss.E * 1e3)
+#     ax.legend()
+#     ax0.legend()
 
 
+#     ax0.axhline(2.875)
 
-    vlargs = {"x": screen_s, "label": "OTRA.473.B2D", "linestyle": ":", "color": "black"}
-    ax.axvline(**vlargs)
-    ax0.axvline(**vlargs)
-    ax2.axvline(**vlargs)
+#     ax0.set_xlim(bc2_tds_1_start-2.5, screen_s+2.5)
+#     twisses = pd.concat(twisses)
+#     twisses = twisses[(twisses.s > bc2_tds_1_start) & (twisses.s < screen_s)]
 
-    ax2.set_xlabel(r"$s$ / m")
-    ax.set_ylabel(r"$D_y$ / m")
-    ax2.set_ylabel(r"$E$ / MeV")
-    ax0.set_ylabel(r"$\beta$ / m")
+#     ax0.set_ylim(-5, max(twisses.beta_y * 1.1))
+#     ax.set_ylim(-0.1, max(twisses.Dy * 1.2))
 
 
-    # # ax0.set_ylim(-400, 7000)
 
-    if outdir is None:
-        plt.show()
-    else:
-        fname = outdir / "i1d-dscan-optics.pdf"
-        LOG.info(f"wrote {fname}")
-        fig.savefig(fname)
+#     vlargs = {"x": screen_s, "label": "OTRA.473.B2D", "linestyle": ":", "color": "black"}
+#     ax.axvline(**vlargs)
+#     ax0.axvline(**vlargs)
+#     ax2.axvline(**vlargs)
 
-    pass
+#     ax2.set_xlabel(r"$s$ / m")
+#     ax.set_ylabel(r"$D_y$ / m")
+#     ax2.set_ylabel(r"$E$ / MeV")
+#     ax0.set_ylabel(r"$\beta$ / m")
 
-def print_optics_at_screen():
-    pass
+
+#     # # ax0.set_ylim(-400, 7000)
+
+#     if outdir is None:
+#         plt.show()
+#     else:
+#         fname = outdir / "i1d-dscan-optics.pdf"
+#         LOG.info(f"wrote {fname}")
+#         fig.savefig(fname)
+
+#     pass
+
+# def print_optics_at_screen():
+#     pass

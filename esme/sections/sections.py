@@ -96,25 +96,24 @@ def make_csr(*, sigma_min, traj_step, apply_step, n_bin=None, step=None):
     return csr
 
 
+
 class G1(FELSection):
     def __init__(self, data_dir, *args, **kwargs):
         super().__init__(data_dir)
         # This section is here for completion and clarity.  It should
         # not be used for tracking.  At most it should be used for optics.
-        
-
         # Force a bomb here so no tracking can take place with this FELSection
-        self.unit_step = object()
+        self.unit_step = "Hello please don't use G1 for tracking"
 
         i1_cell = i1.make_cell()
-
         # Start at the beginning of I1.
-        gun_start = None
+        # gun_start = None
         # This is also simply directly in front of the first A1 cavity.
-        gun_stop = i1_cell["astra_ocelot_interface"]
+        # gun_stop = "astra_ocelot_interface_G1_to_A1"
+        gun_stop = "G1-A1 interface: up to where we track using ASTRA and just right the first A1 cavity"
+        self.sequence = i1_cell[:gun_stop]
+        # self.lattice = MagneticLattice(i1_cell, start=gun_start, stop=gun_stop)
 
-        self.lattice = MagneticLattice(i1_cell, start=gun_start, stop=gun_stop)
-        
 
 class A1(FELSection):
     def __init__(self, data_dir, *args, **kwargs):
@@ -129,12 +128,12 @@ class A1(FELSection):
         # a1_start = i1_cell["OCELOT_ASTRA_INTERFACE"]
         # a1_start = i1_cell["ID_22433449_"]
         # a1_start = None
-        a1_start = i1_cell["astra_ocelot_interface"]
+        a1_start = "G1-A1 interface: up to where we track using ASTRA and just right the first A1 cavity"
+        # a1_start = "astra_ocelot_interface_G1_to_A1"
         # just after last cavity module of A1
-        a1_stop = i1_cell["a1_sim_stop"]
+        a1_stop = "A1-AH1 interface: just after the last A1 Cavity"
         # a1_stop = i1_cell["ID_68749308_"]
-        self.lattice = MagneticLattice(i1_cell, start=a1_start, stop=a1_stop, method=self.method)
-        # from IPython import embed; embed()
+        self.sequence = i1_cell[a1_start:a1_stop]
 
         # init physics processes
         sc = make_space_charge(step=1, nmesh_xyz=SC_MESH, random_mesh=SC_RANDOM_MESH)
@@ -144,18 +143,18 @@ class A1(FELSection):
         )
         # adding physics processes
         # just after the first A1 cavity.
-        # just_after_first_a1_cavity = i1_cell["just-after-first-a1-cavity"]
-        # first_cavity = i1_cell["C.A1.1.1.I1"]
+        just_after_first_a1_cavity = i1_cell["just-after-first-a1-cavity"]
+        first_cavity = i1_cell["C.A1.1.1.I1"]
 
-        # # beam is immediately smoothed right at the start of the simulation in an instant
-        # self.add_physics_process(BEAM_SMOOTHER, start=a1_start, stop=a1_start)
+        # beam is immediately smoothed right at the start of the simulation in an instant
+        self.add_physics_process(BEAM_SMOOTHER, start=a1_start, stop=a1_start)
 
-        # # Attach a SC instance from start (just after gun) to just after first module
-        # self.add_physics_process(sc, start=a1_start, stop=just_after_first_a1_cavity)
-        # # Attach a different SC instance between before 2nd module and end of last module.
-        # self.add_physics_process(sc2, start=just_after_first_a1_cavity, stop=a1_stop)
-        # # From start of A1 cavities to end of A1 (just after last cavity), attach wake kick.
-        # self.add_physics_process(wake, start=first_cavity, stop=a1_stop)
+        # Attach a SC instance from start (just after gun) to just after first module
+        self.add_physics_process(sc, start=a1_start, stop=just_after_first_a1_cavity)
+        # Attach a different SC instance between before 2nd module and end of last module.
+        self.add_physics_process(sc2, start=just_after_first_a1_cavity, stop=a1_stop)
+        # From start of A1 cavities to end of A1 (just after last cavity), attach wake kick.
+        self.add_physics_process(wake, start=first_cavity, stop=a1_stop)
 
 
 class AH1(FELSection):
@@ -166,16 +165,15 @@ class AH1(FELSection):
         # init tracking lattice
         i1_cell = i1.make_cell()
         # just after last cavity module of A1 (see class A1 above)
-        a1_stop = i1_cell["a1_sim_stop"]
-        # a1_stop = i1_cell["ID_68749308_"]
-        # a1_stop = 
-        # first_high_order_cavity = i1_cell["C3.AH1.1.1.I1"]
+        ah1_section_start = "A1-AH1 interface: just after the last A1 Cavity"
+
         # This is just before the first laser heater chicane magnet.
         # It is a bit after the last high order cavity (i.e. of AH1)
         # Not directly before because we want physics to be correctly in the next section.
         # just_before_lh_first_dipole = i1_cell["just-before-first-laser-heater-dipole"]
-        just_before_lh_first_dipole = i1_cell["STLAT.47.I1"]
-        self.lattice = MagneticLattice(i1_cell, start=a1_stop, stop=just_before_lh_first_dipole, method=self.method)
+        ah1_section_stop = "AH1-LH interface: Just before the first LH chicane dipole"
+        # just_before_lh_first_dipole =
+        self.sequence = i1_cell[ah1_section_start:ah1_section_stop]
         # init physics processes
         sc = make_space_charge(step=5, nmesh_xyz=SC_MESH, random_mesh=SC_RANDOM_MESH)
         wake = make_wake(
@@ -183,8 +181,9 @@ class AH1(FELSection):
         )
 
         # adding physics processes
-        # self.add_physics_process(sc, start=a1_stop, stop=just_before_lh_first_dipole)
-        # self.add_physics_process(wake, start=first_high_order_cavity, stop=just_before_lh_first_dipole)
+        self.add_physics_process(sc, start=ah1_section_start, stop=ah1_section_stop)
+        first_high_order_cavity = i1_cell["C3.AH1.1.1.I1"]
+        self.add_physics_process(wake, start=first_high_order_cavity, stop=ah1_section_stop)
 
 
 class LH(FELSection):
@@ -198,16 +197,19 @@ class LH(FELSection):
 
         i1_cell = i1.make_cell()
         # Start where AH1 ends (see AH1 class)
-        pre_tds_matching_point = i1_cell["matching-point-at-start-of-q52"]
-        # pre_tds_matching_point = i1_cell["pre_qi_52"]        
+        lh_section_start = "AH1-LH interface: Just before the first LH chicane dipole"
+
+        # pre_tds_matching_point = i1_cell["pre_qi_52"]
         just_before_lh_first_dipole = i1_cell["STLAT.47.I1"]
+        # lh_section_start = i1_cell["just_before_first_laser_heater_dipole_LH_section_start"]
+        # lh_section_stop = i1_cell["just_before_i1d_dipole_LH_section_stop"]
+
+        lh_section_stop = "LH-I1D interface: just before the I1D dump dipole"
+
         # Where we start the CSR process if we are going into the
         # dump. This is just before the dump dipole BB.62.I1D.
-        just_before_dump_dipole = i1_cell["DUMP.CSR.START"]
-        # just_before_dump_dipole = None
-        self.lattice = MagneticLattice(
-            i1_cell, start=just_before_lh_first_dipole, stop=just_before_dump_dipole, method=self.method
-        )
+        just_before_dump_dipole = "DUMP.CSR.START"
+        self.sequence = i1_cell[lh_section_start:lh_section_stop]
 
         # init physics processes
         csr = make_csr(sigma_min=Sig_Z[0] * CSR_SIGMA_FACTOR, traj_step=0.0005, apply_step=0.005)
@@ -223,7 +225,8 @@ class LH(FELSection):
         self.add_physics_process(sc, start=just_before_lh_first_dipole, stop=just_before_dump_dipole)
         self.add_physics_process(csr, start=just_before_lh_first_dipole, stop=just_before_dump_dipole)
         self.add_physics_process(wake, start=just_before_lh_first_dipole, stop=just_before_dump_dipole)
-        self.add_physics_process(tr, pre_tds_matching_point, pre_tds_matching_point)
+        # pre_tds_matching_point = i1_cell["matching-point-at-start-of-q52"]
+        # self.add_physics_process(tr, pre_tds_matching_point, pre_tds_matching_point)
 
 
 class I1D(FELSection):
@@ -240,21 +243,22 @@ class I1D(FELSection):
         i1d_cell = i1d.make_cell()
         cell = i1_cell + i1d_cell
 
-        # init tracking lattice
-        # This is just before the dipole to the i1d dump.
-        i1d_start = cell["DUMP.CSR.START"]
+        # i1d_start = "just_before_i1d_dipole_I1D_section_start"        
+        i1d_start = "LH-I1D interface: just before the I1D dump dipole"
+        self.sequence = cell[i1d_start:]
+
         otrc_marker = cell["OTRC.64.I1D"]
-        post_dipole_bpm = cell["BPMA.63.I1D"]
+        post_dump_dipole_bpm = cell["BPMA.63.I1D"]
         # Just track all the way to the end of the dump line
         stop = None
-        self.lattice = MagneticLattice(cell, start=i1d_start, stop=stop, method=self.method)
+        # self.lattice = MagneticLattice(cell, start=i1d_start, stop=stop, method=self.method)
         # init physics processes
         csr = make_csr(sigma_min=Sig_Z[0] * 0.1, traj_step=0.0005, apply_step=0.005)
         sc = make_space_charge(step=5, nmesh_xyz=SC_MESH, random_mesh=SC_RANDOM_MESH)
 
         # Add physics processes.  SC the whole way, CSR only for the dipole (more or less).
         self.add_physics_process(sc, start=i1d_start, stop=stop)
-        self.add_physics_process(csr, start=i1d_start, stop=post_dipole_bpm)
+        self.add_physics_process(csr, start=i1d_start, stop=post_dump_dipole_bpm)
         # Write particle array to file at the screen.
         self.add_physics_process(otrc_save, start=otrc_marker, stop=otrc_marker)
 
@@ -452,4 +456,3 @@ class B2D(FELSection):
 
         self.add_physics_process(csr, start=bc2_stop, stop=b2d_stop)
         self.add_physics_process(sc, start=bc2_stop, stop=b2d_stop)
-

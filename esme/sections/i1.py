@@ -137,28 +137,18 @@ d_70 = Drift(l=0.1, eid='D_70')
 # Quadrupoles
 qln_23_i1 = Quadrupole(l=0.05, eid='QLN.23.I1')
 qls_23_i1 = Quadrupole(l=0.05, tilt=0.785398163, eid='QLS.23.I1')
-# q_37_i1 = Quadrupole(l=0.2136, k1=-1.448361582, eid='Q.37.I1')
-q_37_i1 = Quadrupole(l=0.2136, k1=-1.588827702268584, tilt=0.0, eid='Q.37.I1')
-# q_38_i1 = Quadrupole(l=0.2136, k1=1.4535982140, eid='Q.38.I1')
-q_38_i1 = Quadrupole(l=0.2136, k1=1.524445650117970, tilt=0.0, eid='Q.38.I1')
-# qi_46_i1 = Quadrupole(l=0.2377, k1=-0.2247807673, eid='QI.46.I1')
-qi_46_i1 = Quadrupole(l=0.2377, k1=0.304340551812098, tilt=0.0, eid='QI.46.I1')
-# qi_47_i1 = Quadrupole(l=0.2377, k1=0.6927621982, eid='QI.47.I1')
-qi_47_i1 = Quadrupole(l=0.2377, k1=0.003628640677698, tilt=0.0, eid='QI.47.I1')
+q_37_i1 = Quadrupole(l=0.2136, k1=-1.448361582, eid='Q.37.I1')
+q_38_i1 = Quadrupole(l=0.2136, k1=1.4535982140, eid='Q.38.I1')
+
+
+qi_46_i1 = Quadrupole(l=0.2377, k1=-0.2247807673, eid='QI.46.I1')
+
+qi_47_i1 = Quadrupole(l=0.2377, k1=0.6927621982, eid='QI.47.I1')
 qi_50_i1 = Quadrupole(l=0.2377, k1=-0.86466232944, eid='QI.50.I1')
 qi_52_i1 = Quadrupole(l=0.2377, k1=-0.3522076137989062, eid='QI.52.I1')
 
-kf0 = 0.97
-
 qi_53_i1 = Quadrupole(l=0.2377, k1=2.1047941859486747, eid='QI.53.I1')
 qi_54_i1 = Quadrupole(l=0.2377, k1=0.7943661064366849, eid='QI.54.I1')
-
-# qi_55_i1 = Quadrupole(l=0.2377, k1=-2.6383360778291967*kf0, eid='QI.55.I1')
-# qi_57_i1 = Quadrupole(l=0.2377, k1=3.278062023979807/kf0, eid='QI.57.I1')
-# qi_59_i1 = Quadrupole(l=0.2377, k1=-2.6383360778291967*kf0, eid='QI.59.I1')
-
-# qi_60_i1 = Quadrupole(l=0.2377, k1=1.9778194619267986, eid='QI.60.I1')
-# qi_61_i1 = Quadrupole(l=0.2377, k1=0.8708619869583508, eid='QI.61.I1')
 
 qi_55_i1 = Quadrupole(l=0.2377, k1=-3.526311, tilt=0.0, eid='QI.55.I1')
 qi_57_i1 = Quadrupole(l=0.2377, k1=3.526311, tilt=0.0, eid='QI.57.I1')
@@ -475,22 +465,29 @@ lh_start = Marker()
 lh_stop = Marker()
 
 d_8_1 = Drift(l=0.5776, eid='D_12')
-astra_ocelot_interface = Marker(eid="astra_ocelot_interface")
+# astra_ocelot_interface_a1_start = Marker(eid="astra_ocelot_interface_G1_to_A1")
+g1_a1_interface = Marker(eid="G1-A1 interface: up to where we track using ASTRA and just right the first A1 cavity")
 d_8_2 = Drift(l=d_8.l - d_8_1.l)
-d_8_n = (d_8_1, astra_ocelot_interface, d_8_2)
+d_8_n = (d_8_1, g1_a1_interface, d_8_2)
 qi_53_U = Marker("QI.53.U")
-a1_sim_stop = Marker(eid="a1_sim_stop")
+a1_ah1_interface = Marker(eid="A1-AH1 interface: just after the last A1 Cavity")
 tds1 = Marker(eid="TDS1")
 tds2 = Marker(eid="TDS2")
 tds3 = Marker(eid="TDS3")
 tmp_m = Marker("matching-point-at-start-of-q52")
 a1_1_stop = Marker(eid="just-after-first-a1-cavity")
+lh_section_stop = Marker(eid="just_before_i1d_dipole_LH_section_stop")
+# i1d_section_start = Marker(eid="just_before_i1d_dipole_I1D_section_start")
+lh_i1d_interface = Marker(eid="LH-I1D interface: just before the I1D dump dipole")
 dump_csr_start = Marker(eid="DUMP.CSR.START")
 d_35_1 = Drift(l=0.08115, eid='D_46')
 # stlat_47_i1 = Marker(eid="just-before-first-laser-heater-dipole")
 d_35_2 = Drift(l=d_35.l - d_35_1.l)
 stlat_47_i1 = Marker(eid='STLAT.47.I1')
-d_35_n = (d_35_1, stlat_47_i1, d_35_2)
+ah1_lh_interface = Marker(eid="AH1-LH interface: Just before the first LH chicane dipole")
+# ah1_section_stop = Marker(eid='just_before_first_laser_heater_dipole_AH1_section_stop')
+# lh_section_start = Marker(eid='just_before_first_laser_heater_dipole_LH_section_start')
+d_35_n = (d_35_1, ah1_lh_interface, stlat_47_i1, d_35_2)
 # power supplies
 
 #
@@ -580,11 +577,11 @@ def make_cell():
                 c_a1_1_7_i1,
                 d_9,
                 c_a1_1_8_i1,
-                a1_sim_stop,
+                a1_ah1_interface,
                 d_16,
                 match_37_i1,
                 d_17,
-                q_37_i1,
+                q_37_i1,  # 37!
                 d_17,
                 cx_37_i1,
                 cy_37_i1,
@@ -593,7 +590,7 @@ def make_cell():
                 d_20,
                 bpmr_38ii_i1,
                 d_21,
-                q_38_i1,
+                q_38_i1,   # 38!
                 d_17,
                 cx_39_i1,
                 cy_39_i1,
@@ -616,11 +613,11 @@ def make_cell():
                 d_31,
                 tora_46_i1,
                 d_32,
-                qi_46_i1,
+                qi_46_i1, # 46!
                 d_33,
                 bpmf_47_i1,
                 d_34,
-                qi_47_i1,
+                qi_47_i1,  # 47!
                 d_35_n,
                 bl_48i_i1,
                 d_36,
@@ -640,7 +637,7 @@ def make_cell():
                 d_42,
                 bl_50ii_i1,
                 d_35,
-                qi_50_i1,
+                qi_50_i1,  # 50!
                 d_44,
                 ciy_51_i1,
                 d_45,
@@ -699,6 +696,7 @@ def make_cell():
                 d_68,
                 qi_61_i1,
                 d_69,
+                lh_i1d_interface,
                 dump_csr_start,
                 d_70,
                 stsub_62_i1,

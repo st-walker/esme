@@ -182,19 +182,6 @@ def make_to_i1d_lattice(data_dir="./"):
     all_sections = [sections.G1, sections.A1, sections.AH1, sections.LH, sections.I1D]
     return SectionedFEL(all_sections, data_dir=data_dir)
 
-def make_to_i1d_measurement_lattice(data_dir="./"):
-    """Make lattice for measuring the energy spread in i1d."""
-    all_sections = [sections.G1, sections.A1, sections.AH1, sections.LH, sections.I1D]
-    secfel = SectionedFEL(all_sections, data_dir=data_dir)
-    sc = True
-    smooth = True
-    wake = True
-    config = {"A1": {"phi": 0., "v": 125 / 8 * 1e-3, "SC": sc,
-                   "smooth": smooth, "wake": wake},
-              "AH1": {"phi": 0., "v": 0.}}
-    secfel.apply_high_level_config(config)
-    return secfel
-
 def make_to_b2d_lattice(data_dir="./"):
     all_sections = [sections.G1, sections.A1, sections.AH1, sections.LH, sections.DL, sections.BC0, sections.L1, sections.BC1, sections.L2, sections.BC2, sections.B2D]
     return SectionedFEL(all_sections, data_dir=data_dir)
@@ -204,19 +191,3 @@ def make_dummy_lookup_sequence():
     strengths and lengths etc.  Obviously not for tracking, because
     it's not in the right order."""
     return sections.i1.make_cell() + sections.i1d.make_cell() + sections.l1.make_cell() + sections.l2.make_cell() + sections.b2d.make_cell()
-
-def make_reduced_measurement_lattice_to_i1d():
-    pass
-
-# def match_lattice(secfel, quad_names, match_name, twiss1, twiss0):
-#     from ocelot.cpbd.match import match
-#     match_elem = secfel.get_element(match_name)
-#     constr = {"periodic": False, match_elem: {"beta_x": twiss1.beta_x,
-#                                               "beta_y": twiss1.beta_y,
-#                                               "alpha_x": twiss1.alpha_x,
-#                                               "alpha_y": twiss1.alpha_y}
-#               }
-#     quads = [secfel.get_element(name) for name in quad_names]
-#     from IPython import embed; embed()
-#     match(secfel.to_magnetic_lattice(), constr, quads, twiss0, verbose=False)    
-    

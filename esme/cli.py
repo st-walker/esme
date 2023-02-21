@@ -270,13 +270,17 @@ def sim(fscan, i1, b2, dscan, tscan, escan, parray, outdir, fast):
     from . import simplot
 
     if i1:
+        i1_dscan_conf = i1_dscan_config_from_scan_config_file(fscan)
+
+    if i1 and not parray:
         simplot.cathode_to_first_a1_cavity()
         simplot.a1_to_i1d_design_optics()
         simplot.a1_to_q52_matching_point_measurement_optics()
-
-        i1_dscan_conf = i1_dscan_config_from_scan_config_file(fscan)
         simplot.qi52_to_i1d_dscan_optics(i1_dscan_conf)
         simplot.a1_to_i1d_piecewise_measurement_optics(i1_dscan_conf)
+    elif i1 and parray:
+        sim.run_i1_dispersion_scan(i1_dscan_conf, parray, outdir)
+
     # elif b2:
     #     b2_dscan_conf = b2_dscan_config_from_scan_config_file(fscan)
     #     b2_dscan_optics(b2_dscan_conf)
