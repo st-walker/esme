@@ -117,10 +117,12 @@ def run_i1_dispersion_scan(dscan_conf, fparray, dirname, fast=False):
 
 
     a1_to_qi52_config = make_pre_qi52_measurement_config()
-    navis = lattice.make_to_i1d_lattice().to_navigators(start="astra_ocelot_interface",
-                                                        stop="matching-point-at-start-of-q52",
-                                                        felconfig=a1_to_qi52_config)
 
+
+    start_name = "G1-A1 interface: up to where we track using ASTRA and just right the first A1 cavity"
+    stop_name = "matching-point-at-start-of-q52"
+    parray_qi52 = i1dlat.track(parray0, start=start_name, stop=stop_name,
+                               felconfig=a1_to_qi52_config)
 
 
 
@@ -220,6 +222,52 @@ def qi52_matching_point_to_i1d_measurement_optics(dscan_quad_settings):
                                        fel_sim_configs,
                                        start=start, stop=stop)
 
+
+def calculate_i1d_design_optics_from_tracking(fparray0):
+    parray0 = load_particle_array(fparray0)
+    s_offset = Z_START + parray0.s
+
+    twiss, _ = cathode_to_first_a1_cavity_optics()
+    twiss0 = twiss.iloc[-1]
+    parray0 = parray_from_twiss0(twiss0)
+    # from ocelot.cpbd.beam import cov_matrix_from_twiss, cov_matrix_to_parray
+    # energy = twiss0.E
+    # from ocelot.common.globals import m_e_GeV
+    # cov = cov_matrix_from_twiss(0.64e-6 / (energy / m_e_GeV),
+    #                             0.64e-6 / (energy / m_e_GeV),
+    #                             sigma_tau=0.0012803261741532739,
+    #                             sigma_p=0.0054180378927533536,
+    #                             beta_x=twiss0.beta_x.item(),
+    #                             beta_y=twiss0.beta_y.item(),
+    #                             alpha_x=twiss0.alpha_x.item(),
+    #                             alpha_y=twiss0.alpha_y.item())
+
+    # parray0 = cov_matrix_to_parray([0, 0, 0, 0, 0, 0], cov, energy, charge=250e-12, nparticles=200_000)
+
+    i1dlat = lattice.make_to_i1d_lattice()
+    start_name = "G1-A1 interface: up to where we track using ASTRA and just right the first A1 cavity"
+    conf = FELSimulationConfig(do_physics=False)
+    all_twiss = i1dlat.track_optics(parray0, start=start_name, felconfig=conf)
+    all_twiss.s += s_offset
+    return all_twiss
+
+
+    
+def parray_from_twiss0(twiss0):
+    from ocelot.cpbd.beam import cov_matrix_from_twiss, cov_matrix_to_parray
+    energy = twiss0.E
+    from ocelot.common.globals import m_e_GeV
+    cov = cov_matrix_from_twiss(0.64e-6 / (energy / m_e_GeV),
+                                0.64e-6 / (energy / m_e_GeV),
+                                sigma_tau=0.0012803261741532739,
+                                sigma_p=0.0054180378927533536,
+                                beta_x=twiss0.beta_x.item(),
+                                beta_y=twiss0.beta_y.item(),
+                                alpha_x=twiss0.alpha_x.item(),
+                                alpha_y=twiss0.alpha_y.item())
+
+    parray0 = cov_matrix_to_parray([0, 0, 0, 0, 0, 0], cov, energy, charge=250e-12, nparticles=200_000)
+    return parray0
 
 
 # def qi52_matching_point_to_i1d_measurement_optics():

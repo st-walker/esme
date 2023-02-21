@@ -19,6 +19,9 @@ Z_LABEL_STRING = r"$z$ / m"
 E_LABEL_STRING = r"$E$ / MeV"
 BETA_LABEL_STRING = r"$\beta$ / m"
 BETX_LABEL_STRING = r"$\beta_x$ / m"
+BETY_LABEL_STRING = r"$\beta_y$ / m"
+ALFX_LABEL_STRING = r"$\alpha_x$"
+ALFY_LABEL_STRING = r"$\alpha_y$"
 DX_LABEL_STRING = "$D_x$ / m"
 D_LABEL_STRING = "$D$ / m"
 
@@ -62,6 +65,7 @@ def cathode_to_first_a1_cavity(outdir=None):
     mx.set_title("Cathode to first A1 Cavity")
 
     _save_fig_or_show(fig, outdir, "cathode-to-first-a1-cavity-design-optics.pdf")
+
 
 
 def a1_to_i1d_design_optics(outdir=None):
@@ -200,7 +204,36 @@ def a1_to_i1d_piecewise_measurement_optics(dscan_conf, outdir=None):
     _save_fig_or_show(fig, outdir, "a1-to-i1d-design-optics.pdf")
 
 
+def check_a1_to_i1d_design_optics_tracking(parray0, outdir):
+    all_twiss, mlat = sim.a1_to_i1d_design_optics()
+    s_offset = all_twiss.iloc[0].s
 
+    bl = latdraw.interfaces.lattice_from_ocelot(mlat.sequence, initial_offset=[0, 0, s_offset])
+    fig, (mx, axbx, axby, axax, axay, axe) = latdraw.subplots_with_lattice(bl, nrows=5)
+
+    axbx.plot(all_twiss.s, all_twiss.beta_x, label="Linear Optics")
+    axby.plot(all_twiss.s, all_twiss.beta_y)
+
+    axax.plot(all_twiss.s, all_twiss.alpha_x)
+    axay.plot(all_twiss.s, all_twiss.alpha_y)
+    axe.plot(all_twiss.s, all_twiss.E*1e3)
+
+    axe.set_xlabel(Z_LABEL_STRING)
+
+    particle_twiss = sim.calculate_i1d_design_optics_from_tracking(parray0)
+    axbx.plot(particle_twiss.s, particle_twiss.beta_x, label="Particle Tracking", marker="x")
+    axby.plot(particle_twiss.s, particle_twiss.beta_y, marker="x")#, label="Particle Tracking")
+    axax.plot(particle_twiss.s, particle_twiss.alpha_x, label="Particle Tracking", marker="x")
+    axay.plot(particle_twiss.s, particle_twiss.alpha_y, marker="x")#, label="Particle Tracking")
+    axe.plot(particle_twiss.s, particle_twiss.E*1e3, marker="x")#, label="Particle Tracking")
+    axbx.legend()
+
+    axbx.set_ylabel(BETX_LABEL_STRING)
+    axby.set_ylabel(BETY_LABEL_STRING)
+    axax.set_ylabel(ALFX_LABEL_STRING)
+    axay.set_ylabel(ALFY_LABEL_STRING)
+    axe.set_ylabel(E_LABEL_STRING)
+    plt.show()
 
 # def b2_dscan_optics(dscan_conf, outdir=None):
 #     # fig, (ax0, ax, ax2) = plt.subplots(nrows=3, sharex=True)

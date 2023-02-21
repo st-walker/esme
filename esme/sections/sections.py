@@ -144,15 +144,16 @@ class A1(FELSection):
         # adding physics processes
         # just after the first A1 cavity.
         just_after_first_a1_cavity = i1_cell["just-after-first-a1-cavity"]
-        first_cavity = i1_cell["C.A1.1.1.I1"]
+        first_cavity = "C.A1.1.1.I1"
+
 
         # beam is immediately smoothed right at the start of the simulation in an instant
         self.add_physics_process(BEAM_SMOOTHER, start=a1_start, stop=a1_start)
 
         # Attach a SC instance from start (just after gun) to just after first module
-        self.add_physics_process(sc, start=a1_start, stop=just_after_first_a1_cavity)
+        self.add_physics_process(sc, start=a1_start, stop=just_after_first_a1_cavity.id)
         # Attach a different SC instance between before 2nd module and end of last module.
-        self.add_physics_process(sc2, start=just_after_first_a1_cavity, stop=a1_stop)
+        self.add_physics_process(sc2, start=just_after_first_a1_cavity.id, stop=a1_stop)
         # From start of A1 cavities to end of A1 (just after last cavity), attach wake kick.
         self.add_physics_process(wake, start=first_cavity, stop=a1_stop)
 
@@ -182,7 +183,7 @@ class AH1(FELSection):
 
         # adding physics processes
         self.add_physics_process(sc, start=ah1_section_start, stop=ah1_section_stop)
-        first_high_order_cavity = i1_cell["C3.AH1.1.1.I1"]
+        first_high_order_cavity = "C3.AH1.1.1.I1"
         self.add_physics_process(wake, start=first_high_order_cavity, stop=ah1_section_stop)
 
 
@@ -200,7 +201,7 @@ class LH(FELSection):
         lh_section_start = "AH1-LH interface: Just before the first LH chicane dipole"
 
         # pre_tds_matching_point = i1_cell["pre_qi_52"]
-        just_before_lh_first_dipole = i1_cell["STLAT.47.I1"]
+        just_before_lh_first_dipole = "STLAT.47.I1"
         # lh_section_start = i1_cell["just_before_first_laser_heater_dipole_LH_section_start"]
         # lh_section_stop = i1_cell["just_before_i1d_dipole_LH_section_stop"]
 
@@ -250,7 +251,7 @@ class I1D(FELSection):
         otrc_marker = cell["OTRC.64.I1D"]
         post_dump_dipole_bpm = cell["BPMA.63.I1D"]
         # Just track all the way to the end of the dump line
-        stop = None
+        stop = self.sequence[-1].id
         # self.lattice = MagneticLattice(cell, start=i1d_start, stop=stop, method=self.method)
         # init physics processes
         csr = make_csr(sigma_min=Sig_Z[0] * 0.1, traj_step=0.0005, apply_step=0.005)
@@ -258,9 +259,9 @@ class I1D(FELSection):
 
         # Add physics processes.  SC the whole way, CSR only for the dipole (more or less).
         self.add_physics_process(sc, start=i1d_start, stop=stop)
-        self.add_physics_process(csr, start=i1d_start, stop=post_dump_dipole_bpm)
+        self.add_physics_process(csr, start=i1d_start, stop=post_dump_dipole_bpm.id)
         # Write particle array to file at the screen.
-        self.add_physics_process(otrc_save, start=otrc_marker, stop=otrc_marker)
+        self.add_physics_process(otrc_save, start=otrc_marker.id, stop=otrc_marker.id)
 
 
 class DL(FELSection):

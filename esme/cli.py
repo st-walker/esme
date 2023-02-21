@@ -263,21 +263,23 @@ def gui():
 @option("--tscan", is_flag=True)
 @option("--escan", is_flag=True)
 @option("--fast", is_flag=True)
-def sim(fscan, i1, b2, dscan, tscan, escan, parray, outdir, fast):
+@option("--optics", is_flag=True)
+def sim(fscan, i1, b2, dscan, tscan, escan, parray, outdir, fast, optics):
     # from .sim import run_i1_dispersion_scan
     from . import simplot
     from . import sim
-    from . import simplot
 
     if i1:
         i1_dscan_conf = i1_dscan_config_from_scan_config_file(fscan)
 
-    if i1 and not parray:
+    if i1 and optics and not parray:
         simplot.cathode_to_first_a1_cavity()
         simplot.a1_to_i1d_design_optics()
         simplot.a1_to_q52_matching_point_measurement_optics()
         simplot.qi52_to_i1d_dscan_optics(i1_dscan_conf)
         simplot.a1_to_i1d_piecewise_measurement_optics(i1_dscan_conf)
+    elif i1 and optics and parray:
+        simplot.check_a1_to_i1d_design_optics_tracking(parray, outdir)
     elif i1 and parray:
         sim.run_i1_dispersion_scan(i1_dscan_conf, parray, outdir)
 
