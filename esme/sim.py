@@ -228,7 +228,7 @@ def calculate_i1d_design_optics_from_tracking(fparray0):
     s_offset = Z_START + parray0.s
 
     twiss, _ = cathode_to_first_a1_cavity_optics()
-    twiss0 = twiss.iloc[-1]
+    twiss0 = Twiss.from_series(twiss.iloc[-1])
     parray0 = parray_from_twiss0(twiss0)
     # from ocelot.cpbd.beam import cov_matrix_from_twiss, cov_matrix_to_parray
     # energy = twiss0.E
@@ -247,8 +247,9 @@ def calculate_i1d_design_optics_from_tracking(fparray0):
     i1dlat = lattice.make_to_i1d_lattice()
     start_name = "G1-A1 interface: up to where we track using ASTRA and just right the first A1 cavity"
     conf = FELSimulationConfig(do_physics=False)
-    all_twiss = i1dlat.track_optics(parray0, start=start_name, felconfig=conf)
-    all_twiss.s += s_offset
+    all_twiss = i1dlat.track_gaussian_optics(twiss0, start=start_name, felconfig=conf, correct_dispersion=True)
+    # all_twiss = i1dlat.track_optics(parray0, start=start_name, felconfig=conf)
+    # all_twiss.s += s_offset
     return all_twiss
 
 
