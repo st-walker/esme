@@ -3,8 +3,7 @@ import logging
 import matplotlib.pyplot as plt
 import latdraw
 import pandas as pd
-from ocelot.cpbd.beam import Twiss
-
+from ocelot.cpbd.beam import Twiss, optics_from_moments, moments_from_parray
 from . import sim
 from .sections import sections
 from . import lattice
@@ -23,6 +22,7 @@ BETY_LABEL_STRING = r"$\beta_y$ / m"
 ALFX_LABEL_STRING = r"$\alpha_x$"
 ALFY_LABEL_STRING = r"$\alpha_y$"
 DX_LABEL_STRING = "$D_x$ / m"
+DY_LABEL_STRING = "$D_y$ / m"
 D_LABEL_STRING = "$D$ / m"
 
 
@@ -126,7 +126,6 @@ def a1_to_q52_matching_point_measurement_optics(outdir=None):
     _save_fig_or_show(fig, outdir, "a1-to-i1d-design-optics.pdf")
 
 
-
 def qi52_to_i1d_dscan_optics(dscan_conf, outdir=None):
     # This bit is just for getting the design machine instance for the
     # plot, we don't use the design optics otherwise.
@@ -168,22 +167,12 @@ def qi52_to_i1d_dscan_optics(dscan_conf, outdir=None):
 def a1_to_i1d_piecewise_measurement_optics(dscan_conf, outdir=None):
     full_sequence = lattice.make_to_i1d_lattice().get_sequence()
 
-    all_twiss, mlat = sim.a1_to_q52_matching_point_measurement_optics()
-
-    # from IPython import embed; embed()
-
+    all_twiss, _ = sim.a1_to_q52_matching_point_measurement_optics()
     s_offset = all_twiss.iloc[0].s
-
     bl = latdraw.interfaces.lattice_from_ocelot(full_sequence, initial_offset=[0, 0, 23.2])
     fig, (mx, axt, axd, axe) = latdraw.subplots_with_lattice(bl, nrows=3)
 
-    axt.plot(all_twiss.s, all_twiss.beta_x)
-    # axt.plot(all_twiss.s, all_twiss.beta_y, label="$y$")
-    axd.plot(all_twiss.s, all_twiss.Dx)
-    axe.plot(all_twiss.s, all_twiss.E * 1e3)
-    # axd.plot(all_twiss.s, all_twiss.Dy, label="y")
-
-    gen = sim.qi52_matching_point_to_i1d_measurement_optics(dscan_conf)
+    gen = sim.a1_dscan_piecewise_optics(dscan_conf, do_physics=do_physics)
     for i, (dispersion, twiss, _) in enumerate(gen):
         axd.plot(twiss.s, twiss.Dx, label=fr"$D_x\,=\,{dispersion}\,\mathrm{{m}}$")
 
@@ -209,23 +198,32 @@ def check_a1_to_i1d_design_optics_tracking(parray0, outdir):
     s_offset = all_twiss.iloc[0].s
 
     bl = latdraw.interfaces.lattice_from_ocelot(mlat.sequence, initial_offset=[0, 0, s_offset])
-    fig, (mx, axbx, axby, axax, axay, axe) = latdraw.subplots_with_lattice(bl, nrows=5)
+    fig, (mx, axbx, axby, axax, axay, axdx, axdy, axe) = latdraw.subplots_with_lattice(bl, nrows=7)
 
     axbx.plot(all_twiss.s, all_twiss.beta_x, label="Linear Optics")
     axby.plot(all_twiss.s, all_twiss.beta_y)
 
     axax.plot(all_twiss.s, all_twiss.alpha_x)
     axay.plot(all_twiss.s, all_twiss.alpha_y)
+    axdx.plot(all_twiss.s, all_twiss.Dx)
+    axdy.plot(all_twiss.s, all_twiss.Dy)
     axe.plot(all_twiss.s, all_twiss.E*1e3)
 
     axe.set_xlabel(Z_LABEL_STRING)
 
-    particle_twiss = sim.calculate_i1d_design_optics_from_tracking(parray0)
+    particle_twiss, _ = sim.i1d_design_optics_from_tracking(parray0)
     axbx.plot(particle_twiss.s, particle_twiss.beta_x, label="Particle Tracking", marker="x")
     axby.plot(particle_twiss.s, particle_twiss.beta_y, marker="x")#, label="Particle Tracking")
     axax.plot(particle_twiss.s, particle_twiss.alpha_x, label="Particle Tracking", marker="x")
     axay.plot(particle_twiss.s, particle_twiss.alpha_y, marker="x")#, label="Particle Tracking")
     axe.plot(particle_twiss.s, particle_twiss.E*1e3, marker="x")#, label="Particle Tracking")
+
+    axdx.set_ylabel(DX_LABEL_STRING)
+    axdy.set_ylabel(DY_LABEL_STRING)
+
+    axdx.plot(particle_twiss.s, particle_twiss.Dx, marker="x")
+    axdy.plot(particle_twiss.s, particle_twiss.Dy, marker="x")
+
     axbx.legend()
 
     axbx.set_ylabel(BETX_LABEL_STRING)
@@ -234,6 +232,78 @@ def check_a1_to_i1d_design_optics_tracking(parray0, outdir):
     axay.set_ylabel(ALFY_LABEL_STRING)
     axe.set_ylabel(E_LABEL_STRING)
     plt.show()
+
+def check_a1_q52_measurement_optics_tracking(fparray0, outdir):
+    all_twiss, mlat = sim.a1_to_q52_matching_point_measurement_optics()
+    s_offset = all_twiss.iloc[0].s
+    bl = latdraw.interfaces.lattice_from_ocelot(mlat.sequence, initial_offset=[0, 0, s_offset])
+    fig, (mx, axbx, axdx, axe) = latdraw.subplots_with_lattice(bl, nrows=3)
+
+    particle_twiss, _ = sim.a1_to_q52_matching_point_measurement_optics_from_tracking(fparray0)
+
+    axbx.plot(all_twiss.s, all_twiss.beta_x, label="Linear Optics")
+    axdx.plot(all_twiss.s, all_twiss.Dx)
+    axe.plot(all_twiss.s, all_twiss.E*1e3)
+
+    axbx.plot(particle_twiss.s, particle_twiss.beta_x, label="Particle Tracking", marker="x")
+    axdx.plot(particle_twiss.s, particle_twiss.Dx)
+    axe.plot(particle_twiss.s, particle_twiss.E*1e3, marker="x")#, label="Particle Tracking")
+
+
+    axbx.legend()
+
+    axbx.set_ylabel(BETX_LABEL_STRING)
+    axdx.set_ylabel(DX_LABEL_STRING)
+    axe.set_ylabel(E_LABEL_STRING)
+    axe.set_xlabel(Z_LABEL_STRING)
+
+    plt.show()
+
+def dscan_piecewise_tracking_optics(fparray0, dscan_conf, outdir, do_physics=False):
+    all_twiss, mlat = sim.a1_to_i1d_design_optics()
+    s_offset = all_twiss.iloc[0].s
+    bl = latdraw.interfaces.lattice_from_ocelot(mlat.sequence, initial_offset=[0, 0, s_offset])
+    fig, (mx, axbx, axdx, axe) = latdraw.subplots_with_lattice(bl, nrows=3)
+
+    twiss_q52 = all_twiss.iloc[-1]
+
+    # axbx.plot(all_twiss.s, all_twiss.beta_x, label="Linear Optics")
+    # axdx.plot(all_twiss.s, all_twiss.Dx)
+    # axe.plot(all_twiss.s, all_twiss.E*1e3)
+
+    gen_twiss = sim.a1_dscan_piecewise_optics(dscan_conf, do_physics=do_physics)    
+    gen = sim.a1_dscan_piecewise_tracked_optics(fparray0, dscan_conf, do_physics=do_physics)
+    # Ptwiss is twiss from particle tracking, otwiss is from direct tracking.
+    for i, (dispersion, ptwiss) in enumerate(gen):
+        _, otwiss = next(gen_twiss)
+
+        blabel1 = blabel2 = ""
+        if i == 0:
+            blabel1 = "Linear Optics"
+            blabel2 = "Particle Tracking"
+
+        (line1,) = axbx.plot(otwiss.s, otwiss.beta_x, label=blabel1)
+        (line2,) = axdx.plot(otwiss.s, otwiss.Dx, label=fr"$D_x\,=\,{dispersion}\,\mathrm{{m}}$")
+        (line3,) = axe.plot(otwiss.s, otwiss.E*1e3)
+
+        axbx.plot(ptwiss.s, ptwiss.beta_x, label=blabel2, marker="x", linestyle="", color=line1.get_color())
+        axdx.plot(ptwiss.s, ptwiss.Dx, linestyle="", marker="x", color=line2.get_color())
+        axe.plot(ptwiss.s, ptwiss.E*1e3, marker="x", linestyle="", color=line3.get_color())#, label="Particle Tracking")
+        
+
+    legend = axbx.legend()
+    axdx.legend()
+
+    axbx.set_ylabel(BETX_LABEL_STRING)
+    axdx.set_ylabel(DX_LABEL_STRING)
+    axe.set_ylabel(E_LABEL_STRING)
+    axe.set_xlabel(Z_LABEL_STRING)
+
+    mx.set_title(f"Particle Tracking vs Linear Optics, Collective Effects: {do_physics}")
+
+    plt.show()
+
+
 
 # def b2_dscan_optics(dscan_conf, outdir=None):
 #     # fig, (ax0, ax, ax2) = plt.subplots(nrows=3, sharex=True)
