@@ -523,7 +523,6 @@ class XFELLonglist:
         pass
 
 def _mad8_optics_to_magnet_config(df8):
-    df8 = None
     quads = df8[df8.KEYWORD == "QUAD"]
     quad_name2s = quads.NAME
     quad_k1s = quads.K1
