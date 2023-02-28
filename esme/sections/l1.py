@@ -158,31 +158,31 @@ d_277 = Drift(l=0.081151, eid='D_277')
 d_281 = Drift(l=1.097151, eid='D_281')
 d_282 = Drift(l=0.39725, eid='D_282')
 
-# quadrupoles
-qi_63_i1 = Quadrupole(l=0.2377, k1=-2.025428786, tilt=0.0, eid='QI.63.I1')
-qi_66_i1 = Quadrupole(l=0.2377, k1=2.160052729, tilt=0.0, eid='QI.66.I1')
-qi_69_i1 = Quadrupole(l=0.2377, k1=-2.224853904, tilt=0.0, eid='QI.69.I1')
-qi_71_i1 = Quadrupole(l=0.2377, k1=3.403378798, tilt=0.0, eid='QI.71.I1')
-qi_72_i1 = Quadrupole(l=0.2377, k1=-4.43452895, tilt=0.0, eid='QI.72.I1')
-qi_73_i1 = Quadrupole(l=0.2377, k1=4.632555992, tilt=0.0, eid='QI.73.I1')
-qi_74_i1 = Quadrupole(l=0.2377, k1=-4.99137522, tilt=0.0, eid='QI.74.I1')
-qi_75_i1 = Quadrupole(l=0.2377, k1=5.027338701, tilt=0.0, eid='QI.75.I1')
-qi_77_i1 = Quadrupole(l=0.2377, k1=-4.99137522, tilt=0.0, eid='QI.77.I1')
-qi_78_i1 = Quadrupole(l=0.2377, k1=4.632555992, tilt=0.0, eid='QI.78.I1')
-qi_79_i1 = Quadrupole(l=0.2377, k1=-4.99137522, tilt=0.0, eid='QI.79.I1')
-qi_80_i1 = Quadrupole(l=0.2377, k1=5.027338701, tilt=0.0, eid='QI.80.I1')
-qi_82_i1 = Quadrupole(l=0.2377, k1=-4.99137522, tilt=0.0, eid='QI.82.I1')
-qi_83_i1 = Quadrupole(l=0.2377, k1=4.632555992, tilt=0.0, eid='QI.83.I1')
-qi_84_i1 = Quadrupole(l=0.2377, k1=-4.99137522, tilt=0.0, eid='QI.84.I1')
-qi_85_i1 = Quadrupole(l=0.2377, k1=5.027338701, tilt=0.0, eid='QI.85.I1')
-qi_86_i1 = Quadrupole(l=0.2377, k1=-4.99137522, tilt=0.0, eid='QI.86.I1')
-qi_88_i1 = Quadrupole(l=0.2377, k1=4.632555992, tilt=0.0, eid='QI.88.I1')
-qi_89_i1 = Quadrupole(l=0.2377, k1=-4.99137522, tilt=0.0, eid='QI.89.I1')
-qi_90_i1 = Quadrupole(l=0.2377, k1=5.027338701, tilt=0.0, eid='QI.90.I1')
-qi_92_i1 = Quadrupole(l=0.2377, k1=-4.99137522, tilt=0.0, eid='QI.92.I1')
-qi_93_i1 = Quadrupole(l=0.2377, k1=-0.7125210101, tilt=0.0, eid='QI.93.I1')
-qi_94_i1 = Quadrupole(l=0.2377, k1=3.329565017, tilt=0.0, eid='QI.94.I1')
-qi_95_i1 = Quadrupole(l=0.2377, k1=-2.997330916, tilt=0.0, eid='QI.95.I1')
+# Quadrupoles
+qi_63_i1 = Quadrupole(l=0.2377,  k1=-2.025428786, tilt=0.0, eid='QI.63.I1')
+qi_66_i1 = Quadrupole(l=0.2377,  k1=2.160052729, tilt=0.0, eid='QI.66.I1')
+qi_69_i1 = Quadrupole(l=0.2377,  k1=-2.224853904, tilt=0.0, eid='QI.69.I1')
+qi_71_i1 = Quadrupole(l=0.2377,  k1=3.403378798, tilt=0.0, eid='QI.71.I1')
+qi_72_i1 = Quadrupole(l=0.2377,  k1=-4.43452895, tilt=0.0, eid='QI.72.I1')
+qi_73_i1 = Quadrupole(l=0.2377,  k1=4.632555992, tilt=0.0, eid='QI.73.I1')
+qi_74_i1 = Quadrupole(l=0.2377,  k1=-4.99137522, tilt=0.0, eid='QI.74.I1')
+qi_75_i1 = Quadrupole(l=0.2377,  k1=5.027338701, tilt=0.0, eid='QI.75.I1')
+qi_77_i1 = Quadrupole(l=0.2377,  k1=-4.99137522, tilt=0.0, eid='QI.77.I1')
+qi_78_i1 = Quadrupole(l=0.2377,  k1=4.632555992, tilt=0.0, eid='QI.78.I1')
+qi_79_i1 = Quadrupole(l=0.2377,  k1=-4.99137522, tilt=0.0, eid='QI.79.I1')
+qi_80_i1 = Quadrupole(l=0.2377,  k1=5.027338701, tilt=0.0, eid='QI.80.I1')
+qi_82_i1 = Quadrupole(l=0.2377,  k1=-4.99137522, tilt=0.0, eid='QI.82.I1')
+qi_83_i1 = Quadrupole(l=0.2377,  k1=4.632555992, tilt=0.0, eid='QI.83.I1')
+qi_84_i1 = Quadrupole(l=0.2377,  k1=-4.99137522, tilt=0.0, eid='QI.84.I1')
+qi_85_i1 = Quadrupole(l=0.2377,  k1=5.027338701, tilt=0.0, eid='QI.85.I1')
+qi_86_i1 = Quadrupole(l=0.2377,  k1=-4.99137522, tilt=0.0, eid='QI.86.I1')
+qi_88_i1 = Quadrupole(l=0.2377,  k1=4.632555992, tilt=0.0, eid='QI.88.I1')
+qi_89_i1 = Quadrupole(l=0.2377,  k1=-4.99137522, tilt=0.0, eid='QI.89.I1')
+qi_90_i1 = Quadrupole(l=0.2377,  k1=5.027338701, tilt=0.0, eid='QI.90.I1')
+qi_92_i1 = Quadrupole(l=0.2377,  k1=-4.99137522, tilt=0.0, eid='QI.92.I1')
+qi_93_i1 = Quadrupole(l=0.2377,  k1=-0.7125210101, tilt=0.0, eid='QI.93.I1')
+qi_94_i1 = Quadrupole(l=0.2377,  k1=3.329565017, tilt=0.0, eid='QI.94.I1')
+qi_95_i1 = Quadrupole(l=0.2377,  k1=-2.997330916, tilt=0.0, eid='QI.95.I1')
 qi_102_i1 = Quadrupole(l=0.2377, k1=0.2397081548, tilt=0.0, eid='QI.102.I1')
 qi_103_i1 = Quadrupole(l=0.2377, k1=-0.9101419679, tilt=0.0, eid='QI.103.I1')
 qi_104_i1 = Quadrupole(l=0.2377, k1=1.443246717, tilt=0.0, eid='QI.104.I1')
@@ -192,10 +192,10 @@ qi_112_i1 = Quadrupole(l=0.2377, k1=-1.522641254, tilt=0.0, eid='QI.112.I1')
 qi_114_i1 = Quadrupole(l=0.2377, k1=0.9967996614, tilt=0.0, eid='QI.114.I1')
 qi_116_i1 = Quadrupole(l=0.2377, k1=0.5375414029, tilt=0.0, eid='QI.116.I1')
 qi_118_i1 = Quadrupole(l=0.2377, k1=-0.94121992, tilt=0.0, eid='QI.118.I1')
-q_134_l1 = Quadrupole(l=0.2136, k1=0.3079401548, tilt=0.0, eid='Q.134.L1')
-q_146_l1 = Quadrupole(l=0.2136, k1=-0.2961602334, tilt=0.0, eid='Q.146.L1')
-q_158_l1 = Quadrupole(l=0.2136, k1=0.1984410481, tilt=0.0, eid='Q.158.L1')
-q_170_l1 = Quadrupole(l=0.2136, k1=-0.2031335913, tilt=0.0, eid='Q.170.L1')
+q_134_l1 = Quadrupole(l=0.2136,  k1=0.3079401548, tilt=0.0, eid='Q.134.L1')
+q_146_l1 = Quadrupole(l=0.2136,  k1=-0.2961602334, tilt=0.0, eid='Q.146.L1')
+q_158_l1 = Quadrupole(l=0.2136,  k1=0.1984410481, tilt=0.0, eid='Q.158.L1')
+q_170_l1 = Quadrupole(l=0.2136,  k1=-0.2031335913, tilt=0.0, eid='Q.170.L1')
 qi_176_b1 = Quadrupole(l=0.2377, k1=0.0, tilt=0.0, eid='QI.176.B1')
 qd_179_b1 = Quadrupole(l=0.2367, k1=0.7943206468, tilt=0.0, eid='QD.179.B1')
 qd_181_b1 = Quadrupole(l=0.2367, k1=-0.7285954259, tilt=0.0, eid='QD.181.B1')
@@ -215,244 +215,69 @@ qi_224_b1 = Quadrupole(l=0.2377, k1=-0.8565833408, tilt=0.0, eid='QI.224.B1')
 qi_226_b1 = Quadrupole(l=0.2377, k1=-1.561856764, tilt=0.0, eid='QI.226.B1')
 qi_227_b1 = Quadrupole(l=0.2377, k1=1.523532903, tilt=0.0, eid='QI.227.B1')
 
-# bending magnets
-bl_73_i1 = SBend(
-    l=0.2,
-    angle=-0.1109740393,
-    e1=-0.05548702,
-    e2=-0.05548702,
-    gap=0,
-    tilt=1.570796327,
-    fint=0.0,
-    fintx=0.0,
-    eid='BL.73.I1',
-)
-bl_75_i1 = SBend(
-    l=0.2,
-    angle=0.0426524581,
-    e1=0.021326229,
-    e2=0.021326229,
-    gap=0,
-    tilt=1.570796327,
-    fint=0.0,
-    fintx=0.0,
-    eid='BL.75.I1',
-)
-bl_76_i1 = SBend(
-    l=0.2,
-    angle=0.0426524581,
-    e1=0.021326229,
-    e2=0.021326229,
-    gap=0,
-    tilt=1.570796327,
-    fint=0.0,
-    fintx=0.0,
-    eid='BL.76.I1',
-)
-bl_77_i1 = SBend(
-    l=0.2,
-    angle=-0.1109740393,
-    e1=-0.05548702,
-    e2=-0.05548702,
-    gap=0,
-    tilt=1.570796327,
-    fint=0.0,
-    fintx=0.0,
-    eid='BL.77.I1',
-)
-bl_78_i1 = SBend(
-    l=0.2,
-    angle=-0.1109740393,
-    e1=-0.05548702,
-    e2=-0.05548702,
-    gap=0,
-    tilt=1.570796327,
-    fint=0.0,
-    fintx=0.0,
-    eid='BL.78.I1',
-)
-bl_80_i1 = SBend(
-    l=0.2,
-    angle=0.0426524581,
-    e1=0.021326229,
-    e2=0.021326229,
-    gap=0,
-    tilt=1.570796327,
-    fint=0.0,
-    fintx=0.0,
-    eid='BL.80.I1',
-)
-bl_81_i1 = SBend(
-    l=0.2,
-    angle=0.0426524581,
-    e1=0.021326229,
-    e2=0.021326229,
-    gap=0,
-    tilt=1.570796327,
-    fint=0.0,
-    fintx=0.0,
-    eid='BL.81.I1',
-)
-bl_82_i1 = SBend(
-    l=0.2,
-    angle=-0.1109740393,
-    e1=-0.05548702,
-    e2=-0.05548702,
-    gap=0,
-    tilt=1.570796327,
-    fint=0.0,
-    fintx=0.0,
-    eid='BL.82.I1',
-)
-bl_83_i1 = SBend(
-    l=0.2,
-    angle=0.1109740393,
-    e1=0.05548702,
-    e2=0.05548702,
-    gap=0,
-    tilt=1.570796327,
-    fint=0.0,
-    fintx=0.0,
-    eid='BL.83.I1',
-)
-bl_85_i1 = SBend(
-    l=0.2,
-    angle=-0.0426524581,
-    e1=-0.021326229,
-    e2=-0.021326229,
-    gap=0,
-    tilt=1.570796327,
-    fint=0.0,
-    fintx=0.0,
-    eid='BL.85.I1',
-)
-bl_86_i1 = SBend(
-    l=0.2,
-    angle=-0.0426524581,
-    e1=-0.021326229,
-    e2=-0.021326229,
-    gap=0,
-    tilt=1.570796327,
-    fint=0.0,
-    fintx=0.0,
-    eid='BL.86.I1',
-)
-bl_87_i1 = SBend(
-    l=0.2,
-    angle=0.1109740393,
-    e1=0.05548702,
-    e2=0.05548702,
-    gap=0,
-    tilt=1.570796327,
-    fint=0.0,
-    fintx=0.0,
-    eid='BL.87.I1',
-)
-bl_88_i1 = SBend(
-    l=0.2,
-    angle=0.1109740393,
-    e1=0.05548702,
-    e2=0.05548702,
-    gap=0,
-    tilt=1.570796327,
-    fint=0.0,
-    fintx=0.0,
-    eid='BL.88.I1',
-)
-bl_90_i1 = SBend(
-    l=0.2,
-    angle=-0.0426524581,
-    e1=-0.021326229,
-    e2=-0.021326229,
-    gap=0,
-    tilt=1.570796327,
-    fint=0.0,
-    fintx=0.0,
-    eid='BL.90.I1',
-)
-bl_91_i1 = SBend(
-    l=0.2,
-    angle=-0.0426524581,
-    e1=-0.021326229,
-    e2=-0.021326229,
-    gap=0,
-    tilt=1.570796327,
-    fint=0.0,
-    fintx=0.0,
-    eid='BL.91.I1',
-)
-bl_92_i1 = SBend(
-    l=0.2,
-    angle=0.1109740393,
-    e1=0.05548702,
-    e2=0.05548702,
-    gap=0,
-    tilt=1.570796327,
-    fint=0.0,
-    fintx=0.0,
-    eid='BL.92.I1',
-)
-bb_96_i1 = SBend(
-    l=0.5, angle=0.1429424657, e1=0.0, e2=0.1429424657, gap=0, tilt=-1.570796327, fint=0.0, fintx=0.0, eid='BB.96.I1'
-)
-bb_98_i1 = SBend(
-    l=0.5, angle=-0.1429424657, e1=-0.1429424657, e2=0.0, gap=0, tilt=-1.570796327, fint=0.0, fintx=0.0, eid='BB.98.I1'
-)
-bb_100_i1 = SBend(
-    l=0.5, angle=-0.1429424657, e1=0.0, e2=-0.1429424657, gap=0, tilt=-1.570796327, fint=0.0, fintx=0.0, eid='BB.100.I1'
-)
-bb_101_i1 = SBend(
-    l=0.5, angle=0.1429424657, e1=0.1429424657, e2=0.0, gap=0, tilt=-1.570796327, fint=0.0, fintx=0.0, eid='BB.101.I1'
-)
-bb_182_b1 = SBend(
-    l=0.5, angle=0.0539306739, e1=0.0, e2=0.0539306739, gap=0, tilt=-1.570796327, fint=0.0, fintx=0.0, eid='BB.182.B1'
-)
-bb_191_b1 = SBend(
-    l=0.5, angle=-0.0539306739, e1=-0.0539306739, e2=0.0, gap=0, tilt=-1.570796327, fint=0.0, fintx=0.0, eid='BB.191.B1'
-)
-bb_193_b1 = SBend(
-    l=0.5, angle=-0.0539306739, e1=0.0, e2=-0.0539306739, gap=0, tilt=-1.570796327, fint=0.0, fintx=0.0, eid='BB.193.B1'
-)
-bb_202_b1 = SBend(
-    l=0.5, angle=0.0539306739, e1=0.0539306739, e2=0.0, gap=0, tilt=-1.570796327, fint=0.0, fintx=0.0, eid='BB.202.B1'
-)  # correctors
+
+# bending magnets 
+bl_73_i1 = SBend(l = 0.2, angle=-0.1109740393, e1=-0.05548702,  e2=-0.05548702, gap=0,  tilt=1.570796327, fint=0.0, fintx=0.0, eid='BL.73.I1')
+bl_75_i1 = SBend(l = 0.2, angle=0.0426524581,  e1=0.021326229,  e2=0.021326229, gap=0,  tilt=1.570796327, fint=0.0, fintx=0.0, eid='BL.75.I1')
+bl_76_i1 = SBend(l = 0.2, angle=0.0426524581,  e1=0.021326229,  e2=0.021326229, gap=0,  tilt=1.570796327, fint=0.0, fintx=0.0, eid='BL.76.I1')
+bl_77_i1 = SBend(l = 0.2, angle=-0.1109740393, e1=-0.05548702,  e2=-0.05548702, gap=0,  tilt=1.570796327, fint=0.0, fintx=0.0, eid='BL.77.I1')
+bl_78_i1 = SBend(l = 0.2, angle=-0.1109740393, e1=-0.05548702,  e2=-0.05548702, gap=0,  tilt=1.570796327, fint=0.0, fintx=0.0, eid='BL.78.I1')
+bl_80_i1 = SBend(l = 0.2, angle=0.0426524581,  e1=0.021326229,  e2=0.021326229, gap=0,  tilt=1.570796327, fint=0.0, fintx=0.0, eid='BL.80.I1')
+bl_81_i1 = SBend(l = 0.2, angle=0.0426524581,  e1=0.021326229,  e2=0.021326229, gap=0,  tilt=1.570796327, fint=0.0, fintx=0.0, eid='BL.81.I1')
+bl_82_i1 = SBend(l = 0.2, angle=-0.1109740393, e1=-0.05548702,  e2=-0.05548702, gap=0,  tilt=1.570796327, fint=0.0, fintx=0.0, eid='BL.82.I1')
+bl_83_i1 = SBend(l = 0.2, angle=0.1109740393,  e1=0.05548702,   e2=0.05548702, gap=0,   tilt=1.570796327, fint=0.0, fintx=0.0, eid='BL.83.I1')
+bl_85_i1 = SBend(l = 0.2, angle=-0.0426524581, e1=-0.021326229, e2=-0.021326229, gap=0, tilt=1.570796327, fint=0.0, fintx=0.0, eid='BL.85.I1')
+bl_86_i1 = SBend(l = 0.2, angle=-0.0426524581, e1=-0.021326229, e2=-0.021326229, gap=0, tilt=1.570796327, fint=0.0, fintx=0.0, eid='BL.86.I1')
+bl_87_i1 = SBend(l = 0.2, angle=0.1109740393,  e1=0.05548702,   e2=0.05548702, gap=0,   tilt=1.570796327, fint=0.0, fintx=0.0, eid='BL.87.I1')
+bl_88_i1 = SBend(l = 0.2, angle=0.1109740393,  e1=0.05548702,   e2=0.05548702, gap=0,   tilt=1.570796327, fint=0.0, fintx=0.0, eid='BL.88.I1')
+bl_90_i1 = SBend(l = 0.2, angle=-0.0426524581, e1=-0.021326229, e2=-0.021326229, gap=0, tilt=1.570796327, fint=0.0, fintx=0.0, eid='BL.90.I1')
+bl_91_i1 = SBend(l = 0.2, angle=-0.0426524581, e1=-0.021326229, e2=-0.021326229, gap=0, tilt=1.570796327, fint=0.0, fintx=0.0, eid='BL.91.I1')
+bl_92_i1 = SBend(l = 0.2, angle=0.1109740393,  e1=0.05548702,   e2=0.05548702, gap=0,   tilt=1.570796327, fint=0.0, fintx=0.0, eid='BL.92.I1')
+bb_96_i1 = SBend(l = 0.5, angle=0.1429424657,  e1=0.0,          e2=0.1429424657, gap=0, tilt=-1.570796327, fint=0.0, fintx=0.0, eid='BB.96.I1')
+bb_98_i1 = SBend(l = 0.5, angle=-0.1429424657, e1=-0.1429424657,e2=0.0,          gap=0, tilt=-1.570796327, fint=0.0, fintx=0.0, eid='BB.98.I1')
+bb_100_i1 = SBend(l = 0.5,angle=-0.1429424657, e1=0.0,          e2=-0.1429424657, gap=0, tilt=-1.570796327, fint=0.0, fintx=0.0, eid='BB.100.I1')
+bb_101_i1 = SBend(l = 0.5,angle=0.1429424657,  e1=0.1429424657, e2=0.0,         gap=0, tilt=-1.570796327, fint=0.0, fintx=0.0, eid='BB.101.I1')
+bb_182_b1 = SBend(l = 0.5,angle=0.0539306739,  e1=0.0,          e2=0.0539306739, gap=0, tilt=-1.570796327, fint=0.0, fintx=0.0, eid='BB.182.B1')
+bb_191_b1 = SBend(l = 0.5,angle=-0.0539306739, e1=-0.0539306739,e2=0.0,         gap=0, tilt=-1.570796327, fint=0.0, fintx=0.0, eid='BB.191.B1')
+bb_193_b1 = SBend(l = 0.5,angle=-0.0539306739, e1=0.0,          e2=-0.0539306739, gap=0, tilt=-1.570796327, fint=0.0, fintx=0.0, eid='BB.193.B1')
+bb_202_b1 = SBend(l = 0.5,angle=0.0539306739,  e1=0.0539306739, e2=0.0,           gap=0, tilt=-1.570796327, fint=0.0, fintx=0.0, eid='BB.202.B1')# correctors
 ciy_63_i1 = Vcor(l=0.1, angle=0.0, eid='CIY.63.I1')
 cix_65_i1 = Hcor(l=0.1, angle=0.0, eid='CIX.65.I1')
 ciy_72_i1 = Vcor(l=0.1, angle=0.0, eid='CIY.72.I1')
 cix_73i_i1 = Hcor(l=0.1, angle=0.0, eid='CIX.73I.I1')
 
-cbl_73_i1 = Drift(eid='CBL.73.I1')  #  Vcor(l=0.0, angle=0.0, eid='CBL.73.I1')
+cbl_73_i1 = Drift(eid='CBL.73.I1') #  Vcor(l=0.0, angle=0.0, eid='CBL.73.I1')
 
 cix_73ii_i1 = Hcor(l=0.1, angle=0.0, eid='CIX.73II.I1')
 ciy_75_i1 = Vcor(l=0.1, angle=0.0, eid='CIY.75.I1')
 cix_76_i1 = Hcor(l=0.1, angle=0.0, eid='CIX.76.I1')
 
-cbl_78_i1 = Drift(eid='CBL.78.I1')  #  Vcor(l=0.0, angle=0.0, eid='CBL.78.I1')
+cbl_78_i1 = Drift(eid='CBL.78.I1') #  Vcor(l=0.0, angle=0.0, eid='CBL.78.I1')
 
 cix_78_i1 = Hcor(l=0.1, angle=0.0, eid='CIX.78.I1')
 ciy_80_i1 = Vcor(l=0.1, angle=0.0, eid='CIY.80.I1')
 cix_81_i1 = Hcor(l=0.1, angle=0.0, eid='CIX.81.I1')
 
-cbl_83_i1 = Drift(eid='CBL.83.I1')  # Vcor(l=0.0, angle=0.0, eid='CBL.83.I1')
+cbl_83_i1 = Drift(eid='CBL.83.I1') # Vcor(l=0.0, angle=0.0, eid='CBL.83.I1')
 
 cix_83_i1 = Hcor(l=0.1, angle=0.0, eid='CIX.83.I1')
 ciy_85_i1 = Vcor(l=0.1, angle=0.0, eid='CIY.85.I1')
 cix_86_i1 = Hcor(l=0.1, angle=0.0, eid='CIX.86.I1')
 
-cbl_88_i1 = Drift(eid='CBL.88.I1')  #  Vcor(l=0.0, angle=0.0, eid='CBL.88.I1')
+cbl_88_i1 = Drift(eid='CBL.88.I1') #  Vcor(l=0.0, angle=0.0, eid='CBL.88.I1')
 
 cix_88_i1 = Hcor(l=0.1, angle=0.0, eid='CIX.88.I1')
 
-cbl_90_i1 = Drift(eid='CBL.90.I1')  #  Vcor(l=0.0, angle=0.0, eid='CBL.90.I1')
+cbl_90_i1 = Drift(eid='CBL.90.I1') #  Vcor(l=0.0, angle=0.0, eid='CBL.90.I1')
 
 cix_90_i1 = Hcor(l=0.1, angle=0.0, eid='CIX.90.I1')
 ciy_92_i1 = Vcor(l=0.1, angle=0.0, eid='CIY.92.I1')
 ciy_94_i1 = Vcor(l=0.1, angle=0.0, eid='CIY.94.I1')
 cix_95_i1 = Hcor(l=0.1, angle=0.0, eid='CIX.95.I1')
 
-cbb_98_i1 = Drift(eid='CBB.98.I1')  # Vcor(l=0.0, angle=0.0, eid='CBB.98.I1')
-cbb_100_i1 = Drift(eid='CBB.100.I1')  # Vcor(l=0.0, angle=0.0, eid='CBB.100.I1')
-cbb_101_i1 = Drift(eid='CBB.101.I1')  # Vcor(l=0.0, angle=0.0, eid='CBB.101.I1')
+cbb_98_i1 = Drift(eid='CBB.98.I1') # Vcor(l=0.0, angle=0.0, eid='CBB.98.I1')
+cbb_100_i1 = Drift(eid='CBB.100.I1') # Vcor(l=0.0, angle=0.0, eid='CBB.100.I1')
+cbb_101_i1 = Drift(eid='CBB.101.I1') # Vcor(l=0.0, angle=0.0, eid='CBB.101.I1')
 
 cix_102_i1 = Hcor(l=0.1, angle=0.0, eid='CIX.102.I1')
 ciy_103_i1 = Vcor(l=0.1, angle=0.0, eid='CIY.103.I1')
@@ -476,9 +301,9 @@ cix_177_b1 = Hcor(l=0.1, angle=0.0, eid='CIX.177.B1')
 ccx_179_b1 = Hcor(l=0.1, angle=0.0, eid='CCX.179.B1')
 ccy_181_b1 = Vcor(l=0.1, angle=0.0, eid='CCY.181.B1')
 
-cbb_191_b1 = Drift(eid='CBB.191.B1')  # Vcor(l=0.0, angle=0.0, eid='CBB.191.B1')
-cbb_193_b1 = Drift(eid='CBB.193.B1')  # Vcor(l=0.0, angle=0.0, eid='CBB.193.B1')
-cbb_202_b1 = Drift(eid='CBB.202.B1')  # Vcor(l=0.0, angle=0.0, eid='CBB.202.B1')
+cbb_191_b1 = Drift(eid='CBB.191.B1') # Vcor(l=0.0, angle=0.0, eid='CBB.191.B1')
+cbb_193_b1 = Drift(eid='CBB.193.B1') # Vcor(l=0.0, angle=0.0, eid='CBB.193.B1')
+cbb_202_b1 = Drift(eid='CBB.202.B1') # Vcor(l=0.0, angle=0.0, eid='CBB.202.B1')
 
 ciy_204_b1 = Vcor(l=0.1, angle=0.0, eid='CIY.204.B1')
 cix_205_b1 = Hcor(l=0.1, angle=0.0, eid='CIX.205.B1')
@@ -575,6 +400,11 @@ engrd_228_b1 = Marker(eid='ENGRD.228.B1')
 enlat_229_b1 = Marker(eid='ENLAT.229.B1')
 ensub_229_b1 = Marker(eid='ENSUB.229.B1')
 
+dl_bc0_interface = Marker(eid="DL-BC0 interface: just before the first BC0 chicane dipole")
+bc0_l1_interface = Marker(eid="BC0-L1 interface: just after the last BC0 chicane dipole")
+l1_stop_bc1_start = Marker(eid="L1-BC1 interface: just before the first BC1 chicane dipole")
+bc1_l2_interface = Marker(eid="BC1-L2 interface: not long after the last BC1 chicane dipole")
+
 # monitor
 bpma_63_i1 = Monitor(eid='BPMA.63.I1')
 bpma_72_i1 = Monitor(eid='BPMA.72.I1')
@@ -617,28 +447,29 @@ bpma_223_b1 = Monitor(eid='BPMA.223.B1')
 bpma_226_b1 = Monitor(eid='BPMA.226.B1')
 bpma_227_b1 = Monitor(eid='BPMA.227.B1')
 
-# sextupoles
-sc_74i_i1 = Sextupole(l=0.1121, k2=1.0 / 0.1121 * -9.817522762156, tilt=1.570796327, eid='SC.74I.I1')
-sc_74ii_i1 = Sextupole(l=0.1121, k2=1.0 / 0.1121 * -5.948211333809, tilt=1.570796327, eid='SC.74II.I1')
-sc_76_i1 = Sextupole(l=0.1121, k2=1.0 / 0.1121 * -5.948211333809, tilt=1.570796327, eid='SC.76.I1')
-sc_77_i1 = Sextupole(l=0.1121, k2=1.0 / 0.1121 * -9.817522762156, tilt=1.570796327, eid='SC.77.I1')
-sc_79i_i1 = Sextupole(l=0.1121, k2=1.0 / 0.1121 * -9.817522762156, tilt=1.570796327, eid='SC.79I.I1')
-sc_79ii_i1 = Sextupole(l=0.1121, k2=1.0 / 0.1121 * -5.948211333809, tilt=1.570796327, eid='SC.79II.I1')
-sc_81_i1 = Sextupole(l=0.1121, k2=1.0 / 0.1121 * -5.948211333809, tilt=1.570796327, eid='SC.81.I1')
-sc_82_i1 = Sextupole(l=0.1121, k2=1.0 / 0.1121 * -9.817522762156, tilt=1.570796327, eid='SC.82.I1')
-sc_84i_i1 = Sextupole(l=0.1121, k2=1.0 / 0.1121 * 9.817522762156, tilt=1.570796327, eid='SC.84I.I1')
-sc_84ii_i1 = Sextupole(l=0.1121, k2=1.0 / 0.1121 * 5.948211333809, tilt=1.570796327, eid='SC.84II.I1')
-sc_86_i1 = Sextupole(l=0.1121, k2=1.0 / 0.1121 * 5.948211333809, tilt=1.570796327, eid='SC.86.I1')
-sc_87_i1 = Sextupole(l=0.1121, k2=1.0 / 0.1121 * 9.817522762156, tilt=1.570796327, eid='SC.87.I1')
-sc_89i_i1 = Sextupole(l=0.1121, k2=1.0 / 0.1121 * 9.817522762156, tilt=1.570796327, eid='SC.89I.I1')
-sc_89ii_i1 = Sextupole(l=0.1121, k2=1.0 / 0.1121 * 5.948211333809, tilt=1.570796327, eid='SC.89II.I1')
-sc_91_i1 = Sextupole(l=0.1121, k2=1.0 / 0.1121 * 5.948211333809, tilt=1.570796327, eid='SC.91.I1')
-sc_92_i1 = Sextupole(l=0.1121, k2=1.0 / 0.1121 * 9.817522762156, tilt=1.570796327, eid='SC.92.I1')
+
+# sextupoles 
+sc_74i_i1 = Sextupole(l=0.1121,  k2=1.0/0.1121*-9.817522762156, tilt=1.570796327, eid='SC.74I.I1')
+sc_74ii_i1 = Sextupole(l=0.1121, k2=1.0/0.1121*-5.948211333809, tilt=1.570796327, eid='SC.74II.I1')
+sc_76_i1 = Sextupole(l=0.1121,   k2=1.0/0.1121*-5.948211333809, tilt=1.570796327, eid='SC.76.I1')
+sc_77_i1 = Sextupole(l=0.1121,   k2=1.0/0.1121*-9.817522762156, tilt=1.570796327, eid='SC.77.I1')
+sc_79i_i1 = Sextupole(l=0.1121,  k2=1.0/0.1121*-9.817522762156, tilt=1.570796327, eid='SC.79I.I1')
+sc_79ii_i1 = Sextupole(l=0.1121, k2=1.0/0.1121*-5.948211333809, tilt=1.570796327, eid='SC.79II.I1')
+sc_81_i1 = Sextupole(l=0.1121,   k2=1.0/0.1121*-5.948211333809, tilt=1.570796327, eid='SC.81.I1')
+sc_82_i1 = Sextupole(l=0.1121,   k2=1.0/0.1121*-9.817522762156, tilt=1.570796327, eid='SC.82.I1')
+sc_84i_i1 = Sextupole(l=0.1121,  k2=1.0/0.1121*9.817522762156,  tilt=1.570796327, eid='SC.84I.I1')
+sc_84ii_i1 = Sextupole(l=0.1121, k2=1.0/0.1121*5.948211333809,  tilt=1.570796327, eid='SC.84II.I1')
+sc_86_i1 = Sextupole(l=0.1121,   k2=1.0/0.1121*5.948211333809,  tilt=1.570796327, eid='SC.86.I1')
+sc_87_i1 = Sextupole(l=0.1121,   k2=1.0/0.1121*9.817522762156,  tilt=1.570796327, eid='SC.87.I1')
+sc_89i_i1 = Sextupole(l=0.1121,  k2=1.0/0.1121*9.817522762156,  tilt=1.570796327, eid='SC.89I.I1')
+sc_89ii_i1 = Sextupole(l=0.1121, k2=1.0/0.1121*5.948211333809,  tilt=1.570796327, eid='SC.89II.I1')
+sc_91_i1 = Sextupole(l=0.1121,   k2=1.0/0.1121*5.948211333809,  tilt=1.570796327, eid='SC.91.I1')
+sc_92_i1 = Sextupole(l=0.1121,   k2=1.0/0.1121*9.817522762156,  tilt=1.570796327, eid='SC.92.I1')
 # octu-20.1120.0*0*
 
-# undulator
+# undulator 
 
-# cavity
+# cavity 
 c_a2_1_1_l1 = Cavity(l=1.0377, v=0.0178125, freq=1300000000.0, phi=0.0, eid='C.A2.1.1.L1')
 c_a2_1_2_l1 = Cavity(l=1.0377, v=0.0178125, freq=1300000000.0, phi=0.0, eid='C.A2.1.2.L1')
 c_a2_1_3_l1 = Cavity(l=1.0377, v=0.0178125, freq=1300000000.0, phi=0.0, eid='C.A2.1.3.L1')
@@ -672,6 +503,7 @@ c_a2_4_6_l1 = Cavity(l=1.0377, v=0.0178125, freq=1300000000.0, phi=0.0, eid='C.A
 c_a2_4_7_l1 = Cavity(l=1.0377, v=0.0178125, freq=1300000000.0, phi=0.0, eid='C.A2.4.7.L1')
 c_a2_4_8_l1 = Cavity(l=1.0377, v=0.0178125, freq=1300000000.0, phi=0.0, eid='C.A2.4.8.L1')
 tdsb_208_b1 = TDCavity(l=1.5, v=0.0, freq=2800000.0, phi=0.0, eid='TDSB.208.B1')
+
 
 # UnknowElement
 
@@ -1020,6 +852,7 @@ def make_cell():
         # stlat_96_i1,
         # dogleg end
         d_94,
+        dl_bc0_interface,
         stlat_96_i1,
         bb_96_i1,
         d_95,
@@ -1052,6 +885,7 @@ def make_cell():
         ciy_103_i1,
         d_88,
         enlat_101_i1,
+        bc0_l1_interface,
         qi_103_i1,
         d_9,
         bpma_103_i1,
@@ -1205,7 +1039,7 @@ def make_cell():
         d_139,
         c_a2_4_7_l1,
         d_139,
-        c_a2_4_8_l1,
+        c_a2_4_8_l1,  
         d_157,
         q_170_l1,
         d_158,
@@ -1263,9 +1097,10 @@ def make_cell():
         d_206,
         engrd_181_b1,
         d_106,
+        l1_stop_bc1_start,  # BC1 marker start
         stlat_182_b1,
         d_208,
-        bb_182_b1,
+        bb_182_b1,  # First BC1 chicane dipole
         d_209,
         bb_191_b1,
         d_210,
@@ -1281,9 +1116,9 @@ def make_cell():
         d_215,
         srm_194_b1,
         d_216,
-        bb_202_b1,
+        bb_202_b1,   # Last BC1 chicane dipole.
         d_210,
-        cbb_202_b1,
+        cbb_202_b1,   
         d_103,
         enlat_202_b1,
         match_202_b1,
@@ -1297,7 +1132,8 @@ def make_cell():
         d_90,
         bpmf_203_b1,
         d_223,
-        tora_203_b1,
+        bc1_l2_interface,
+        tora_203_b1, 
         d_224,
         ciy_204_b1,
         d_225,

@@ -42,11 +42,11 @@ d_18 = Drift(l=0.35, eid='D_18')
 d_19 = Drift(l=1.01327, eid='D_19')
 
 # Quadrupoles
-qf_469_b2d = Quadrupole(l=0.5321, k1=-2.1994287150911482, eid='QF.469.B2D')
-qe_471_b2d = Quadrupole(l=0.24, k1=1.3355396508333333, eid='QE.471.B2D')
-qf_472_b2d = Quadrupole(l=0.5321, k1=-2.1994287150911482, eid='QF.472.B2D')
-qf_476_b2d = Quadrupole(l=0.5321, k1=3.1309789300883293, eid='QF.476.B2D')
-qf_477_b2d = Quadrupole(l=0.5321, k1=0.7703645572260853, eid='QF.477.B2D')
+qf_469_b2d = Quadrupole(l=0.5321, k1=-2.19942871499906, tilt=0.0, eid='QF.469.B2D')
+qe_471_b2d = Quadrupole(l=0.24, k1=1.335539651, tilt=0.0, eid='QE.471.B2D')
+qf_472_b2d = Quadrupole(l=0.5321, k1=-2.19942871499906, tilt=0.0, eid='QF.472.B2D')
+qf_476_b2d = Quadrupole(l=0.5321, k1=3.1309789299999995, tilt=0.0, eid='QF.476.B2D')
+qf_477_b2d = Quadrupole(l=0.5321, k1=0.7703645572993798, tilt=0.0, eid='QF.477.B2D')
 
 # SBends
 bg_467_b2d = SBend(l=1.5971, angle=0.2094395102, tilt=1.570796327, eid='BG.467.B2D')

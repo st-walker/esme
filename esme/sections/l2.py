@@ -112,7 +112,7 @@ d_264 = Drift(l=0.37055, eid='D_264')
 d_265 = Drift(l=0.46112, eid='D_265')
 d_266 = Drift(l=0.33165, eid='D_266')
 
-# quadrupoles
+# quadrupoles 
 qd_231_b1 = Quadrupole(l=0.2367, k1=1.655730773, tilt=0.0, eid='QD.231.B1')
 qd_232_b1 = Quadrupole(l=0.2367, k1=-1.250171811, tilt=0.0, eid='QD.232.B1')
 qd_233_b1 = Quadrupole(l=0.2367, k1=-0.4397248283, tilt=0.0, eid='QD.233.B1')
@@ -150,21 +150,13 @@ qd_463_b2 = Quadrupole(l=0.2367, k1=-0.5696070976, tilt=0.0, eid='QD.463.B2')
 qd_464_b2 = Quadrupole(l=0.2367, k1=1.29826785, tilt=0.0, eid='QD.464.B2')
 qd_465_b2 = Quadrupole(l=0.2367, k1=-0.2468610055, tilt=0.0, eid='QD.465.B2')
 
-# bending magnets
-bb_393_b2 = SBend(
-    l=0.5, angle=0.0455530935, e1=0.0, e2=0.0455530935, gap=0, tilt=-1.570796327, fint=0.0, fintx=0.0, eid='BB.393.B2'
-)
-bb_402_b2 = SBend(
-    l=0.5, angle=-0.0455530935, e1=-0.0455530935, e2=0.0, gap=0, tilt=-1.570796327, fint=0.0, fintx=0.0, eid='BB.402.B2'
-)
-bb_404_b2 = SBend(
-    l=0.5, angle=-0.0455530935, e1=0.0, e2=-0.0455530935, gap=0, tilt=-1.570796327, fint=0.0, fintx=0.0, eid='BB.404.B2'
-)
-bb_413_b2 = SBend(
-    l=0.5, angle=0.0455530935, e1=0.0455530935, e2=0.0, gap=0, tilt=-1.570796327, fint=0.0, fintx=0.0, eid='BB.413.B2'
-)
+# bending magnets 
+bb_393_b2 = SBend(l = 0.5, angle=0.0455530935, e1=0.0, e2=0.0455530935, gap=0, tilt=-1.570796327, fint=0.0, fintx=0.0, eid='BB.393.B2')
+bb_402_b2 = SBend(l = 0.5, angle=-0.0455530935, e1=-0.0455530935, e2=0.0, gap=0, tilt=-1.570796327, fint=0.0, fintx=0.0, eid='BB.402.B2')
+bb_404_b2 = SBend(l = 0.5, angle=-0.0455530935, e1=0.0, e2=-0.0455530935, gap=0, tilt=-1.570796327, fint=0.0, fintx=0.0, eid='BB.404.B2')
+bb_413_b2 = SBend(l = 0.5, angle=0.0455530935, e1=0.0455530935, e2=0.0, gap=0, tilt=-1.570796327, fint=0.0, fintx=0.0, eid='BB.413.B2')
 
-# correctors
+# correctors 
 ccx_232_b1 = Hcor(l=0.1, angle=0.0, eid='CCX.232.B1')
 ccy_232_b1 = Vcor(l=0.1, angle=0.0, eid='CCY.232.B1')
 cx_249_l2 = Hcor(l=0.0, angle=0.0, eid='CX.249.L2')
@@ -184,9 +176,9 @@ ccx_388_b2 = Hcor(l=0.1, angle=0.0, eid='CCX.388.B2')
 ccy_391_b2 = Vcor(l=0.1, angle=0.0, eid='CCY.391.B2')
 ccx_392_b2 = Hcor(l=0.1, angle=0.0, eid='CCX.392.B2')
 
-cbb_403_b2 = Drift(eid='CBB.403.B2')  # Vcor(l=0.0, angle=0.0, eid='CBB.403.B2')
-cbb_405_b2 = Drift(eid='CBB.405.B2')  # Vcor(l=0.0, angle=0.0, eid='CBB.405.B2')
-cbb_414_b2 = Drift(eid='CBB.414.B2')  # Vcor(l=0.0, angle=0.0, eid='CBB.414.B2')
+cbb_403_b2 = Drift(eid='CBB.403.B2') # Vcor(l=0.0, angle=0.0, eid='CBB.403.B2')
+cbb_405_b2 = Drift(eid='CBB.405.B2') # Vcor(l=0.0, angle=0.0, eid='CBB.405.B2')
+cbb_414_b2 = Drift(eid='CBB.414.B2') # Vcor(l=0.0, angle=0.0, eid='CBB.414.B2')
 
 ccx_415_b2 = Hcor(l=0.1, angle=0.0, eid='CCX.415.B2')
 ccy_416_b2 = Vcor(l=0.1, angle=0.0, eid='CCY.416.B2')
@@ -335,7 +327,7 @@ bpma_465_b2 = Monitor(eid='BPMA.465.B2')
 
 # undulator
 
-# cavity
+# cavity 
 c_a3_1_1_l2 = Cavity(l=1.0377, v=0.0177083334375, freq=1300000000.0, phi=0.0, eid='C.A3.1.1.L2')
 c_a3_1_2_l2 = Cavity(l=1.0377, v=0.0177083334375, freq=1300000000.0, phi=0.0, eid='C.A3.1.2.L2')
 c_a3_1_3_l2 = Cavity(l=1.0377, v=0.0177083334375, freq=1300000000.0, phi=0.0, eid='C.A3.1.3.L2')
@@ -436,6 +428,10 @@ tdsb_428_b2 = TDCavity(l=1.5, v=0.0, freq=2800000.0, phi=0.0, eid='TDSB.428.B2')
 tdsb_430_b2 = TDCavity(l=1.5, v=0.0, freq=2800000.0, phi=0.0, eid='TDSB.430.B2')
 
 # UnknowElement
+
+l2_bc2_interface = Marker(eid="L2-BC2 interface: some way after the last L2 cavity")
+bc2_b2d_interface = Marker(eid="BC2-B2D interface: just before the B2D dump dipole")
+matching_point = Marker(eid="BC2 matching point")
 
 # Matrices
 tds2 = Marker(eid="TDS_Center")
@@ -887,6 +883,7 @@ cell = (
     d_211,
     bpma_426_b2,
     d_212,
+    matching_point,
     qd_427_b2,
     d_213,
     engrd_427_b2,
@@ -1482,7 +1479,7 @@ def make_cell():
         d_13,
         c_a5_4_7_l2,
         d_13,
-        c_a5_4_8_l2,
+        c_a5_4_8_l2,  # Last L2 accelerating cavity
         d_20,
         q_381_l2,
         d_21,
@@ -1540,7 +1537,8 @@ def make_cell():
         d_178,
         engrd_393_b2,
         d_179,
-        stlat_393_b2,
+        l2_bc2_interface,
+        stlat_393_b2,  # End of L2
         d_180,
         bb_393_b2,
         d_181,
@@ -1576,7 +1574,8 @@ def make_cell():
         d_195,
         # tora_415_b2,
         d_196,
-        tora_415_b2,
+        bc2_b2d_interface,
+        tora_415_b2,  # End of BC2 section
         qd_415_b2,
         d_197,
         ccx_415_b2,
@@ -1609,6 +1608,7 @@ def make_cell():
         d_211,
         bpma_426_b2,
         d_212,
+        matching_point,
         qd_427_b2,
         d_213,
         engrd_427_b2,

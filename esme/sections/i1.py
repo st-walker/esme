@@ -49,6 +49,30 @@ def make_twiss0_at_cathode():
     tws.alpha_x = 18.185436972983993
     tws.alpha_y = 18.185436972983982
 
+    # # Nina's mad8
+    # tws.beta_x  = 55.79626602
+    # tws.beta_y  = 55.79626602
+    # tws.alpha_x = 18.18807265
+    # tws.alpha_y = 18.18807265
+
+    # # Igor.
+    # tws.beta_x  = 53.35971898
+    # tws.beta_y  = 58.31307349
+    # tws.alpha_x = 17.3149486
+    # tws.alpha_y = 19.09296961
+    tws.s = 23.2
+
+    beta_x  = 62.60423946234019
+    beta_y  = 70.6513903650761
+    alpha_x = 18.759585504978787
+    alpha_y = 21.02107263460874
+
+    
+    # tws.beta_x  = 62.60423946234019
+    # tws.beta_y  = 70.6513903650761
+    # tws.alpha_x = 18.759585504978787
+    # tws.alpha_y = 21.02107263460874
+    
 
     return tws
 
@@ -135,28 +159,24 @@ d_68 = Drift(l=0.23515, eid='D_68')
 d_69 = Drift(l=0.43115, eid='D_69')
 d_70 = Drift(l=0.1, eid='D_70')
 # Quadrupoles
+
+
+# Quadrupoles
 qln_23_i1 = Quadrupole(l=0.05, eid='QLN.23.I1')
 qls_23_i1 = Quadrupole(l=0.05, tilt=0.785398163, eid='QLS.23.I1')
 q_37_i1 = Quadrupole(l=0.2136, k1=-1.448361582, eid='Q.37.I1')
 q_38_i1 = Quadrupole(l=0.2136, k1=1.4535982140, eid='Q.38.I1')
-
-
 qi_46_i1 = Quadrupole(l=0.2377, k1=-0.2247807673, eid='QI.46.I1')
-
 qi_47_i1 = Quadrupole(l=0.2377, k1=0.6927621982, eid='QI.47.I1')
 qi_50_i1 = Quadrupole(l=0.2377, k1=-0.86466232944, eid='QI.50.I1')
 qi_52_i1 = Quadrupole(l=0.2377, k1=-0.3522076137989062, eid='QI.52.I1')
-
 qi_53_i1 = Quadrupole(l=0.2377, k1=2.1047941859486747, eid='QI.53.I1')
 qi_54_i1 = Quadrupole(l=0.2377, k1=0.7943661064366849, eid='QI.54.I1')
-
-qi_55_i1 = Quadrupole(l=0.2377, k1=-3.526311, tilt=0.0, eid='QI.55.I1')
-qi_57_i1 = Quadrupole(l=0.2377, k1=3.526311, tilt=0.0, eid='QI.57.I1')
-qi_59_i1 = Quadrupole(l=0.2377, k1=-3.526311, tilt=0.0, eid='QI.59.I1')
-
-qi_60_i1 = Quadrupole(l=0.2377, k1=2.145682287, tilt=0.0, eid='QI.60.I1')
-qi_61_i1 = Quadrupole(l=0.2377, k1=0.8685937479, tilt=0.0, eid='QI.61.I1')
-
+qi_55_i1 = Quadrupole(l=0.2377, k1=-2.6383360778291967, eid='QI.55.I1')
+qi_57_i1 = Quadrupole(l=0.2377, k1=3.278062023979807, eid='QI.57.I1')
+qi_59_i1 = Quadrupole(l=0.2377, k1=-2.6383360778291967, eid='QI.59.I1')
+qi_60_i1 = Quadrupole(l=0.2377, k1=1.9778194619267986, eid='QI.60.I1')
+qi_61_i1 = Quadrupole(l=0.2377, k1=0.8708619869583508, eid='QI.61.I1')
 
 # SBends
 bl_48i_i1 = SBend(l=0.2, angle=-0.099484, e2=-0.099484, eid='BL.48I.I1')
@@ -184,253 +204,37 @@ ciy_55_i1 = Vcor(l=0.1, eid='CIY.55.I1')
 ciy_58_i1 = Vcor(l=0.1, eid='CIY.58.I1')
 
 # Undulators
-Kx = 1.294
-Kx = 1.315
+Kx= 1.294
+Kx=1.315
 undu_49_i1 = Undulator(lperiod=0.074, nperiods=10.0, Kx=Kx, eid='UNDU.49.I1')
 
 # Cavitys
-dip_kick = 0.0
-mon_kick = 0.0
-c_a1_1_1_i1 = Cavity(
-    l=1.0377,
-    v=0.018125,
-    freq=1300000000.0,
-    vx_up=(-5.6813e-05 + 1.0751e-05j) * dip_kick,
-    vy_up=(-4.1091e-05 + 5.739e-07j) * dip_kick,
-    vxx_up=(0.00099943 - 0.00081401j) * mon_kick,
-    vxy_up=(0.0034065 - 0.0004146j) * mon_kick,
-    vx_down=(-2.4014e-05 + 1.2492e-05j) * dip_kick,
-    vy_down=(3.6481e-05 + 7.9888e-06j) * dip_kick,
-    vxx_down=(-0.004057 - 0.0001369j) * mon_kick,
-    vxy_down=(0.0029243 - 1.2891e-05j) * mon_kick,
-    eid='C.A1.1.1.I1',
-)
-c_a1_1_2_i1 = Cavity(
-    l=1.0377,
-    v=0.018125,
-    freq=1300000000.0,
-    vx_up=(-5.6813e-05 + 1.0751e-05j) * dip_kick,
-    vy_up=(-4.1091e-05 + 5.739e-07j) * dip_kick,
-    vxx_up=(0.00099943 - 0.00081401j) * mon_kick,
-    vxy_up=(0.0034065 - 0.0004146j) * mon_kick,
-    vx_down=(-2.4014e-05 + 1.2492e-05j) * dip_kick,
-    vy_down=(3.6481e-05 + 7.9888e-06j) * dip_kick,
-    vxx_down=(-0.004057 - 0.0001369j) * mon_kick,
-    vxy_down=(0.0029243 - 1.2891e-05j) * mon_kick,
-    eid='C.A1.1.2.I1',
-)
-c_a1_1_3_i1 = Cavity(
-    l=1.0377,
-    v=0.018125,
-    freq=1300000000.0,
-    vx_up=(-5.6813e-05 + 1.0751e-05j) * dip_kick,
-    vy_up=(-4.1091e-05 + 5.739e-07j) * dip_kick,
-    vxx_up=(0.00099943 - 0.00081401j) * mon_kick,
-    vxy_up=(0.0034065 - 0.0004146j) * mon_kick,
-    vx_down=(-2.4014e-05 + 1.2492e-05j) * dip_kick,
-    vy_down=(3.6481e-05 + 7.9888e-06j) * dip_kick,
-    vxx_down=(-0.004057 - 0.0001369j) * mon_kick,
-    vxy_down=(0.0029243 - 1.2891e-05j) * mon_kick,
-    eid='C.A1.1.3.I1',
-)
-c_a1_1_4_i1 = Cavity(
-    l=1.0377,
-    v=0.018125,
-    freq=1300000000.0,
-    vx_up=(-5.6813e-05 + 1.0751e-05j) * dip_kick,
-    vy_up=(-4.1091e-05 + 5.739e-07j) * dip_kick,
-    vxx_up=(0.00099943 - 0.00081401j) * mon_kick,
-    vxy_up=(0.0034065 - 0.0004146j) * mon_kick,
-    vx_down=(-2.4014e-05 + 1.2492e-05j) * dip_kick,
-    vy_down=(3.6481e-05 + 7.9888e-06j) * dip_kick,
-    vxx_down=(-0.004057 - 0.0001369j) * mon_kick,
-    vxy_down=(0.0029243 - 1.2891e-05j) * mon_kick,
-    eid='C.A1.1.4.I1',
-)
-c_a1_1_5_i1 = Cavity(
-    l=1.0377,
-    v=0.018125,
-    freq=1300000000.0,
-    vx_up=(-5.6813e-05 + 1.0751e-05j) * dip_kick,
-    vy_up=(-4.1091e-05 + 5.739e-07j) * dip_kick,
-    vxx_up=(0.00099943 - 0.00081401j) * mon_kick,
-    vxy_up=(0.0034065 - 0.0004146j) * mon_kick,
-    vx_down=(-2.4014e-05 + 1.2492e-05j) * dip_kick,
-    vy_down=(3.6481e-05 + 7.9888e-06j) * dip_kick,
-    vxx_down=(-0.004057 - 0.0001369j) * mon_kick,
-    vxy_down=(0.0029243 - 1.2891e-05j) * mon_kick,
-    eid='C.A1.1.5.I1',
-)
-c_a1_1_6_i1 = Cavity(
-    l=1.0377,
-    v=0.018125,
-    freq=1300000000.0,
-    vx_up=(-5.6813e-05 + 1.0751e-05j) * dip_kick,
-    vy_up=(-4.1091e-05 + 5.739e-07j) * dip_kick,
-    vxx_up=(0.00099943 - 0.00081401j) * mon_kick,
-    vxy_up=(0.0034065 - 0.0004146j) * mon_kick,
-    vx_down=(-2.4014e-05 + 1.2492e-05j) * dip_kick,
-    vy_down=(3.6481e-05 + 7.9888e-06j) * dip_kick,
-    vxx_down=(-0.004057 - 0.0001369j) * mon_kick,
-    vxy_down=(0.0029243 - 1.2891e-05j) * mon_kick,
-    eid='C.A1.1.6.I1',
-)
-c_a1_1_7_i1 = Cavity(
-    l=1.0377,
-    v=0.018125,
-    freq=1300000000.0,
-    vx_up=(-5.6813e-05 + 1.0751e-05j) * dip_kick,
-    vy_up=(-4.1091e-05 + 5.739e-07j) * dip_kick,
-    vxx_up=(0.00099943 - 0.00081401j) * mon_kick,
-    vxy_up=(0.0034065 - 0.0004146j) * mon_kick,
-    vx_down=(-2.4014e-05 + 1.2492e-05j) * dip_kick,
-    vy_down=(3.6481e-05 + 7.9888e-06j) * dip_kick,
-    vxx_down=(-0.004057 - 0.0001369j) * mon_kick,
-    vxy_down=(0.0029243 - 1.2891e-05j) * mon_kick,
-    eid='C.A1.1.7.I1',
-)
-c_a1_1_8_i1 = Cavity(
-    l=1.0377,
-    v=0.018125,
-    freq=1300000000.0,
-    vx_up=(-5.6813e-05 + 1.0751e-05j) * dip_kick,
-    vy_up=(-4.1091e-05 + 5.739e-07j) * dip_kick,
-    vxx_up=(0.00099943 - 0.00081401j) * mon_kick,
-    vxy_up=(0.0034065 - 0.0004146j) * mon_kick,
-    vx_down=(-2.4014e-05 + 1.2492e-05j) * dip_kick,
-    vy_down=(3.6481e-05 + 7.9888e-06j) * dip_kick,
-    vxx_down=(-0.004057 - 0.0001369j) * mon_kick,
-    vxy_down=(0.0029243 - 1.2891e-05j) * mon_kick,
-    eid='C.A1.1.8.I1',
-)
+dip_kick = 0
+c_a1_1_1_i1 = Cavity(l=1.0377, v=0.018125, freq=1300000000.0, vx_up=(-5.6813e-05+1.0751e-05j)*dip_kick, vy_up=(-4.1091e-05+5.739e-07j)*dip_kick, vxx_up=(0.00099943-0.00081401j), vxy_up=(0.0034065-0.0004146j), vx_down=(-2.4014e-05+1.2492e-05j)*dip_kick, vy_down=(3.6481e-05+7.9888e-06j)*dip_kick, vxx_down=(-0.004057-0.0001369j), vxy_down=(0.0029243-1.2891e-05j), eid='C.A1.1.1.I1')
+c_a1_1_2_i1 = Cavity(l=1.0377, v=0.018125, freq=1300000000.0, vx_up=(-5.6813e-05+1.0751e-05j)*dip_kick, vy_up=(-4.1091e-05+5.739e-07j)*dip_kick, vxx_up=(0.00099943-0.00081401j), vxy_up=(0.0034065-0.0004146j), vx_down=(-2.4014e-05+1.2492e-05j)*dip_kick, vy_down=(3.6481e-05+7.9888e-06j)*dip_kick, vxx_down=(-0.004057-0.0001369j), vxy_down=(0.0029243-1.2891e-05j), eid='C.A1.1.2.I1')
+c_a1_1_3_i1 = Cavity(l=1.0377, v=0.018125, freq=1300000000.0, vx_up=(-5.6813e-05+1.0751e-05j)*dip_kick, vy_up=(-4.1091e-05+5.739e-07j)*dip_kick, vxx_up=(0.00099943-0.00081401j), vxy_up=(0.0034065-0.0004146j), vx_down=(-2.4014e-05+1.2492e-05j)*dip_kick, vy_down=(3.6481e-05+7.9888e-06j)*dip_kick, vxx_down=(-0.004057-0.0001369j), vxy_down=(0.0029243-1.2891e-05j), eid='C.A1.1.3.I1')
+c_a1_1_4_i1 = Cavity(l=1.0377, v=0.018125, freq=1300000000.0, vx_up=(-5.6813e-05+1.0751e-05j)*dip_kick, vy_up=(-4.1091e-05+5.739e-07j)*dip_kick, vxx_up=(0.00099943-0.00081401j), vxy_up=(0.0034065-0.0004146j), vx_down=(-2.4014e-05+1.2492e-05j)*dip_kick, vy_down=(3.6481e-05+7.9888e-06j)*dip_kick, vxx_down=(-0.004057-0.0001369j), vxy_down=(0.0029243-1.2891e-05j), eid='C.A1.1.4.I1')
+c_a1_1_5_i1 = Cavity(l=1.0377, v=0.018125, freq=1300000000.0, vx_up=(-5.6813e-05+1.0751e-05j)*dip_kick, vy_up=(-4.1091e-05+5.739e-07j)*dip_kick, vxx_up=(0.00099943-0.00081401j), vxy_up=(0.0034065-0.0004146j), vx_down=(-2.4014e-05+1.2492e-05j)*dip_kick, vy_down=(3.6481e-05+7.9888e-06j)*dip_kick, vxx_down=(-0.004057-0.0001369j), vxy_down=(0.0029243-1.2891e-05j), eid='C.A1.1.5.I1')
+c_a1_1_6_i1 = Cavity(l=1.0377, v=0.018125, freq=1300000000.0, vx_up=(-5.6813e-05+1.0751e-05j)*dip_kick, vy_up=(-4.1091e-05+5.739e-07j)*dip_kick, vxx_up=(0.00099943-0.00081401j), vxy_up=(0.0034065-0.0004146j), vx_down=(-2.4014e-05+1.2492e-05j)*dip_kick, vy_down=(3.6481e-05+7.9888e-06j)*dip_kick, vxx_down=(-0.004057-0.0001369j), vxy_down=(0.0029243-1.2891e-05j), eid='C.A1.1.6.I1')
+c_a1_1_7_i1 = Cavity(l=1.0377, v=0.018125, freq=1300000000.0, vx_up=(-5.6813e-05+1.0751e-05j)*dip_kick, vy_up=(-4.1091e-05+5.739e-07j)*dip_kick, vxx_up=(0.00099943-0.00081401j), vxy_up=(0.0034065-0.0004146j), vx_down=(-2.4014e-05+1.2492e-05j)*dip_kick, vy_down=(3.6481e-05+7.9888e-06j)*dip_kick, vxx_down=(-0.004057-0.0001369j), vxy_down=(0.0029243-1.2891e-05j), eid='C.A1.1.7.I1')
+c_a1_1_8_i1 = Cavity(l=1.0377, v=0.018125, freq=1300000000.0, vx_up=(-5.6813e-05+1.0751e-05j)*dip_kick, vy_up=(-4.1091e-05+5.739e-07j)*dip_kick, vxx_up=(0.00099943-0.00081401j), vxy_up=(0.0034065-0.0004146j), vx_down=(-2.4014e-05+1.2492e-05j)*dip_kick, vy_down=(3.6481e-05+7.9888e-06j)*dip_kick, vxx_down=(-0.004057-0.0001369j), vxy_down=(0.0029243-1.2891e-05j), eid='C.A1.1.8.I1')
 
-c3_ah1_1_1_i1 = Cavity(
-    l=0.346,
-    v=0.0025,
-    phi=180.0,
-    freq=3900000000.0,
-    vx_up=dip_kick * (-0.00057076 - 1.3166e-05j),
-    vy_up=dip_kick * (-3.5079e-05 + 0.00012636j),
-    vxx_up=(-0.026045 - 0.042918j) * mon_kick,
-    vxy_up=(0.0055553 - 0.023455j) * mon_kick,
-    vx_down=dip_kick * (-8.8766e-05 - 0.00024852j),
-    vy_down=dip_kick * (2.9889e-05 + 0.00014486j),
-    vxx_down=(-0.0050593 - 0.013491j) * mon_kick,
-    vxy_down=(0.0051488 + 0.024771j) * mon_kick,
-    eid='C3.AH1.1.1.I1',
-)
-c3_ah1_1_2_i1 = Cavity(
-    l=0.346,
-    v=0.0025,
-    phi=180.0,
-    freq=3900000000.0,
-    vx_up=dip_kick * (0.00057076 + 1.3166e-05j),
-    vy_up=dip_kick * (3.5079e-05 - 0.00012636j),
-    vxx_up=(-0.026045 - 0.042918j) * mon_kick,
-    vxy_up=(0.0055553 - 0.023455j) * mon_kick,
-    vx_down=dip_kick * (8.8766e-05 + 0.00024852j),
-    vy_down=dip_kick * (-2.9889e-05 - 0.00014486j),
-    vxx_down=(-0.0050593 - 0.013491j) * mon_kick,
-    vxy_down=(0.0051488 + 0.024771j) * mon_kick,
-    eid='C3.AH1.1.2.I1',
-)
-c3_ah1_1_3_i1 = Cavity(
-    l=0.346,
-    v=0.0025,
-    phi=180.0,
-    freq=3900000000.0,
-    vx_up=dip_kick * (-0.00057076 - 1.3166e-05j),
-    vy_up=dip_kick * (-3.5079e-05 + 0.00012636j),
-    vxx_up=(-0.026045 - 0.042918j) * mon_kick,
-    vxy_up=(0.0055553 - 0.023455j) * mon_kick,
-    vx_down=dip_kick * (-8.8766e-05 - 0.00024852j),
-    vy_down=dip_kick * (2.9889e-05 + 0.00014486j),
-    vxx_down=(-0.0050593 - 0.013491j) * mon_kick,
-    vxy_down=(0.0051488 + 0.024771j) * mon_kick,
-    eid='C3.AH1.1.3.I1',
-)
-c3_ah1_1_4_i1 = Cavity(
-    l=0.346,
-    v=0.0025,
-    phi=180.0,
-    freq=3900000000.0,
-    vx_up=dip_kick * (0.00057076 + 1.3166e-05j),
-    vy_up=dip_kick * (3.5079e-05 - 0.00012636j),
-    vxx_up=(-0.026045 - 0.042918j) * mon_kick,
-    vxy_up=(0.0055553 - 0.023455j) * mon_kick,
-    vx_down=dip_kick * (8.8766e-05 + 0.00024852j),
-    vy_down=dip_kick * (-2.9889e-05 - 0.00014486j),
-    vxx_down=(-0.0050593 - 0.013491j) * mon_kick,
-    vxy_down=(0.0051488 + 0.024771j) * mon_kick,
-    eid='C3.AH1.1.4.I1',
-)
-c3_ah1_1_5_i1 = Cavity(
-    l=0.346,
-    v=0.0025,
-    phi=180.0,
-    freq=3900000000.0,
-    vx_up=dip_kick * (-0.00057076 - 1.3166e-05j),
-    vy_up=dip_kick * (-3.5079e-05 + 0.00012636j),
-    vxx_up=(-0.026045 - 0.042918j) * mon_kick,
-    vxy_up=(0.0055553 - 0.023455j) * mon_kick,
-    vx_down=dip_kick * (-8.8766e-05 - 0.00024852j),
-    vy_down=dip_kick * (2.9889e-05 + 0.00014486j),
-    vxx_down=(-0.0050593 - 0.013491j) * mon_kick,
-    vxy_down=(0.0051488 + 0.024771j) * mon_kick,
-    eid='C3.AH1.1.5.I1',
-)
-c3_ah1_1_6_i1 = Cavity(
-    l=0.346,
-    v=0.0025,
-    phi=180.0,
-    freq=3900000000.0,
-    vx_up=dip_kick * (0.00057076 + 1.3166e-05j),
-    vy_up=dip_kick * (3.5079e-05 - 0.00012636j),
-    vxx_up=(-0.026045 - 0.042918j) * mon_kick,
-    vxy_up=(0.0055553 - 0.023455j) * mon_kick,
-    vx_down=dip_kick * (8.8766e-05 + 0.00024852j),
-    vy_down=dip_kick * (-2.9889e-05 - 0.00014486j),
-    vxx_down=(-0.0050593 - 0.013491j) * mon_kick,
-    vxy_down=(0.0051488 + 0.024771j) * mon_kick,
-    eid='C3.AH1.1.6.I1',
-)
-c3_ah1_1_7_i1 = Cavity(
-    l=0.346,
-    v=0.0025,
-    phi=180.0,
-    freq=3900000000.0,
-    vx_up=dip_kick * (-0.00057076 - 1.3166e-05j),
-    vy_up=dip_kick * (-3.5079e-05 + 0.00012636j),
-    vxx_up=(-0.026045 - 0.042918j) * mon_kick,
-    vxy_up=(0.0055553 - 0.023455j) * mon_kick,
-    vx_down=dip_kick * (-8.8766e-05 - 0.00024852j),
-    vy_down=dip_kick * (2.9889e-05 + 0.00014486j),
-    vxx_down=(-0.0050593 - 0.013491j) * mon_kick,
-    vxy_down=(0.0051488 + 0.024771j) * mon_kick,
-    eid='C3.AH1.1.7.I1',
-)
-c3_ah1_1_8_i1 = Cavity(
-    l=0.346,
-    v=0.0025,
-    phi=180.0,
-    freq=3900000000.0,
-    vx_up=dip_kick * (0.00057076 + 1.3166e-05j),
-    vy_up=dip_kick * (3.5079e-05 - 0.00012636j),
-    vxx_up=(-0.026045 - 0.042918j) * mon_kick,
-    vxy_up=(0.0055553 - 0.023455j) * mon_kick,
-    vx_down=dip_kick * (8.8766e-05 + 0.00024852j),
-    vy_down=dip_kick * (-2.9889e-05 - 0.00014486j),
-    vxx_down=(-0.0050593 - 0.013491j) * mon_kick,
-    vxy_down=(0.0051488 + 0.024771j) * mon_kick,
-    eid='C3.AH1.1.8.I1',
-)
-
-# TDCavitys
-tdsa_52_i1_1 = TDCavity(l=0.7 / 2, freq=2800000000.0, tilt=1.570796327, eid='TDSA.52.I1')
-tdsa_52_i1_2 = TDCavity(l=0.7 / 2, freq=2800000000.0, tilt=1.570796327, eid='TDSA.52.I1')
+c3_ah1_1_1_i1 = Cavity(l=0.346, v=0.0025, phi=180.0, freq=3900000000.0, vx_up=dip_kick*(-0.00057076-1.3166e-05j), vy_up=dip_kick*(-3.5079e-05+0.00012636j), vxx_up=(-0.026045-0.042918j), vxy_up=(0.0055553-0.023455j), vx_down=dip_kick*(-8.8766e-05-0.00024852j), vy_down=dip_kick*(2.9889e-05+0.00014486j), vxx_down=(-0.0050593-0.013491j), vxy_down=(0.0051488+0.024771j), eid='C3.AH1.1.1.I1')
+c3_ah1_1_2_i1 = Cavity(l=0.346, v=0.0025, phi=180.0, freq=3900000000.0, vx_up=dip_kick*(0.00057076+1.3166e-05j), vy_up= dip_kick*(3.5079e-05-0.00012636j), vxx_up=(-0.026045-0.042918j), vxy_up=(0.0055553-0.023455j), vx_down= dip_kick*(8.8766e-05+0.00024852j), vy_down= dip_kick*(-2.9889e-05-0.00014486j), vxx_down=(-0.0050593-0.013491j), vxy_down=(0.0051488+0.024771j), eid='C3.AH1.1.2.I1')
+c3_ah1_1_3_i1 = Cavity(l=0.346, v=0.0025, phi=180.0, freq=3900000000.0, vx_up=dip_kick*(-0.00057076-1.3166e-05j), vy_up=dip_kick*(-3.5079e-05+0.00012636j), vxx_up=(-0.026045-0.042918j), vxy_up=(0.0055553-0.023455j), vx_down=dip_kick*(-8.8766e-05-0.00024852j), vy_down=dip_kick*(2.9889e-05+0.00014486j), vxx_down=(-0.0050593-0.013491j), vxy_down=(0.0051488+0.024771j), eid='C3.AH1.1.3.I1')
+c3_ah1_1_4_i1 = Cavity(l=0.346, v=0.0025, phi=180.0, freq=3900000000.0, vx_up=dip_kick*(0.00057076+1.3166e-05j), vy_up= dip_kick*(3.5079e-05-0.00012636j), vxx_up=(-0.026045-0.042918j), vxy_up=(0.0055553-0.023455j), vx_down= dip_kick*(8.8766e-05+0.00024852j), vy_down= dip_kick*(-2.9889e-05-0.00014486j), vxx_down=(-0.0050593-0.013491j), vxy_down=(0.0051488+0.024771j), eid='C3.AH1.1.4.I1')
+c3_ah1_1_5_i1 = Cavity(l=0.346, v=0.0025, phi=180.0, freq=3900000000.0, vx_up=dip_kick*(-0.00057076-1.3166e-05j), vy_up=dip_kick*(-3.5079e-05+0.00012636j), vxx_up=(-0.026045-0.042918j), vxy_up=(0.0055553-0.023455j), vx_down=dip_kick*(-8.8766e-05-0.00024852j), vy_down=dip_kick*(2.9889e-05+0.00014486j), vxx_down=(-0.0050593-0.013491j), vxy_down=(0.0051488+0.024771j), eid='C3.AH1.1.5.I1')
+c3_ah1_1_6_i1 = Cavity(l=0.346, v=0.0025, phi=180.0, freq=3900000000.0, vx_up=dip_kick*(0.00057076+1.3166e-05j), vy_up= dip_kick*(3.5079e-05-0.00012636j), vxx_up=(-0.026045-0.042918j), vxy_up=(0.0055553-0.023455j), vx_down= dip_kick*(8.8766e-05+0.00024852j), vy_down= dip_kick*(-2.9889e-05-0.00014486j), vxx_down=(-0.0050593-0.013491j), vxy_down=(0.0051488+0.024771j), eid='C3.AH1.1.6.I1')
+c3_ah1_1_7_i1 = Cavity(l=0.346, v=0.0025, phi=180.0, freq=3900000000.0, vx_up=dip_kick*(-0.00057076-1.3166e-05j), vy_up=dip_kick*(-3.5079e-05+0.00012636j), vxx_up=(-0.026045-0.042918j), vxy_up=(0.0055553-0.023455j), vx_down=dip_kick*(-8.8766e-05-0.00024852j), vy_down=dip_kick*(2.9889e-05+0.00014486j), vxx_down=(-0.0050593-0.013491j), vxy_down=(0.0051488+0.024771j), eid='C3.AH1.1.7.I1')
+c3_ah1_1_8_i1 = Cavity(l=0.346, v=0.0025, phi=180.0, freq=3900000000.0, vx_up=dip_kick*(0.00057076+1.3166e-05j), vy_up= dip_kick*(3.5079e-05-0.00012636j), vxx_up=(-0.026045-0.042918j), vxy_up=(0.0055553-0.023455j), vx_down= dip_kick*(8.8766e-05+0.00024852j), vy_down= dip_kick*(-2.9889e-05-0.00014486j), vxx_down=(-0.0050593-0.013491j), vxy_down=(0.0051488+0.024771j), eid='C3.AH1.1.8.I1')
 
 # Solenoids
 solb_23_i1 = Solenoid(eid='SOLB.23.I1')
+
+
+# TDCavitys
+tdsa_52_i1 = TDCavity(l=0.7, freq=2800000000.0, tilt=1.570796327, eid='TDSA.52.I1')
+
 
 # Monitors
 bpmg_24_i1 = Monitor(eid='BPMG.24.I1')
@@ -471,9 +275,6 @@ d_8_2 = Drift(l=d_8.l - d_8_1.l)
 d_8_n = (d_8_1, g1_a1_interface, d_8_2)
 qi_53_U = Marker("QI.53.U")
 a1_ah1_interface = Marker(eid="A1-AH1 interface: just after the last A1 Cavity")
-tds1 = Marker(eid="TDS1")
-tds2 = Marker(eid="TDS2")
-tds3 = Marker(eid="TDS3")
 tmp_m = Marker("matching-point-at-start-of-q52")
 a1_1_stop = Marker(eid="just-after-first-a1-cavity")
 lh_section_stop = Marker(eid="just_before_i1d_dipole_LH_section_stop")
@@ -648,11 +449,7 @@ def make_cell():
                 tmp_m,
                 qi_52_i1,
                 d_48,
-                tds1,
-                tdsa_52_i1_1,
-                tds2,
-                tdsa_52_i1_2,
-                tds3,
+                tdsa_52_i1,
                 d_48,
                 qi_53_U,
                 qi_53_i1,

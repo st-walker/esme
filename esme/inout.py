@@ -394,6 +394,14 @@ def i1_dscan_config_from_scan_config_file(config_path: os.PathLike):
     return _dscan_config_from_scan_config_file(conf["i1"]["quads"])
 
 
+def i1_tds_voltages_from_scan_config_file(config_path: os.PathLike):
+    conf = toml.load(config_path)    
+    return conf["i1"]["tds"]["scan_voltages"]
+
+def b2_tds_voltages_from_scan_config_file(config_path: os.PathLike):
+    conf = toml.load(config_path)    
+    return conf["b2"]["tds"]["scan_voltages"]
+
 def b2_dscan_config_from_scan_config_file(config_path: os.PathLike):
     conf = toml.load(config_path)
     return _dscan_config_from_scan_config_file(conf["b2"]["quads"])

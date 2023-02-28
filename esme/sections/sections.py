@@ -267,19 +267,14 @@ class I1D(FELSection):
 class DL(FELSection):
     def __init__(self, data_dir, *args, **kwargs):
         super().__init__(data_dir)
-        self.unit_step = 0.02
-        # st2_stop = l1.id_90904668_
 
-        i1_cell = i1.make_cell()
-        l1_cell = l1.make_cell()
-        cell = i1_cell + l1_cell
+        cell = i1.make_cell() + l1.make_cell()
 
         # End of LH (so start of DL...).  This is just before the dump dipole to I1D.
-        lh_stop_dl_start = cell["DUMP.CSR.START"]
-        # Just before the first BC0 dipole:
-        dogleg_stop = cell["STLAT.96.I1"]
-        self.lattice = MagneticLattice(cell, start=lh_stop_dl_start, stop=dogleg_stop, method=self.method)
-        # init physics processes
+        lh_stop_dl_start = "LH-I1D interface: just before the I1D dump dipole"
+        dogleg_stop = "DL-BC0 interface: just before the first BC0 chicane dipole"
+        self.sequence = cell[lh_stop_dl_start:dogleg_stop]
+
         csr = make_csr(sigma_min=Sig_Z[0] * CSR_SIGMA_FACTOR, traj_step=0.0005, apply_step=0.005, n_bin=CSR_N_BIN)
         wake = make_wake(
             'mod_wake_0070.030_0073.450_MONO.dat',
@@ -303,17 +298,18 @@ class BC0(FELSection):
 
         l1_cell = l1.make_cell()
 
-        dogleg_stop_bc0_start = l1_cell["STLAT.96.I1"]
-        bc0_stop = l1_cell["ENLAT.101.I1"]
-        self.lattice = MagneticLattice(l1_cell, start=dogleg_stop_bc0_start, stop=bc0_stop, method=self.method)
+        dogleg_stop_bc0_start = "DL-BC0 interface: just before the first BC0 chicane dipole"
+        bc0_stop_l1_start= "BC0-L1 interface: just after the last BC0 chicane dipole"
+
+        self.sequence = l1_cell[dogleg_stop_bc0_start:bc0_stop_l1_start]
 
         csr = make_csr(
             step=1, n_bin=CSR_N_BIN, sigma_min=Sig_Z[1] * CSR_SIGMA_FACTOR, traj_step=0.0005, apply_step=0.001
         )
         sc = make_space_charge(step=40, nmesh_xyz=SC_MESH, random_mesh=SC_RANDOM_MESH)
 
-        self.add_physics_process(sc, start=dogleg_stop_bc0_start, stop=bc0_stop)
-        self.add_physics_process(csr, start=dogleg_stop_bc0_start, stop=bc0_stop)
+        self.add_physics_process(sc, start=dogleg_stop_bc0_start, stop=bc0_stop_l1_start)
+        self.add_physics_process(csr, start=dogleg_stop_bc0_start, stop=bc0_stop_l1_start)
 
         # self.dipoles = [l1.bb_96_i1, l1.bb_98_i1, l1.bb_100_i1, l1.bb_101_i1]
         # self.dipole_len = 0.5
@@ -323,15 +319,14 @@ class BC0(FELSection):
 class L1(FELSection):
     def __init__(self, data_dir, *args, **kwargs):
         super().__init__(data_dir)
-        self.unit_step = 0.02
 
         l1_cell = l1.make_cell()
         # Just after end of BC0
-        bc0_stop = l1_cell["ENLAT.101.I1"]
+        bc0_stop_l1_start= "BC0-L1 interface: just after the last BC0 chicane dipole"
         # This is just before the start of BC1.
-        a2_stop_bc1_start = l1_cell["STLAT.182.B1"]
+        a2_stop_bc1_start = "L1-BC1 interface: just before the first BC1 chicane dipole"
 
-        self.lattice = MagneticLattice(l1_cell, start=bc0_stop, stop=a2_stop_bc1_start, method=self.method)
+        self.sequence = l1_cell[bc0_stop_l1_start:a2_stop_bc1_start]
 
         sc = make_space_charge(step=50, nmesh_xyz=SC_MESH, random_mesh=SC_RANDOM_MESH)
         wake = make_wake(
@@ -345,10 +340,10 @@ class L1(FELSection):
             "mod_wake_0078.970_0159.280_MONO.dat", factor=1, w_sampling=WAKE_SAMPLING, filter_order=WAKE_FILTER_ORDER
         )
 
-        l1_first_cavity = l1_cell["C.A2.1.1.L1"]
-        l1_last_cavity = l1_cell["C.A2.4.8.L1"]
-        self.add_physics_process(BEAM_SMOOTHER, start=bc0_stop, stop=bc0_stop)
-        self.add_physics_process(sc, start=bc0_stop, stop=a2_stop_bc1_start)
+        l1_first_cavity = "C.A2.1.1.L1"
+        l1_last_cavity = "C.A2.4.8.L1"
+        self.add_physics_process(BEAM_SMOOTHER, start=bc0_stop_l1_start, stop=bc0_stop_l1_start)
+        self.add_physics_process(sc, start=bc0_stop_l1_start, stop=a2_stop_bc1_start)
         self.add_physics_process(wake, start=l1_first_cavity, stop=l1_last_cavity)
         self.add_physics_process(wake2, start=a2_stop_bc1_start, stop=a2_stop_bc1_start)
 
@@ -356,13 +351,11 @@ class L1(FELSection):
 class BC1(FELSection):
     def __init__(self, data_dir, *args, **kwargs):
         super().__init__(data_dir)
-        self.unit_step = 0.02
-
         l1_cell = l1.make_cell()
-        a2_stop_bc1_start = l1_cell["STLAT.182.B1"]
-        bc1_stop = l1_cell["TORA.203.B1"]
-        # init tracking lattice
-        self.lattice = MagneticLattice(l1_cell, start=a2_stop_bc1_start, stop=bc1_stop, method=self.method)
+        a2_stop_bc1_start = "L1-BC1 interface: just before the first BC1 chicane dipole"
+        bc1_stop = "BC1-L2 interface: not long after the last BC1 chicane dipole"
+                   
+        self.sequence = l1_cell[a2_stop_bc1_start:bc1_stop]
 
         # init physics processes
         csr = make_csr(
@@ -383,24 +376,21 @@ class L2(FELSection):
         super().__init__(data_dir)
         self.unit_step = 0.02
 
-        l1_cell = l1.make_cell()
-        l2_cell = l2.make_cell()
+        cell = l1.make_cell() + l2.make_cell()
 
-        cell = l1_cell + l2_cell
-
-        bc1_stop = cell["TORA.203.B1"]
+        bc1_stop = "BC1-L2 interface: not long after the last BC1 chicane dipole"
         # Just before BC2
-        l2_stop_bc2_start = cell["STLAT.393.B2"]
+        l2_stop_bc2_start = "L2-BC2 interface: some way after the last L2 cavity"
 
         # init tracking lattice
-        self.lattice = MagneticLattice(cell, start=bc1_stop, stop=l2_stop_bc2_start, method=self.method)
+        self.sequence = cell[bc1_stop:l2_stop_bc2_start]
 
         sc = make_space_charge(step=100, nmesh_xyz=SC_MESH, random_mesh=SC_RANDOM_MESH)
         wake = make_wake("mod_TESLA_MODULE_WAKE_TAYLOR.dat", factor=4 * 3, step=200)
         wake2 = make_wake("mod_wake_0179.810_0370.840_MONO.dat", factor=1)
 
-        first_cavity_l2 = cell["C.A3.1.1.L2"]
-        last_cavity_l2 = cell["C.A5.4.8.L2"]
+        first_cavity_l2 = "C.A3.1.1.L2"
+        last_cavity_l2 = "C.A5.4.8.L2"
 
         self.add_physics_process(BEAM_SMOOTHER, start=bc1_stop, stop=bc1_stop)
         self.add_physics_process(sc, start=bc1_stop, stop=l2_stop_bc2_start)
@@ -412,14 +402,12 @@ class BC2(FELSection):
     def __init__(self, data_dir, *args, **kwargs):
         super().__init__(data_dir)
 
-        self.unit_step = 0.02
-
         l2_cell = l2.make_cell()
 
-        l2_stop_bc2_start = l2_cell["STLAT.393.B2"]
-        bc2_stop = l2_cell["TORA.415.B2"]
+        l2_stop_bc2_start = "L2-BC2 interface: some way after the last L2 cavity"
+        bc2_stop = "BC2-B2D interface: just before the B2D dump dipole"
         # init tracking lattice
-        self.lattice = MagneticLattice(l2_cell, start=l2_stop_bc2_start, stop=bc2_stop, method=self.method)
+        self.sequence = l2_cell[l2_stop_bc2_start:bc2_stop]
 
         csr = make_csr(
             step=1, n_bin=CSR_N_BIN, sigma_min=Sig_Z[3] * CSR_SIGMA_FACTOR, traj_step=0.0005, apply_step=0.001
@@ -439,16 +427,12 @@ class B2D(FELSection):
         super().__init__(data_dir)
         self.unit_step = 0.02
 
-        l2_cell = l2.make_cell()
-        b2d_cell = b2d.make_cell()
+        cell = l2.make_cell() + b2d.make_cell()
 
-        cell = l2_cell + b2d_cell
+        bc2_stop = "BC2-B2D interface: just before the B2D dump dipole"
+        self.sequence = cell[bc2_stop:]
 
-        bc2_stop = cell["TORA.415.B2"]
-        csr_start = bc2_stop
-        b2d_stop = None
-
-        self.lattice = MagneticLattice(cell, start=bc2_stop, stop=b2d_stop, method=self.method)
+        b2d_stop = self.sequence[-1].id
 
         csr = make_csr(
             step=1, n_bin=CSR_N_BIN, sigma_min=Sig_Z[3] * CSR_SIGMA_FACTOR, traj_step=0.0005, apply_step=0.001

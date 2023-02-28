@@ -20,8 +20,11 @@ from esme.inout import (
     add_metadata_to_pcls_in_toml,
     tscan_config_from_scan_config_file,
     i1_dscan_config_from_scan_config_file,
-    b2_dscan_config_from_scan_config_file
+    b2_dscan_config_from_scan_config_file,
+    i1_tds_voltages_from_scan_config_file
 )
+
+from . import inout
 
 from esme.plot import (
     dump_full_scan,
@@ -271,6 +274,7 @@ def sim(fscan, i1, b2, dscan, tscan, escan, parray, outdir, fast, optics):
 
     if i1:
         i1_dscan_conf = i1_dscan_config_from_scan_config_file(fscan)
+        i1_tscan_voltages = i1_tds_voltages_from_scan_config_file(fscan)
 
     if i1 and optics and not parray:
         simplot.cathode_to_first_a1_cavity()
@@ -279,13 +283,32 @@ def sim(fscan, i1, b2, dscan, tscan, escan, parray, outdir, fast, optics):
         simplot.qi52_to_i1d_dscan_optics(i1_dscan_conf)
         simplot.a1_to_i1d_piecewise_measurement_optics(i1_dscan_conf)
     elif i1 and optics and parray:
-        simplot.check_a1_to_i1d_design_optics_tracking(parray, outdir)
+        # simplot.check_a1_to_i1d_design_optics_tracking(parray, outdir)
+        # simplot.check_a1_q52_measurement_optics_tracking(parray, outdir)
+        # simplot.dscan_piecewise_tracking_optics(parray, i1_dscan_conf, outdir)
+        simplot.dscan_piecewise_tracking_optics(parray, i1_dscan_conf, outdir,
+                                               do_physics=True)        
     elif i1 and parray:
-        sim.run_i1_dispersion_scan(i1_dscan_conf, parray, outdir)
+        i1dsim = sim.I1DSimulatedEnergySpreadMeasurement(parray,
+                                                         i1_dscan_conf,
+                                                         i1_tscan_voltages)
+        i1dsim.write_scans(outdir)
+        # sim.run_i1_dispersion_scan(i1_dscan_conf, parray, outdir)
 
-    # elif b2:
-    #     b2_dscan_conf = b2_dscan_config_from_scan_config_file(fscan)
-    #     b2_dscan_optics(b2_dscan_conf)
+    if b2:
+        b2_dscan_conf = inout.b2_dscan_config_from_scan_config_file(fscan)
+        b2_tscan_voltages = inout.b2_tds_voltages_from_scan_config_file(fscan)
+        
+        b2dsim = sim.B2DSimulatedEnergySpreadMeasurement(parray,
+                                                         b2_dscan_conf,
+                                                         b2_tscan_voltages)
+
+        simplot.plot_b2d_design_optics(b2_dscan_conf, b2_tscan_voltages)
+
+        # b2_dscan_conf = b2_dscan_config_from_scan_config_file(fscan)
+        # # simplot.bolko_optics_comparison(b2_dscan_conf, b2_tscan_voltages)
+        # # simplot.new_tds_optics_comparison(b2_dscan_conf, b2_tscan_voltages)
+        # simplot.piecewise_a1_to_b2d_optics(b2_dscan_conf, b2_tscan_voltages)
 
 
 if __name__ == "__main__":
