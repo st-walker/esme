@@ -67,12 +67,12 @@ def make_twiss0_at_cathode():
     alpha_x = 18.759585504978787
     alpha_y = 21.02107263460874
 
-    
+
     # tws.beta_x  = 62.60423946234019
     # tws.beta_y  = 70.6513903650761
     # tws.alpha_x = 18.759585504978787
     # tws.alpha_y = 21.02107263460874
-    
+
 
     return tws
 
@@ -110,133 +110,152 @@ def make_twiss(alpha_x, alpha_y, beta_x, beta_y):
 # def make_twiss0():
 #     return TWISS0["ASTRA_OCELOT_INTERFACE"]
 
-# Drifts
+# drifts
 d_1 = Drift(l=0.276, eid='D_1')
-d_2 = Drift(l=0.216, eid='D_2')
+d_2 = Drift(l=0.316, eid='D_2')
 d_3 = Drift(l=0.311, eid='D_3')
 d_4 = Drift(l=0.047, eid='D_4')
-d_5 = Drift(l=0.788, eid='D_5')
-d_6 = Drift(l=0.313, eid='D_6')
-d_7 = Drift(l=0.421, eid='D_7')
-d_8 = Drift(l=0.8992, eid='D_8')
-d_9 = Drift(l=0.3459, eid='D_9')
-d_16 = Drift(l=0.2043, eid='D_16')
-d_17 = Drift(l=0.0432, eid='D_17')
-d_19 = Drift(l=0.085, eid='D_19')
-d_20 = Drift(l=0.679, eid='D_20')
-d_21 = Drift(l=0.1282, eid='D_21')
-d_23 = Drift(l=0.202, eid='D_23')
-d_24 = Drift(l=0.262, eid='D_24')
-d_31 = Drift(l=2.4914, eid='D_31')
-d_32 = Drift(l=0.33305, eid='D_32')
-d_33 = Drift(l=0.20765, eid='D_33')
-d_34 = Drift(l=0.43315, eid='D_34')
-d_35 = Drift(l=0.132315, eid='D_35')
-d_36 = Drift(l=0.100827, eid='D_36')
-d_37 = Drift(l=0.284415, eid='D_37')
-d_38 = Drift(l=0.17575, eid='D_38')
-d_39 = Drift(l=0.194, eid='D_39')
-d_41 = Drift(l=0.120165, eid='D_41')
-d_42 = Drift(l=0.100828, eid='D_42')
-d_44 = Drift(l=0.38964, eid='D_44')
-d_45 = Drift(l=0.303, eid='D_45')
-d_46 = Drift(l=0.1015, eid='D_46')
-d_47 = Drift(l=0.27965, eid='D_47')
-d_48 = Drift(l=0.05115, eid='D_48')
-d_50 = Drift(l=0.7143, eid='D_50')
-d_51 = Drift(l=0.75615, eid='D_51')
-d_52 = Drift(l=0.175, eid='D_52')
-d_53 = Drift(l=0.15, eid='D_53')
-d_54 = Drift(l=0.13115, eid='D_54')
-d_60 = Drift(l=0.275, eid='D_60')
-d_61 = Drift(l=0.18115, eid='D_61')
-d_62 = Drift(l=0.20115, eid='D_62')
-d_63 = Drift(l=0.38, eid='D_63')
-d_64 = Drift(l=0.28115, eid='D_64')
-d_65 = Drift(l=0.26285, eid='D_65')
-d_66 = Drift(l=0.3643, eid='D_66')
-d_68 = Drift(l=0.23515, eid='D_68')
-d_69 = Drift(l=0.43115, eid='D_69')
-d_70 = Drift(l=0.1, eid='D_70')
-# Quadrupoles
+d_5 = Drift(l=0.15, eid='D_5')
+d_6 = Drift(l=0.198782, eid='D_6')
+d_7 = Drift(l=0.439218, eid='D_7')
+d_8 = Drift(l=0.225, eid='D_8')
+d_9 = Drift(l=0.088, eid='D_9')
+d_10 = Drift(l=0.111, eid='D_10')
+d_11 = Drift(l=0.31, eid='D_11')
+d_12 = Drift(l=0.5776, eid='D_12')
+d_13 = Drift(l=0.1, eid='D_13')
+d_14 = Drift(l=0.2216, eid='D_14')
+d_15 = Drift(l=0.3459, eid='D_15')
+d_22 = Drift(l=0.2043, eid='D_22')
+d_23 = Drift(l=0.0432, eid='D_23')
+d_25 = Drift(l=0.085, eid='D_25')
+d_26 = Drift(l=0.4579, eid='D_26')
+d_27 = Drift(l=0.2211, eid='D_27')
+d_28 = Drift(l=0.1282, eid='D_28')
+d_30 = Drift(l=0.202, eid='D_30')
+d_31 = Drift(l=0.262, eid='D_31')
+d_38 = Drift(l=0.155, eid='D_38')
+d_39 = Drift(l=2.3364, eid='D_39')
+d_40 = Drift(l=0.33305, eid='D_40')
+d_41 = Drift(l=0.08615, eid='D_41')
+d_42 = Drift(l=0.2175, eid='D_42')
+d_43 = Drift(l=0.096, eid='D_43')
+d_44 = Drift(l=0.1177, eid='D_44')
+d_45 = Drift(l=0.12345, eid='D_45')
+d_46 = Drift(l=0.08115, eid='D_46')
+d_47 = Drift(l=0.051165, eid='D_47')
+d_48 = Drift(l=0.100827, eid='D_48')
+d_49 = Drift(l=0.092415, eid='D_49')
+d_51 = Drift(l=0.27175, eid='D_51')
+d_52 = Drift(l=0.164, eid='D_52')
+d_54 = Drift(l=0.120165, eid='D_54')
+d_55 = Drift(l=0.100828, eid='D_55')
+d_58 = Drift(l=0.18964, eid='D_58')
+d_59 = Drift(l=0.2, eid='D_59')
+d_60 = Drift(l=0.303, eid='D_60')
+d_61 = Drift(l=0.1975, eid='D_61')
+d_63 = Drift(l=0.08765, eid='D_63')
+d_64 = Drift(l=0.05115, eid='D_64')
+d_66 = Drift(l=0.7143, eid='D_66')
+d_67 = Drift(l=0.72115, eid='D_67')
+d_68 = Drift(l=0.035, eid='D_68')
+d_69 = Drift(l=0.175, eid='D_69')
+d_71 = Drift(l=0.13115, eid='D_71')
+d_72 = Drift(l=0.75615, eid='D_72')
+d_77 = Drift(l=0.275, eid='D_77')
+d_78 = Drift(l=0.18115, eid='D_78')
+d_79 = Drift(l=0.20115, eid='D_79')
+d_80 = Drift(l=0.38, eid='D_80')
+d_81 = Drift(l=0.28115, eid='D_81')
+d_82 = Drift(l=0.26285, eid='D_82')
+d_83 = Drift(l=0.74945, eid='D_83')
+d_84 = Drift(l=0.53115, eid='D_84')
 
+# quadrupoles
+#q_37_i1 = Quadrupole(l=0.2136, k1=-1.114451709, tilt=0.0, eid='Q.37.I1')
+#q_38_i1 = Quadrupole(l=0.2136, k1=1.253402109, tilt=0.0, eid='Q.38.I1')
+#qi_46_i1 = Quadrupole(l=0.2377, k1=0.0801434791, tilt=0.0, eid='QI.46.I1')
+#qi_47_i1 = Quadrupole(l=0.2377, k1=0.3761428846, tilt=0.0, eid='QI.47.I1')
+q_37_i1 = Quadrupole(l=0.2136, k1=-1.588827702268584, tilt=0.0, eid='Q.37.I1')
+q_38_i1 = Quadrupole(l=0.2136, k1=1.524445650117970, tilt=0.0, eid='Q.38.I1')
+qi_46_i1 = Quadrupole(l=0.2377, k1=0.304340551812098, tilt=0.0, eid='QI.46.I1')
+qi_47_i1 = Quadrupole(l=0.2377, k1=0.003628640677698, tilt=0.0, eid='QI.47.I1')
+qi_50_i1 = Quadrupole(l=0.2377, k1=-0.8646623294, tilt=0.0, eid='QI.50.I1')
+qi_52_i1 = Quadrupole(l=0.2377, k1=-0.352207614, tilt=0.0, eid='QI.52.I1')
+qi_53_i1 = Quadrupole(l=0.2377, k1=2.104794186, tilt=0.0, eid='QI.53.I1')
+qi_54_i1 = Quadrupole(l=0.2377, k1=0.7943661063, tilt=0.0, eid='QI.54.I1')
+qi_55_i1 = Quadrupole(l=0.2377, k1=-3.526311, tilt=0.0, eid='QI.55.I1')
+qi_57_i1 = Quadrupole(l=0.2377, k1=3.526311, tilt=0.0, eid='QI.57.I1')
+qi_59_i1 = Quadrupole(l=0.2377, k1=-3.526311, tilt=0.0, eid='QI.59.I1')
+qi_60_i1 = Quadrupole(l=0.2377, k1=2.145682287, tilt=0.0, eid='QI.60.I1')
+qi_61_i1 = Quadrupole(l=0.2377, k1=0.8685937479, tilt=0.0, eid='QI.61.I1')
 
-# Quadrupoles
-qln_23_i1 = Quadrupole(l=0.05, eid='QLN.23.I1')
-qls_23_i1 = Quadrupole(l=0.05, tilt=0.785398163, eid='QLS.23.I1')
-q_37_i1 = Quadrupole(l=0.2136, k1=-1.448361582, eid='Q.37.I1')
-q_38_i1 = Quadrupole(l=0.2136, k1=1.4535982140, eid='Q.38.I1')
-qi_46_i1 = Quadrupole(l=0.2377, k1=-0.2247807673, eid='QI.46.I1')
-qi_47_i1 = Quadrupole(l=0.2377, k1=0.6927621982, eid='QI.47.I1')
-qi_50_i1 = Quadrupole(l=0.2377, k1=-0.86466232944, eid='QI.50.I1')
-qi_52_i1 = Quadrupole(l=0.2377, k1=-0.3522076137989062, eid='QI.52.I1')
-qi_53_i1 = Quadrupole(l=0.2377, k1=2.1047941859486747, eid='QI.53.I1')
-qi_54_i1 = Quadrupole(l=0.2377, k1=0.7943661064366849, eid='QI.54.I1')
-qi_55_i1 = Quadrupole(l=0.2377, k1=-2.6383360778291967, eid='QI.55.I1')
-qi_57_i1 = Quadrupole(l=0.2377, k1=3.278062023979807, eid='QI.57.I1')
-qi_59_i1 = Quadrupole(l=0.2377, k1=-2.6383360778291967, eid='QI.59.I1')
-qi_60_i1 = Quadrupole(l=0.2377, k1=1.9778194619267986, eid='QI.60.I1')
-qi_61_i1 = Quadrupole(l=0.2377, k1=0.8708619869583508, eid='QI.61.I1')
+# bending magnets
+bl_48i_i1 = SBend(l = 0.2, angle=-0.099484, e1=0.0, e2=-0.099484, gap=0, tilt=0.0, fint=0.0, fintx=0.0, eid='BL.48I.I1')
+bl_48ii_i1 = SBend(l = 0.2, angle=0.099484, e1=0.099484, e2=0.0, gap=0, tilt=0.0, fint=0.0, fintx=0.0, eid='BL.48II.I1')
+bl_50i_i1 = SBend(l = 0.2, angle=0.099484, e1=0.0, e2=0.099484, gap=0, tilt=0.0, fint=0.0, fintx=0.0, eid='BL.50I.I1')
+bl_50ii_i1 = SBend(l = 0.2, angle=-0.099484, e1=-0.099484, e2=0.0, gap=0, tilt=0.0, fint=0.0, fintx=0.0, eid='BL.50II.I1')
 
-# SBends
-bl_48i_i1 = SBend(l=0.2, angle=-0.099484, e2=-0.099484, eid='BL.48I.I1')
-bl_48ii_i1 = SBend(l=0.2, angle=0.099484, e1=0.099484, eid='BL.48II.I1')
-bl_50i_i1 = SBend(l=0.2, angle=0.099484, e2=0.099484, eid='BL.50I.I1')
-bl_50ii_i1 = SBend(l=0.2, angle=-0.099484, e1=-0.099484, eid='BL.50II.I1')
+# correctors
+ckx_23_i1 = Hcor(l=0.025, angle=0.0, eid='CKX.23.I1')
+cky_23_i1 = Vcor(l=0.025, angle=0.0, eid='CKY.23.I1')
+ckx_24_i1 = Hcor(l=0.025, angle=0.0, eid='CKX.24.I1')
+cky_24_i1 = Vcor(l=0.025, angle=0.0, eid='CKY.24.I1')
+ckx_25_i1 = Hcor(l=0.025, angle=0.0, eid='CKX.25.I1')
+cky_25_i1 = Vcor(l=0.025, angle=0.0, eid='CKY.25.I1')
+cx_37_i1 = Hcor(l=0.0, angle=0.0, eid='CX.37.I1')
+cy_37_i1 = Vcor(l=0.0, angle=0.0, eid='CY.37.I1')
+cx_39_i1 = Hcor(l=0.0, angle=0.0, eid='CX.39.I1')
+cy_39_i1 = Vcor(l=0.0, angle=0.0, eid='CY.39.I1')
+ciy_51_i1 = Vcor(l=0.1, angle=0.0, eid='CIY.51.I1')
+cix_51_i1 = Hcor(l=0.1, angle=0.0, eid='CIX.51.I1')
+ciy_55_i1 = Vcor(l=0.1, angle=0.0, eid='CIY.55.I1')
+cix_57_i1 = Hcor(l=0.1, angle=0.0, eid='CIX.57.I1')
+ciy_58_i1 = Vcor(l=0.1, angle=0.0, eid='CIY.58.I1')
 
-# Hcors
-ckx_23_i1 = Hcor(l=0.025, eid='CKX.23.I1')
-ckx_24_i1 = Hcor(l=0.025, eid='CKX.24.I1')
-ckx_25_i1 = Hcor(l=0.025, eid='CKX.25.I1')
-cx_37_i1 = Hcor(eid='CX.37.I1')
-cx_39_i1 = Hcor(eid='CX.39.I1')
-cix_51_i1 = Hcor(l=0.1, eid='CIX.51.I1')
-cix_57_i1 = Hcor(l=0.1, eid='CIX.57.I1')
+# markers
+stsec_23_i1 = Marker(eid='STSEC.23.I1')
+stsub_23_i1 = Marker(eid='STSUB.23.I1')
+gun_23_i1 = Marker(eid='GUN.23.I1')
+scrn_24_i1 = Marker(eid='SCRN.24.I1')
+fcup_24_i1 = Marker(eid='FCUP.24.I1')
+ensub_24_i1 = Marker(eid='ENSUB.24.I1')
+stsub_24i_i1 = Marker(eid='STSUB.24I.I1')
+tora_25_i1 = Marker(eid='TORA.25.I1')
+scrn_25i_i1 = Marker(eid='SCRN.25I.I1')
+fcup_25i_i1 = Marker(eid='FCUP.25I.I1')
+dcm_25_i1 = Marker(eid='DCM.25.I1')
+id_22433449_ = Marker(eid='ID_22433449_')
+stac_26_i1 = Marker(eid='STAC.26.I1')
+id_75115473_ = Marker(eid='ID_75115473_')
+id_68749308_ = Marker(eid='ID_68749308_')
+match_37_i1 = Marker(eid='MATCH.37.I1')
+enac_38_i1 = Marker(eid='ENAC.38.I1')
+stac_38_i1 = Marker(eid='STAC.38.I1')
+enac_44_i1 = Marker(eid='ENAC.44.I1')
+tora_46_i1 = Marker(eid='TORA.46.I1')
+bam_47_i1 = Marker(eid='BAM.47.I1')
+mpbpmf_47_i1 = Marker(eid='MPBPMF.47.I1')
+dcm_47_i1 = Marker(eid='DCM.47.I1')
+stlat_47_i1 = Marker(eid='STLAT.47.I1')
+mpbpmf_48_i1 = Marker(eid='MPBPMF.48.I1')
+otrl_48_i1 = Marker(eid='OTRL.48.I1')
+otrl_50_i1 = Marker(eid='OTRL.50.I1')
+enlat_50_i1 = Marker(eid='ENLAT.50.I1')
+eod_51_i1 = Marker(eid='EOD.51.I1')
+mpbpmf_52_i1 = Marker(eid='MPBPMF.52.I1')
+stlat_55_i1 = Marker(eid='STLAT.55.I1')
+match_55_i1 = Marker(eid='MATCH.55.I1')
+otrc_55_i1 = Marker(eid='OTRC.55.I1')
+otrc_56_i1 = Marker(eid='OTRC.56.I1')
+otrc_58_i1 = Marker(eid='OTRC.58.I1')
+otrc_59_i1 = Marker(eid='OTRC.59.I1')
+tora_60_i1 = Marker(eid='TORA.60.I1')
+ensub_62_i1 = Marker(eid='ENSUB.62.I1')
+lh_start = Marker(eid='lh_start')
+lh_stop = Marker(eid='lh_stop')
 
-# Vcors
-cky_23_i1 = Vcor(l=0.025, eid='CKY.23.I1')
-cky_24_i1 = Vcor(l=0.025, eid='CKY.24.I1')
-cky_25_i1 = Vcor(l=0.025, eid='CKY.25.I1')
-cy_37_i1 = Vcor(eid='CY.37.I1')
-cy_39_i1 = Vcor(eid='CY.39.I1')
-ciy_51_i1 = Vcor(l=0.1, eid='CIY.51.I1')
-ciy_55_i1 = Vcor(l=0.1, eid='CIY.55.I1')
-ciy_58_i1 = Vcor(l=0.1, eid='CIY.58.I1')
-
-# Undulators
-Kx= 1.294
-Kx=1.315
-undu_49_i1 = Undulator(lperiod=0.074, nperiods=10.0, Kx=Kx, eid='UNDU.49.I1')
-
-# Cavitys
-dip_kick = 0
-c_a1_1_1_i1 = Cavity(l=1.0377, v=0.018125, freq=1300000000.0, vx_up=(-5.6813e-05+1.0751e-05j)*dip_kick, vy_up=(-4.1091e-05+5.739e-07j)*dip_kick, vxx_up=(0.00099943-0.00081401j), vxy_up=(0.0034065-0.0004146j), vx_down=(-2.4014e-05+1.2492e-05j)*dip_kick, vy_down=(3.6481e-05+7.9888e-06j)*dip_kick, vxx_down=(-0.004057-0.0001369j), vxy_down=(0.0029243-1.2891e-05j), eid='C.A1.1.1.I1')
-c_a1_1_2_i1 = Cavity(l=1.0377, v=0.018125, freq=1300000000.0, vx_up=(-5.6813e-05+1.0751e-05j)*dip_kick, vy_up=(-4.1091e-05+5.739e-07j)*dip_kick, vxx_up=(0.00099943-0.00081401j), vxy_up=(0.0034065-0.0004146j), vx_down=(-2.4014e-05+1.2492e-05j)*dip_kick, vy_down=(3.6481e-05+7.9888e-06j)*dip_kick, vxx_down=(-0.004057-0.0001369j), vxy_down=(0.0029243-1.2891e-05j), eid='C.A1.1.2.I1')
-c_a1_1_3_i1 = Cavity(l=1.0377, v=0.018125, freq=1300000000.0, vx_up=(-5.6813e-05+1.0751e-05j)*dip_kick, vy_up=(-4.1091e-05+5.739e-07j)*dip_kick, vxx_up=(0.00099943-0.00081401j), vxy_up=(0.0034065-0.0004146j), vx_down=(-2.4014e-05+1.2492e-05j)*dip_kick, vy_down=(3.6481e-05+7.9888e-06j)*dip_kick, vxx_down=(-0.004057-0.0001369j), vxy_down=(0.0029243-1.2891e-05j), eid='C.A1.1.3.I1')
-c_a1_1_4_i1 = Cavity(l=1.0377, v=0.018125, freq=1300000000.0, vx_up=(-5.6813e-05+1.0751e-05j)*dip_kick, vy_up=(-4.1091e-05+5.739e-07j)*dip_kick, vxx_up=(0.00099943-0.00081401j), vxy_up=(0.0034065-0.0004146j), vx_down=(-2.4014e-05+1.2492e-05j)*dip_kick, vy_down=(3.6481e-05+7.9888e-06j)*dip_kick, vxx_down=(-0.004057-0.0001369j), vxy_down=(0.0029243-1.2891e-05j), eid='C.A1.1.4.I1')
-c_a1_1_5_i1 = Cavity(l=1.0377, v=0.018125, freq=1300000000.0, vx_up=(-5.6813e-05+1.0751e-05j)*dip_kick, vy_up=(-4.1091e-05+5.739e-07j)*dip_kick, vxx_up=(0.00099943-0.00081401j), vxy_up=(0.0034065-0.0004146j), vx_down=(-2.4014e-05+1.2492e-05j)*dip_kick, vy_down=(3.6481e-05+7.9888e-06j)*dip_kick, vxx_down=(-0.004057-0.0001369j), vxy_down=(0.0029243-1.2891e-05j), eid='C.A1.1.5.I1')
-c_a1_1_6_i1 = Cavity(l=1.0377, v=0.018125, freq=1300000000.0, vx_up=(-5.6813e-05+1.0751e-05j)*dip_kick, vy_up=(-4.1091e-05+5.739e-07j)*dip_kick, vxx_up=(0.00099943-0.00081401j), vxy_up=(0.0034065-0.0004146j), vx_down=(-2.4014e-05+1.2492e-05j)*dip_kick, vy_down=(3.6481e-05+7.9888e-06j)*dip_kick, vxx_down=(-0.004057-0.0001369j), vxy_down=(0.0029243-1.2891e-05j), eid='C.A1.1.6.I1')
-c_a1_1_7_i1 = Cavity(l=1.0377, v=0.018125, freq=1300000000.0, vx_up=(-5.6813e-05+1.0751e-05j)*dip_kick, vy_up=(-4.1091e-05+5.739e-07j)*dip_kick, vxx_up=(0.00099943-0.00081401j), vxy_up=(0.0034065-0.0004146j), vx_down=(-2.4014e-05+1.2492e-05j)*dip_kick, vy_down=(3.6481e-05+7.9888e-06j)*dip_kick, vxx_down=(-0.004057-0.0001369j), vxy_down=(0.0029243-1.2891e-05j), eid='C.A1.1.7.I1')
-c_a1_1_8_i1 = Cavity(l=1.0377, v=0.018125, freq=1300000000.0, vx_up=(-5.6813e-05+1.0751e-05j)*dip_kick, vy_up=(-4.1091e-05+5.739e-07j)*dip_kick, vxx_up=(0.00099943-0.00081401j), vxy_up=(0.0034065-0.0004146j), vx_down=(-2.4014e-05+1.2492e-05j)*dip_kick, vy_down=(3.6481e-05+7.9888e-06j)*dip_kick, vxx_down=(-0.004057-0.0001369j), vxy_down=(0.0029243-1.2891e-05j), eid='C.A1.1.8.I1')
-
-c3_ah1_1_1_i1 = Cavity(l=0.346, v=0.0025, phi=180.0, freq=3900000000.0, vx_up=dip_kick*(-0.00057076-1.3166e-05j), vy_up=dip_kick*(-3.5079e-05+0.00012636j), vxx_up=(-0.026045-0.042918j), vxy_up=(0.0055553-0.023455j), vx_down=dip_kick*(-8.8766e-05-0.00024852j), vy_down=dip_kick*(2.9889e-05+0.00014486j), vxx_down=(-0.0050593-0.013491j), vxy_down=(0.0051488+0.024771j), eid='C3.AH1.1.1.I1')
-c3_ah1_1_2_i1 = Cavity(l=0.346, v=0.0025, phi=180.0, freq=3900000000.0, vx_up=dip_kick*(0.00057076+1.3166e-05j), vy_up= dip_kick*(3.5079e-05-0.00012636j), vxx_up=(-0.026045-0.042918j), vxy_up=(0.0055553-0.023455j), vx_down= dip_kick*(8.8766e-05+0.00024852j), vy_down= dip_kick*(-2.9889e-05-0.00014486j), vxx_down=(-0.0050593-0.013491j), vxy_down=(0.0051488+0.024771j), eid='C3.AH1.1.2.I1')
-c3_ah1_1_3_i1 = Cavity(l=0.346, v=0.0025, phi=180.0, freq=3900000000.0, vx_up=dip_kick*(-0.00057076-1.3166e-05j), vy_up=dip_kick*(-3.5079e-05+0.00012636j), vxx_up=(-0.026045-0.042918j), vxy_up=(0.0055553-0.023455j), vx_down=dip_kick*(-8.8766e-05-0.00024852j), vy_down=dip_kick*(2.9889e-05+0.00014486j), vxx_down=(-0.0050593-0.013491j), vxy_down=(0.0051488+0.024771j), eid='C3.AH1.1.3.I1')
-c3_ah1_1_4_i1 = Cavity(l=0.346, v=0.0025, phi=180.0, freq=3900000000.0, vx_up=dip_kick*(0.00057076+1.3166e-05j), vy_up= dip_kick*(3.5079e-05-0.00012636j), vxx_up=(-0.026045-0.042918j), vxy_up=(0.0055553-0.023455j), vx_down= dip_kick*(8.8766e-05+0.00024852j), vy_down= dip_kick*(-2.9889e-05-0.00014486j), vxx_down=(-0.0050593-0.013491j), vxy_down=(0.0051488+0.024771j), eid='C3.AH1.1.4.I1')
-c3_ah1_1_5_i1 = Cavity(l=0.346, v=0.0025, phi=180.0, freq=3900000000.0, vx_up=dip_kick*(-0.00057076-1.3166e-05j), vy_up=dip_kick*(-3.5079e-05+0.00012636j), vxx_up=(-0.026045-0.042918j), vxy_up=(0.0055553-0.023455j), vx_down=dip_kick*(-8.8766e-05-0.00024852j), vy_down=dip_kick*(2.9889e-05+0.00014486j), vxx_down=(-0.0050593-0.013491j), vxy_down=(0.0051488+0.024771j), eid='C3.AH1.1.5.I1')
-c3_ah1_1_6_i1 = Cavity(l=0.346, v=0.0025, phi=180.0, freq=3900000000.0, vx_up=dip_kick*(0.00057076+1.3166e-05j), vy_up= dip_kick*(3.5079e-05-0.00012636j), vxx_up=(-0.026045-0.042918j), vxy_up=(0.0055553-0.023455j), vx_down= dip_kick*(8.8766e-05+0.00024852j), vy_down= dip_kick*(-2.9889e-05-0.00014486j), vxx_down=(-0.0050593-0.013491j), vxy_down=(0.0051488+0.024771j), eid='C3.AH1.1.6.I1')
-c3_ah1_1_7_i1 = Cavity(l=0.346, v=0.0025, phi=180.0, freq=3900000000.0, vx_up=dip_kick*(-0.00057076-1.3166e-05j), vy_up=dip_kick*(-3.5079e-05+0.00012636j), vxx_up=(-0.026045-0.042918j), vxy_up=(0.0055553-0.023455j), vx_down=dip_kick*(-8.8766e-05-0.00024852j), vy_down=dip_kick*(2.9889e-05+0.00014486j), vxx_down=(-0.0050593-0.013491j), vxy_down=(0.0051488+0.024771j), eid='C3.AH1.1.7.I1')
-c3_ah1_1_8_i1 = Cavity(l=0.346, v=0.0025, phi=180.0, freq=3900000000.0, vx_up=dip_kick*(0.00057076+1.3166e-05j), vy_up= dip_kick*(3.5079e-05-0.00012636j), vxx_up=(-0.026045-0.042918j), vxy_up=(0.0055553-0.023455j), vx_down= dip_kick*(8.8766e-05+0.00024852j), vy_down= dip_kick*(-2.9889e-05-0.00014486j), vxx_down=(-0.0050593-0.013491j), vxy_down=(0.0051488+0.024771j), eid='C3.AH1.1.8.I1')
-
-# Solenoids
-solb_23_i1 = Solenoid(eid='SOLB.23.I1')
-
-
-# TDCavitys
-tdsa_52_i1 = TDCavity(l=0.7, freq=2800000000.0, tilt=1.570796327, eid='TDSA.52.I1')
-
-
-# Monitors
+# monitor
 bpmg_24_i1 = Monitor(eid='BPMG.24.I1')
 bpmg_25i_i1 = Monitor(eid='BPMG.25I.I1')
 bpmc_38i_i1 = Monitor(eid='BPMC.38I.I1')
@@ -247,26 +266,40 @@ bpmf_52_i1 = Monitor(eid='BPMF.52.I1')
 bpma_55_i1 = Monitor(eid='BPMA.55.I1')
 bpma_57_i1 = Monitor(eid='BPMA.57.I1')
 bpma_59_i1 = Monitor(eid='BPMA.59.I1')
-bpma_60_i1 = Monitor(eid='BPMA.60.I1')
-bpmatest_61_i1 = Drift(eid='BPMATEST.61.I1')
 
-# Markers
-pre_qi_52 = Marker(eid="pre_qi_52")
-stsec_23_i1 = Marker(eid='STSEC.23.I1')
-tora_25_i1 = Marker(eid='TORA.25.I1')
-match_37_i1 = Marker(eid='MATCH.37.I1')
-tora_46_i1 = Marker(eid='TORA.46.I1')
-otrl_48_i1 = Marker(eid='OTRL.48.I1')
-otrl_50_i1 = Marker(eid='OTRL.50.I1')
-match_55_i1 = Marker(eid='MATCH.55.I1')
-otrc_55_i1 = Marker(eid='OTRC.55.I1')
-otrc_56_i1 = Marker(eid='OTRC.56.I1')
-otrc_58_i1 = Marker(eid='OTRC.58.I1')
-otrc_59_i1 = Marker(eid='OTRC.59.I1')
-tora_60_i1 = Marker(eid='TORA.60.I1')
-stsub_62_i1 = Marker(eid='STSUB.62.I1')
-lh_start = Marker()
-lh_stop = Marker()
+# sextupoles
+
+# octupole
+
+# undulator
+undu_49_i1 = Undulator(lperiod=0.074, nperiods=10.00, Kx=1.294, Ky=0.0, eid='UNDU.49.I1')
+
+# cavity
+c_a1_1_1_i1 = Cavity(l=1.0377, v=0.018124987050000003, freq=1300000000.0, phi=0.0, eid='C.A1.1.1.I1')
+c_a1_1_2_i1 = Cavity(l=1.0377, v=0.018124987050000003, freq=1300000000.0, phi=0.0, eid='C.A1.1.2.I1')
+c_a1_1_3_i1 = Cavity(l=1.0377, v=0.018124987050000003, freq=1300000000.0, phi=0.0, eid='C.A1.1.3.I1')
+c_a1_1_4_i1 = Cavity(l=1.0377, v=0.018124987050000003, freq=1300000000.0, phi=0.0, eid='C.A1.1.4.I1')
+c_a1_1_5_i1 = Cavity(l=1.0377, v=0.018124987050000003, freq=1300000000.0, phi=0.0, eid='C.A1.1.5.I1')
+c_a1_1_6_i1 = Cavity(l=1.0377, v=0.018124987050000003, freq=1300000000.0, phi=0.0, eid='C.A1.1.6.I1')
+c_a1_1_7_i1 = Cavity(l=1.0377, v=0.018124987050000003, freq=1300000000.0, phi=0.0, eid='C.A1.1.7.I1')
+c_a1_1_8_i1 = Cavity(l=1.0377, v=0.018124987050000003, freq=1300000000.0, phi=0.0, eid='C.A1.1.8.I1')
+c3_ah1_1_1_i1 = Cavity(l=0.346, v=0.0024999884, freq=3900000000.0, phi=180.0, eid='C3.AH1.1.1.I1')
+c3_ah1_1_2_i1 = Cavity(l=0.346, v=0.0024999884, freq=3900000000.0, phi=180.0, eid='C3.AH1.1.2.I1')
+c3_ah1_1_3_i1 = Cavity(l=0.346, v=0.0024999884, freq=3900000000.0, phi=180.0, eid='C3.AH1.1.3.I1')
+c3_ah1_1_4_i1 = Cavity(l=0.346, v=0.0024999884, freq=3900000000.0, phi=180.0, eid='C3.AH1.1.4.I1')
+c3_ah1_1_5_i1 = Cavity(l=0.346, v=0.0024999884, freq=3900000000.0, phi=180.0, eid='C3.AH1.1.5.I1')
+c3_ah1_1_6_i1 = Cavity(l=0.346, v=0.0024999884, freq=3900000000.0, phi=180.0, eid='C3.AH1.1.6.I1')
+c3_ah1_1_7_i1 = Cavity(l=0.346, v=0.0024999884, freq=3900000000.0, phi=180.0, eid='C3.AH1.1.7.I1')
+c3_ah1_1_8_i1 = Cavity(l=0.346, v=0.0024999884, freq=3900000000.0, phi=180.0, eid='C3.AH1.1.8.I1')
+tdsa_52_i1 = TDCavity(l=0.7, v=0.0, freq=2800000.0, phi=0.0, eid='TDSA.52.I1')
+
+# UnknowElement
+
+# Matrices
+
+# Solenoids
+solb_23_i1 = Solenoid(l=0.0, k=0.0, eid='SOLB.23.I1')
+
 
 d_8_1 = Drift(l=0.5776, eid='D_12')
 # astra_ocelot_interface_a1_start = Marker(eid="astra_ocelot_interface_G1_to_A1")
@@ -275,25 +308,57 @@ d_8_2 = Drift(l=d_8.l - d_8_1.l)
 d_8_n = (d_8_1, g1_a1_interface, d_8_2)
 qi_53_U = Marker("QI.53.U")
 a1_ah1_interface = Marker(eid="A1-AH1 interface: just after the last A1 Cavity")
-tmp_m = Marker("matching-point-at-start-of-q52")
+q52_matching_point = Marker("matching-point-at-start-of-q52")
 a1_1_stop = Marker(eid="just-after-first-a1-cavity")
 lh_section_stop = Marker(eid="just_before_i1d_dipole_LH_section_stop")
 # i1d_section_start = Marker(eid="just_before_i1d_dipole_I1D_section_start")
 lh_i1d_interface = Marker(eid="LH-I1D interface: just before the I1D dump dipole")
 dump_csr_start = Marker(eid="DUMP.CSR.START")
-d_35_1 = Drift(l=0.08115, eid='D_46')
+# d_35_1 = Drift(l=0.08115, eid='D_46')
 # stlat_47_i1 = Marker(eid="just-before-first-laser-heater-dipole")
-d_35_2 = Drift(l=d_35.l - d_35_1.l)
+# d_35_2 = Drift(l=d_35.l - d_35_1.l)
 stlat_47_i1 = Marker(eid='STLAT.47.I1')
 ah1_lh_interface = Marker(eid="AH1-LH interface: Just before the first LH chicane dipole")
 # ah1_section_stop = Marker(eid='just_before_first_laser_heater_dipole_AH1_section_stop')
 # lh_section_start = Marker(eid='just_before_first_laser_heater_dipole_LH_section_start')
-d_35_n = (d_35_1, ah1_lh_interface, stlat_47_i1, d_35_2)
+# d_35_n = (d_35_1, ah1_lh_interface, stlat_47_i1, d_35_2)
+# power supplies
+
+
+id_22433449_ = g1_a1_interface
+id_68749308_ = a1_ah1_interface
+id_75115473_ = a1_1_stop
+stlat_47_i1 = ah1_lh_interface
+
+# lattice
+cell = (stsec_23_i1, stsub_23_i1, gun_23_i1, d_1, solb_23_i1, d_2, ckx_23_i1,
+cky_23_i1, d_3, ckx_24_i1, cky_24_i1, d_4, bpmg_24_i1, d_5, scrn_24_i1,
+fcup_24_i1, d_6, ensub_24_i1, stsub_24i_i1, d_7, tora_25_i1, d_8, scrn_25i_i1,
+fcup_25i_i1, d_9, bpmg_25i_i1, d_10, dcm_25_i1, d_11, ckx_25_i1, cky_25_i1,
+d_12, id_22433449_, d_13, stac_26_i1, d_14, c_a1_1_1_i1, id_75115473_, d_15,
+c_a1_1_2_i1, d_15, c_a1_1_3_i1, d_15, c_a1_1_4_i1, d_15, c_a1_1_5_i1, d_15,
+c_a1_1_6_i1, d_15, c_a1_1_7_i1, d_15, c_a1_1_8_i1, id_68749308_, d_22, match_37_i1,
+d_23, q_37_i1, d_23, cx_37_i1, cy_37_i1, d_25, bpmc_38i_i1, d_26,
+enac_38_i1, stac_38_i1, d_27, bpmr_38ii_i1, d_28, q_38_i1, d_23, cx_39_i1,
+cy_39_i1, d_30, c3_ah1_1_1_i1, d_31, c3_ah1_1_2_i1, d_31, c3_ah1_1_3_i1, d_31,
+c3_ah1_1_4_i1, d_31, c3_ah1_1_5_i1, d_31, c3_ah1_1_6_i1, d_31, c3_ah1_1_7_i1, d_31,
+c3_ah1_1_8_i1, d_38, enac_44_i1, d_39, tora_46_i1, d_40, qi_46_i1, d_41,
+bam_47_i1, d_42, bpmf_47_i1, d_43, mpbpmf_47_i1, d_44, dcm_47_i1, d_45,
+qi_47_i1, d_46, stlat_47_i1, d_47, bl_48i_i1, d_48, bl_48ii_i1, d_49,
+mpbpmf_48_i1, d_43, bpmf_48_i1, d_51, otrl_48_i1, d_52,
+        lh_start, undu_49_i1,lh_stop,
+d_52,otrl_50_i1, d_54, bl_50i_i1, d_55, bl_50ii_i1,
+d_47, enlat_50_i1,d_46,
+qi_50_i1, d_58, eod_51_i1, d_59, ciy_51_i1, d_60, cix_51_i1, d_61,
+        bpmf_52_i1, d_43, mpbpmf_52_i1, d_63, q52_matching_point, qi_52_i1, d_64, tdsa_52_i1, d_64,
+qi_53_i1, d_66, qi_54_i1, d_67, stlat_55_i1, d_68, match_55_i1, otrc_55_i1,
+d_69, ciy_55_i1, d_5, bpma_55_i1, d_71, qi_55_i1, d_72, otrc_56_i1,
+d_69, cix_57_i1, d_5, bpma_57_i1, d_71, qi_57_i1, d_72, otrc_58_i1,
+d_77, ciy_58_i1, d_78, qi_59_i1, d_79, bpma_59_i1, d_80, otrc_59_i1,
+        d_81, qi_60_i1, d_82, tora_60_i1, d_83, qi_61_i1, lh_i1d_interface, d_84, ensub_62_i1)
 # power supplies
 
 #
-qln_23_i1.ps_id = 'QLN.23.I1'
-qls_23_i1.ps_id = 'QLS.23.I1'
 q_37_i1.ps_id = 'Q.A1.1.I1'
 q_38_i1.ps_id = 'Q.AH1.1.I1'
 qi_46_i1.ps_id = 'QI.1.I1'
@@ -329,6 +394,7 @@ c3_ah1_1_5_i1.ps_id = 'C3.AH1.I1'
 c3_ah1_1_6_i1.ps_id = 'C3.AH1.I1'
 c3_ah1_1_7_i1.ps_id = 'C3.AH1.I1'
 c3_ah1_1_8_i1.ps_id = 'C3.AH1.I1'
+tdsa_52_i1.ps_id = 'TDSA.I1'
 
 #
 bl_48i_i1.ps_id = 'BL.1.I1'
@@ -337,446 +403,7 @@ bl_50i_i1.ps_id = 'BL.3.I1'
 bl_50ii_i1.ps_id = 'BL.4.I1'
 
 
+
+
 def make_cell():
-    return deepcopy(
-        MachineSequence(
-            [
-                stsec_23_i1,
-                d_1,
-                solb_23_i1,
-                qln_23_i1,
-                qls_23_i1,
-                d_2,
-                ckx_23_i1,
-                cky_23_i1,
-                d_3,
-                ckx_24_i1,
-                cky_24_i1,
-                d_4,
-                bpmg_24_i1,
-                d_5,
-                tora_25_i1,
-                d_6,
-                bpmg_25i_i1,
-                d_7,
-                ckx_25_i1,
-                cky_25_i1,
-                d_8_n,
-                c_a1_1_1_i1,
-                a1_1_stop,
-                d_9,
-                c_a1_1_2_i1,
-                d_9,
-                c_a1_1_3_i1,
-                d_9,
-                c_a1_1_4_i1,
-                d_9,
-                c_a1_1_5_i1,
-                d_9,
-                c_a1_1_6_i1,
-                d_9,
-                c_a1_1_7_i1,
-                d_9,
-                c_a1_1_8_i1,
-                a1_ah1_interface,
-                d_16,
-                match_37_i1,
-                d_17,
-                q_37_i1,  # 37!
-                d_17,
-                cx_37_i1,
-                cy_37_i1,
-                d_19,
-                bpmc_38i_i1,
-                d_20,
-                bpmr_38ii_i1,
-                d_21,
-                q_38_i1,   # 38!
-                d_17,
-                cx_39_i1,
-                cy_39_i1,
-                d_23,
-                c3_ah1_1_1_i1,
-                d_24,
-                c3_ah1_1_2_i1,
-                d_24,
-                c3_ah1_1_3_i1,
-                d_24,
-                c3_ah1_1_4_i1,
-                d_24,
-                c3_ah1_1_5_i1,
-                d_24,
-                c3_ah1_1_6_i1,
-                d_24,
-                c3_ah1_1_7_i1,
-                d_24,
-                c3_ah1_1_8_i1,
-                d_31,
-                tora_46_i1,
-                d_32,
-                qi_46_i1, # 46!
-                d_33,
-                bpmf_47_i1,
-                d_34,
-                qi_47_i1,  # 47!
-                d_35_n,
-                bl_48i_i1,
-                d_36,
-                bl_48ii_i1,
-                d_37,
-                bpmf_48_i1,
-                d_38,
-                otrl_48_i1,
-                d_39,
-                lh_start,
-                undu_49_i1,
-                lh_stop,
-                d_39,
-                otrl_50_i1,
-                d_41,
-                bl_50i_i1,
-                d_42,
-                bl_50ii_i1,
-                d_35,
-                qi_50_i1,  # 50!
-                d_44,
-                ciy_51_i1,
-                d_45,
-                cix_51_i1,
-                d_46,
-                bpmf_52_i1,
-                d_47,
-                tmp_m,
-                qi_52_i1,
-                d_48,
-                tdsa_52_i1,
-                d_48,
-                qi_53_U,
-                qi_53_i1,
-                d_50,
-                qi_54_i1,
-                d_51,
-                match_55_i1,
-                otrc_55_i1,
-                d_52,
-                ciy_55_i1,
-                d_53,
-                bpma_55_i1,
-                d_54,
-                qi_55_i1,
-                d_51,
-                otrc_56_i1,
-                d_52,
-                cix_57_i1,
-                d_53,
-                bpma_57_i1,
-                d_54,
-                qi_57_i1,
-                d_51,
-                otrc_58_i1,
-                d_60,
-                ciy_58_i1,
-                d_61,
-                qi_59_i1,
-                d_62,
-                bpma_59_i1,
-                d_63,
-                otrc_59_i1,
-                d_64,
-                qi_60_i1,
-                d_65,
-                tora_60_i1,
-                d_66,
-                bpma_60_i1,
-                d_53,
-                bpmatest_61_i1,
-                d_68,
-                qi_61_i1,
-                d_69,
-                lh_i1d_interface,
-                dump_csr_start,
-                d_70,
-                stsub_62_i1,
-            ]
-        )
-    )
-
-# from ocelot import *
-
-# tws = Twiss()
-# tws.E = 0.005000000
-# tws.beta_x  = 55.7887190242
-# tws.beta_y  = 55.7887190242
-# tws.alpha_x = 18.185436973
-# tws.alpha_y = 18.185436973
-# # drifts
-# d_1 = Drift(l=0.276, eid='D_1')
-# d_2 = Drift(l=0.316, eid='D_2')
-# d_3 = Drift(l=0.311, eid='D_3')
-# d_4 = Drift(l=0.047, eid='D_4')
-# d_5 = Drift(l=0.15, eid='D_5')
-# d_6 = Drift(l=0.198782, eid='D_6')
-# d_7 = Drift(l=0.439218, eid='D_7')
-# d_8 = Drift(l=0.225, eid='D_8')
-# d_9 = Drift(l=0.088, eid='D_9')
-# d_10 = Drift(l=0.111, eid='D_10')
-# d_11 = Drift(l=0.31, eid='D_11')
-# d_12 = Drift(l=0.5776, eid='D_12')
-# d_13 = Drift(l=0.1, eid='D_13')
-# d_14 = Drift(l=0.2216, eid='D_14')
-# d_15 = Drift(l=0.3459, eid='D_15')
-# d_22 = Drift(l=0.2043, eid='D_22')
-# d_23 = Drift(l=0.0432, eid='D_23')
-# d_25 = Drift(l=0.085, eid='D_25')
-# d_26 = Drift(l=0.4579, eid='D_26')
-# d_27 = Drift(l=0.2211, eid='D_27')
-# d_28 = Drift(l=0.1282, eid='D_28')
-# d_30 = Drift(l=0.202, eid='D_30')
-# d_31 = Drift(l=0.262, eid='D_31')
-# d_38 = Drift(l=0.155, eid='D_38')
-# d_39 = Drift(l=2.3364, eid='D_39')
-# d_40 = Drift(l=0.33305, eid='D_40')
-# d_41 = Drift(l=0.08615, eid='D_41')
-# d_42 = Drift(l=0.2175, eid='D_42')
-# d_43 = Drift(l=0.096, eid='D_43')
-# d_44 = Drift(l=0.1177, eid='D_44')
-# d_45 = Drift(l=0.12345, eid='D_45')
-# d_46 = Drift(l=0.08115, eid='D_46')
-# d_47 = Drift(l=0.051165, eid='D_47')
-# d_48 = Drift(l=0.100827, eid='D_48')
-# d_49 = Drift(l=0.092415, eid='D_49')
-# d_51 = Drift(l=0.27175, eid='D_51')
-# d_52 = Drift(l=0.164, eid='D_52')
-# d_54 = Drift(l=0.120165, eid='D_54')
-# d_55 = Drift(l=0.100828, eid='D_55')
-# d_58 = Drift(l=0.18964, eid='D_58')
-# d_59 = Drift(l=0.2, eid='D_59')
-# d_60 = Drift(l=0.303, eid='D_60')
-# d_61 = Drift(l=0.1975, eid='D_61')
-# d_63 = Drift(l=0.08765, eid='D_63')
-# d_64 = Drift(l=0.05115, eid='D_64')
-# d_66 = Drift(l=0.7143, eid='D_66')
-# d_67 = Drift(l=0.72115, eid='D_67')
-# d_68 = Drift(l=0.035, eid='D_68')
-# d_69 = Drift(l=0.175, eid='D_69')
-# d_71 = Drift(l=0.13115, eid='D_71')
-# d_72 = Drift(l=0.75615, eid='D_72')
-# d_77 = Drift(l=0.275, eid='D_77')
-# d_78 = Drift(l=0.18115, eid='D_78')
-# d_79 = Drift(l=0.20115, eid='D_79')
-# d_80 = Drift(l=0.38, eid='D_80')
-# d_81 = Drift(l=0.28115, eid='D_81')
-# d_82 = Drift(l=0.26285, eid='D_82')
-# d_83 = Drift(l=0.74945, eid='D_83')
-# d_84 = Drift(l=0.53115, eid='D_84')
-
-# # quadrupoles
-# #q_37_i1 = Quadrupole(l=0.2136, k1=-1.114451709, tilt=0.0, eid='Q.37.I1')
-# #q_38_i1 = Quadrupole(l=0.2136, k1=1.253402109, tilt=0.0, eid='Q.38.I1')
-# #qi_46_i1 = Quadrupole(l=0.2377, k1=0.0801434791, tilt=0.0, eid='QI.46.I1')
-# #qi_47_i1 = Quadrupole(l=0.2377, k1=0.3761428846, tilt=0.0, eid='QI.47.I1')
-# q_37_i1 = Quadrupole(l=0.2136, k1=-1.588827702268584, tilt=0.0, eid='Q.37.I1')
-# q_38_i1 = Quadrupole(l=0.2136, k1=1.524445650117970, tilt=0.0, eid='Q.38.I1')
-# qi_46_i1 = Quadrupole(l=0.2377, k1=0.304340551812098, tilt=0.0, eid='QI.46.I1')
-# qi_47_i1 = Quadrupole(l=0.2377, k1=0.003628640677698, tilt=0.0, eid='QI.47.I1')
-# qi_50_i1 = Quadrupole(l=0.2377, k1=-0.8646623294, tilt=0.0, eid='QI.50.I1')
-# qi_52_i1 = Quadrupole(l=0.2377, k1=-0.352207614, tilt=0.0, eid='QI.52.I1')
-# qi_53_i1 = Quadrupole(l=0.2377, k1=2.104794186, tilt=0.0, eid='QI.53.I1')
-# qi_54_i1 = Quadrupole(l=0.2377, k1=0.7943661063, tilt=0.0, eid='QI.54.I1')
-# qi_55_i1 = Quadrupole(l=0.2377, k1=-3.526311, tilt=0.0, eid='QI.55.I1')
-# qi_57_i1 = Quadrupole(l=0.2377, k1=3.526311, tilt=0.0, eid='QI.57.I1')
-# qi_59_i1 = Quadrupole(l=0.2377, k1=-3.526311, tilt=0.0, eid='QI.59.I1')
-# qi_60_i1 = Quadrupole(l=0.2377, k1=2.145682287, tilt=0.0, eid='QI.60.I1')
-# qi_61_i1 = Quadrupole(l=0.2377, k1=0.8685937479, tilt=0.0, eid='QI.61.I1')
-
-# # bending magnets
-# bl_48i_i1 = SBend(l = 0.2, angle=-0.099484, e1=0.0, e2=-0.099484, gap=0, tilt=0.0, fint=0.0, fintx=0.0, eid='BL.48I.I1')
-# bl_48ii_i1 = SBend(l = 0.2, angle=0.099484, e1=0.099484, e2=0.0, gap=0, tilt=0.0, fint=0.0, fintx=0.0, eid='BL.48II.I1')
-# bl_50i_i1 = SBend(l = 0.2, angle=0.099484, e1=0.0, e2=0.099484, gap=0, tilt=0.0, fint=0.0, fintx=0.0, eid='BL.50I.I1')
-# bl_50ii_i1 = SBend(l = 0.2, angle=-0.099484, e1=-0.099484, e2=0.0, gap=0, tilt=0.0, fint=0.0, fintx=0.0, eid='BL.50II.I1')
-
-# # correctors
-# ckx_23_i1 = Hcor(l=0.025, angle=0.0, eid='CKX.23.I1')
-# cky_23_i1 = Vcor(l=0.025, angle=0.0, eid='CKY.23.I1')
-# ckx_24_i1 = Hcor(l=0.025, angle=0.0, eid='CKX.24.I1')
-# cky_24_i1 = Vcor(l=0.025, angle=0.0, eid='CKY.24.I1')
-# ckx_25_i1 = Hcor(l=0.025, angle=0.0, eid='CKX.25.I1')
-# cky_25_i1 = Vcor(l=0.025, angle=0.0, eid='CKY.25.I1')
-# cx_37_i1 = Hcor(l=0.0, angle=0.0, eid='CX.37.I1')
-# cy_37_i1 = Vcor(l=0.0, angle=0.0, eid='CY.37.I1')
-# cx_39_i1 = Hcor(l=0.0, angle=0.0, eid='CX.39.I1')
-# cy_39_i1 = Vcor(l=0.0, angle=0.0, eid='CY.39.I1')
-# ciy_51_i1 = Vcor(l=0.1, angle=0.0, eid='CIY.51.I1')
-# cix_51_i1 = Hcor(l=0.1, angle=0.0, eid='CIX.51.I1')
-# ciy_55_i1 = Vcor(l=0.1, angle=0.0, eid='CIY.55.I1')
-# cix_57_i1 = Hcor(l=0.1, angle=0.0, eid='CIX.57.I1')
-# ciy_58_i1 = Vcor(l=0.1, angle=0.0, eid='CIY.58.I1')
-
-# # markers
-# stsec_23_i1 = Marker(eid='STSEC.23.I1')
-# stsub_23_i1 = Marker(eid='STSUB.23.I1')
-# gun_23_i1 = Marker(eid='GUN.23.I1')
-# scrn_24_i1 = Marker(eid='SCRN.24.I1')
-# fcup_24_i1 = Marker(eid='FCUP.24.I1')
-# ensub_24_i1 = Marker(eid='ENSUB.24.I1')
-# stsub_24i_i1 = Marker(eid='STSUB.24I.I1')
-# tora_25_i1 = Marker(eid='TORA.25.I1')
-# scrn_25i_i1 = Marker(eid='SCRN.25I.I1')
-# fcup_25i_i1 = Marker(eid='FCUP.25I.I1')
-# dcm_25_i1 = Marker(eid='DCM.25.I1')
-# id_22433449_ = Marker(eid='ID_22433449_')
-# stac_26_i1 = Marker(eid='STAC.26.I1')
-# id_75115473_ = Marker(eid='ID_75115473_')
-# id_68749308_ = Marker(eid='ID_68749308_')
-# match_37_i1 = Marker(eid='MATCH.37.I1')
-# enac_38_i1 = Marker(eid='ENAC.38.I1')
-# stac_38_i1 = Marker(eid='STAC.38.I1')
-# enac_44_i1 = Marker(eid='ENAC.44.I1')
-# tora_46_i1 = Marker(eid='TORA.46.I1')
-# bam_47_i1 = Marker(eid='BAM.47.I1')
-# mpbpmf_47_i1 = Marker(eid='MPBPMF.47.I1')
-# dcm_47_i1 = Marker(eid='DCM.47.I1')
-# stlat_47_i1 = Marker(eid='STLAT.47.I1')
-# mpbpmf_48_i1 = Marker(eid='MPBPMF.48.I1')
-# otrl_48_i1 = Marker(eid='OTRL.48.I1')
-# otrl_50_i1 = Marker(eid='OTRL.50.I1')
-# enlat_50_i1 = Marker(eid='ENLAT.50.I1')
-# eod_51_i1 = Marker(eid='EOD.51.I1')
-# mpbpmf_52_i1 = Marker(eid='MPBPMF.52.I1')
-# stlat_55_i1 = Marker(eid='STLAT.55.I1')
-# match_55_i1 = Marker(eid='MATCH.55.I1')
-# otrc_55_i1 = Marker(eid='OTRC.55.I1')
-# otrc_56_i1 = Marker(eid='OTRC.56.I1')
-# otrc_58_i1 = Marker(eid='OTRC.58.I1')
-# otrc_59_i1 = Marker(eid='OTRC.59.I1')
-# tora_60_i1 = Marker(eid='TORA.60.I1')
-# ensub_62_i1 = Marker(eid='ENSUB.62.I1')
-# lh_start = Marker(eid='lh_start')
-# lh_stop = Marker(eid='lh_stop')
-
-# # monitor
-# bpmg_24_i1 = Monitor(eid='BPMG.24.I1')
-# bpmg_25i_i1 = Monitor(eid='BPMG.25I.I1')
-# bpmc_38i_i1 = Monitor(eid='BPMC.38I.I1')
-# bpmr_38ii_i1 = Monitor(eid='BPMR.38II.I1')
-# bpmf_47_i1 = Monitor(eid='BPMF.47.I1')
-# bpmf_48_i1 = Monitor(eid='BPMF.48.I1')
-# bpmf_52_i1 = Monitor(eid='BPMF.52.I1')
-# bpma_55_i1 = Monitor(eid='BPMA.55.I1')
-# bpma_57_i1 = Monitor(eid='BPMA.57.I1')
-# bpma_59_i1 = Monitor(eid='BPMA.59.I1')
-
-# # sextupoles
-
-# # octupole
-
-# # undulator
-# undu_49_i1 = Undulator(lperiod=0.074, nperiods=10.00, Kx=1.294, Ky=0.0, eid='UNDU.49.I1')
-
-# # cavity
-# c_a1_1_1_i1 = Cavity(l=1.0377, v=0.018124987050000003, freq=1300000000.0, phi=0.0, eid='C.A1.1.1.I1')
-# c_a1_1_2_i1 = Cavity(l=1.0377, v=0.018124987050000003, freq=1300000000.0, phi=0.0, eid='C.A1.1.2.I1')
-# c_a1_1_3_i1 = Cavity(l=1.0377, v=0.018124987050000003, freq=1300000000.0, phi=0.0, eid='C.A1.1.3.I1')
-# c_a1_1_4_i1 = Cavity(l=1.0377, v=0.018124987050000003, freq=1300000000.0, phi=0.0, eid='C.A1.1.4.I1')
-# c_a1_1_5_i1 = Cavity(l=1.0377, v=0.018124987050000003, freq=1300000000.0, phi=0.0, eid='C.A1.1.5.I1')
-# c_a1_1_6_i1 = Cavity(l=1.0377, v=0.018124987050000003, freq=1300000000.0, phi=0.0, eid='C.A1.1.6.I1')
-# c_a1_1_7_i1 = Cavity(l=1.0377, v=0.018124987050000003, freq=1300000000.0, phi=0.0, eid='C.A1.1.7.I1')
-# c_a1_1_8_i1 = Cavity(l=1.0377, v=0.018124987050000003, freq=1300000000.0, phi=0.0, eid='C.A1.1.8.I1')
-# c3_ah1_1_1_i1 = Cavity(l=0.346, v=0.0024999884, freq=3900000000.0, phi=180.0, eid='C3.AH1.1.1.I1')
-# c3_ah1_1_2_i1 = Cavity(l=0.346, v=0.0024999884, freq=3900000000.0, phi=180.0, eid='C3.AH1.1.2.I1')
-# c3_ah1_1_3_i1 = Cavity(l=0.346, v=0.0024999884, freq=3900000000.0, phi=180.0, eid='C3.AH1.1.3.I1')
-# c3_ah1_1_4_i1 = Cavity(l=0.346, v=0.0024999884, freq=3900000000.0, phi=180.0, eid='C3.AH1.1.4.I1')
-# c3_ah1_1_5_i1 = Cavity(l=0.346, v=0.0024999884, freq=3900000000.0, phi=180.0, eid='C3.AH1.1.5.I1')
-# c3_ah1_1_6_i1 = Cavity(l=0.346, v=0.0024999884, freq=3900000000.0, phi=180.0, eid='C3.AH1.1.6.I1')
-# c3_ah1_1_7_i1 = Cavity(l=0.346, v=0.0024999884, freq=3900000000.0, phi=180.0, eid='C3.AH1.1.7.I1')
-# c3_ah1_1_8_i1 = Cavity(l=0.346, v=0.0024999884, freq=3900000000.0, phi=180.0, eid='C3.AH1.1.8.I1')
-# tdsa_52_i1 = TDCavity(l=0.7, v=0.0, freq=2800000.0, phi=0.0, eid='TDSA.52.I1')
-
-# # UnknowElement
-
-# # Matrices
-
-# # Solenoids
-# solb_23_i1 = Solenoid(l=0.0, k=0.0, eid='SOLB.23.I1')
-
-# # lattice
-# cell = (stsec_23_i1, stsub_23_i1, gun_23_i1, d_1, solb_23_i1, d_2, ckx_23_i1,
-# cky_23_i1, d_3, ckx_24_i1, cky_24_i1, d_4, bpmg_24_i1, d_5, scrn_24_i1,
-# fcup_24_i1, d_6, ensub_24_i1, stsub_24i_i1, d_7, tora_25_i1, d_8, scrn_25i_i1,
-# fcup_25i_i1, d_9, bpmg_25i_i1, d_10, dcm_25_i1, d_11, ckx_25_i1, cky_25_i1,
-# d_12, id_22433449_, d_13, stac_26_i1, d_14, c_a1_1_1_i1, id_75115473_, d_15,
-# c_a1_1_2_i1, d_15, c_a1_1_3_i1, d_15, c_a1_1_4_i1, d_15, c_a1_1_5_i1, d_15,
-# c_a1_1_6_i1, d_15, c_a1_1_7_i1, d_15, c_a1_1_8_i1, id_68749308_, d_22, match_37_i1,
-# d_23, q_37_i1, d_23, cx_37_i1, cy_37_i1, d_25, bpmc_38i_i1, d_26,
-# enac_38_i1, stac_38_i1, d_27, bpmr_38ii_i1, d_28, q_38_i1, d_23, cx_39_i1,
-# cy_39_i1, d_30, c3_ah1_1_1_i1, d_31, c3_ah1_1_2_i1, d_31, c3_ah1_1_3_i1, d_31,
-# c3_ah1_1_4_i1, d_31, c3_ah1_1_5_i1, d_31, c3_ah1_1_6_i1, d_31, c3_ah1_1_7_i1, d_31,
-# c3_ah1_1_8_i1, d_38, enac_44_i1, d_39, tora_46_i1, d_40, qi_46_i1, d_41,
-# bam_47_i1, d_42, bpmf_47_i1, d_43, mpbpmf_47_i1, d_44, dcm_47_i1, d_45,
-# qi_47_i1, d_46, stlat_47_i1, d_47, bl_48i_i1, d_48, bl_48ii_i1, d_49,
-# mpbpmf_48_i1, d_43, bpmf_48_i1, d_51, otrl_48_i1, d_52,
-#         lh_start, undu_49_i1,lh_stop,
-# d_52,otrl_50_i1, d_54, bl_50i_i1, d_55, bl_50ii_i1,
-# d_47, enlat_50_i1,d_46,
-# qi_50_i1, d_58, eod_51_i1, d_59, ciy_51_i1, d_60, cix_51_i1, d_61,
-#         bpmf_52_i1, d_43, mpbpmf_52_i1, d_63, pre_qi_52, qi_52_i1, d_64, tdsa_52_i1, d_64,
-# qi_53_i1, d_66, qi_54_i1, d_67, stlat_55_i1, d_68, match_55_i1, otrc_55_i1,
-# d_69, ciy_55_i1, d_5, bpma_55_i1, d_71, qi_55_i1, d_72, otrc_56_i1,
-# d_69, cix_57_i1, d_5, bpma_57_i1, d_71, qi_57_i1, d_72, otrc_58_i1,
-# d_77, ciy_58_i1, d_78, qi_59_i1, d_79, bpma_59_i1, d_80, otrc_59_i1,
-# d_81, qi_60_i1, d_82, tora_60_i1, d_83, qi_61_i1, d_84, ensub_62_i1)
-# # power supplies
-
-
-# #
-# q_37_i1.ps_id = 'Q.A1.1.I1'
-# q_38_i1.ps_id = 'Q.AH1.1.I1'
-# qi_46_i1.ps_id = 'QI.1.I1'
-# qi_47_i1.ps_id = 'QI.2.I1'
-# qi_50_i1.ps_id = 'QI.3.I1'
-# qi_52_i1.ps_id = 'QI.4.I1'
-# qi_53_i1.ps_id = 'QI.5.I1'
-# qi_54_i1.ps_id = 'QI.6.I1'
-# qi_55_i1.ps_id = 'QI.7.I1'
-# qi_57_i1.ps_id = 'QI.8.I1'
-# qi_59_i1.ps_id = 'QI.9.I1'
-# qi_60_i1.ps_id = 'QI.11.I1'
-# qi_61_i1.ps_id = 'QI.12.I1'
-
-# #
-
-# #
-
-# #
-# c_a1_1_1_i1.ps_id = 'C.A1.I1'
-# c_a1_1_2_i1.ps_id = 'C.A1.I1'
-# c_a1_1_3_i1.ps_id = 'C.A1.I1'
-# c_a1_1_4_i1.ps_id = 'C.A1.I1'
-# c_a1_1_5_i1.ps_id = 'C.A1.I1'
-# c_a1_1_6_i1.ps_id = 'C.A1.I1'
-# c_a1_1_7_i1.ps_id = 'C.A1.I1'
-# c_a1_1_8_i1.ps_id = 'C.A1.I1'
-# c3_ah1_1_1_i1.ps_id = 'C3.AH1.I1'
-# c3_ah1_1_2_i1.ps_id = 'C3.AH1.I1'
-# c3_ah1_1_3_i1.ps_id = 'C3.AH1.I1'
-# c3_ah1_1_4_i1.ps_id = 'C3.AH1.I1'
-# c3_ah1_1_5_i1.ps_id = 'C3.AH1.I1'
-# c3_ah1_1_6_i1.ps_id = 'C3.AH1.I1'
-# c3_ah1_1_7_i1.ps_id = 'C3.AH1.I1'
-# c3_ah1_1_8_i1.ps_id = 'C3.AH1.I1'
-# tdsa_52_i1.ps_id = 'TDSA.I1'
-
-# #
-# bl_48i_i1.ps_id = 'BL.1.I1'
-# bl_48ii_i1.ps_id = 'BL.1.I1'
-# bl_50i_i1.ps_id = 'BL.3.I1'
-# bl_50ii_i1.ps_id = 'BL.4.I1'
-
-
-
-
-# def make_cell():
-#     return deepcopy(
-#         SectionCell(cell
-#         )
-#     )
+    return deepcopy(MachineSequence(cell))
