@@ -60,19 +60,31 @@ def make_twiss0_at_cathode():
     # tws.beta_y  = 58.31307349
     # tws.alpha_x = 17.3149486
     # tws.alpha_y = 19.09296961
-    tws.s = 23.2
+    # tws.s = 3.2
 
-    beta_x  = 62.60423946234019
-    beta_y  = 70.6513903650761
-    alpha_x = 18.759585504978787
-    alpha_y = 21.02107263460874
+    # # beta_x  = 62.60423946234019
+    # # beta_y  = 70.6513903650761
+    # # alpha_x = 18.759585504978787
+    # # alpha_y = 21.02107263460874
 
-
+    tws.beta_x  = 0.286527307369
+    tws.beta_y  = 0.286527307369
+    tws.alpha_x = -0.838833736086
+    tws.alpha_y = -0.838833736086
+    tws.s = 3.1996
+    
+    # # # From Igor's OCELOT zip
+    # tws.beta_x  = 66.52444871211233
+    # tws.beta_y  = 66.52444871211233
+    # tws.alpha_x = 19.86310444516896
+    # tws.alpha_y = 19.86310444516896
+    # tws.s = 0.0
+    
     # tws.beta_x  = 62.60423946234019
     # tws.beta_y  = 70.6513903650761
     # tws.alpha_x = 18.759585504978787
     # tws.alpha_y = 21.02107263460874
-
+    # tws.s = 0.0
 
     return tws
 

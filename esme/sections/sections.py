@@ -210,6 +210,7 @@ class LH(FELSection):
         # Where we start the CSR process if we are going into the
         # dump. This is just before the dump dipole BB.62.I1D.
         just_before_dump_dipole = "DUMP.CSR.START"
+        just_before_dump_dipole = lh_section_stop
         self.sequence = i1_cell[lh_section_start:lh_section_stop]
 
         # init physics processes

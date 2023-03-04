@@ -13,6 +13,7 @@ from ocelot.cpbd.optics import twiss as oce_calc_twiss, Twiss
 from ocelot.utils.fel_track import FELSimulationConfig
 from ocelot.cpbd.beam import moments_from_parray, optics_from_moments, beam_matching
 from ocelot.cpbd.track import track
+from ocelot.cpbd.magnetic_lattice import MagneticLattice
 
 from .sections import sections
 from .sections.i1 import make_twiss0_at_cathode, Z_START
@@ -186,6 +187,7 @@ class I1DSimulatedEnergySpreadMeasurement:
 
     def _load_parray0(self, fparray0):
         parray0 = load_particle_array(fparray0)
+
         cathode_to_a1_twiss, _ = cathode_to_first_a1_cavity_optics()
         a1_twiss = cathode_to_a1_twiss.iloc[-1]
         self._match_parray(parray0, a1_twiss)
@@ -254,51 +256,32 @@ class I1DSimulatedEnergySpreadMeasurement:
             save_particle_array(outpath, parray_otrc64)
             LOG.info(f"Written: {outpath}")
 
+# Do i have the optis at the cathode or the gun??!?!
 
 class B2DSimulatedEnergySpreadMeasurement:
     # B2D_DESIGN_OPTICS = "/Users/stuartwalker/repos/esme-xfel/esme/sections/TWISS_B2D"
     IGOR_BC2 = "/Users/stuartwalker/repos/esme-xfel/esme/sections/igor-bc2.pcl"
     BOLKO_OPTICS = "/Users/stuartwalker/repos/esme-xfel/esme/sections/bolko-optics.tfs"
-    def __init__(self, dscan_conf, tscan_voltages, longlist=None):
-        self.twiss_at_q52 = make_twiss_at_q52()
-        self.twiss_at_a1 = make_twiss0_at_cathode()
-
+    def __init__(self, dscan_conf, tscan_voltages, longlist=None, fparray0=None):
         if longlist is None:
             self.longlist = XFELLonglist(LONGLIST)
 
-        # self.parray0 = self._load_parray0(fparray0)
-        self.b2dlat = lattice.make_to_b2d_lattice()
+        self.b2dlat = lattice.make_to_b2d_lattice(make_twiss0_at_cathode())
+
+        if fparray0 is not None:
+            self.parray0 = self._load_parray0(fparray0)
 
         self.dscan_conf = dscan_conf
         self.tscan_voltages = tscan_voltages
 
     def _load_parray0(self, fparray0):
         parray0 = load_particle_array(fparray0)
-        cathode_to_a1_twiss, _ = cathode_to_first_a1_cavity_optics()
-        a1_twiss = cathode_to_a1_twiss.iloc[-1]
-        self._match_parray(parray0, a1_twiss)
+        twiss0 = self.b2dlat.twiss0 # This is already at the end of the gun!
+        # gun_twiss, mlat = self.b2dlat["G1"].calculate_twiss(twiss0)
+        # twiss_at_end_of_gun = Twiss.from_series(gun_twiss.iloc[-1])
+        twiss_at_end_of_gun = twiss0
+        self._match_parray(parray0, twiss_at_end_of_gun)
         return parray0
-
-    def track_to_q52(self):
-        if self._parrayq52 is not None:
-            return self._parrayq52
-
-        start_name = "G1-A1 interface: up to where we track using ASTRA and just right the first A1 cavity"
-        stop_name = "matching-point-at-start-of-q52"
-        conf = FELSimulationConfig(do_physics=True)
-        conf.ah1.active = False
-        conf.a1.phi = 0
-        conf.a1.v = 125 / 8 * 1e-3
-        parrayq52 = self.i1dlat.track(parray0=self.parray0.copy(),
-                                      start=start_name,
-                                      stop=stop_name,
-                                      felconfig=conf)
-        self._match_parray(parrayq52, self.twiss_at_q52, matching_slice="Emax")
-        self._parrayq52 = parrayq52
-        return self._parrayq52
-
-    def track_q52_to_tds2(self):
-        pass
 
     @staticmethod
     def _match_parray(parray0, twiss, matching_slice=None):
@@ -349,31 +332,31 @@ class B2DSimulatedEnergySpreadMeasurement:
         mad8 = self.BOLKO_OPTICS
         df8 = pand8.read(mad8)
 
-        # longlist = "/Users/stuartwalker/repos/esme-xfel/bin/longlist.csv"
-        felconfig = FELSimulationConfig(components=_mad8_optics_to_magnet_config(df8, self.longlist))
+        felconfig = FELSimulationConfig(components=_mad8_optics_to_magnet_config(df8))
 
         # MAD8 uses name2s (i.e. distance from cathode wall not in the
         # name.  but ocelot lattice uses name1s.  so map here using the longlist
         start_name2 = df8.iloc[1].NAME
         stop_name2 = df8.iloc[-1].NAME
 
-        start_name1 = self.longlist.name2_to_name1(start_name2)
-        stop_name1 = self.longlist.name2_to_name1(stop_name2)
+        start_name1 = self.longlist.name2_to_name1(start_name2).item()
+        stop_name1 = self.longlist.name2_to_name1(stop_name2).item()
 
         twiss0 = Twiss()
         twiss0.beta_x = df8.iloc[0].BETX
         twiss0.beta_y = df8.iloc[0].BETY
         twiss0.alpha_x = df8.iloc[0].ALFX
         twiss0.alpha_y = df8.iloc[0].ALFY
+        twiss0.s = self.b2dlat.get_element_start_s(start_name1)
 
-        twiss, mlat = self.b2dlat.calculate_twiss(twiss0, start=start_name1, stop=stop_name1, felconfig=felconfig)
+        twiss, mlat = self.b2dlat.calculate_twiss(start=start_name1, stop=stop_name1, felconfig=felconfig, twiss0=twiss0)
 
         return twiss, mlat
 
     def get_b2_matching_point_twiss(self, matching_point_name):
         mad8 = self.BOLKO_OPTICS
         df8 = pand8.read(mad8)
-        
+
 
     def _make_bolko_optics_config(self):
         mad8 = self.BOLKO_OPTICS
@@ -381,22 +364,23 @@ class B2DSimulatedEnergySpreadMeasurement:
 
         felconfig = FELSimulationConfig(components=_mad8_optics_to_magnet_config(df8))
         return felconfig
-    
-    def _full_dscan_configs(self):
+
+    def _full_dscan_configs(self, design_energy=False):
         bolko_config = self._make_bolko_optics_config()
         scan_quads = _dscan_conf_to_magnetic_config_dicts(self.dscan_conf)
-        
+
         for scan_quads in _dscan_conf_to_magnetic_config_dicts(self.dscan_conf):
             nina_conf = deepcopy(bolko_config)
-            nina_conf.a2.active = False
-            nina_conf.ah1.active = False
-            nina_conf.a3.active = False
-            nina_conf.a1.phi = 0
-            nina_conf.a1.v = 125 / 8 * 1e-3
+            if not design_energy:
+                nina_conf.controller.a2.active = False
+                nina_conf.controller.ah1.active = False
+                nina_conf.controller.a3.active = False
+                nina_conf.controller.a1.phi = 0
+                nina_conf.controller.a1.v = 125 / 8 * 1e-3
 
             for quad_name, attrd in scan_quads.items():
                 # Use bolko optics config as a baseline for nina's new config.
-                nina_conf.components[quad_name] = attrd
+                nina_conf.controller.components[quad_name] = attrd
 
             yield nina_conf
 
@@ -453,38 +437,13 @@ class B2DSimulatedEnergySpreadMeasurement:
             twiss0.beta_y = df8.iloc[0].BETY
             twiss0.alpha_x = df8.iloc[0].ALFX
             twiss0.alpha_y = df8.iloc[0].ALFY
-            twiss0.E = energy0 
+            twiss0.E = energy0
             twiss, mlat = self.b2dlat.calculate_twiss(twiss0,
                                                       start=start_name2,
                                                       stop=stop_name1,
                                                       felconfig=felconfig)
             yield dy, twiss
-        
 
-    def full_scan_optics(self):
-        twiss_to_52, mlat52 = self.optics_to_q52()
-        twiss52 = Twiss.from_series(twiss_to_52.iloc[-1])
-
-        twiss_to_tds2, mlat_tds2 = self.optics_q52_to_b2_matching_point(twiss52)
-
-        energy0 = twiss_to_tds2.iloc[-1].E
-
-        for dy, tds_to_screen_optics in self.matching_point_to_screen(energy0):
-            tds_to_screen_optics.s += twiss_to_tds2.iloc[-1].s
-            full_twiss = pd.concat([twiss_to_52, twiss_to_tds2, tds_to_screen_optics])
-            yield dy, full_twiss
-
-
-    def optics_to_q52(self):
-        start_name = "G1-A1 interface: up to where we track using ASTRA and just right the first A1 cavity"
-        stop_name = "matching-point-at-start-of-q52"
-        cathode_to_a1_twiss, _ = cathode_to_first_a1_cavity_optics()
-        twiss0 = Twiss.from_series(cathode_to_a1_twiss.iloc[-1])
-        full_twiss, mlat = self.b2dlat.calculate_twiss(twiss0,
-                                                       start=start_name,
-                                                       stop=stop_name,
-                                                       felconfig=next(self._full_dscan_configs()))
-        return full_twiss, mlat
 
     def optics_q52_to_b2_matching_point(self, twiss0):
         start_name = "matching-point-at-start-of-q52"
@@ -498,17 +457,63 @@ class B2DSimulatedEnergySpreadMeasurement:
     def design_optics(self):
         twiss0g = make_twiss0_at_cathode()
         conf = FELSimulationConfig()
-        # df8 = pand8.read(self.B2D_DESIGN_OPTICS)
-        # df = pd.read_pickle(self.IGOR_BC2)
-        # from IPython import embed; embed()
-        # conf.components = _mad8_optics_to_magnet_config(df)
-        return self.b2dlat.calculate_twiss(twiss0g)
-        
+        return self.b2dlat.calculate_twiss()
+
     def gun_to_dump_magnetic_lattice(self):
-        return self.b2dlat.to_navigator().lat
+        return MagneticLattice(self.b2dlat.get_sequence())
 
     def gun_to_dump_sequence(self):
         return self.gun_to_dump_magnetic_lattice().sequence
+
+    def gun_to_b2d_bolko_optics(self):
+        twiss0g = make_twiss0_at_cathode()
+        mad8 = self.BOLKO_OPTICS
+        df8 = pand8.read(mad8)
+
+        felconfig = FELSimulationConfig(components=_mad8_optics_to_magnet_config(df8))
+        return self.b2dlat.calculate_twiss(felconfig=felconfig)
+
+    def gun_to_dump_scan_optics(self, design_energy=False):
+        for i, felconfig in enumerate(self._full_dscan_configs(design_energy=design_energy)):
+            dy = self.dscan_conf.dispersions[i]
+            twiss, mlat = self.b2dlat.calculate_twiss(felconfig=felconfig)
+            yield dy, twiss
+
+    def gun_to_dump_piecewise_scan_optics(self):
+        twiss0g = make_twiss0_at_cathode()
+        i = 0
+        matching_points = ["matching-point-at-start-of-q52", "MATCH.174.L1", # "MATCH.414.B2",
+                           "MATCH.428.B2"]
+        for (felconfig, refconfig) in zip(self._full_dscan_configs(design_energy=False),
+                                          self._full_dscan_configs(design_energy=True)):
+            dy = self.dscan_conf.dispersions[i]
+            felconfig.matching_config = refconfig
+            felconfig.matching_points = matching_points
+            twiss, mlat = self.b2dlat.calculate_twiss(felconfig=felconfig, design_config=refconfig)
+            i += 1
+            yield dy, twiss, matching_points
+
+    def gun_to_dump_piecewise_scan_optics_tracking(self, design_energy=True,
+                                                   do_physics=False):
+        matching_points = ["matching-point-at-start-of-q52", "MATCH.174.L1", "MATCH.428.B2"]
+        i = 0
+        for (felconfig, refconfig) in zip(self._full_dscan_configs(design_energy=False),
+                                          self._full_dscan_configs(design_energy=True)):
+            dy = self.dscan_conf.dispersions[i]
+            felconfig.matching_points = matching_points
+            felconfig.do_physics = do_physics
+
+            parray1, twiss = self.b2dlat.track_optics(
+                self.parray0.copy(),
+                start="G1-A1 interface: up to where we track using ASTRA and just right the first A1 cavity",
+                felconfig=felconfig,
+                design_config=refconfig
+            )
+            i += 1
+            yield dy, twiss, matching_points
+
+
+
 
 
 class XFELLonglist:
@@ -519,8 +524,6 @@ class XFELLonglist:
         ldf = self.ll
         return ldf[ldf.NAME2 == name2].NAME1
 
-    def sequenced_name2s_to_name1s(self):
-        pass
 
 def _mad8_optics_to_magnet_config(df8):
     quads = df8[df8.KEYWORD == "QUAD"]
@@ -528,7 +531,7 @@ def _mad8_optics_to_magnet_config(df8):
     quad_k1s = quads.K1
 
     longlist = XFELLonglist(LONGLIST)
-    
+
     result = {}
     for name2, k1 in zip(quad_name2s, quad_k1s):
         name1s = longlist.name2_to_name1(name2)
@@ -543,7 +546,7 @@ def _mad8_optics_to_magnet_config(df8):
             result[name1] = {"angle": tup.ANGLE,
                              "e1": tup.E1,
                              "e2": tup.E2}
-            
+
     return result
 
 

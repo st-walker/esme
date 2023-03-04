@@ -287,7 +287,7 @@ def sim(fscan, i1, b2, dscan, tscan, escan, parray, outdir, fast, optics):
         # simplot.check_a1_q52_measurement_optics_tracking(parray, outdir)
         # simplot.dscan_piecewise_tracking_optics(parray, i1_dscan_conf, outdir)
         simplot.dscan_piecewise_tracking_optics(parray, i1_dscan_conf, outdir,
-                                               do_physics=True)        
+                                               do_physics=True)
     elif i1 and parray:
         i1dsim = sim.I1DSimulatedEnergySpreadMeasurement(parray,
                                                          i1_dscan_conf,
@@ -298,18 +298,32 @@ def sim(fscan, i1, b2, dscan, tscan, escan, parray, outdir, fast, optics):
     if b2:
         b2_dscan_conf = inout.b2_dscan_config_from_scan_config_file(fscan)
         b2_tscan_voltages = inout.b2_tds_voltages_from_scan_config_file(fscan)
-        
-        b2dsim = sim.B2DSimulatedEnergySpreadMeasurement(parray,
-                                                         b2_dscan_conf,
-                                                         b2_tscan_voltages)
+
+        # b2dsim = sim.B2DSimulatedEnergySpreadMeasurement(parray,
+        #                                                  b2_dscan_conf,
+        #                                                  b2_tscan_voltages)
 
         simplot.plot_b2d_design_optics(b2_dscan_conf, b2_tscan_voltages)
 
-        # b2_dscan_conf = b2_dscan_config_from_scan_config_file(fscan)
-        # # simplot.bolko_optics_comparison(b2_dscan_conf, b2_tscan_voltages)
-        # # simplot.new_tds_optics_comparison(b2_dscan_conf, b2_tscan_voltages)
-        # simplot.piecewise_a1_to_b2d_optics(b2_dscan_conf, b2_tscan_voltages)
+        simplot.bolko_optics_comparison(b2_dscan_conf, b2_tscan_voltages)
+
+        simplot.gun_to_b2d_bolko_optics(b2_dscan_conf, b2_tscan_voltages)
+
+        simplot.gun_to_b2d_dispersion_scan_design_energy(b2_dscan_conf, b2_tscan_voltages)
+        simplot.gun_to_b2d_piecewise_dispersion_scan_optics(b2_dscan_conf, b2_tscan_voltages)
+        simplot.gun_to_b2d_tracking_piecewise_optics(b2_dscan_conf, b2_tscan_voltages, parray)
+        simplot.gun_to_b2d_tracking_piecewise_optics(b2_dscan_conf, b2_tscan_voltages, parray)
 
 
 if __name__ == "__main__":
     main()  # pragma: no cover, pylint: disable=no-value-for-parameter
+
+# So:
+
+# Compare lattices and fix the apparent length mismatch.
+# Fix the I1 scan again.
+# Plot Nina's bolko optics on top of the design optics
+
+# Get Start to end Bolko Optics
+
+# Get Start to end dispersion scan.

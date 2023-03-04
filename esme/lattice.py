@@ -178,13 +178,13 @@ def apply_quad_setting_to_lattice(lattice: SectionedFEL, qset: QuadrupoleSetting
             LOG.debug(f"{element.id} k1 after: {element.k1}")
 
 
-def make_to_i1d_lattice(data_dir="./"):
+def make_to_i1d_lattice(twiss0, data_dir="./"):
     all_sections = [sections.G1, sections.A1, sections.AH1, sections.LH, sections.I1D]
-    return SectionedFEL(all_sections, data_dir=data_dir)
+    return SectionedFEL(all_sections, twiss0, data_dir=data_dir)
 
-def make_to_b2d_lattice(data_dir="./"):
+def make_to_b2d_lattice(twiss0, data_dir="./"):
     all_sections = [sections.G1, sections.A1, sections.AH1, sections.LH, sections.DL, sections.BC0, sections.L1, sections.BC1, sections.L2, sections.BC2, sections.B2D]
-    return SectionedFEL(all_sections, data_dir=data_dir)
+    return SectionedFEL(all_sections, twiss0, data_dir=data_dir)
 
 def make_dummy_lookup_sequence():
     """Just make a cell of every single element for looking up
