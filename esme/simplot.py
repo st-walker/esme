@@ -477,13 +477,13 @@ def gun_to_b2d_dispersion_scan_design_energy(b2_dscan_conf, b2_tscan_voltages):
     vlargs = {"x": screen_s, "linestyle": ":", "color": "black"}
     axbx.axvline(**vlargs)
     axdy.axvline(**vlargs)
-    axe.axvline(**vlargs)    
+    axe.axvline(**vlargs)
     vlargs["label"] = "OTRA.473.B2D"
     axby.axvline(**vlargs)
     axby.legend()
 
     mx.set_title("Special high-$D_y$ B2D Optics at Design- and Low-Energy")
-        
+
     axbx.set_ylabel(BETX_LABEL_STRING)
     axby.set_ylabel(BETY_LABEL_STRING)
     axe.set_ylabel(E_LABEL_STRING)
@@ -529,7 +529,7 @@ def gun_to_b2d_piecewise_dispersion_scan_optics(b2_dscan_conf, b2_tscan_voltages
         if i == 0:
             axby.axvline(s, linestyle="-.", color="green", alpha=0.7, label="Matching Points")
         axby.axvline(s, linestyle="-.", color="green", alpha=0.7)
-        axdy.axvline(s, linestyle="-.", color="green", alpha=0.7)        
+        axdy.axvline(s, linestyle="-.", color="green", alpha=0.7)
         axe.axvline(s, linestyle="-.", color="green", alpha=0.7)
 
 
@@ -537,11 +537,11 @@ def gun_to_b2d_piecewise_dispersion_scan_optics(b2_dscan_conf, b2_tscan_voltages
     vlargs = {"x": screen_s, "linestyle": ":", "color": "black"}
     axbx.axvline(**vlargs)
     axdy.axvline(**vlargs)
-    axe.axvline(**vlargs)    
+    axe.axvline(**vlargs)
     vlargs["label"] = "OTRA.473.B2D"
     axby.axvline(**vlargs)
     axby.legend()
-        
+
 
     axbx.set_ylabel(BETX_LABEL_STRING)
     axby.set_ylabel(BETY_LABEL_STRING)
@@ -553,7 +553,7 @@ def gun_to_b2d_piecewise_dispersion_scan_optics(b2_dscan_conf, b2_tscan_voltages
     axdy.legend(loc="center left")
 
     plt.show()
-    
+
 
 def gun_to_b2d_tracking_piecewise_optics(b2_dscan_conf, b2_tscan_voltages, fparray0):
     b2d = sim.B2DSimulatedEnergySpreadMeasurement(b2_dscan_conf, b2_tscan_voltages, fparray0=fparray0)
@@ -593,7 +593,7 @@ def gun_to_b2d_tracking_piecewise_optics(b2_dscan_conf, b2_tscan_voltages, fparr
         if i == 0:
             axby.axvline(s, linestyle="-.", color="green", alpha=0.7, label="Matching Points")
         axby.axvline(s, linestyle="-.", color="green", alpha=0.7)
-        axdy.axvline(s, linestyle="-.", color="green", alpha=0.7)        
+        axdy.axvline(s, linestyle="-.", color="green", alpha=0.7)
         axe.axvline(s, linestyle="-.", color="green", alpha=0.7)
 
 
@@ -601,13 +601,83 @@ def gun_to_b2d_tracking_piecewise_optics(b2_dscan_conf, b2_tscan_voltages, fparr
     vlargs = {"x": screen_s, "linestyle": ":", "color": "black"}
     axbx.axvline(**vlargs)
     axdy.axvline(**vlargs)
-    axe.axvline(**vlargs)    
+    axe.axvline(**vlargs)
     vlargs["label"] = "OTRA.473.B2D"
     axby.axvline(**vlargs)
     axby.legend()
 
     mx.set_title("B2D Dispersion Scan Optics at design eneryg and 130MeV with artificial matching")
-        
+
+
+    axbx.set_ylabel(BETX_LABEL_STRING)
+    axby.set_ylabel(BETY_LABEL_STRING)
+    axe.set_ylabel(E_LABEL_STRING)
+    axdy.set_ylabel(DY_LABEL_STRING)
+    axe.set_xlabel(Z_LABEL_STRING)
+
+    axbx.legend()
+    axdy.legend(loc="center left")
+
+    plt.show()
+
+def gun_to_b2d_tracking_central_slice_optics(b2_dscan_conf, b2_tscan_voltages, fparray0, do_physics=False, outdir=None):
+    b2d = sim.B2DSimulatedEnergySpreadMeasurement(b2_dscan_conf, b2_tscan_voltages, fparray0=fparray0)
+    sequence = b2d.gun_to_dump_sequence()
+    s_offset = 0
+    bl = latdraw.interfaces.lattice_from_ocelot(sequence, initial_offset=[0, 0, s_offset])
+    fig, (mx, axbx, axby, axdy, axe) = latdraw.subplots_with_lattice(bl, nrows=4)
+
+    # Particle Tracking optics that we are trying to make nice.
+    low_energy_gen = b2d.gun_to_dump_central_slice_optics(do_physics=do_physics, outdir=outdir)
+
+    # The design optis that we are aiming for:
+    for i, (dy, full_twiss) in enumerate(b2d.gun_to_dump_scan_optics(design_energy=True)):
+        _, low_e_twiss, matching_points = next(low_energy_gen)
+        # matching_points = []
+        # low_e_twiss = full_twiss
+        label1 = ""
+        label2 = ""
+        if i == 3:
+            label1 = "2.4 GeV Linear Optics"
+            label2 = "130 MeV Tracking"
+
+        # from IPython import embed; embed()
+        marker = ""
+
+        (line,) = axbx.plot(full_twiss.s, full_twiss.beta_x, label=label1)
+        (line,) = axbx.plot(low_e_twiss.s, low_e_twiss.beta_x, linestyle="--", color=line.get_color(), label=label2, marker=marker)
+
+        (line,) = axby.plot(full_twiss.s, full_twiss.beta_y)
+        (line,) = axby.plot(low_e_twiss.s, low_e_twiss.beta_y, linestyle="--", color=line.get_color(), marker=marker)
+
+        axdy.plot(full_twiss.s, full_twiss.Dy, label=fr"$D_y\,=\,{dy}\,\mathrm{{m}}$")
+
+        (line,) = axe.plot(full_twiss.s, full_twiss.E * 1e3)
+        (line,) = axe.plot(low_e_twiss.s, low_e_twiss.E * 1e3, linestyle="--", color=line.get_color(), marker=marker)
+
+    for i, matching_point in enumerate(matching_points):
+        s = b2d.b2dlat.get_element_end_s(matching_point)
+        axbx.axvline(s, linestyle="-.", color="green", alpha=0.7)
+
+        if i == 0:
+            axby.axvline(s, linestyle="-.", color="green", alpha=0.7, label="Matching Points")
+        axby.axvline(s, linestyle="-.", color="green", alpha=0.7)
+        axdy.axvline(s, linestyle="-.", color="green", alpha=0.7)
+        axe.axvline(s, linestyle="-.", color="green", alpha=0.7)
+
+
+    screen_s = b2d.b2dlat.get_element_end_s("OTRA.473.B2D")
+    vlargs = {"x": screen_s, "linestyle": ":", "color": "black"}
+    axbx.axvline(**vlargs)
+    axdy.axvline(**vlargs)
+    axe.axvline(**vlargs)
+    vlargs["label"] = "OTRA.473.B2D"
+    axby.axvline(**vlargs)
+    axby.legend()
+
+    mx.set_title("B2D Dispersion Scan Optics at Design Energy and 130MeV "
+                 f"with Artificially Matched Central Slices: Physics: {do_physics}")
+
 
     axbx.set_ylabel(BETX_LABEL_STRING)
     axby.set_ylabel(BETY_LABEL_STRING)
@@ -621,7 +691,7 @@ def gun_to_b2d_tracking_piecewise_optics(b2_dscan_conf, b2_tscan_voltages, fparr
     plt.show()
 
 
-    
+
 def gun_to_b2d_dispersion_scan_low_energy(b2_dscan_conf, b2_tscan_voltages):
     b2d = sim.B2DSimulatedEnergySpreadMeasurement(b2_dscan_conf, b2_tscan_voltages)
     sequence = b2d.gun_to_dump_sequence()

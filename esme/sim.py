@@ -14,6 +14,7 @@ from ocelot.utils.fel_track import FELSimulationConfig
 from ocelot.cpbd.beam import moments_from_parray, optics_from_moments, beam_matching
 from ocelot.cpbd.track import track
 from ocelot.cpbd.magnetic_lattice import MagneticLattice
+from ocelot.utils.fel_track import SliceTwissCalculator
 
 from .sections import sections
 from .sections.i1 import make_twiss0_at_cathode, Z_START
@@ -280,6 +281,7 @@ class B2DSimulatedEnergySpreadMeasurement:
         # gun_twiss, mlat = self.b2dlat["G1"].calculate_twiss(twiss0)
         # twiss_at_end_of_gun = Twiss.from_series(gun_twiss.iloc[-1])
         twiss_at_end_of_gun = twiss0
+        LOG.info("Loading parray and matching it to twiss at end of the gun")
         self._match_parray(parray0, twiss_at_end_of_gun)
         return parray0
 
@@ -513,7 +515,30 @@ class B2DSimulatedEnergySpreadMeasurement:
             yield dy, twiss, matching_points
 
 
+    def gun_to_dump_central_slice_optics(self, design_energy=True,
+                                         outdir=None,
+                                                   do_physics=False):
+        # do_
+        matching_points = ["matching-point-at-start-of-q52", "MATCH.174.L1", "MATCH.428.B2"]
+        i = 0
+        for (felconfig, refconfig) in zip(self._full_dscan_configs(design_energy=False),
+                                          self._full_dscan_configs(design_energy=True)):
+            dy = self.dscan_conf.dispersions[i]
+            felconfig.matching_points = matching_points #
+            felconfig.do_physics = do_physics
+            dumps=["OTRS.99.I1", "OTRS.192.B1" "OTRS.404.B2", "MATCH.428.B2", "MATCH.428.B2_after", "OTRA.473.B2D"]
 
+            parray1, twiss = self.b2dlat.track_optics(
+                self.parray0.copy(),
+                dumps=dumps,
+                start="G1-A1 interface: up to where we track using ASTRA and just right the first A1 cavity",
+                felconfig=felconfig,
+                opticscls=SliceTwissCalculator,
+                design_config=refconfig,
+                outdir=outdir
+            )
+            i += 1
+            yield dy, twiss, matching_points
 
 
 class XFELLonglist:
