@@ -27,14 +27,8 @@ SC_MESH = [63, 63, 63]
 SC_RANDOM_MESH = True
 CSR_N_BIN = 400
 
-
-# Sig_Z=(0.0019996320155001497, 0.0006893836215002082, 0.0001020391309281775, 1.25044082708419e-05) #500pC 5kA
-# Sig_Z=(0.0019996320155001497, 0.0006817907866411071, 9.947650872824487e-05, 7.13045869665955e-06)  #500pC 10kA
-# Sig_Z=(0.0018761888067590127, 0.0006359220169656093, 9.204477386791353e-05, 7.032551498646372e-06) #250pC 5kA
-# Sig_Z=(0.0018856911379360524, 0.0005463919476045524, 6.826162032352288e-05, 1.0806534547678727e-05) #100pC 1kA
-Sig_Z = (0.0018732376720197858, 0.000545866016784069, 7.09234589639138e-05, 2.440742745010469e-06)  # 100 pC 5kA
-# Sig_Z=(0.0013314283765668853, 0.0004502566926198658, 4.64037216210807e-05, 2.346018397815618e-06) #100 pC 5kA SC
-# Sig_Z=(0.0013314187263949542, 0.00045069372029991764, 4.537451914820527e-05, 4.0554988027793585e-06)#100 pC 2.5kA SC
+# 250pC, no compression.
+Sig_Z = 0.0013
 
 
 def make_space_charge(*, step, nmesh_xyz=None, random_mesh=None):
@@ -214,7 +208,7 @@ class LH(FELSection):
         self.sequence = i1_cell[lh_section_start:lh_section_stop]
 
         # init physics processes
-        csr = make_csr(sigma_min=Sig_Z[0] * CSR_SIGMA_FACTOR, traj_step=0.0005, apply_step=0.005)
+        csr = make_csr(sigma_min=Sig_Z * CSR_SIGMA_FACTOR, traj_step=0.0005, apply_step=0.005)
         sc = make_space_charge(step=5, nmesh_xyz=SC_MESH, random_mesh=SC_RANDOM_MESH)
         wake = make_wake(
             "wake_table_TDS1.dat", factor=1, step=10, w_sampling=WAKE_SAMPLING, filter_order=WAKE_FILTER_ORDER
@@ -255,7 +249,7 @@ class I1D(FELSection):
         stop = self.sequence[-1].id
         # self.lattice = MagneticLattice(cell, start=i1d_start, stop=stop, method=self.method)
         # init physics processes
-        csr = make_csr(sigma_min=Sig_Z[0] * 0.1, traj_step=0.0005, apply_step=0.005)
+        csr = make_csr(sigma_min=Sig_Z * 0.1, traj_step=0.0005, apply_step=0.005)
         sc = make_space_charge(step=5, nmesh_xyz=SC_MESH, random_mesh=SC_RANDOM_MESH)
 
         # Add physics processes.  SC the whole way, CSR only for the dipole (more or less).
@@ -276,7 +270,7 @@ class DL(FELSection):
         dogleg_stop = "DL-BC0 interface: just before the first BC0 chicane dipole"
         self.sequence = cell[lh_stop_dl_start:dogleg_stop]
 
-        csr = make_csr(sigma_min=Sig_Z[0] * CSR_SIGMA_FACTOR, traj_step=0.0005, apply_step=0.005, n_bin=CSR_N_BIN)
+        csr = make_csr(sigma_min=Sig_Z * CSR_SIGMA_FACTOR, traj_step=0.0005, apply_step=0.005, n_bin=CSR_N_BIN)
         wake = make_wake(
             'mod_wake_0070.030_0073.450_MONO.dat',
             factor=1,
@@ -305,7 +299,7 @@ class BC0(FELSection):
         self.sequence = l1_cell[dogleg_stop_bc0_start:bc0_stop_l1_start]
 
         csr = make_csr(
-            step=1, n_bin=CSR_N_BIN, sigma_min=Sig_Z[1] * CSR_SIGMA_FACTOR, traj_step=0.0005, apply_step=0.001
+            step=1, n_bin=CSR_N_BIN, sigma_min=Sig_Z * CSR_SIGMA_FACTOR, traj_step=0.0005, apply_step=0.001
         )
         sc = make_space_charge(step=40, nmesh_xyz=SC_MESH, random_mesh=SC_RANDOM_MESH)
 
@@ -360,7 +354,7 @@ class BC1(FELSection):
 
         # init physics processes
         csr = make_csr(
-            step=1, n_bin=CSR_N_BIN, sigma_min=Sig_Z[2] * CSR_SIGMA_FACTOR, traj_step=0.0005, apply_step=0.001
+            step=1, n_bin=CSR_N_BIN, sigma_min=Sig_Z * CSR_SIGMA_FACTOR, traj_step=0.0005, apply_step=0.001
         )
         sc = make_space_charge(step=40, nmesh_xyz=SC_MESH, random_mesh=SC_RANDOM_MESH)
 
@@ -411,7 +405,7 @@ class BC2(FELSection):
         self.sequence = l2_cell[l2_stop_bc2_start:bc2_stop]
 
         csr = make_csr(
-            step=1, n_bin=CSR_N_BIN, sigma_min=Sig_Z[3] * CSR_SIGMA_FACTOR, traj_step=0.0005, apply_step=0.001
+            step=1, n_bin=CSR_N_BIN, sigma_min=Sig_Z * CSR_SIGMA_FACTOR, traj_step=0.0005, apply_step=0.001
         )
         sc = make_space_charge(step=50, nmesh_xyz=SC_MESH, random_mesh=SC_RANDOM_MESH)
 
@@ -433,12 +427,10 @@ class B2D(FELSection):
         bc2_stop = "BC2-B2D interface: just before the B2D dump dipole"
         self.sequence = cell[bc2_stop:]
 
-        b2d_stop = self.sequence[-1].id
-
         csr = make_csr(
-            step=1, n_bin=CSR_N_BIN, sigma_min=Sig_Z[3] * CSR_SIGMA_FACTOR, traj_step=0.0005, apply_step=0.001
+            step=1, n_bin=CSR_N_BIN, sigma_min=Sig_Z * CSR_SIGMA_FACTOR, traj_step=0.0005, apply_step=0.001
         )
         sc = make_space_charge(step=50, nmesh_xyz=SC_MESH, random_mesh=SC_RANDOM_MESH)
 
-        self.add_physics_process(csr, start=bc2_stop, stop=b2d_stop)
-        self.add_physics_process(sc, start=bc2_stop, stop=b2d_stop)
+        self.add_physics_process(csr, start=bc2_stop, stop="BPMA.471.B2D")
+        self.add_physics_process(sc, start=bc2_stop, stop=None)

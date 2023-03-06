@@ -195,6 +195,10 @@ def compsp(ftoml):
     title = title_from_toml(ftoml)
     plot_tds_set_point_vs_readback(dscan, tscan, title=title)
 
+@main.command(no_args_is_help=True)
+def tds(ftoml):
+    pass
+
 
 @main.command(no_args_is_help=True)
 @argument("name", nargs=1)
@@ -299,21 +303,32 @@ def sim(fscan, i1, b2, dscan, tscan, escan, parray, outdir, fast, optics):
         b2_dscan_conf = inout.b2_dscan_config_from_scan_config_file(fscan)
         b2_tscan_voltages = inout.b2_tds_voltages_from_scan_config_file(fscan)
 
+        if optics:
         # b2dsim = sim.B2DSimulatedEnergySpreadMeasurement(parray,
         #                                                  b2_dscan_conf,
         #                                                  b2_tscan_voltages)
 
-        # simplot.plot_b2d_design_optics(b2_dscan_conf, b2_tscan_voltages)
+            simplot.plot_b2d_design_optics(b2_dscan_conf, b2_tscan_voltages)
 
-        # simplot.bolko_optics_comparison(b2_dscan_conf, b2_tscan_voltages)
+            simplot.bolko_optics_comparison(b2_dscan_conf, b2_tscan_voltages)
 
-        # simplot.gun_to_b2d_bolko_optics(b2_dscan_conf, b2_tscan_voltages)
+            simplot.gun_to_b2d_bolko_optics(b2_dscan_conf, b2_tscan_voltages)
 
-        # simplot.gun_to_b2d_dispersion_scan_design_energy(b2_dscan_conf, b2_tscan_voltages)
-        # simplot.gun_to_b2d_piecewise_dispersion_scan_optics(b2_dscan_conf, b2_tscan_voltages)
-        # simplot.gun_to_b2d_tracking_piecewise_optics(b2_dscan_conf, b2_tscan_voltages, parray)
+            simplot.gun_to_b2d_dispersion_scan_design_energy(b2_dscan_conf, b2_tscan_voltages)
+            simplot.gun_to_b2d_piecewise_dispersion_scan_optics(b2_dscan_conf, b2_tscan_voltages)
+            simplot.gun_to_b2d_tracking_piecewise_optics(b2_dscan_conf, b2_tscan_voltages, parray)
+            simplot.gun_to_b2d_tracking_central_slice_optics(b2_dscan_conf,
+                                                             b2_tscan_voltages,
+                                                             parray,
+                                                             outdir=outdir,
+                                                             do_physics=False)
 
-        simplot.gun_to_b2d_tracking_central_slice_optics(b2_dscan_conf, b2_tscan_voltages, parray, outdir=outdir, do_physics=True)
+        else:
+            simplot.gun_to_b2d_tracking_central_slice_optics(b2_dscan_conf,
+                                                             b2_tscan_voltages,
+                                                             parray,
+                                                             outdir=outdir,
+                                                             do_physics=True)
 
 if __name__ == "__main__":
     main()  # pragma: no cover, pylint: disable=no-value-for-parameter

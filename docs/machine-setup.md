@@ -100,7 +100,7 @@ on/off beam
 
 beam dynamics -> expert -> xfel_b2_diag_bunches.xml. ( diag bunches bc2)
 
-kicker_number = 0bunch_number = 120
+kicker_number = bunch_number = 120
 turn tds on.
 number of pulses.
 
@@ -109,7 +109,6 @@ start diagnostic bunches
 kax switches on kicker system, so don't use it.  or just kicker number to 0.
 
 bunch number to 1, this is always the first stable bunch!.  so this is good.
-
 
 
 - if there's a trip for example:

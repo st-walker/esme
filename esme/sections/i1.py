@@ -202,6 +202,10 @@ qi_59_i1 = Quadrupole(l=0.2377, k1=-3.526311, tilt=0.0, eid='QI.59.I1')
 qi_60_i1 = Quadrupole(l=0.2377, k1=2.145682287, tilt=0.0, eid='QI.60.I1')
 qi_61_i1 = Quadrupole(l=0.2377, k1=0.8685937479, tilt=0.0, eid='QI.61.I1')
 
+
+
+
+
 # bending magnets
 bl_48i_i1 = SBend(l = 0.2, angle=-0.099484, e1=0.0, e2=-0.099484, gap=0, tilt=0.0, fint=0.0, fintx=0.0, eid='BL.48I.I1')
 bl_48ii_i1 = SBend(l = 0.2, angle=0.099484, e1=0.099484, e2=0.0, gap=0, tilt=0.0, fint=0.0, fintx=0.0, eid='BL.48II.I1')
@@ -340,7 +344,7 @@ ah1_lh_interface = Marker(eid="AH1-LH interface: Just before the first LH chican
 id_22433449_ = g1_a1_interface
 id_68749308_ = a1_ah1_interface
 id_75115473_ = a1_1_stop
-stlat_47_i1 = ah1_lh_interface
+# stlat_47_i1 = ah1_lh_interface
 
 # lattice
 cell = (stsec_23_i1, stsub_23_i1, gun_23_i1, d_1, solb_23_i1, d_2, ckx_23_i1,
@@ -356,7 +360,7 @@ cy_39_i1, d_30, c3_ah1_1_1_i1, d_31, c3_ah1_1_2_i1, d_31, c3_ah1_1_3_i1, d_31,
 c3_ah1_1_4_i1, d_31, c3_ah1_1_5_i1, d_31, c3_ah1_1_6_i1, d_31, c3_ah1_1_7_i1, d_31,
 c3_ah1_1_8_i1, d_38, enac_44_i1, d_39, tora_46_i1, d_40, qi_46_i1, d_41,
 bam_47_i1, d_42, bpmf_47_i1, d_43, mpbpmf_47_i1, d_44, dcm_47_i1, d_45,
-qi_47_i1, d_46, stlat_47_i1, d_47, bl_48i_i1, d_48, bl_48ii_i1, d_49,
+        qi_47_i1, d_46, ah1_lh_interface, stlat_47_i1, d_47, bl_48i_i1, d_48, bl_48ii_i1, d_49,
 mpbpmf_48_i1, d_43, bpmf_48_i1, d_51, otrl_48_i1, d_52,
         lh_start, undu_49_i1,lh_stop,
 d_52,otrl_50_i1, d_54, bl_50i_i1, d_55, bl_50ii_i1,

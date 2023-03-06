@@ -74,8 +74,6 @@ LOG = logging.getLogger(__name__)
 DELAY_AFTER_BEAM_OFF: float = 5.0
 
 
-
-
 PIXEL_SCALE_X_M: float = 13.7369e-6
 PIXEL_SCALE_Y_M: float = 11.1756e-6
 

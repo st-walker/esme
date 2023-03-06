@@ -526,7 +526,7 @@ class B2DSimulatedEnergySpreadMeasurement:
             dy = self.dscan_conf.dispersions[i]
             felconfig.matching_points = matching_points #
             felconfig.do_physics = do_physics
-            dumps=["OTRS.99.I1", "OTRS.192.B1" "OTRS.404.B2", "MATCH.428.B2", "MATCH.428.B2_after", "OTRA.473.B2D"]
+            dumps=["OTRS.99.I1", "OTRS.192.B1" "OTRS.404.B2", "MATCH.428.B2", "MATCH.428.B2_after", "OTRA.473.B2D", "MATCH.37.I1", "MATCH.55.I1", "matching-point-at-start-of-q52"]
 
             parray1, twiss = self.b2dlat.track_optics(
                 self.parray0.copy(),
