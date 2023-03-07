@@ -39,12 +39,12 @@ from uncertainties.umath import sqrt as usqrt # pylint: disable=no-name-in-modul
 from esme.calibration import TDS_WAVENUMBER, TDS_LENGTH
 from esme.maths import linear_fit, ValueWithErrorT
 from esme.image import get_slice_properties, process_image
-from esme.injector_channels import (TDS_I1_AMPLITUDE_READBACK_ADDRESS,
-                                    BEAM_ALLOWED_ADDRESS,
-                                    BEAM_ENERGY_ADDRESS,
-                                    EVENT10_CHANNEL,
-                                    TDS_I1_ON_BEAM_EVENT10,
-                                    DUMP_SCREEN_ADDRESS)
+from esme.channels import (TDS_I1_AMPLITUDE_READBACK_ADDRESS,
+                           BEAM_ALLOWED_ADDRESS,
+                           BEAM_ENERGY_ADDRESS,
+                           EVENT10_CHANNEL,
+                           TDS_I1_ON_BEAM_EVENT10,
+                           DUMP_SCREEN_ADDRESS)
 from esme.measurement import SetpointSnapshots
 from esme.exceptions import TDSCalibrationError, EnergySpreadCalculationError
 

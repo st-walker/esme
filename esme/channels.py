@@ -81,14 +81,16 @@ SCREEN_NOT_IN = 0
 
 def make_injector_snapshot_template(outdir: os.PathLike):
     template = make_common_snapshot_template()
-    add_injector_to_template(template, outdir)
+    _add_injector_to_template(template, outdir)
     return template
+
 
 def make_b2d_snapshot_template(outdir: os.PathLike):
     template = make_common_snapshot_template()
-    # add_injector_to_template(template, outdir)
-    add_b2_snapshot_to_template(template, outdir)    
+    _add_injector_to_template(template, outdir)
+    _add_b2_snapshot_to_template(template, outdir)    
     return template
+
 
 def make_common_snapshot_template():
     template = Snapshot()
@@ -150,7 +152,8 @@ def make_common_snapshot_template():
     template.add_channel("XFEL.UTIL/LASERINT/GUN/SH4_OPEN")  # UG7 shutter open
     # template.add_channel("XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSB2/SP.PHASE")
 
-def add_injector_to_template(template, outdir):
+
+def _add_injector_to_template(template, outdir):
     
     screen_name = Path("XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ").parent.name
     image_dir = Path(outdir) / f"images-{screen_name}"
@@ -221,7 +224,7 @@ def add_injector_to_template(template, outdir):
     template.add_channel(EVENT10_CHANNEL) # TDS timing (returns 4-tuple)
     template.add_channel(BUNCH_ONE_TDS_I1) # Timing of TDS for first on-beam bunch.
 
-def add_bc2_channels_to_template(template, outdir):
+def _add_bc2_channels_to_template(template, outdir):
     screen_name = Path("XFEL.DIAG/CAMERA/OTRA.473.B2D/IMAGE_EXT_ZMQ").parent.name
     image_dir = Path(outdir) / f"images-{screen_name}"
     template.add_image(DUMP_SCREEN_ADDRESS, folder=image_dir)

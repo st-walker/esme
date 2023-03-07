@@ -21,7 +21,7 @@ from esme.analysis import (
     ScanMeasurement,
 )
 from esme.calibration import TDSCalibrator, TrivialTDSCalibrator
-from esme.injector_channels import TDS_I1_AMPLITUDE_READBACK_ADDRESS, I1D_SCREEN_ADDRESS
+from esme.channels import TDS_I1_AMPLITUDE_READBACK_ADDRESS, I1D_SCREEN_ADDRESS
 from esme.measurement import (
     MeasurementRunner,
     DispersionScanConfiguration,

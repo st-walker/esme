@@ -58,17 +58,17 @@ import pandas as pd
 from textwrap import dedent
 
 from esme.mint import MPS, Machine, XFELMachineInterface
-from esme.injector_channels import (make_injector_snapshot_template,
-                                    make_b2d_snapshot_template,
-                                    I1D_SCREEN_ADDRESS,
-                                    TDS_I1_AMPLITUDE_READBACK_ADDRESS,
-                                    BUNCH_ONE_TDS_I1,
-                                    BUNCH_ONE_TDS_B2,
-                                    EVENT10_CHANNEL,
-                                    EVENT12_CHANNEL,
-                                    BUNCH_ONE_TDS_B2,
-                                    B2D_SCREEN_ADDRESS,
-                                    BUNCH_ONE_TOLERANCE)
+from esme.channels import (make_injector_snapshot_template,
+                           make_b2d_snapshot_template,
+                           I1D_SCREEN_ADDRESS,
+                           TDS_I1_AMPLITUDE_READBACK_ADDRESS,
+                           BUNCH_ONE_TDS_I1,
+                           BUNCH_ONE_TDS_B2,
+                           EVENT10_CHANNEL,
+                           EVENT12_CHANNEL,
+                           BUNCH_ONE_TDS_B2,
+                           B2D_SCREEN_ADDRESS,
+                           BUNCH_ONE_TOLERANCE)
 
 TDSScanConfigurationSelf = TypeVar("TDSScanConfigurationSelfType", bound="TDSScanConfiguration")
 DispersionScanConfigurationSelf = TypeVar("DispersionScanConfigurationSelfType", bound="DispersionScanConfiguration")
