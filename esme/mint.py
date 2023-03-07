@@ -131,7 +131,6 @@ class XFELMachineInterface:
     """
 
     def __init__(self, args=None):
-        super(XFELMachineInterface, self).__init__(args=args)
         self.logbook = "xfellog"
         self.uncheck_upstream_bpms = True  # uncheck bpms upstream the first corrector
         self.allow_star_operation = True

@@ -21,7 +21,7 @@ from esme.analysis import (
     ScanMeasurement,
 )
 from esme.calibration import TDSCalibrator, TrivialTDSCalibrator
-from esme.injector_channels import TDS_AMPLITUDE_READBACK_ADDRESS, I1_DUMP_SCREEN_ADDRESS
+from esme.injector_channels import TDS_I1_AMPLITUDE_READBACK_ADDRESS, I1D_SCREEN_ADDRESS
 from esme.measurement import (
     MeasurementRunner,
     DispersionScanConfiguration,
@@ -236,7 +236,7 @@ def setpoint_snapshots_from_pcls(pcl_files):
     return result
 
 
-def make_measurement_runner(name, fconfig, outdir="./", measure_dispersion=False, copy_scan_config=True):
+def make_measurement_runner(name, fconfig, location, outdir="./", measure_dispersion=False, copy_scan_config=True):
     config = toml.load(fconfig)
     LOG.debug(f"Making MeasurementRunner instance from config file: {fconfig}")
     tscan_config = TDSScanConfiguration.from_config_file(fconfig)
@@ -244,6 +244,13 @@ def make_measurement_runner(name, fconfig, outdir="./", measure_dispersion=False
 
     if measure_dispersion is not None:
         measure_dispersion = make_dispersion_measurer(fconfig)
+
+    if location == "i1d":
+        machine = I1DEnergySpreadMeasuringMachine()
+    elif location == "b2d":
+        machine = B2DEnergySpreadMeasuringMachine
+    else:
+        raise ValueError("Unknown location string:", location)
 
     return MeasurementRunner(name, dscan_config, tscan_config, outdir=outdir, dispersion_measurer=measure_dispersion)
 

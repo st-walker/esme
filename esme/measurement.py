@@ -57,12 +57,17 @@ import toml
 import pandas as pd
 from textwrap import dedent
 
-from esme.mint import MPS, Machine
+from esme.mint import MPS, Machine, XFELMachineInterface
 from esme.injector_channels import (make_injector_snapshot_template,
-                                    DUMP_SCREEN_ADDRESS,
-                                    TDS_AMPLITUDE_READBACK_ADDRESS,
+                                    make_b2d_snapshot_template,
+                                    I1D_SCREEN_ADDRESS,
+                                    TDS_I1_AMPLITUDE_READBACK_ADDRESS,
                                     BUNCH_ONE_TDS_I1,
+                                    BUNCH_ONE_TDS_B2,
                                     EVENT10_CHANNEL,
+                                    EVENT12_CHANNEL,
+                                    BUNCH_ONE_TDS_B2,
+                                    B2D_SCREEN_ADDRESS,
                                     BUNCH_ONE_TOLERANCE)
 
 TDSScanConfigurationSelf = TypeVar("TDSScanConfigurationSelfType", bound="TDSScanConfiguration")
@@ -135,13 +140,13 @@ class MeasurementRunner:
     SLEEP_AFTER_QUAD_SETTING = 0.5
 
     def __init__(
-        self,
+            self,
             outdir: Union[os.PathLike, str],
-        dscan_config: DispersionScanConfiguration,
-        tds_config: TDSScanConfiguration,
-        machine: Optional[EnergySpreadMeasuringMachine] = None,
-        mps: Optional[MPS] = None,
-        dispersion_measurer: Optional[Type[BaseDispersionMeasurer]] = None,
+            dscan_config: DispersionScanConfiguration,
+            tds_config: TDSScanConfiguration,
+            machine: Optional[EnergySpreadMeasuringMachine],
+            mps: Optional[MPS] = None,
+            dispersion_measurer: Optional[Type[BaseDispersionMeasurer]] = None,
     ):
         """name is used for the output file name"""
         self.outdir = Path(outdir)
@@ -430,19 +435,11 @@ def _repeat_float_input_until_valid(prompt):
             return dispersion
 
 
-def handle_sigint():
-    pass
-
-
 class TDS:
     RB_SP_TOLERANCE = 0.02
-    AMPLITUDE_SP = "XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/SP.AMPL"
-    AMPLITUDE_RB = "XFEL.RF/LLRF.CONTROLLER/VS.LLTDSI1/AMPL.SAMPLE"
-    EVENT = "XFEL.DIAG/TIMER.CENTRAL/MASTER/EVENT10"
-
-    def __init__(self, mi=None):
-        self.mi = mi
-        self.bunch_one_timing = self.mi.get_value(BUNCH_ONE_TDS_I1)
+    def __init__(self):
+        self.mi = XFELMachineInterface()
+        self.bunch_one_timing = self.mi.get_value(self.BUNCH_ONE)
 
     def set_amplitude(self, amplitude: float) -> None:
         """Set the TDS amplitude"""
@@ -503,17 +500,29 @@ class TDS:
         time.sleep(0.2)
 
 
-class EnergySpreadMeasuringMachine(Machine):
+class I1TDS(TDS):
+    AMPLITUDE_SP = "XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/SP.AMPL"
+    AMPLITUDE_RB = "XFEL.RF/LLRF.CONTROLLER/VS.LLTDSI1/AMPL.SAMPLE"
+    EVENT = EVENT10_CHANNEL
+    BUNCH_ONE = BUNCH_ONE_TDS_I1
 
+
+class B2TDS(TDS):
+    AMPLITUDE_SP = "XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSB2/SP.AMPL"
+    AMPLITUDE_RB = "XFEL.RF/LLRF.CONTROLLER/VS.LLTDSB2/AMPL.SAMPLE"
+    EVENT = EVENT12_CHANNEL
+    BUNCH_ONE = BUNCH_ONE_TDS_B2
+
+
+class EnergySpreadMeasuringMachine(Machine):
     A1_VOLTAGE_SP = "XFEL.RF/LLRF.CONTROLLER/CTRL.A1.I1/SP.AMPL"
     A1_VOLTAGE_RB = "XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/AMPL.SAMPLE"
 
-    SCREEN_CHANNEL = DUMP_SCREEN_ADDRESS
     SCREEN_GAIN_CHANNEL = "!__placeholder__!"
 
     def __init__(self, snapshot):
         super().__init__(snapshot)
-        self.tds = TDS(self.mi)
+        self.tds = self.TDSCLS()
 
     def set_quad(self, name: str, value: float) -> None:
         """Set a particular quadrupole given by its name to the given value."""
@@ -542,18 +551,31 @@ class EnergySpreadMeasuringMachine(Machine):
         """Set screen gain"""
         LOG.debug(f"Setting screen gain: {gain}")
         raise NotImplementedError
+    
 
+class TDSCalibratingMachine(Machine):
+    def __init__(self, outdir):
+        self.outdir = outdir
+        self.tds = self.TDSCLS()
+        
+    def get_screen_image(self):
+        pass
 
-# def get_progress_from_output_dir(dname):
-#     # Load the scan.toml in the output directory
-#     fscan = toml.load(Path(fname) / "scan.toml")
+class I1TDSCalibratingMachine(TDSCalibratingMachine):
+    TDSCLS = I1TDS
+    SCREEN_CHANNEL = I1D_SCREEN_ADDRESS
 
-#     # These are the desired completed scans
-#     dconf = DispersionScanConfiguration.from_config_file(fscan)
-#     tconf = TDSScanConfiguration.from_config_file(fscan)
+    
 
-#     # Now load the output in the output directory and find out what
-#     # we've actually got by looking at the TDS amplitude setpoints,  dispersion setpoints and sc
+class I1DEnergySpreadMeasuringMachine(EnergySpreadMeasuringMachine):
+    SCREEN_CHANNEL = I1D_SCREEN_ADDRESS
+    TEMPLATE_FN = make_injector_snapshot_template
+    TDSCLS = I1TDS
+
+class B2DEnergySpreadMeasuringMachine(EnergySpreadMeasuringMachine):
+    SCREEN_CHANNEL = B2D_SCREEN_ADDRESS
+    TEMPLATE_FN = make_b2d_snapshot_template
+    TDSCLS = B2TDS
 
 
 class ScanType(Enum):

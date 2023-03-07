@@ -196,21 +196,27 @@ def compsp(ftoml):
     plot_tds_set_point_vs_readback(dscan, tscan, title=title)
 
 @main.command(no_args_is_help=True)
-def tds(ftoml):
-    pass
+@argument("outdir", nargs=1)
+@option("--i1", is_flag=True)
+@option("--b2", is_flag=True)
+def tds(i1, b2, outdir):
+    assert not (i1 and b2)
+    from esme.measurement import I1TDSCalibratingMachine
+    calibrator = I1TDSCalibratingMachine(outdir)
 
 
 @main.command(no_args_is_help=True)
 @argument("name", nargs=1)
+@option("--b2d", is_flag=True)
+@option("--i1d", is_flag=True)
 @option("--dispersion", is_flag=True, help="Just measure the dispersion (used for debugging purposes)")
 @option("--bscan", is_flag=True, help="Only do the beta scan")
 @option("--dscan", is_flag=True, help="Only do the dispersion scan")
 @option("--tscan", is_flag=True, help="Only do the TDS scan")
 @option("--config", help="Explicitly set the config to be used.", type=Path)
 # @argument("--continue", n) # continue_ file...
-def measure(name, dispersion, bscan, dscan, tscan, config):
+def measure(name, dispersion, bscan, dscan, tscan, config, b2d, i1d):
     """Measure the slice energy spread in the EuXFEL on the command line"""
-
     config = find_scan_config(config, "./scan.toml")
 
     if dispersion:
@@ -219,7 +225,12 @@ def measure(name, dispersion, bscan, dscan, tscan, config):
         print(f"{dispersion=}±{dispersion_unc}")
         return
 
-    measurer = make_measurement_runner(name, config)
+    if b2d:
+        model = "b2d"
+    elif i1d:
+        model = "i1d"
+
+    measurer = make_measurement_runner(name, config, model)
 
     bg_shots = config["nbackground"]
     beam_shots = config["nbeam"]
