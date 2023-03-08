@@ -254,7 +254,7 @@ class ReadOnlyMachine:
     def read(self, channel):
         return self.mi.get_value(channel)
 
-    
+
 class Machine:
     def __init__(self, snapshot):
         self.snapshot = snapshot
@@ -283,7 +283,7 @@ class Machine:
             if not alarm.is_ok(val):
                 log.info(f"Machine is offline. Reason: {alarm.offline_message()}")
                 return False
-        
+
         return True
 
     def get_orbit(self, data, all_names):
@@ -328,42 +328,6 @@ class Machine:
             all_names = np.append(all_names, names)
         return data, all_names
 
-    def get_phase_shifters(self, data, all_names):
-        for sec_id in self.snapshot.phase_shifter_sections:
-            try:
-                phase_shifters = np.array(
-                    self.mi.get_value("XFEL.FEL/WAVELENGTHCONTROL." + sec_id + "/BPS.*." + sec_id + "/GAP.OFFSET")
-                )
-            except Exception as e:
-                print("ERROR: magnets: ", sec_id, e)
-                return [], []
-            vals = phase_shifters[:, 1].astype(np.float)
-
-            names = [name for name in phase_shifters[:, 4]]
-            data = np.append(data, vals)
-            all_names = np.append(all_names, names)
-        return data, all_names
-
-    def get_undulators(self, data, all_names):
-        for sec_id in self.snapshot.undulators:
-            try:
-                if sec_id in ["SA1", "SA2"]:
-                    undulators = np.array(
-                        self.mi.get_value("XFEL.FEL/WAVELENGTHCONTROL." + sec_id + "/U40.*." + sec_id + "/GAP")
-                    )
-                else:
-                    undulators = np.array(
-                        self.mi.get_value("XFEL.FEL/WAVELENGTHCONTROL." + sec_id + "/U68.*." + sec_id + "/GAP")
-                    )
-            except Exception as e:
-                print("ERROR: magnets: ", sec_id, e)
-                return [], []
-            vals = undulators[:, 1].astype(np.float)
-
-            names = [name for name in undulators[:, 4]]
-            data = np.append(data, vals)
-            all_names = np.append(all_names, names)
-        return data, all_names
 
     def get_channels(self, data, all_names):
         data = list(data)
@@ -426,11 +390,6 @@ class Machine:
                 print("machine is OFFLINE. Sleep 3 sec ..")
 
     def get_machine_snapshot(self, check_if_online=False):
-
-        # if not self.is_machine_online():
-        #    print("machine is not online. wait 3 sec ...")
-        #    time.sleep(2)
-        #    return None
         if check_if_online:
             self.wait_machine_online()
 
@@ -440,23 +399,7 @@ class Machine:
         if len(data) == 0:
             LOG.warning("Missing orbit information, snapshot failed")
             return None
-        data, all_names = self.get_magnets(data, all_names)
-        if len(data) == 0:
-            LOG.warning("Missing magnet information, snapshot failed")
-            return None
-        data, all_names = self.get_phase_shifters(data, all_names)
-        if len(data) == 0:
-            LOG.warning("Missing phase shift information, snapshot failed")
-            return None
-        data, all_names = self.get_undulators(data, all_names)
-        if len(data) == 0:
-            LOG.warning("Missing undulator information, snapshot failed")
-            return None
-        data, all_names = self.get_channels(data, all_names)
-        if len(data) == 0:
-            LOG.warning("Missing other channels, snapshot failed")
-            return None
-        data, all_names = self.get_images(data, all_names)
+
         if len(data) == 0:
             LOG.warning("Missing images, snapshot failed")
             return None
@@ -466,7 +409,37 @@ class Machine:
             data_dict[name] = [d]
 
         df = pd.DataFrame(data_dict, columns=data_dict.keys())
+        static_bits = self.get_static_snapshot()
+
+        return pd.concat([df, static_bits])
+
+    def get_static_snapshot(self):
+        data = np.array([time.time()], dtype=object)
+        all_names = np.array(["timestamp"])
+        data, all_names = self.get_orbit(data, all_names)
+
+        data, all_names = self.get_magnets(data, all_names)
+        if len(data) == 0:
+            LOG.warning("Missing magnet information, snapshot failed")
+            return None
+        data, all_names = self.get_channels(data, all_names)
+        if len(data) == 0:
+
+            LOG.warning("Missing other channels, snapshot failed")
+            return None
+        data, all_names = self.get_images(data, all_names)
+        if len(data) == 0:
+
+            LOG.warning("Missing images, snapshot failed")
+            return None
+
+        data_dict = {}
+        for name, d in zip(all_names, data):
+            data_dict[name] = [d]
+
+        df = pd.DataFrame(data_dict, columns=data_dict.keys())
         return df
+
 
 
 class MPS(Device):
@@ -486,8 +459,7 @@ class MPS(Device):
         self.mi.set_value(self.server + ".UTIL/BUNCH_PATTERN/CONTROL/NUM_BUNCHES_REQUESTED_1", num_bunches)
 
     def is_beam_on(self):
-        val = self.mi.get_value(self.server + ".UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED")
-        return val
+        return self.mi.get_value(self.server + ".UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED")
 
 
 class CavityA1(Device):
@@ -508,7 +480,7 @@ class CavityA1(Device):
 
 
 # Channel returns [a,b,c,d], we need C!  third element.  so BasicAlarm
-    
+
 class BasicAlarm:
     def __init__(self, channel, vmin=-np.inf, vmax=+np.inf, explanation=""):
         self.channel = channel
@@ -523,7 +495,7 @@ class BasicAlarm:
         return (f"{self.channel} out of bounds, bounds = {(self.vmin, self.vmax)}."
                 f" explanation:  {self.explanation}")
 
-        
+
 
 class LambaAlarm:
     def __init__(self, channels, fn):
@@ -532,8 +504,8 @@ class LambaAlarm:
 
     def is_ok(self, machine, fn):
         values = [machine.read_value(ch) for ch in channels]
-        
-        
+
+
 
 class Snapshot:
     def __init__(self, sase_sections=None):
@@ -594,5 +566,3 @@ class Snapshot:
             return
         self.channels.append(channel)
         self.channels_tol.append(tol)
-
-    

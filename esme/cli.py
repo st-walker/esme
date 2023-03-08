@@ -186,23 +186,45 @@ def fix(ftoml, new_columns, to_snapshots, alle):
         raise UsageError("No flags provided")
 
 
+@main.command(no_args_is_help=True)
+@argument("model", nargs=1)
+@argument("fname", nargs=1)
+def snapshot(model, fname):
+    assert not (i1d and b2d)
 
-@main.command(no_args_is_help=True, hidden=True)
-@argument("ftoml", nargs=1)
-def compsp(ftoml):
-    """Compare TDS amplitude readbacks to setpoints"""
-    dscan, tscan, bscan = scan_files_from_toml(ftoml)
-    title = title_from_toml(ftoml)
-    plot_tds_set_point_vs_readback(dscan, tscan, title=title)
+    if model == "i1d":
+        machine = I1DEnergySpreadMeasuringMachine()
+    elif model == "b2d":
+        machine = B2DEnergySpreadMeasuringMachine()
+
+    df = machine.mi.get_machine_snapshot()
+    df.to_csv(fname)
+
+
+# @main.command(no_args_is_help=True, hidden=True)
+# @argument("ftoml", nargs=1)
+# @argument("dispersion", nargs=1)
+# @option("--i1d", is_flag=True)
+# @option("--b2d", is_flag=True)
+# def setpoint(ftoml, dispersion, i1d, b2d):
+#     if i1d:
+#         dconf = i1_dscan_config_from_scan_config_file(ftoml)
+#         print("I1D Dispersion Scan Setpoints")
+#         print("Reference Setting:")
+
+#         dconf.scan_settings_to_df()
+
 
 @main.command(no_args_is_help=True)
 @argument("outdir", nargs=1)
 @option("--i1", is_flag=True)
 @option("--b2", is_flag=True)
 def tds(i1, b2, outdir):
+    # Either calibrate or just keep it online in a loop.
     assert not (i1 and b2)
     from esme.measurement import I1TDSCalibratingMachine
     calibrator = I1TDSCalibratingMachine(outdir)
+
 
 
 @main.command(no_args_is_help=True)

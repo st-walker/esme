@@ -56,6 +56,7 @@ from enum import Enum, auto
 import toml
 import pandas as pd
 from textwrap import dedent
+import numpy as np
 
 from esme.mint import MPS, Machine, XFELMachineInterface
 from esme.channels import (make_injector_snapshot_template,
@@ -349,7 +350,6 @@ class ScreenPhotographer:
 
             time.sleep(0.2)
             if not self.machine.tds.is_on_beam():
-                print("!!!!!!!!!!!!!!!!!!!!!!!!! TDS WAS OFF BEAM")
                 self.machine.tds.switch_on_beam()
                 time.sleep(0.1)
                 print(f"is now on beam? {self.machine.tds.is_on_beam()}")
@@ -458,6 +458,18 @@ class TDS:
         LOG.debug(f"Reading TDS amplitude: {self.AMPLITUDE_RB} @ {result}")
         return result
 
+    def set_phase(self, phase: float) -> None:
+        LOG.debug(f"Setting TDS amplitude: {self.PHASE_SP} @ {phase}")
+        self.mi.set_value(self.PHASE_SP, phase)
+
+    def read_rb_phase(self) -> float:
+        result = self.mi.get_value(self.PHASE_RB)
+        LOG.debug(f"Reading TDS amplitude: {self.PHASE_RB} @ {result}")
+        return result
+
+    def read_on_beam_timing(self):
+        return self.mi.get_value(BUNCH_ONE)
+
     def is_powered(self) -> bool:
         LOG.debug("Checking if TDS is powered")
         rb = self.read_rb_amplitude()
@@ -467,15 +479,15 @@ class TDS:
         LOG.debug(f"TDS RB ampl = {rb}; TDS SP = {sp}: {relative_difference=} -> {powered}")
         return powered
 
+    def read_timing(self):
+        return self.mi.get_value(self.EVENT)[2]
+
+    def read_on_beam_timing(self):
+        return self.mi.get_value(self.BUNCH_ONE)
+
     def is_on_beam(self) -> bool:
         LOG.debug("Checking if TDS is on beam")
-        event10_timing = self.mi.get_value(EVENT10_CHANNEL)[2]
-        relative_offset = (event10_timing - self.bunch_one_timing) / self.bunch_one_timing
-        on_beam = relative_offset < BUNCH_ONE_TOLERANCE
-        LOG.debug(f"TDS {event10_timing=}, {self.bunch_one_timing=}, {relative_offset=}, {BUNCH_ONE_TOLERANCE=}")
-        LOG.debug(f"TDS {on_beam=}")
-
-        return on_beam
+        return self.read_timing() == self.read_on_beam_timing()
 
     def switch_off_beam(self) -> None:
         """Turn the TDS off beam (whilst keeping RF power)"""
@@ -491,18 +503,17 @@ class TDS:
         bunch_number = 1 # Hardcoded, always nuch
         on_data = [bunch_number, int(on), 0, 0]  # 3rd: "kicker", 4th: "WS-subtrain"
 
-        self.mi.set_value("XFEL.SDIAG/SPECIAL_BUNCHES.ML/I1/CONTROL", on_data)
-        # "How many pulses to kick" (???)  Not sure why 1000 in particular
-        self.mi.set_value('XFEL.SDIAG/SPECIAL_BUNCHES.ML/I1/PULSES.ACTIVE', 1000)
-        time.sleep(0.1)
-        # "Start kicking"
-        self.mi.set_value('XFEL.SDIAG/SPECIAL_BUNCHES.ML/I1/START', 1)
-        time.sleep(0.2)
+        on_data = [bunch_number, 111, self.read_on_beam_timing(), 1]
+        if not on:
+            on_data[2] *= 10000  # Simply a big number and so very far from being on beam.
+        self.mi.set_value(self.EVENT, on_data)
 
 
 class I1TDS(TDS):
     AMPLITUDE_SP = "XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/SP.AMPL"
     AMPLITUDE_RB = "XFEL.RF/LLRF.CONTROLLER/VS.LLTDSI1/AMPL.SAMPLE"
+    PHASE_RB = "XFEL.RF/LLRF.CONTROLLER/VS.LLTDSI1/PHASE.SAMPLE"
+    PHASE_SP = "XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/SP.PHASE"
     EVENT = EVENT10_CHANNEL
     BUNCH_ONE = BUNCH_ONE_TDS_I1
 
@@ -557,14 +568,61 @@ class TDSCalibratingMachine(Machine):
     def __init__(self, outdir):
         self.outdir = outdir
         self.tds = self.TDSCLS()
-        
+        self.mi = XFELMachineInterface()
+        self.nphase_points = 60
+
+    def calibrate(self, amplitudes, dirout=None):
+        for amplitude in amplitudes:
+            slope = self.get_slope(amplitude, npoints, dirout)
+
+    def scan_phase(self):
+        npoints = len(self.phase)
+
+        for i, _ in enumerate(self.phases):
+            self.tds.set_phase(phase)
+            screen = self.get_screen_image()
+
+    def get_slope(self, amplitude):
+        # phases = np.linspace(-200, 200, 100)
+        amplitude = self.tds.read_sp_amplitude()
+        outdir = pathlib.Path("tds-calibration")
+        outdir = (outdir / f"amplitude={int(amplitude)}")
+        outdir.mkdir(exist_ok=True, parents=True)
+        import pickle
+        ycoms = []
+        total = []
+        all_images = []
+        import pickle
+        print("Phase is currently", self.tds.read_rb_phase())
+        for phase in phases:
+            print("setting to phase: ", phase)
+            self.tds.set_phase(phase)
+            screen = self.get_screen_image()
+            time.sleep(1.1)
+            from esme.image import process_image
+            all_images = process_image(screen, 0)
+            from scipy.ndimage import center_of_mass
+            ycoms.append(center_of_mass(screen)[1])
+            total.append(screen.sum())
+            outpath =  (outdir / str(phase)).with_suffix(".npz")
+            with outpath.open("wb") as f:
+                np.savez(outpath, screen)
+
     def get_screen_image(self):
-        pass
+        """Get screen image"""
+        channel = self.SCREEN_CHANNEL
+        LOG.debug(f"Reading image from {channel}")
+        return self.mi.get_value(channel)
+
 
 class I1TDSCalibratingMachine(TDSCalibratingMachine):
     TDSCLS = I1TDS
     SCREEN_CHANNEL = I1D_SCREEN_ADDRESS
 
+
+class B2TDSCalibratingMachine(TDSCalibratingMachine):
+    TDSCLS = I1TDS
+    SCREEN_CHANNEL = B2D_SCREEN_ADDRESS
     
 
 class I1DEnergySpreadMeasuringMachine(EnergySpreadMeasuringMachine):
