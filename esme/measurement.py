@@ -385,10 +385,11 @@ class BaseDispersionMeasurer:
 
 
 class DispersionMeasurer(BaseDispersionMeasurer):
-    def __init__(self, a1_voltages: list[float], machine=None):
+    def __init__(self, a1_voltages: list[float], machine):
         self.a1_voltages = a1_voltages
-        if machine is None:
-            self.machine = EnergySpreadMeasuringMachine(SNAPSHOT_TEMPL)
+        self.machine = machine
+        # if machine is None:
+        #     self.machine = EnergySpreadMeasuringMachine(SNAPSHOT_TEMPL)
 
     def measure(self):
         raise NotImplementedError()
