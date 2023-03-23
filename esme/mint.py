@@ -281,7 +281,7 @@ class Machine:
                 raise EuXFELMachineError(msg) from exc
 
             if not alarm.is_ok(val):
-                log.info(f"Machine is offline. Reason: {alarm.offline_message()}")
+                LOG.info(f"Machine is offline. Reason: {alarm.offline_message()}")
                 return False
 
         return True
@@ -486,7 +486,7 @@ class BasicAlarm:
         self.channel = channel
         self.vmin = vmin
         self.vmax = vmax
-        explanation = ""
+        self.explanation = ""
 
     def is_ok(self, value):
         return (value >= self.vmin) and (value < self.vmax)
