@@ -279,7 +279,7 @@ class MeasurementRunner:
         more quadrupole names, with k1ls, to the machine."""
         for name, k1l in zip(setting.names, setting.k1ls):
             k1l *= 1e3
-            LOG.info("Setting quad: {name} to {k1l}")
+            LOG.info(f"Setting quad: {name} to {k1l}")
             self.machine.set_quad(name, k1l)
         time.sleep(self.SLEEP_AFTER_QUAD_SETTING)
 
