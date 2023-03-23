@@ -30,7 +30,6 @@ from esme.measurement import (
     SetpointSnapshots,
     ScanType,
     DispersionScanConfiguration,
-    TDSScanConfiguration,
     QuadrupoleSetting
 )
 from esme.lattice import make_dummy_lookup_sequence
