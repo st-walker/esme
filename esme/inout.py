@@ -30,7 +30,9 @@ from esme.measurement import (
     SetpointSnapshots,
     ScanType,
     DispersionScanConfiguration,
-    QuadrupoleSetting
+    TDSScanConfiguration,
+    QuadrupoleSetting,
+    I1DEnergySpreadMeasuringMachine
 )
 from esme.lattice import make_dummy_lookup_sequence
 
@@ -238,27 +240,36 @@ def setpoint_snapshots_from_pcls(pcl_files):
 def make_measurement_runner(name, fconfig, location, outdir="./", measure_dispersion=False, copy_scan_config=True):
     config = toml.load(fconfig)
     LOG.debug(f"Making MeasurementRunner instance from config file: {fconfig}")
-    tscan_config = TDSScanConfiguration.from_config_file(fconfig)
-    dscan_config = DispersionScanConfiguration.from_config_file(fconfig)
+
+    tscan_config = tscan_config_from_scan_config_file(fconfig)
+    dscan_config = i1_dscan_config_from_scan_config_file(fconfig)
 
     if measure_dispersion is not None:
         measure_dispersion = make_dispersion_measurer(fconfig)
 
+    measure_dispersion = None
     if location == "i1d":
-        machine = I1DEnergySpreadMeasuringMachine()
+        machine = I1DEnergySpreadMeasuringMachine(outdir)
     elif location == "b2d":
-        machine = B2DEnergySpreadMeasuringMachine
+        machine = B2DEnergySpreadMeasuringMachine(outdir)
     else:
         raise ValueError("Unknown location string:", location)
 
-    return MeasurementRunner(name, dscan_config, tscan_config, outdir=outdir, dispersion_measurer=measure_dispersion)
+    return MeasurementRunner(dscan_config=dscan_config, tds_config=tscan_config, outdir=outdir, dispersion_measurer=measure_dispersion, machine=machine)
+
+
+def get_config_sample_sizes(fconfig):
+    config = toml.load(fconfig)
+    bg_shots = config["measurement"]["nbackground"]
+    beam_shots = config["measurement"]["nbeam"]
+    return bg_shots, beam_shots
 
 
 def make_dispersion_measurer(fconfig):
     config = toml.load(fconfig)
     confd = config["dispersion"]
     a1_voltages = np.linspace(confd["a1_voltage_min"], confd["a1_voltage_max"], num=confd["a1_npoints"])
-    return DispersionMeasurer(a1_voltages)
+    return DispersionMeasurer(a1_voltages, I1DEnergySpreadMeasuringMachine("./"))
 
 
 def find_scan_config(fconfig: Path, default_name):
@@ -401,11 +412,11 @@ def i1_dscan_config_from_scan_config_file(config_path: os.PathLike):
 
 
 def i1_tds_voltages_from_scan_config_file(config_path: os.PathLike):
-    conf = toml.load(config_path)    
+    conf = toml.load(config_path)
     return conf["i1"]["tds"]["scan_voltages"]
 
 def b2_tds_voltages_from_scan_config_file(config_path: os.PathLike):
-    conf = toml.load(config_path)    
+    conf = toml.load(config_path)
     return conf["b2"]["tds"]["scan_voltages"]
 
 def b2_dscan_config_from_scan_config_file(config_path: os.PathLike):
@@ -443,7 +454,8 @@ def _dscan_config_from_scan_config_file(quads: dict) -> DispersionScanConfigurat
 
 def tscan_config_from_scan_config_file(config_path: os.PathLike) -> TDSScanConfiguration:
     conf = toml.load(config_path)
-    tds = conf["tds"]
+
+    tds = conf["i1"]["tds"]
     return TDSScanConfiguration(
         reference_amplitude=tds["reference_amplitude"],
         scan_amplitudes=tds["scan_amplitudes"],

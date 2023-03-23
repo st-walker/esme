@@ -7,6 +7,7 @@ S.Tomin, 2017
 """
 
 from __future__ import absolute_import, print_function
+from typing import Any
 
 import base64
 import logging
@@ -142,20 +143,18 @@ class XFELMachineInterface:
         self.analyse_correction = True
 
 
-    def get_value(self, channel):
+    def get_value(self, channel: str) -> Any:
         """
         Getter function for XFEL.
 
         :param channel: (str) String of the devices name used in doocs
         :return: Data from pydoocs.read(), variable data type depending on channel
         """
-        LOG.debug(" get_value: channel" + channel)
+        LOG.debug("get_value: channel", channel)
         val = pydoocs.read(channel)
-        # print(channel, "   TIMESTAMP:",  val["timestamp"])
-
         return val["data"]
 
-    def set_value(self, channel, val):
+    def set_value(self, channel: str, val: Any):
         """
         Method to set value to a channel
 
@@ -163,20 +162,8 @@ class XFELMachineInterface:
         :param val: value
         :return: None
         """
-        # print("SETTING")
+        LOG.debug(f"pydoocs.write: {channel} -> {any}")
         pydoocs.write(channel, val)
-        return
-
-    def get_raw_value(self, channel):
-        """
-        Getter function for XFEL.
-
-        :param channel: (str) String of the devices name used in doocs
-        :return: Data from pydoocs.read(), variable data type depending on channel
-        """
-        LOG.debug(" get_raw_value: channel" + channel)
-        val = pydoocs.read(channel)
-        return val
 
     def get_charge(self):
         return self.get_value("XFEL.DIAG/CHARGE.ML/TORA.25.I1/CHARGE.SA1")
@@ -273,12 +260,8 @@ class Machine:
         """
 
         for alarm in self.snapshot.alarms:
-            try:
-                val = self.mi.get_value(alarm)
-            except Exception as exc:
-                msg = f"Couldn't read alarm channel: {alarm.channel}"
-                LOG.error(msg, exc_info=True)
-                raise EuXFELMachineError(msg) from exc
+
+            val = self.mi.get_value(alarm)
 
             if not alarm.is_ok(val):
                 LOG.info(f"Machine is offline. Reason: {alarm.offline_message()}")
@@ -356,8 +339,8 @@ class Machine:
             name = cam_name + "-" + datetime.utcnow().strftime('%Y%m%d_%H%M%S_%f')[:-3]
 
             filename = name + ".png"
-            path = folder + os.sep + filename
-            path_pcl = folder + os.sep + name + ".pcl"
+            path = str(folder) + os.sep + str(filename)
+            path_pcl = str(folder) + os.sep + str(name) + ".pcl"
             if img is not None:
                 # scipy.misc.imsave(path, img)
                 # imageio.imwrite(path, img)
@@ -529,20 +512,20 @@ class Snapshot:
         if not os.path.exists(folder):
             os.makedirs(folder)
         if ch in self.images:
-            print("WARNING: image channel is already added")
+            print(f"WARNING: image channel is already added: {ch}")
             return
         self.images.append(ch)
         self.image_folders.append(folder)
 
     def add_orbit_section(self, sec_id, tol=0.001, track=True):
         if sec_id in self.orbit_sections:
-            print("WARNING: channel is already added")
+            print(f"WARNING: channel is already added: {sec_id}")
             return
         self.orbit_sections[sec_id] = {"id": sec_id, "tol": tol, "track": track}
 
     def add_magnet_section(self, sec_id, tol=0.001, track=True):
         if sec_id in self.magnet_sections:
-            print("WARNING: channel is already added")
+            print(f"WARNING: channel is already added: {sec_id}")
             return
         self.magnet_sections[sec_id] = {"id": sec_id, "tol": tol, "track": track}
 

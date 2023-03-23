@@ -136,9 +136,9 @@ class TDSScanConfiguration:
 
 
 class MeasurementRunner:
-    SLEEP_BETWEEN_SNAPSHOTS = 1
+    SLEEP_BETWEEN_SNAPSHOTS = 0.2
     SLEEP_AFTER_TDS_SETTING = 0.5
-    SLEEP_AFTER_QUAD_SETTING = 0.5
+    SLEEP_AFTER_QUAD_SETTING = 1
 
     def __init__(
             self,
@@ -147,7 +147,7 @@ class MeasurementRunner:
             tds_config: TDSScanConfiguration,
             machine: Optional[EnergySpreadMeasuringMachine],
             mps: Optional[MPS] = None,
-            dispersion_measurer: Optional[Type[BaseDispersionMeasurer]] = None,
+            dispersion_measurer: Optional[Type[BaseDispersionMeasurer]] = None
     ):
         """name is used for the output file name"""
         self.outdir = Path(outdir)
@@ -293,7 +293,7 @@ class MeasurementRunner:
         return self.abs_output_directory() / fname
 
     def abs_output_directory(self) -> Path:
-        return self.outpath.resolve()
+        return self.outdir.resolve()
 
     def save_setpoint_snapshots(self, setpoint_snapshot: SetpointSnapshots) -> str:
         fname = self.make_snapshots_filename(setpoint_snapshot)
@@ -389,7 +389,7 @@ class DispersionMeasurer(BaseDispersionMeasurer):
         self.a1_voltages = a1_voltages
         self.machine = machine
         # if machine is None:
-        #     self.machine = EnergySpreadMeasuringMachine(SNAPSHOT_TEMPL)
+            # self.machine = EnergySpreadMeasuringMachine(SNAPSHOT_TEMPL)
 
     def measure(self):
         raise NotImplementedError()
@@ -532,8 +532,8 @@ class EnergySpreadMeasuringMachine(Machine):
 
     SCREEN_GAIN_CHANNEL = "!__placeholder__!"
 
-    def __init__(self, snapshot):
-        super().__init__(snapshot)
+    def __init__(self,outdir):
+        super().__init__(self.make_template(outdir))
         self.tds = self.TDSCLS()
 
     def set_quad(self, name: str, value: float) -> None:
@@ -574,7 +574,8 @@ class TDSCalibratingMachine(Machine):
 
     def calibrate(self, amplitudes, dirout=None):
         for amplitude in amplitudes:
-            slope = self.get_slope(amplitude, npoints, dirout)
+            self.tds.set_amplitude(amplitude)
+            slope = self.get_slope(amplitude)
 
     def scan_phase(self):
         npoints = len(self.phase)
@@ -584,7 +585,7 @@ class TDSCalibratingMachine(Machine):
             screen = self.get_screen_image()
 
     def get_slope(self, amplitude):
-        # phases = np.linspace(-200, 200, 100)
+        phases = np.linspace(-200, 200, self.nphase_points)
         amplitude = self.tds.read_sp_amplitude()
         outdir = pathlib.Path("tds-calibration")
         outdir = (outdir / f"amplitude={int(amplitude)}")
@@ -630,6 +631,10 @@ class I1DEnergySpreadMeasuringMachine(EnergySpreadMeasuringMachine):
     SCREEN_CHANNEL = I1D_SCREEN_ADDRESS
     TEMPLATE_FN = make_injector_snapshot_template
     TDSCLS = I1TDS
+
+    @classmethod
+    def make_template(cls, outdir):
+        return cls.TEMPLATE_FN(outdir)
 
 class B2DEnergySpreadMeasuringMachine(EnergySpreadMeasuringMachine):
     SCREEN_CHANNEL = B2D_SCREEN_ADDRESS

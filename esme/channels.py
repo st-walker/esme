@@ -8,7 +8,7 @@ Script to collect tuning data
 import os
 
 from esme.mint import Snapshot, BasicAlarm
-
+from pathlib import Path
 
 DUMP_SCREEN_ADDRESS: str = "XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"
 I1D_SCREEN_ADDRESS = DUMP_SCREEN_ADDRESS
@@ -88,7 +88,7 @@ def make_injector_snapshot_template(outdir: os.PathLike):
 def make_b2d_snapshot_template(outdir: os.PathLike):
     template = make_common_snapshot_template()
     _add_injector_to_template(template, outdir)
-    _add_b2_snapshot_to_template(template, outdir)    
+    _add_b2_snapshot_to_template(template, outdir)
     return template
 
 
@@ -105,12 +105,12 @@ def make_common_snapshot_template():
 
     # Beam on/off
     template.add_channel(BEAM_ALLOWED_ADDRESS)
-    
+
     # add camera
     # template.add_image("XFEL.DIAG/CAMERA/OTRA.473.B2D/IMAGE_EXT_ZMQ", folder="./tds_images")
     # solenoid
     template.add_channel("XFEL.MAGNETS/MAGNET.ML/SOLB.23.I1/CURRENT.SP")
-    
+
     # A1
     template.add_channel("XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/PHASE.SAMPLE", tol=0.02)
     template.add_channel("XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/AMPL.SAMPLE", tol=0.1)
@@ -152,18 +152,19 @@ def make_common_snapshot_template():
     template.add_channel("XFEL.UTIL/LASERINT/GUN/SH4_OPEN")  # UG7 shutter open
     # template.add_channel("XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSB2/SP.PHASE")
 
+    return template
 
 def _add_injector_to_template(template, outdir):
-    
+
     screen_name = Path("XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ").parent.name
     image_dir = Path(outdir) / f"images-{screen_name}"
     template.add_image(DUMP_SCREEN_ADDRESS, folder=image_dir)
 
     # Alarms
     template.alarms.append(BasicAlarm("XFEL.DIAG/TOROID/TORA.60.I1/CHARGE.ALL",
-                                      vmin=0.005, message="Charge too small, no beam?"))
+                                      vmin=0.005))
 
-    # template.alarms.append(BinaryOpAlarm(), 
+    # template.alarms.append(BinaryOpAlarm(),
 
     # Orbit
     template.add_orbit_section("I1", tol=0.1)
@@ -219,8 +220,8 @@ def _add_injector_to_template(template, outdir):
     # template.add_channel("XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSB2/SP.PHASE")
 
     # TDS injector
-    template.add_channel(TDS_AMPLITUDE_SAMPLE_ADDRESS)
-    template.add_channel(TDS_AMPLITUDE_READBACK_ADDRESS)
+    template.add_channel(TDS_I1_AMPLITUDE_SAMPLE_ADDRESS)
+    template.add_channel(TDS_I1_AMPLITUDE_READBACK_ADDRESS)
     template.add_channel(EVENT10_CHANNEL) # TDS timing (returns 4-tuple)
     template.add_channel(BUNCH_ONE_TDS_I1) # Timing of TDS for first on-beam bunch.
 
@@ -228,7 +229,7 @@ def _add_bc2_channels_to_template(template, outdir):
     screen_name = Path("XFEL.DIAG/CAMERA/OTRA.473.B2D/IMAGE_EXT_ZMQ").parent.name
     image_dir = Path(outdir) / f"images-{screen_name}"
     template.add_image(DUMP_SCREEN_ADDRESS, folder=image_dir)
-    
+
     # Magnets
     template.add_magnet_section("B1", tol=0.01)
     template.add_magnet_section("L1", tol=0.01)
@@ -243,13 +244,13 @@ def _add_bc2_channels_to_template(template, outdir):
     template.add_orbit_section("B2", tol=0.01)
     template.add_orbit_section("B2D", tol=0.01)
 
-    
+
     # L1
     template.add_channel("XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/PHASE.SAMPLE", tol=0.02)
     template.add_channel("XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/AMPL.SAMPLE", tol=0.1)
     template.add_channel("XFEL.RF/LLRF.CONTROLLER/CTRL.A1.I1/SP.PHASE")
     template.add_channel("XFEL.RF/LLRF.CONTROLLER/CTRL.A1.I1/SP.AMPL")
-    
+
     # L2
     template.add_channel("XFEL.RF/LLRF.CONTROLLER/VS.A2.L1/PHASE.SAMPLE", tol=0.02)
     template.add_channel("XFEL.RF/LLRF.CONTROLLER/VS.A2.L1/AMPL.SAMPLE", tol=0.1)
@@ -279,4 +280,3 @@ def _add_bc2_channels_to_template(template, outdir):
     template.add_channel(TDS_B2_AMPLITUDE_READBACK_ADDRESS)
     template.add_channel(EVENT12_CHANNEL) # TDS timing (returns 4-tuple)
     template.add_channel(BUNCH_ONE_TDS_B2) # Timing of TDS for first on-beam bunch.
-    

@@ -187,17 +187,22 @@ def fix(ftoml, new_columns, to_snapshots, alle):
 
 
 @main.command(no_args_is_help=True)
-@argument("model", nargs=1)
+@option("--i1d", is_flag=True, cls=MutuallyExclusiveOption, mutually_exclusive=["b2d"])
+@option("--b2d", is_flag=True, cls=MutuallyExclusiveOption, mutually_exclusive=["i1d"])
 @argument("fname", nargs=1)
-def snapshot(model, fname):
-    assert not (i1d and b2d)
+def snapshot(model, i1d, b2d):
+    """Take a snapshot of the file up to the given point in the
+    machine (either I1D or B2D), write it to file, and then exit"""
+    from esme.measurement import I1DEnergySpreadMeasuringMachine, B2DEnergySpreadMeasuringMachine
 
-    if model == "i1d":
-        machine = I1DEnergySpreadMeasuringMachine()
-    elif model == "b2d":
-        machine = B2DEnergySpreadMeasuringMachine()
+    if i1d:
+        machine = I1DEnergySpreadMeasuringMachine(fname)
+    elif b2d:
+        machine = B2DEnergySpreadMeasuringMachine(fname)
+    else:
+        raise UsageError("Unrecognised model string")
 
-    df = machine.mi.get_machine_snapshot()
+    df = machine.get_machine_snapshot()
     df.to_csv(fname)
 
 
@@ -254,18 +259,18 @@ def measure(name, dispersion, bscan, dscan, tscan, config, b2d, i1d):
 
     measurer = make_measurement_runner(name, config, model)
 
-    bg_shots = config["nbackground"]
-    beam_shots = config["nbeam"]
+    bg_shots, beam_shots = get_config_sample_sizes(config)
 
+    measure_dispersion = False
     if dscan:
-        measurer.dispersion_scan(bg_shots=bg_shots, beam_shots=beam_shots)
+        measurer.dispersion_scan(bg_shots=bg_shots, beam_shots=beam_shots, measure_dispersion=measure_dispersion)
     if tscan:
-        measurer.tds_scan(bg_shots=bg_shots, beam_shots=beam_shots)
-    # if bscan:
-    #     measurer.beta_scan(bg_shots=bg_shots, beam_shots=beam_shots)
+        measurer.tds_scan(bg_shots=bg_shots, beam_shots=beam_shots, measure_dispersion=measure_dispersion)
+    if bscan:
+        measurer.beta_scan(bg_shots=bg_shots, beam_shots=beam_shots, measure_dispersion=measure_dispersion)
 
     if not (dscan or tscan or bscan):
-        measurer.run(bg_shots=bg_shots, beam_shots=beam_shots)
+        measurer.run(bg_shots=bg_shots, beam_shots=beam_shots, measure_dispersion=measure_dispersion)
 
 
 @main.command(no_args_is_help=True)
