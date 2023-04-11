@@ -133,14 +133,6 @@ class XFELMachineInterface:
 
     def __init__(self, args=None):
         self.logbook = "xfellog"
-        self.uncheck_upstream_bpms = True  # uncheck bpms upstream the first corrector
-        self.allow_star_operation = True
-        self.hide_section_selection = False
-        self.hide_close_trajectory = False
-        self.hide_xfel_specific = False
-        self.hide_dispersion_tab = False
-        self.twiss_periodic = False
-        self.analyse_correction = True
 
 
     def get_value(self, channel: str) -> Any:
@@ -445,22 +437,6 @@ class MPS(Device):
         return self.mi.get_value(self.server + ".UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED")
 
 
-class CavityA1(Device):
-    def __init__(self, eid, server="XFEL", subtrain="SA1"):
-        super(CavityA1, self).__init__(eid=eid)
-        self.subtrain = subtrain
-        self.server = server
-
-    def set_value(self, val):
-        ch = self.server + ".RF/LLRF.CONTROLLER/" + self.eid + "/SP.AMPL"
-        self.mi.set_value(ch, val)
-        LOG.debug("CavityA1, ch: " + ch + " V = " + str(val))
-
-    def get_value(self):
-        ch = self.server + ".RF/LLRF.CONTROLLER/" + self.eid + "/SP.AMPL"
-        val = self.mi.get_value(ch)
-        return val
-
 
 # Channel returns [a,b,c,d], we need C!  third element.  so BasicAlarm
 
@@ -528,13 +504,6 @@ class Snapshot:
             print(f"WARNING: channel is already added: {sec_id}")
             return
         self.magnet_sections[sec_id] = {"id": sec_id, "tol": tol, "track": track}
-
-    def add_phase_shifter_section(self, sec_id, tol=0.001, track=True):
-        if sec_id in self.phase_shifter_sections:
-            print("WARNING: channel is already added")
-            return
-        if sec_id in self.sase_sections:
-            self.phase_shifter_sections[sec_id] = {"id": sec_id, "tol": tol, "track": track}
 
     def add_undulator(self, sec_id, tol=0.001, track=True):
         if sec_id in self.sase_sections:
