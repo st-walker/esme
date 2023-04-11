@@ -538,14 +538,14 @@ class Snapshot:
 
     def add_undulator(self, sec_id, tol=0.001, track=True):
         if sec_id in self.sase_sections:
-            print("WARNING: channel is already added")
+            print(f"WARNING: channel is already added: {sec_id}")
             return
         if sec_id in self.sase_sections:
             self.undulators[sec_id] = {"id": sec_id, "tol": tol, "track": track}
 
     def add_channel(self, channel, tol=None):
         if channel in self.channels:
-            print("WARNING: channel is already added")
+            print(f"WARNING: channel is already added: {channel}")
             return
         self.channels.append(channel)
         self.channels_tol.append(tol)
