@@ -18,7 +18,6 @@ from esme.inout import (
     rm_ims_from_pcl,
     toml_dfs_to_setpoint_snapshots,
     add_metadata_to_pcls_in_toml,
-    tscan_config_from_scan_config_file,
     i1_dscan_config_from_scan_config_file,
     b2_dscan_config_from_scan_config_file,
     i1_tds_voltages_from_scan_config_file
@@ -233,7 +232,6 @@ def tds(i1, b2, outdir):
 
 
 @main.command(no_args_is_help=True)
-@argument("name", nargs=1)
 @option("--b2d", is_flag=True)
 @option("--i1d", is_flag=True)
 @option("--dispersion", is_flag=True, help="Just measure the dispersion (used for debugging purposes)")
@@ -242,7 +240,7 @@ def tds(i1, b2, outdir):
 @option("--tscan", is_flag=True, help="Only do the TDS scan")
 @option("--config", help="Explicitly set the config to be used.", type=Path)
 # @argument("--continue", n) # continue_ file...
-def measure(name, dispersion, bscan, dscan, tscan, config, b2d, i1d):
+def measure(dispersion, bscan, dscan, tscan, config, b2d, i1d):
     """Measure the slice energy spread in the EuXFEL on the command line"""
     config = find_scan_config(config, "./scan.toml")
 
@@ -257,7 +255,7 @@ def measure(name, dispersion, bscan, dscan, tscan, config, b2d, i1d):
     elif i1d:
         model = "i1d"
 
-    measurer = make_measurement_runner(name, config, model)
+    measurer = make_measurement_runner(config, model)
 
     bg_shots, beam_shots = get_config_sample_sizes(config)
 
@@ -293,10 +291,16 @@ def rm(pcl_files, imname, dry_run):
             rm_ims_from_pcl(fpcl, imname, dry_run)
 
 
-@main.command(no_args_is_help=True)
-def gui():
+@main.command()
+@argument("ftoml", nargs=1)
+@option("--replay", "-r", nargs=1, help="scan.toml file to replay output from")
+def gui(ftoml, replay):
     """Start the measurement GUI"""
-    pass
+    from esme.gui import start_gui
+    start_gui(ftoml, debug_mode=True, replay=replay)
+
+def tds():
+    start_tds_gui()
 
 @main.command(no_args_is_help=True)
 @argument("fscan", nargs=1)
@@ -309,27 +313,30 @@ def gui():
 @option("--escan", is_flag=True)
 @option("--fast", is_flag=True)
 @option("--optics", is_flag=True)
-def sim(fscan, i1, b2, dscan, tscan, escan, parray, outdir, fast, optics):
+@option("--physics", is_flag=True)
+def sim(fscan, i1, b2, dscan, tscan, escan, parray, outdir, fast, optics, physics):
+    """This is basically just for checking optics and showing the basic functions work."""
     # from .sim import run_i1_dispersion_scan
     from . import simplot
     from . import sim
+
+
 
     if i1:
         i1_dscan_conf = i1_dscan_config_from_scan_config_file(fscan)
         i1_tscan_voltages = i1_tds_voltages_from_scan_config_file(fscan)
 
     if i1 and optics and not parray:
-        simplot.cathode_to_first_a1_cavity()
         simplot.a1_to_i1d_design_optics()
-        simplot.a1_to_q52_matching_point_measurement_optics()
         simplot.qi52_to_i1d_dscan_optics(i1_dscan_conf)
         simplot.a1_to_i1d_piecewise_measurement_optics(i1_dscan_conf)
+        
     elif i1 and optics and parray:
-        # simplot.check_a1_to_i1d_design_optics_tracking(parray, outdir)
+        simplot.check_a1_to_i1d_design_optics_tracking(parray, outdir)
         # simplot.check_a1_q52_measurement_optics_tracking(parray, outdir)
         # simplot.dscan_piecewise_tracking_optics(parray, i1_dscan_conf, outdir)
-        simplot.dscan_piecewise_tracking_optics(parray, i1_dscan_conf, outdir,
-                                               do_physics=True)
+        # simplot.dscan_piecewise_tracking_optics(parray, i1_dscan_conf, outdir,
+        #                                         do_physics=physics)
     elif i1 and parray:
         i1dsim = sim.I1DSimulatedEnergySpreadMeasurement(parray,
                                                          i1_dscan_conf,
@@ -359,7 +366,7 @@ def sim(fscan, i1, b2, dscan, tscan, escan, parray, outdir, fast, optics):
                                                              b2_tscan_voltages,
                                                              parray,
                                                              outdir=outdir,
-                                                             do_physics=False)
+                                                             do_physics=physics)
 
         else:
             simplot.gun_to_b2d_tracking_central_slice_optics(b2_dscan_conf,

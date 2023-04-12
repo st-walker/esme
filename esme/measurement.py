@@ -51,14 +51,15 @@ from pathlib import Path
 import pickle
 from typing import TypeVar, Optional, Type, Union
 from enum import Enum, auto
-
+from dataclasses import dataclass
+import pickle
 
 import toml
 import pandas as pd
 from textwrap import dedent
 import numpy as np
 
-from esme.mint import MPS, Machine, XFELMachineInterface
+from esme.mint import MPS, Machine, XFELMachineInterface, DictionaryXFELMachineInterface
 from esme.channels import (make_injector_snapshot_template,
                            make_b2d_snapshot_template,
                            I1D_SCREEN_ADDRESS,
@@ -69,7 +70,8 @@ from esme.channels import (make_injector_snapshot_template,
                            EVENT12_CHANNEL,
                            BUNCH_ONE_TDS_B2,
                            B2D_SCREEN_ADDRESS,
-                           BUNCH_ONE_TOLERANCE)
+                           BUNCH_ONE_TOLERANCE,
+                           BEAM_ALLOWED_ADDRESS)
 
 TDSScanConfigurationSelf = TypeVar("TDSScanConfigurationSelfType", bound="TDSScanConfiguration")
 DispersionScanConfigurationSelf = TypeVar("DispersionScanConfigurationSelfType", bound="DispersionScanConfiguration")
@@ -77,8 +79,7 @@ DispersionScanConfigurationSelf = TypeVar("DispersionScanConfigurationSelfType",
 
 LOG = logging.getLogger(__name__)
 
-DELAY_AFTER_BEAM_OFF: float = 5.0
-
+DELAY_AFTER_BEAM_OFF: float = 0.5
 
 PIXEL_SCALE_X_M: float = 13.7369e-6
 PIXEL_SCALE_Y_M: float = 11.1756e-6
@@ -135,6 +136,7 @@ class TDSScanConfiguration:
     scan_dispersion: float
 
 
+
 class MeasurementRunner:
     SLEEP_BETWEEN_SNAPSHOTS = 0.2
     SLEEP_AFTER_TDS_SETTING = 0.5
@@ -159,7 +161,7 @@ class MeasurementRunner:
             templ = make_injector_snapshot_template(self.abs_output_directory())
             self.machine = EnergySpreadMeasuringMachine(templ)
 
-        self.photographer = ScreenPhotographer(machine=self.machine, mps=mps)
+        self.snapshotter = Snapshotter(machine=self.machine, mps=mps)
         self.dispersion_measurer = dispersion_measurer
         if self.dispersion_measurer is None:
             LOG.debug("Using BasicDispersionMeasurer: will not automatically measure dispersion.")
@@ -212,7 +214,7 @@ class MeasurementRunner:
         LOG.debug(f"Beginning TDS scan measurement @ TDS ampl = {tds_amplitude}%")
         self.machine.tds.set_amplitude(tds_amplitude)
         time.sleep(self.SLEEP_AFTER_TDS_SETTING)
-        scan_df = self.photographer.take_data(
+        scan_df = self.snapshotter.take_data(
             bg_shots=bg_shots, beam_shots=beam_shots, delay=self.SLEEP_BETWEEN_SNAPSHOTS
         )
 
@@ -249,7 +251,7 @@ class MeasurementRunner:
         dispersion, dispersion_unc = self.set_quads_and_get_dispersion(quad_setting)
 
         self.machine.tds.switch_on_beam()
-        scan_df = self.photographer.take_data(
+        scan_df = self.snapshotter.take_data(
             bg_shots=bg_shots, beam_shots=beam_shots, delay=self.SLEEP_BETWEEN_SNAPSHOTS
         )
         return SetpointSnapshots(
@@ -303,13 +305,261 @@ class MeasurementRunner:
         LOG.info(f"Wrote measurement SetpointSnapshots (of {len(setpoint_snapshot)} snapshots) to: {fname}")
         return fname
 
+    def measure_flat(self):
+        pass
+
+    def flat_dispersion_scan(self, dispersion_setpoint, nbg, nbeam):
+        for qsetting in self.dscan_config.scan_settings:
+            set_quads()
+            for i in range(self.nbg):
+                for payload in self.photographer.take_bg(nbg):
+                    yield payload
+            for i in range(self.nbeam):
+                for payload in self.photographer.take_beam(nbg):
+                    yield payload
+
+
+        pass
+
+    def flat_tds_scan(self, tds_percentage):
+        pass
+
+
+
+class DataTaker:
+    SLEEP_BETWEEN_SNAPSHOTS = 0.2
+    SLEEP_AFTER_TDS_SETTING = 0.5
+    SLEEP_AFTER_QUAD_SETTING = 1
+
+    def __init__(
+            self,
+            dscan_config: DispersionScanConfiguration,
+            tds_config: TDSScanConfiguration,
+            machine: EnergySpreadMeasuringMachine,
+    ):
+        """name is used for the output file name"""
+        self.dscan_config = dscan_config
+        self.tds_config = tds_config
+        self.machine = machine
+        self.snapshotter = SingleSnapshotter(machine=self.machine,
+                                             mps=MockMPS(mi=self.machine.mi))
+
+    def snapshot_sleep(self):
+        time.sleep(self.SLEEP_BETWEEN_SNAPSHOTS)
+
+    def measure(self, *, bg_shots: int, beam_shots: int) -> None:
+        yield from self.tds_scan(bg_shots=bg_shots, beam_shots=beam_shots)
+        yield from self.dispersion_scan(bg_shots=bg_shots, beam_shots=beam_shots)
+
+    def take_background(self, nshots, tds_amplitude,
+                        dispersion_setting, scan_type):
+        snapshot, image = self.snapshotter.take_background_snapshot(switch_beam_off=True)
+        yield MeasurementPayload(image, snapshot, tds_amplitude,
+                                 dispersion_setting, True, scan_type)
+        self.snapshot_sleep()
+        for i in range(nshots - 1):
+            snapshot, image = self.snapshotter.take_background_snapshot()
+            yield MeasurementPayload(image, snapshot, tds_amplitude,
+                                     dispersion_setting, True, scan_type)
+            self.snapshot_sleep()
+
+    def take_beam(self, nshots, tds_amplitude, dispersion_setting, scan_type):
+        for i in range(nshots):
+            snapshot, image = self.snapshotter.take_beam_snapshot()
+            yield MeasurementPayload(image, snapshot, tds_amplitude,
+                                     dispersion_setting, False, scan_type)
+            self.snapshot_sleep()
+
+    def tds_scan(self, *, bg_shots: int, beam_shots: int) -> list[Path]:
+        """Do the TDS scan for this energy spread measurement"""
+        LOG.info("Setting up TDS scan")
+
+        dsetpoint = self.dscan_config.reference_setting.dispersion
+        self.set_reference_quads()
+        self.set_reference_tds_amplitude()
+
+        tds_amplitudes = self.tds_config.scan_amplitudes
+
+        LOG.info(f"starting TDS scan: {tds_amplitudes=}, {bg_shots=}, {beam_shots=}")
+        for ampl in tds_amplitudes:
+            self.machine.tds.set_amplitude(ampl)
+            yield from self.take_background(bg_shots, ampl,
+                                            self.dscan_config.reference_setting.dispersion,
+                                            ScanType.TDS)
+            yield from self.take_beam(beam_shots, ampl,
+                                      self.dscan_config.reference_setting.dispersion,
+                                      ScanType.TDS)
+
+    def dispersion_scan(self, *, bg_shots: int, beam_shots: int) -> list[Path]:  # initial_dispersion=? to save time..
+        """Do the dispersion scan part of the energy spread measurement"""
+        LOG.info("Setting up dispersion scan")
+        self.set_reference_quads()
+        self.set_reference_tds_amplitude()
+        
+        LOG.info(
+            f"Starting dispersion scan: dispersions={self.dscan_config.dispersions}," f" {bg_shots=}, {beam_shots=}"
+        )
+        for qsetting in self.dscan_config.scan_settings:
+            self.apply_quad_setting(qsetting)
+            yield from self.take_background(bg_shots, self.tds_config.reference_amplitude,
+                                            qsetting.dispersion, ScanType.DISPERSION)
+            yield from self.take_beam(beam_shots, self.tds_config.reference_amplitude,
+                                      qsetting.dispersion, ScanType.DISPERSION)
+
+    def apply_quad_setting(self, setting: QuadrupoleSetting) -> None:
+        """Apply an individual QuadrupoleSetting consisting of one or
+        more quadrupole names, with k1ls, to the machine."""
+        for name, k1l in zip(setting.names, setting.k1ls):
+            k1l *= 1e3
+            LOG.info(f"Setting quad: {name} to {k1l}")
+            self.machine.set_quad(name, k1l)
+        time.sleep(self.SLEEP_AFTER_QUAD_SETTING)
+    
+
+    # def dispersion_scan_one_measurement(self, quad_setting: QuadrupoleSetting, *, bg_shots: int, beam_shots: int):
+    #     """Do a single dispersion scan measurement."""
+    #     LOG.debug(f"Beginning dispersion scan measurement @ D = {quad_setting.dispersion}m")
+    #     dispersion, dispersion_unc = self.set_quads_and_get_dispersion(quad_setting)
+
+    #     self.machine.tds.switch_on_beam()
+    #     scan_df = self.snapshotter.take_data(
+    #         bg_shots=bg_shots, beam_shots=beam_shots, delay=self.SLEEP_BETWEEN_SNAPSHOTS
+    #     )
+    #     return SetpointSnapshots(
+    #         scan_df, "dispersion", dispersion, quad_setting.dispersion, (dispersion, dispersion_unc)
+    #     )
+
+    def set_quads_and_get_dispersion(self, quadrupole_setting: QuadrupoleSetting) -> tuple[float, float]:
+        LOG.info(f"Setting dispersion for quad setting: at intended dispersion = {quadrupole_setting}.")
+        self._apply_quad_setting(quadrupole_setting)
+        return self.dispersion_measurer.measure()
+
+    def set_reference_tds_amplitude(self) -> None:
+        """Set the TDS amplitude to the reference value, i.e. the
+        value used for the dispersion scan."""
+        refampl = self.tds_config.reference_amplitude
+        LOG.info(f"Setting reference TDS amplitude: {refampl}")
+        self.machine.tds.set_amplitude(refampl)
+        time.sleep(self.SLEEP_AFTER_TDS_SETTING)
+
+    def set_reference_quads(self) -> None:
+        """Set the full set of quadrupoles including the upstream matching ones."""
+        LOG.info("Applying reference quadrupole settings to machine")
+        self._apply_quad_setting(self.dscan_config.reference_setting)
+
+    def _apply_quad_setting(self, setting: QuadrupoleSetting) -> None:
+        """Apply an individual QuadrupoleSetting consisting of one or
+        more quadrupole names, with k1ls, to the machine."""
+        for name, k1l in zip(setting.names, setting.k1ls):
+            k1l *= 1e3
+            LOG.info(f"Setting quad: {name} to {k1l}")
+            self.machine.set_quad(name, k1l)
+        time.sleep(self.SLEEP_AFTER_QUAD_SETTING)
+
+    def make_snapshots_filename(self, snapshot):
+        """Make a human readnable name for the output dataframe"""
+        timestamp = time.strftime("%Y-%m-%d@%H:%M:%S")
+        ampl = self.machine.tds.read_sp_amplitude()
+        dispersion = snapshot.dispersion_setpoint
+        scan_type = snapshot.scan_type
+        fname = f"{timestamp}>>{scan_type}>>D={dispersion},TDS={ampl}%.pcl"
+        return self.abs_output_directory() / fname
+
+    def abs_output_directory(self) -> Path:
+        return self.outdir.resolve()
+
+    def save_setpoint_snapshots(self, setpoint_snapshot: SetpointSnapshots) -> str:
+        fname = self.make_snapshots_filename(setpoint_snapshot)
+        fname.parent.mkdir(exist_ok=True, parents=True)
+        with fname.open("wb") as f:
+            pickle.dump(setpoint_snapshot, f)
+        LOG.info(f"Wrote measurement SetpointSnapshots (of {len(setpoint_snapshot)} snapshots) to: {fname}")
+        return fname
+
+    def measure_flat(self):
+        pass
+
+    def flat_dispersion_scan(self, dispersion_setpoint, nbg, nbeam):
+        for qsetting in self.dscan_config.scan_settings:
+            set_quads()
+            for i in range(self.nbg):
+                for payload in self.photographer.take_bg(nbg):
+                    yield payload
+            for i in range(self.nbeam):
+                for payload in self.photographer.take_beam(nbg):
+                    yield payload
+
+
+        pass
+
+    def flat_tds_scan(self, tds_percentage):
+        pass
+
+
+
+
+
     # def self_update_progress_file(self, scan_type: str, scan_setpoint: S, pcl_filename):
     #     from IPython import embed
 
     #     embed()
 
+@dataclass
+class MeasurementPayload:
+    image: np.array
+    snapshot: pd.DataFrame
+    tds_percentage: float
+    dispersion_setpoint: float
+    is_bg: bool
+    scan_type: ScanType
 
-class ScreenPhotographer:
+
+class SingleSnapshotter:
+    def __init__(self, mps=None, machine=None):
+        self.machine = machine
+        self.mps = MPS(mi=self.machine.mi) if mps is None else mps
+        if machine is None:
+            self.machine = EnergySpreadMeasuringMachine(SNAPSHOT_TEMPL)
+
+    def take_background_snapshot(self, switch_beam_off=True):
+        if switch_beam_off:
+            self.mps.beam_off()
+            time.sleep(DELAY_AFTER_BEAM_OFF)
+        return self.take_machine_snapshot(check_if_online=False)
+
+    def take_beam_snapshot(self):
+        if not self.machine.tds.is_on_beam():
+            self.machine.tds.switch_on_beam()
+
+        result = self.take_machine_snapshot(check_if_online=True)
+        # Should ideally still be on beam afterwards, just to be
+        # sure...
+        # Alternatively: I should check the dataframe says it's on beam...
+        if not self.machine.tds.is_on_beam():
+            return self.take_beam_image()
+        return result
+
+    def take_machine_snapshot(self, check_if_online=True) -> tuple[pd.DataFrame, list]:
+        LOG.debug("Taking machine snapshot")
+        df, image = self.machine.get_machine_snapshot(check_if_online=check_if_online)
+        return df, image
+
+class MockMPS(MPS):
+    def beam_off(self):
+        super().beam_off()
+        self.mi.set_value("XFEL.DIAG/TOROID/TORA.60.I1/CHARGE.ALL", 0)        
+
+    def beam_on(self):
+        super().beam_on()
+        self.mi.set_value("XFEL.DIAG/TOROID/TORA.60.I1/CHARGE.ALL", 250)        
+
+    def num_bunches_requested(self, num_bunches=1):
+        self.mi.set_value(self.server + ".UTIL/BUNCH_PATTERN/CONTROL/NUM_BUNCHES_REQUESTED_1", num_bunches)
+
+    def is_beam_on(self):
+        return self.mi.get_value(self.server + ".UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED")
+
+class Snapshotter:
     def __init__(self, mps=None, machine=None):
         self.mps = mps if mps is not None else MPS()
         self.machine = machine
@@ -394,28 +644,6 @@ class DispersionMeasurer(BaseDispersionMeasurer):
     def measure(self):
         raise NotImplementedError()
 
-    # def measure(self, debug_path=None):
-    #     LOG.info("Starting dispersion measurement, using A1 voltages: {self.a1_voltages}")
-    #     centres = []
-    #     energies = []
-    #     for voltage in a1_voltages:
-    #         self.machine.set_a1_voltage(voltage)
-    #         x, _ = self._image_centre_of_mass()
-    #         beam_energy = self.machine.get_beam_energy()
-    #         centres.append(x)
-    #         energies.append(self.machine.get_beam_energy())
-
-    #     centres = [x * PIXEL_SCALE_X_M for x in centres]
-    #     errors = np.ones_like(centres) * PIXEL_SCALE_X_M * 0.5
-    #     _, (m, m_err) = linear_fit(energies, centres, PIXEL_SCALE_X_M)
-    #     energy = 130
-    #     dispersion = m * energy
-
-    # def _image_centre_of_mass(self):
-    #     image = self.machine.get_screen_image()
-    #     y, x = ndi.center_of_mass(image)
-    #     return x, y
-
 
 class BasicDispersionMeasurer(BaseDispersionMeasurer):
     def measure(self) -> tuple[float, float]:
@@ -438,8 +666,10 @@ def _repeat_float_input_until_valid(prompt):
 
 class TDS:
     RB_SP_TOLERANCE = 0.02
-    def __init__(self):
-        self.mi = XFELMachineInterface()
+    def __init__(self, mi=None):
+        if mi is None:
+            mi = XFELMachineInterface()
+        self.mi = mi
         self.bunch_one_timing = self.mi.get_value(self.BUNCH_ONE)
 
     def set_amplitude(self, amplitude: float) -> None:
@@ -488,7 +718,8 @@ class TDS:
 
     def is_on_beam(self) -> bool:
         LOG.debug("Checking if TDS is on beam")
-        return self.read_timing() == self.read_on_beam_timing()
+        return self.read_timing() == self.bunch_one_timing
+# self.read_on_beam_timing()
 
     def switch_off_beam(self) -> None:
         """Turn the TDS off beam (whilst keeping RF power)"""
@@ -508,6 +739,55 @@ class TDS:
         if not on:
             on_data[2] *= 10000  # Simply a big number and so very far from being on beam.
         self.mi.set_value(self.EVENT, on_data)
+
+
+class MockTDS:
+    RB_SP_TOLERANCE = 0.02
+    def __init__(self, machine, mi=None):
+        if mi is None:
+            mi = XFELMachineInterface()
+        self.mi = mi
+
+        self.machine = machine
+
+        self.bunch_one_timing = self.mi.get_value(self.BUNCH_ONE)
+
+    def set_amplitude(self, amplitude: float) -> None:
+        """Set the TDS amplitude"""
+        LOG.debug(f"Setting TDS amplitude: {self.AMPLITUDE_SP} @ {amplitude}")
+        self.mi.set_value(self.AMPLITUDE_SP, amplitude)
+        self.mi.set_value(self.AMPLITUDE_RB, amplitude)
+        self.machine.bg_measurement_number = 0
+        self.machine.beam_measurement_number = 0
+
+    def read_rb_amplitude(self) -> float:
+        """Read back the TDS amplitude"""
+        result = self.mi.get_value(self.AMPLITUDE_RB)
+        LOG.debug(f"Reading TDS amplitude: {self.AMPLITUDE_RB} @ {result}")
+        return result
+
+    def read_sp_amplitude(self) -> float:
+        """Read back the TDS amplitude"""
+        result = self.mi.get_value(self.AMPLITUDE_SP)
+        result = self.mi.get_value(self.AMPLITUDE_RB)
+        LOG.debug(f"Reading TDS amplitude: {self.AMPLITUDE_RB} @ {result}")
+        return result
+
+    def set_phase(self, phase: float) -> None:
+        LOG.debug(f"Setting TDS amplitude: {self.PHASE_SP} @ {phase}")
+        self.mi.set_value(self.PHASE_SP, phase)
+        self.mi.set_value(self.PHASE_RB, phase)
+        self.machine.bg_measurement_number = 0
+        self.machine.beam_measurement_number = 0
+
+
+    def read_rb_phase(self) -> float:
+        result = self.mi.get_value(self.PHASE_RB)
+        LOG.debug(f"Reading TDS amplitude: {self.PHASE_RB} @ {result}")
+        return result
+
+    def read_on_beam_timing(self):
+        return self.mi.get_value(BUNCH_ONE)
 
 
 class I1TDS(TDS):
@@ -530,11 +810,9 @@ class EnergySpreadMeasuringMachine(Machine):
     A1_VOLTAGE_SP = "XFEL.RF/LLRF.CONTROLLER/CTRL.A1.I1/SP.AMPL"
     A1_VOLTAGE_RB = "XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/AMPL.SAMPLE"
 
-    SCREEN_GAIN_CHANNEL = "!__placeholder__!"
-
-    def __init__(self,outdir):
-        super().__init__(self.make_template(outdir))
-        self.tds = self.TDSCLS()
+    def __init__(self, outdir, mi=None):
+        super().__init__(self.make_template(outdir), mi=mi)
+        self.tds = self.TDSCLS(mi=mi)
 
     def set_quad(self, name: str, value: float) -> None:
         """Set a particular quadrupole given by its name to the given value."""
@@ -559,11 +837,6 @@ class EnergySpreadMeasuringMachine(Machine):
         LOG.debug(f"Reading image from {channel}")
         return self.mi.get_value(channel)
 
-    def set_screen_gain(self, gain) -> None:
-        """Set screen gain"""
-        LOG.debug(f"Setting screen gain: {gain}")
-        raise NotImplementedError
-    
 
 class TDSCalibratingMachine(Machine):
     def __init__(self, outdir):
@@ -617,6 +890,7 @@ class TDSCalibratingMachine(Machine):
         return self.mi.get_value(channel)
 
 
+
 class I1TDSCalibratingMachine(TDSCalibratingMachine):
     TDSCLS = I1TDS
     SCREEN_CHANNEL = I1D_SCREEN_ADDRESS
@@ -625,7 +899,7 @@ class I1TDSCalibratingMachine(TDSCalibratingMachine):
 class B2TDSCalibratingMachine(TDSCalibratingMachine):
     TDSCLS = I1TDS
     SCREEN_CHANNEL = B2D_SCREEN_ADDRESS
-    
+
 
 class I1DEnergySpreadMeasuringMachine(EnergySpreadMeasuringMachine):
     SCREEN_CHANNEL = I1D_SCREEN_ADDRESS
@@ -641,6 +915,150 @@ class B2DEnergySpreadMeasuringMachine(EnergySpreadMeasuringMachine):
     TEMPLATE_FN = make_b2d_snapshot_template
     TDSCLS = B2TDS
 
+
+# class MeasurementReplayer:
+#     def __init__(self, addresses):
+#         self.screen_channel = addresses["screen"]
+
+
+class MockI1TDS(MockTDS, I1TDS):
+    pass
+
+class I1DEnergySpreadMeasuringMachineReplayer(I1DEnergySpreadMeasuringMachine):
+    def __init__(self, outdir, anatoml):
+
+        self.conf = toml.load(anatoml)
+
+        data = self.conf["data"]
+
+        bp = Path(data["basepath"])
+
+        self.tscan = [pd.read_pickle(bp / p) for p in data["tscan"]["fnames"]]
+        self.dscan = [pd.read_pickle(bp / p) for p in data["dscan"]["fnames"]]
+
+        self.scans = np.array(self.tscan + self.dscan)
+        self.scan_tds_amplitudes = np.array([x.tds_amplitude_setpoint for x in self.scans])
+        self.scan_dispersion_setpoints = np.array([x.dispersion_setpoint for x in self.scans])
+
+        # for scan in self.scans:
+        #     from IPython import embed; embed()
+        #     scan.snapshot[self.TDSCLS.EVENT] = scan.snapshot[self.TDSCLS.BUNCH_ONE]
+        
+        try:
+            bunch_one = self.tscan[0].snapshots[I1TDS.BUNCH_ONE].iloc[0]
+        except KeyError:
+            # Assume always on beam.
+            bunch_one = self.tscan[0].snapshots[I1TDS.EVENT].iloc[0][2]
+
+        # from IPython import embed; embed()
+
+        event_10 = self.tscan[0].snapshots[I1TDS.EVENT].iloc[0]
+            
+        self.mi = DictionaryXFELMachineInterface({I1TDS.BUNCH_ONE:
+                                                  bunch_one,
+                                                  # Always online:
+                                                  "XFEL.DIAG/TOROID/TORA.60.I1/CHARGE.ALL": 1,
+                                                  I1TDS.EVENT: event_10})
+        super().__init__(outdir, mi=self.mi)
+
+        self.quads = {}
+        self.dispersion_setpoint = 0
+
+        self.tds = MockI1TDS(self, mi=self.mi)
+
+        self.bg_measurement_number = 0
+        self.beam_measurement_number = 0
+
+    def _pick_snapshot_df(self):
+        # First pick by TDS %.
+        tds_amplitude = self.tds.read_rb_amplitude()
+        # Only check the correct TDS setpoints:
+        for scan in self.scans[self.scan_tds_amplitudes == float(tds_amplitude)]:
+            df = scan.snapshots
+            is_bg = not bool(self.mi.get_value(BEAM_ALLOWED_ADDRESS))
+
+            if is_bg:
+                df = df[df[BEAM_ALLOWED_ADDRESS] == False]
+                index = self.bg_measurement_number
+            else:
+                df = df[df[BEAM_ALLOWED_ADDRESS] == True]
+                index = self.beam_measurement_number
+
+            # TDS Scan is easy to check but dispersion scan is tricky,
+            # we do it by comparing this particular quadurpole which
+            # changes a lot...
+            from math import isclose
+            if isclose(df.iloc[index]["QI.64.I1D"],
+                       self.quads["QI.64.I1D"], abs_tol=1):
+                return df.iloc[index]
+        else:
+            print("oh shit!!")
+            x = "shite"
+            from IPython import embed; embed()
+
+    def get_orbit(self, data, all_names):
+        df = self._pick_snapshot_df()
+        bpm_mask = df.keys().str.startswith("BPM")
+        bpm_mask &= (df.keys().str.endswith(".X") |
+                     df.keys().str.endswith(".Y"))
+
+        new_data = df[bpm_mask].values
+        new_names = list(df[bpm_mask].keys())
+
+        data = np.append(data, new_data)
+        all_names = np.append(all_names, new_names)
+
+        return data, all_names
+
+    def get_magnets(self, data, all_names):
+        df = self._pick_snapshot_df()
+        magnet_mask = df.keys().str.endswith("I1")
+        magnet_mask |= df.keys().str.endswith("I1D")
+
+        new_data = df[magnet_mask].values
+        new_names = list(df[magnet_mask].keys())
+
+        data = np.append(data, new_data)
+        all_names = np.append(all_names, new_names)
+
+        return data, all_names
+
+    def get_channels(self, data, all_names):
+        df = self._pick_snapshot_df()
+        set(df.keys()).intersection(self.snapshot.channels)
+        # don't bother with columns that aren't in the original...
+        new_names = list(set(df.keys()).intersection(self.snapshot.channels))
+        new_data = df[new_names].values
+
+        data = np.append(data, new_data)
+        all_names = np.append(all_names, new_names)
+
+        return data, all_names
+
+    def get_single_image(self, data, all_names):
+        ch = self.snapshot.images[0]
+        df = self._pick_snapshot_df()
+        path = Path(self.conf["data"]["basepath"]) / df[ch]
+        path = path.with_suffix(".pcl")
+
+        with path.open("rb") as f:
+            img = pickle.load(f)
+        data = np.append(data, df[ch])
+        all_names = np.append(all_names, ch)
+
+        return data, all_names, img
+
+    def set_quad(self, name, value):
+        channel = f"XFEL.MAGNETS/MAGNET.ML/{name}/KICK_MRAD.SP"
+        LOG.info(f"Setting {channel} @ {value}")
+        self.mi.set_value(channel, value)
+        self.quads[name] = value
+        # Then we must be starging a new measurement...
+        self.bg_measurement_number = 0
+        self.beam_measurement_number = 0
+
+    def wait_machine_online(self):
+        return # Machine is always online if asked to be
 
 class ScanType(Enum):
     DISPERSION = auto()
@@ -683,7 +1101,7 @@ class SetpointSnapshots:
 
     @property
     def tds_amplitude_setpoint(self) -> float:
-        setpoints = self.snapshots[TDS_AMPLITUDE_READBACK_ADDRESS]
+        setpoints = self.snapshots[TDS_I1_AMPLITUDE_READBACK_ADDRESS]
         one_setpoint = setpoints.iloc[0]
 
         if not (setpoints == one_setpoint).all():
@@ -711,7 +1129,16 @@ class SetpointSnapshots:
 
     def resolve_image_path(self, dirname):
         paths = self.snapshots["XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"]
-        self.snapshots["XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"] = dirname / paths
+        try:
+            self.snapshots["XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"] = dirname / paths
+        except:
+            import ipdb; ipdb.set_trace()
+
+    def drop_bad_snapshots(self):
+        df = self.snapshots
+        df = df[df['XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ'].notna()]
+        self.snapshots = df
+
 
 def resume_from_output_directory(dirname: Union[os.PathLike, str]):
     """Resume a measurement from the output directory"""
@@ -748,14 +1175,14 @@ def _tds_amplitude_setpoint_from_df(df):
         raise MalformedSnapshotDataFrame(f"{key_name} in {df} should be constant but is not")
     return value
 
-def _is_complete_setpoint_measurement(snapshot, nbg, nbeam):
-    # Given the generally >1 len pd.DataFrame, did i take all the data here?
-    # actually I just redo it right?  If it was written, it worked!  This function will only have meaning when I eventually have some way to handle interruprs.
-    # If the file exists, it's fine!
-    from IPython import embed; embed()
 
 
-
+@dataclass
+class MeasurementConfig:
+    n_bg_images: int
+    n_beam_images: int
+    dscan: DispersionScanConfiguration
+    tscan: TDSScanConfiguration
 
 # here is the AUTOGAIN on/off address for OTRC.55.I1 camera (as an
 # example) - "XFEL.DIAG/CAMERA/OTRC.58.I1/GAINAUTO.NUM". There are 3

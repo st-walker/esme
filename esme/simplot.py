@@ -42,31 +42,6 @@ def _save_fig_or_show(fig, outdir, name):
         LOG.info(f"wrote {fname}")
         fig.savefig(fname)
 
-def cathode_to_first_a1_cavity(outdir=None):
-    """AKA cathode to the where ASTRA tracking ends and OCELOT begins"""
-    all_twiss, mlat = sim.cathode_to_first_a1_cavity_optics()
-
-    s_offset = all_twiss.iloc[0].s
-
-    bl = latdraw.interfaces.lattice_from_ocelot(mlat.sequence, initial_offset=[0, 0, s_offset])
-    fig, (mx, axt, axe) = latdraw.subplots_with_lattice(bl, nrows=2)
-
-    axt.plot(all_twiss.s, all_twiss.beta_x, label="$x$")
-    axt.plot(all_twiss.s, all_twiss.beta_y, label="$y$")
-
-    axt.set_ylabel(BETA_LABEL_STRING)
-    axe.set_ylabel(E_LABEL_STRING)
-
-    axt.legend()
-
-    axe.plot(all_twiss.s, all_twiss.E * 1e3)
-    axe.set_xlabel(Z_LABEL_STRING)
-
-    mx.set_title("Cathode to first A1 Cavity")
-
-    _save_fig_or_show(fig, outdir, "cathode-to-first-a1-cavity-design-optics.pdf")
-
-
 
 def a1_to_i1d_design_optics(outdir=None):
     all_twiss, mlat = sim.a1_to_i1d_design_optics()
@@ -93,35 +68,6 @@ def a1_to_i1d_design_optics(outdir=None):
     axe.set_xlabel(Z_LABEL_STRING)
 
     mx.set_title("First A1 Cavity to I1D Design Optics")
-
-    _save_fig_or_show(fig, outdir, "a1-to-i1d-design-optics.pdf")
-
-
-def a1_to_q52_matching_point_measurement_optics(outdir=None):
-    all_twiss, mlat = sim.a1_to_q52_matching_point_measurement_optics()
-
-    s_offset = all_twiss.iloc[0].s
-
-    bl = latdraw.interfaces.lattice_from_ocelot(mlat.sequence, initial_offset=[0, 0, s_offset])
-    fig, (mx, axt, axd, axe) = latdraw.subplots_with_lattice(bl, nrows=3)
-
-    axt.plot(all_twiss.s, all_twiss.beta_x, label="$x$")
-    axt.plot(all_twiss.s, all_twiss.beta_y, label="$y$")
-    axd.plot(all_twiss.s, all_twiss.Dx, label="x")
-    axd.plot(all_twiss.s, all_twiss.Dy, label="y")
-
-    axd.set_ylabel(D_LABEL_STRING)
-    # axd.legend()
-
-    axt.set_ylabel(BETA_LABEL_STRING)
-    axe.set_ylabel(E_LABEL_STRING)
-
-    axt.legend()
-
-    axe.plot(all_twiss.s, all_twiss.E * 1e3)
-    axe.set_xlabel(Z_LABEL_STRING)
-
-    mx.set_title("First A1 Cavity to QI.52.I1 Measurement Optics")
 
     _save_fig_or_show(fig, outdir, "a1-to-i1d-design-optics.pdf")
 
@@ -165,15 +111,17 @@ def qi52_to_i1d_dscan_optics(dscan_conf, outdir=None):
 
 
 def a1_to_i1d_piecewise_measurement_optics(dscan_conf, outdir=None):
-    full_sequence = lattice.make_to_i1d_lattice().get_sequence()
+    full_sequence = lattice.make_to_i1d_lattice(sections.i1.make_twiss0_at_a1_start()).get_sequence()
+
+    # i1dm = I1DSimulatedEnergySpreadMeasurement(dscan_conf, tscan_voltages=None)
 
     all_twiss, _ = sim.a1_to_q52_matching_point_measurement_optics()
     s_offset = all_twiss.iloc[0].s
-    bl = latdraw.interfaces.lattice_from_ocelot(full_sequence, initial_offset=[0, 0, 23.2])
+    bl = latdraw.interfaces.lattice_from_ocelot(full_sequence)
     fig, (mx, axt, axd, axe) = latdraw.subplots_with_lattice(bl, nrows=3)
 
-    gen = sim.a1_dscan_piecewise_optics(dscan_conf, do_physics=do_physics)
-    for i, (dispersion, twiss, _) in enumerate(gen):
+    gen = sim.a1_dscan_piecewise_optics(dscan_conf, do_physics=False)
+    for dispersion, twiss in gen:
         axd.plot(twiss.s, twiss.Dx, label=fr"$D_x\,=\,{dispersion}\,\mathrm{{m}}$")
 
         (line,) = axt.plot(twiss.s, twiss.beta_x)
@@ -211,7 +159,8 @@ def check_a1_to_i1d_design_optics_tracking(parray0, outdir):
 
     axe.set_xlabel(Z_LABEL_STRING)
 
-    particle_twiss, _ = sim.i1d_design_optics_from_tracking(parray0)
+    _, particle_twiss = sim.i1d_design_optics_from_tracking(parray0)
+    
     axbx.plot(particle_twiss.s, particle_twiss.beta_x, label="Particle Tracking", marker="x")
     axby.plot(particle_twiss.s, particle_twiss.beta_y, marker="x")#, label="Particle Tracking")
     axax.plot(particle_twiss.s, particle_twiss.alpha_x, label="Particle Tracking", marker="x")
@@ -606,7 +555,7 @@ def gun_to_b2d_tracking_piecewise_optics(b2_dscan_conf, b2_tscan_voltages, fparr
     axby.axvline(**vlargs)
     axby.legend()
 
-    mx.set_title("B2D Dispersion Scan Optics at design eneryg and 130MeV with artificial matching")
+    mx.set_title("B2D Dispersion Scan Optics from partile traking at design energy and 130MeV with artificial matching")
 
 
     axbx.set_ylabel(BETX_LABEL_STRING)

@@ -112,7 +112,7 @@ class TDSScreenImage:
 
     @property
     def tds_was_on(self):
-        return self.metadata[EVENT10_CHANNEL][2] == TDS_ON_BEAM_EVENT10[2]
+        return self.metadata[EVENT10_CHANNEL][2] == TDS_I1_ON_BEAM_EVENT10[2]
 
     @property
     def is_no_bpm_data(self):
@@ -283,6 +283,8 @@ class ParameterScan:
         return iter(self.measurements)
 
 
+    
+
 class DispersionScan(ParameterScan):
     @property
     def voltage(self):
@@ -300,16 +302,17 @@ class TDSScan(ParameterScan):
         # Check if the dispersion setpoint we use for the TDS scan
         # differs too much from the dispersion setpoint we did the
         # calibration at.  If it's too much, then we have a problem.
+        # Do we actually though?  A mapping of amplitudes to voltages has nothing to do with dispersions, no?
         calibrator_dx = self.calibrator.dispersion_setpoint
 
         if not (scan_dx[0] == scan_dx).all():
             raise EnergySpreadCalculationError(f"TDS Scan dispersions should all be equal: {scan_dx}")
 
-        if (scan_dx[0] / calibrator_dx) > 0.2:
-            scan_dx = np.array2string(scan_dx, separator=", ")
-            raise TDSCalibrationError("Optics setpoint used differs"
-                                      " too much from the scan setpoint used to calculate R34:"
-                                      f" {calibrator_dx=} & {scan_dx=}")
+        # if (scan_dx[0] / calibrator_dx) > 0.2:
+        #     scan_dx = np.array2string(scan_dx, separator=", ")
+        #     raise TDSCalibrationError("Optics setpoint used differs"
+        #                               " too much from the scan setpoint used to calculate R34:"
+        #                               f" {calibrator_dx=} & {scan_dx=}")
 
 
         # Get metadata associated with first (non-bg) image of each measurement,

@@ -24,6 +24,7 @@ from esme.calibration import TDSCalibrator, TrivialTDSCalibrator
 from esme.channels import TDS_I1_AMPLITUDE_READBACK_ADDRESS, I1D_SCREEN_ADDRESS
 from esme.measurement import (
     MeasurementRunner,
+    DataTaker,
     DispersionScanConfiguration,
     TDSScanConfiguration,
     DispersionMeasurer,
@@ -32,7 +33,8 @@ from esme.measurement import (
     DispersionScanConfiguration,
     TDSScanConfiguration,
     QuadrupoleSetting,
-    I1DEnergySpreadMeasuringMachine
+    I1DEnergySpreadMeasuringMachine,
+    I1DEnergySpreadMeasuringMachineReplayer
 )
 from esme.lattice import make_dummy_lookup_sequence
 
@@ -237,25 +239,70 @@ def setpoint_snapshots_from_pcls(pcl_files):
     return result
 
 
-def make_measurement_runner(name, fconfig, location, outdir="./", measure_dispersion=False, copy_scan_config=True):
-    config = toml.load(fconfig)
+
+def make_measurement_runner(fconfig, machine_area, outdir="./",
+                            measure_dispersion=False,
+                            replay_file=None):
     LOG.debug(f"Making MeasurementRunner instance from config file: {fconfig}")
 
-    tscan_config = tscan_config_from_scan_config_file(fconfig)
-    dscan_config = i1_dscan_config_from_scan_config_file(fconfig)
-
-    if measure_dispersion is not None:
-        measure_dispersion = make_dispersion_measurer(fconfig)
+    # if measure_dispersion is not None:
+    #     measure_dispersion = make_dispersion_measurer(fconfig)
 
     measure_dispersion = None
-    if location == "i1d":
-        machine = I1DEnergySpreadMeasuringMachine(outdir)
-    elif location == "b2d":
-        machine = B2DEnergySpreadMeasuringMachine(outdir)
-    else:
-        raise ValueError("Unknown location string:", location)
 
-    return MeasurementRunner(dscan_config=dscan_config, tds_config=tscan_config, outdir=outdir, dispersion_measurer=measure_dispersion, machine=machine)
+    if machine_area == "i1":
+        tscan_config = i1_tscan_config_from_scan_config_file(fconfig)
+        dscan_config = i1_dscan_config_from_scan_config_file(fconfig)
+
+        if replay_file:
+            machine = I1DEnergySpreadMeasuringMachineReplayer(outdir, replay_file)
+        else:
+            # tds = I1TDS()
+            machine = I1DEnergySpreadMeasuringMachine(outdir)
+    elif machine_area == "b2":
+        # tds = B2TDS()
+        machine = B2DEnergySpreadMeasuringMachine(outdir)
+        tscan_config = b2_tscan_config_from_scan_config_file(fconfig)
+        dscan_config = b2_dscan_config_from_scan_config_file(fconfig)
+    else:
+        raise ValueError("Unknown machine_area string:", machine_area)
+
+    return MeasurementRunner(dscan_config=dscan_config,
+                             tds_config=tscan_config, outdir=outdir,
+                             dispersion_measurer=measure_dispersion,
+                             machine=machine)
+
+
+def make_data_taker(fconfig, machine_area, outdir="./",
+                    measure_dispersion=False,
+                    replay_file=None):
+    LOG.debug(f"Making MeasurementRunner instance from config file: {fconfig}")
+
+    # if measure_dispersion is not None:
+    #     measure_dispersion = make_dispersion_measurer(fconfig)
+
+    measure_dispersion = None
+
+    if machine_area == "i1":
+        tscan_config = i1_tscan_config_from_scan_config_file(fconfig)
+        dscan_config = i1_dscan_config_from_scan_config_file(fconfig)
+
+        if replay_file:
+            machine = I1DEnergySpreadMeasuringMachineReplayer(outdir, replay_file)
+        else:
+            # tds = I1TDS()
+            machine = I1DEnergySpreadMeasuringMachine(outdir)
+    elif machine_area == "b2":
+        # tds = B2TDS()
+        machine = B2DEnergySpreadMeasuringMachine(outdir)
+        tscan_config = b2_tscan_config_from_scan_config_file(fconfig)
+        dscan_config = b2_dscan_config_from_scan_config_file(fconfig)
+    else:
+        raise ValueError("Unknown machine_area string:", machine_area)
+
+    return DataTaker(dscan_config=dscan_config,
+                     tds_config=tscan_config,
+                     machine=machine)
 
 
 def get_config_sample_sizes(fconfig):
@@ -401,9 +448,11 @@ def load_pickled_snapshots(paths):
     for path in paths:
         with path.open("rb") as f:
             snapshot = pickle.load(f)
+            snapshot.drop_bad_snapshots()
             snapshot.resolve_image_path(path.parent)
             result.append(snapshot)
     return result
+
 
 
 def i1_dscan_config_from_scan_config_file(config_path: os.PathLike):
@@ -414,6 +463,10 @@ def i1_dscan_config_from_scan_config_file(config_path: os.PathLike):
 def i1_tds_voltages_from_scan_config_file(config_path: os.PathLike):
     conf = toml.load(config_path)
     return conf["i1"]["tds"]["scan_voltages"]
+
+def i1_tds_amplitudes_from_scan_config_file(config_path: os.PathLike):
+    conf = toml.load(config_path)
+    return conf["i1"]["tds"]["scan_amplitudes"]
 
 def b2_tds_voltages_from_scan_config_file(config_path: os.PathLike):
     conf = toml.load(config_path)
@@ -452,15 +505,21 @@ def _dscan_config_from_scan_config_file(quads: dict) -> DispersionScanConfigurat
     return DispersionScanConfiguration(reference_setting, scan_settings)
 
 
-def tscan_config_from_scan_config_file(config_path: os.PathLike) -> TDSScanConfiguration:
+def _tscan_config_from_scan_config_file(key, config_path: os.PathLike) -> TDSScanConfiguration:
     conf = toml.load(config_path)
-
-    tds = conf["i1"]["tds"]
+    tds = conf[key]["tds"]
     return TDSScanConfiguration(
         reference_amplitude=tds["reference_amplitude"],
         scan_amplitudes=tds["scan_amplitudes"],
         scan_dispersion=tds["scan_dispersion"])
 
+
+def i1_tscan_config_from_scan_config_file(config_path: os.PathLike):
+    return _tscan_config_from_scan_config_file("i1", config_path)
+
+def b2_tscan_config_from_scan_config_file(config_path: os.PathLike):
+    conf = toml.load(config_path)
+    return _tscan_config_from_scan_config_file("b2", config_path)
 
 def named_k1s_to_k1ls(names, k1s):
     lookup_cell = make_dummy_lookup_sequence()

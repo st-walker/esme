@@ -126,3 +126,10 @@ smaller setpoint, maybe 800,
 press gv on.  then go up in steps of t10 whilst in HV mode.
 
 i1:  feedforward shoudl be on, fsm  should be on.
+
+* Matching
+
+I don't need to manually put the thing in myself when using Matthias's tool
+
+Magnet Energizer needs calling, MAG_I1D
+Energy manager needs calling

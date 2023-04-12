@@ -20,6 +20,9 @@ from datetime import datetime
 import matplotlib
 import pandas as pd
 import numpy as np
+from dataclasses import dataclass
+
+
 try:
     import pydoocs
 except ImportError:
@@ -125,8 +128,53 @@ class Device(object):
         return phys_val
 
 
+@dataclass
+class ScreenImage:
+    channel: str
+    image: np.array
+    timestamp: datetime
 
-class XFELMachineInterface:
+    def name(self):
+        cam_name = self.channel.split("/")[-2]
+        return f"{cam_name}-{self.timestamp.strftime('%Y%m%d_%H%M%S_%f')[:-3]}"
+
+
+from abc import ABC, abstractmethod
+
+
+class XFELMachineInterfaceABC:
+    @abstractmethod
+    def get_value(self, channel: str) -> Any:
+        pass
+
+    @abstractmethod
+    def set_value(self, channel: str, val: Any) -> None:
+        pass
+
+    @abstractmethod
+    def get_charge(self) -> float:
+        pass
+    
+
+class DictionaryXFELMachineInterface(XFELMachineInterfaceABC):
+    def __init__(self, initial_state=None):
+        self._machine_state = {}
+        if initial_state is not None:
+            self._machine_state |= initial_state
+
+    def get_value(self, channel: str) -> Any:
+        return self._machine_state[channel]
+
+    def set_value(self, channel: str, val: Any) -> None:
+        self._machine_state[channel] = val
+
+    def get_charge(self) -> float:
+        return 250e-12 #?
+
+
+    
+
+class XFELMachineInterface(XFELMachineInterfaceABC):
     """
     Machine Interface for European XFEL
     """
@@ -155,6 +203,7 @@ class XFELMachineInterface:
         :return: None
         """
         LOG.debug(f"pydoocs.write: {channel} -> {any}")
+        import ipdb; ipdb.set_trace()
         pydoocs.write(channel, val)
 
     def get_charge(self):
@@ -226,18 +275,12 @@ class XFELMachineInterface:
         return succeded
 
 
-class ReadOnlyMachine:
-    def __init__(self, mi):
-        self._mi = mi
-
-    def read(self, channel):
-        return self.mi.get_value(channel)
-
-
 class Machine:
-    def __init__(self, snapshot):
+    def __init__(self, snapshot, mi=None):
         self.snapshot = snapshot
-        self.mi = XFELMachineInterface()
+        if mi is None:
+            mi = XFELMachineInterface()
+        self.mi = mi
         self.bpm_server = "ORBIT"  # or "BPM"
         self.server = "XFEL"
         self.subtrain = "ALL"
@@ -253,9 +296,12 @@ class Machine:
 
         for alarm in self.snapshot.alarms:
 
-            val = self.mi.get_value(alarm)
+            # Read from the Machine the value
+            val = self.mi.get_value(alarm.channel)
 
+            # Check if it's OK:
             if not alarm.is_ok(val):
+                import ipdb; ipdb.set_trace()
                 LOG.info(f"Machine is offline. Reason: {alarm.offline_message()}")
                 return False
 
@@ -350,8 +396,13 @@ class Machine:
             all_names = np.append(all_names, ch)
         return data, all_names
 
-    def wait_machine_online(self):
+    def get_single_image(self, data, all_names):
+        ch = self.snapshot.images[0]
+        image = ScreenImage(ch, self.mi.get_value(ch), datetime.utcnow())
 
+        return data, all_names, image
+    
+    def wait_machine_online(self):
         if self.is_machine_online():
             return
 
@@ -375,23 +426,23 @@ class Machine:
             LOG.warning("Missing orbit information, snapshot failed")
             return None
 
-        if len(data) == 0:
-            LOG.warning("Missing images, snapshot failed")
-            return None
         # print(len(data), len(all_names))
         data_dict = {}
         for name, d in zip(all_names, data):
             data_dict[name] = [d]
 
         df = pd.DataFrame(data_dict, columns=data_dict.keys())
-        static_bits = self.get_static_snapshot()
-
-        return pd.concat([df, static_bits])
+        static_bits, image = self.get_static_snapshot()
+        # from IPython import embed; embed()
+        return df.join(static_bits), image
+        return pd.concat([df, static_bits]), image
 
     def get_static_snapshot(self):
         data = np.array([time.time()], dtype=object)
         all_names = np.array(["timestamp"])
-        data, all_names = self.get_orbit(data, all_names)
+        all_names = []
+        data = []
+        # data, all_names = self.get_orbit(data, all_names)
 
         data, all_names = self.get_magnets(data, all_names)
         if len(data) == 0:
@@ -402,9 +453,8 @@ class Machine:
 
             LOG.warning("Missing other channels, snapshot failed")
             return None
-        data, all_names = self.get_images(data, all_names)
+        data, all_names, image = self.get_single_image(data, all_names)
         if len(data) == 0:
-
             LOG.warning("Missing images, snapshot failed")
             return None
 
@@ -413,14 +463,16 @@ class Machine:
             data_dict[name] = [d]
 
         df = pd.DataFrame(data_dict, columns=data_dict.keys())
-        return df
+        return df, image
 
 
 
 class MPS(Device):
-    def __init__(self, eid=None, server="XFEL", subtrain="SA1"):
+    def __init__(self, eid=None, server="XFEL", subtrain="SA1", mi=None):
         super(MPS, self).__init__(eid=eid)
-        self.mi = XFELMachineInterface()
+        if mi is None:
+            mi = XFELMachineInterface()
+        self.mi = mi
         self.subtrain = subtrain
         self.server = server
 
@@ -436,6 +488,7 @@ class MPS(Device):
     def is_beam_on(self):
         return self.mi.get_value(self.server + ".UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED")
 
+    
 
 
 # Channel returns [a,b,c,d], we need C!  third element.  so BasicAlarm

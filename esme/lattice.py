@@ -8,10 +8,11 @@ import numpy as np
 import pandas as pd
 
 from ocelot.utils.fel_track import SectionedFEL, FELSection
-from ocelot.cpbd.elements import Quadrupole
+from ocelot.cpbd.elements import Quadrupole, SBend, RBend
 
 from esme.measurement import QuadrupoleSetting
 from .sections import sections
+from .sections import i1, i1d
 
 LOG = logging.getLogger(__name__)
 
@@ -104,7 +105,7 @@ def mean_quad_strengths(df: pd.DataFrame, include_s=True, dropna=True):
 
 
 def cell_to_injector_dump():
-    return make_i1_cell() + make_i1d_cell()
+    return i1.make_cell() + i1d.make_cell()
 
 def cell_to_bc2_dump():
     return make_i1_cell() + make_l1_cell() + make_l2_cell() + make_b2d_cell()
@@ -131,32 +132,51 @@ def injector_cell_from_snapshot(snapshot: pd.Series, check=True, change_correcto
 
         expected = {"RF.23.I1", "BK.24.I1"}
         if set(the_rest.index) != expected:
-            LOG.warning("Unexpected item in DF.  Expected: {expected}, got: {the_rest}")
+            LOG.warning(f"Unexpected item in DF.  Expected: {expected}, got: {the_rest}")
 
     cell = cell_to_injector_dump()
-    for quad_name, int_strength in snapshot[quad_mask].items():
-        try:
-            quad = cell[quad_name]
-        except KeyError:
-            LOG.debug("NOT setting quad strength from snapshot: %s", quad_name)
-        else:
-            k1 = int_strength * 1e-3 / quad.l  # Convert to rad/m from mrad/m then to k1.
-            LOG.debug(f"setting quad strength from snapshot: {quad_name=}, {quad.k1=} to {k1=}")
-            quad.k1 = k1
 
-    dipole_mask = bends_mask
-    if change_correctors:
-        dipole_mask |= corrector_mask
-    for dipole_name, angle_mrad in snapshot[dipole_mask].items():
-        try:
-            dipole = cell[dipole_name]
-        except KeyError:
-            LOG.debug("NOT setting dipole angle from snapshot: %s", dipole_name)
-        else:
-            # I insert a negative sign here.  I guess convention is opposite?
-            angle = -angle_mrad * 1e-3
-            LOG.debug(f"setting dipole angle from snapshot: {dipole_name=}, {dipole.angle=} to {angle=}")
-            dipole.angle = angle
+    for element in cell:
+        if isinstance(element, Quadrupole):
+            # from IPython import embed; embed()
+            k1l = snapshot[element.id]
+            k1 = k1l * 1e-3 / element.l  # Convert to rad/m from mrad/m then to k1.
+            LOG.debug(f"setting quad strength from snapshot: {element.id}, {element.k1=} to {k1=}")
+            element.k1 = k1
+
+        if isinstance(element, (SBend, RBend)):
+            angle_mrad = snapshot[element.id]
+            angle = -angle_mrad * 1e-3            
+            LOG.debug(f"setting dipole angle from snapshot: {element.id}, {element.angle=} to {angle=}")
+            element.angle = angle
+
+    # for quad_name, int_strength in snapshot[quad_mask].items():
+    #     try:
+    #         if quad_name.startswith("QLN."):
+    #             continue
+    #         if quad_name.startswith("QLS."):
+    #             continue
+    #         quad = cell[quad_name]
+    #     except KeyError:
+    #         LOG.debug("NOT setting quad strength from snapshot: %s", quad_name)
+    #     else:
+    #         k1 = int_strength * 1e-3 / quad.l  # Convert to rad/m from mrad/m then to k1.
+    #         LOG.debug(f"setting quad strength from snapshot: {quad_name=}, {quad.k1=} to {k1=}")
+    #         quad.k1 = k1
+
+    # dipole_mask = bends_mask
+    # if change_correctors:
+    #     dipole_mask |= corrector_mask
+    # for dipole_name, angle_mrad in snapshot[dipole_mask].items():
+    #     try:
+    #         dipole = cell[dipole_name]
+    #     except KeyError:
+    #         LOG.debug("NOT setting dipole angle from snapshot: %s", dipole_name)
+    #     else:
+    #         # I insert a negative sign here.  I guess convention is opposite?
+    #         angle = -angle_mrad * 1e-3
+    #         LOG.debug(f"setting dipole angle from snapshot: {dipole_name=}, {dipole.angle=} to {angle=}")
+    #         dipole.angle = angle
 
     return cell
 
