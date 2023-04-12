@@ -1,0 +1,5 @@
+for f in *.ui
+do
+bn="$(basename $f .ui)"
+pyuic5 -x -o "${bn}.py" "${f}"
+done
