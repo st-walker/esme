@@ -216,19 +216,6 @@ def snapshot(model, i1d, b2d):
 #         print("I1D Dispersion Scan Setpoints")
 #         print("Reference Setting:")
 
-#         dconf.scan_settings_to_df()
-
-
-@main.command(no_args_is_help=True)
-@argument("outdir", nargs=1)
-@option("--i1", is_flag=True)
-@option("--b2", is_flag=True)
-def tds(i1, b2, outdir):
-    # Either calibrate or just keep it online in a loop.
-    assert not (i1 and b2)
-    from esme.measurement import I1TDSCalibratingMachine
-    calibrator = I1TDSCalibratingMachine(outdir)
-
 
 
 @main.command(no_args_is_help=True)
@@ -299,7 +286,9 @@ def gui(ftoml, replay):
     from esme.gui import start_gui
     start_gui(ftoml, debug_mode=True, replay=replay)
 
+@main.command()
 def tds():
+    from esme.gui import start_tds_gui
     start_tds_gui()
 
 @main.command(no_args_is_help=True)

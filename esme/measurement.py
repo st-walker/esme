@@ -839,7 +839,7 @@ class EnergySpreadMeasuringMachine(Machine):
 
 
 class TDSCalibratingMachine(Machine):
-    def __init__(self, outdir):
+    def __init__(self):
         self.outdir = outdir
         self.tds = self.TDSCLS()
         self.mi = XFELMachineInterface()

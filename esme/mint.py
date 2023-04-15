@@ -203,7 +203,6 @@ class XFELMachineInterface(XFELMachineInterfaceABC):
         :return: None
         """
         LOG.debug(f"pydoocs.write: {channel} -> {any}")
-        import ipdb; ipdb.set_trace()
         pydoocs.write(channel, val)
 
     def get_charge(self):
