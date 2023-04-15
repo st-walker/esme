@@ -69,6 +69,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.on_beam_push_button = QtWidgets.QPushButton(self.groupBox)
         self.on_beam_push_button.setCheckable(True)
+        self.on_beam_push_button.setChecked(True)
         self.on_beam_push_button.setAutoExclusive(True)
         self.on_beam_push_button.setObjectName("on_beam_push_button")
         self.buttonGroup = QtWidgets.QButtonGroup(MainWindow)
@@ -109,6 +110,9 @@ class Ui_MainWindow(object):
         self.phase_label.setObjectName("phase_label")
         self.phase_layout.addWidget(self.phase_label)
         self.phase_spin_box_2 = QtWidgets.QDoubleSpinBox(self.groupBox)
+        self.phase_spin_box_2.setMinimum(-1000.0)
+        self.phase_spin_box_2.setMaximum(1000.0)
+        self.phase_spin_box_2.setStepType(QtWidgets.QAbstractSpinBox.DefaultStepType)
         self.phase_spin_box_2.setObjectName("phase_spin_box_2")
         self.phase_layout.addWidget(self.phase_spin_box_2)
         self.phase_amp_layout.addLayout(self.phase_layout)
@@ -149,7 +153,7 @@ class Ui_MainWindow(object):
         self.verticalLayout_2.addWidget(self.groupBox_2)
         self.horizontalLayout_5.addLayout(self.verticalLayout_2)
         self.gridLayout_6.addLayout(self.horizontalLayout_5, 0, 1, 2, 1)
-        self.voltage_calibration_plot = PlotWidget(self.centralwidget)
+        self.voltage_calibration_plot = MatplotlibCanvas(self.centralwidget)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -199,7 +203,8 @@ class Ui_MainWindow(object):
         self.menuMenu.setTitle(_translate("MainWindow", "Menu"))
         self.actionPrint_to_Logbook.setText(_translate("MainWindow", "Print to Logbook"))
         self.actionQuit.setText(_translate("MainWindow", "Quit"))
-from pyqtgraph import GraphicsLayoutWidget, PlotWidget
+from esme.gui.mpl_widget import MatplotlibCanvas
+from pyqtgraph import GraphicsLayoutWidget
 
 
 if __name__ == "__main__":

@@ -91,6 +91,9 @@
                    <property name="checkable">
                     <bool>true</bool>
                    </property>
+                   <property name="checked">
+                    <bool>true</bool>
+                   </property>
                    <property name="autoExclusive">
                     <bool>true</bool>
                    </property>
@@ -163,7 +166,17 @@
                   </widget>
                  </item>
                  <item>
-                  <widget class="QDoubleSpinBox" name="phase_spin_box_2"/>
+                  <widget class="QDoubleSpinBox" name="phase_spin_box_2">
+                   <property name="minimum">
+                    <double>-1000.000000000000000</double>
+                   </property>
+                   <property name="maximum">
+                    <double>1000.000000000000000</double>
+                   </property>
+                   <property name="stepType">
+                    <enum>QAbstractSpinBox::DefaultStepType</enum>
+                   </property>
+                  </widget>
                  </item>
                 </layout>
                </item>
@@ -237,7 +250,7 @@
      </layout>
     </item>
     <item row="1" column="0">
-     <widget class="QWidget" name="voltage_calibration_plot" native="true">
+     <widget class="MatplotlibCanvas" name="voltage_calibration_plot" native="true">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
         <horstretch>0</horstretch>
@@ -283,6 +296,12 @@
    <class>GraphicsLayoutWidget</class>
    <extends>QWidget</extends>
    <header>pyqtgraph</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>MatplotlibCanvas</class>
+   <extends>QWidget</extends>
+   <header>esme.gui.mpl_widget</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
