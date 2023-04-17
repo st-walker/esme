@@ -154,7 +154,10 @@ def make_common_snapshot_template():
 
     return template
 
-def _add_injector_to_template(template, outdir):
+def _add_injector_to_template(template, outdir=None):
+
+    if outdir is None:
+        outdir = Path("./")
 
     screen_name = Path("XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ").parent.name
     image_dir = Path(outdir) / f"images-{screen_name}"

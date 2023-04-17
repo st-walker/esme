@@ -60,6 +60,18 @@ def _optics_config_from_dict(config: dict) -> OpticalConfig:
         ocr_betx=screen_betax,
     )
 
+def optics_config_from_toml(tds_name, config: dict) -> OpticalConfig:
+    tds = config[tds_name]["tds"]["optics"]
+    screen_betax = config["optics"]["screen"]["betx"]
+
+    oconf = OpticalConfig(
+        tds_bety=tds["bety"],
+        tds_alfy=tds["alfy"],
+        ocr_betx=screen_betax,
+    )
+
+    return oconf
+
 
 def _files_from_config(config, scan_name) -> list[Path]:
     try:

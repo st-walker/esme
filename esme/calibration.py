@@ -68,6 +68,25 @@ class TrivialTDSCalibrator:
         return dict(zip(self.percentages, self.voltages))[percentage]
 
 
+class TDSVoltageCalibration:
+    """full TDS calibration mapping amplitudes to voltages or slopes,
+    requires no additional calculation besides interpolating between
+    the data points (i.e. no needs no snapshots)
+
+    """
+    def __init__(self, amplitudes: Sequence[float], voltages):
+        self.amplitudes = amplitudes
+        self.voltages = voltages
+
+    def fit_voltages(self):
+        popt, pcov = curve_fit(line, self.percentages, self.voltages)
+        return popt, pcov
+
+    def get_voltage(self, amplitude: float) -> float:
+        popt, _ = self.fit_voltages()
+        return line(amplitude, *popt)
+
+
 def lat_from_tds_to_screen(snapshot: pd.Series):
     cell = injector_cell_from_snapshot(snapshot)
     screen_marker = next(ele for ele in cell if ele.id == "OTRC.64.I1D")

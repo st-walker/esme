@@ -187,64 +187,6 @@
           </layout>
          </widget>
         </item>
-        <item>
-         <widget class="QGroupBox" name="groupBox_2">
-          <property name="title">
-           <string>Voltage Calibration</string>
-          </property>
-          <layout class="QGridLayout" name="gridLayout_4">
-           <item row="0" column="0">
-            <widget class="QPushButton" name="start_voltage_calibration_button">
-             <property name="text">
-              <string>Start Calibration</string>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="1">
-            <widget class="QPushButton" name="save_voltage_calibration_button">
-             <property name="text">
-              <string>Save Calibration</string>
-             </property>
-            </widget>
-           </item>
-           <item row="1" column="0">
-            <layout class="QHBoxLayout" name="horizontalLayout_10">
-             <item>
-              <widget class="QLabel" name="phase_step_label">
-               <property name="text">
-                <string>Phase Step</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QDoubleSpinBox" name="phase_step_spinner"/>
-             </item>
-            </layout>
-           </item>
-           <item row="1" column="1">
-            <widget class="QPushButton" name="load_voltage_calibration_button">
-             <property name="text">
-              <string>Load Calibration</string>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="0" colspan="2">
-            <layout class="QHBoxLayout" name="sample_amplitudes_layout">
-             <item>
-              <widget class="QLabel" name="sample_amplitudes_label">
-               <property name="text">
-                <string>Sample Amplitudes</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QLineEdit" name="amplitudes_line_edit"/>
-             </item>
-            </layout>
-           </item>
-          </layout>
-         </widget>
-        </item>
        </layout>
       </item>
      </layout>

@@ -26,7 +26,7 @@ LOG = logging.getLogger(__name__)
 
 ETA_LABEL = r"$\eta_\mathrm{{OTR}}\,/\,\mathrm{m}$"
 VOLTAGE_LABEL = r"$|V_\mathrm{TDS}|\,/\,\mathrm{MV}$"
-TDS_CALIBRATION_LABEL = r"TDS Calibration Gradient / $\mathrm{\mu{}mps^{-1}}$"
+TDS_CALIBRATION_LABEL = r"Gradient / $\mathrm{\mu{}mps^{-1}}$"
 TDS_AMPLITUDE_LABEL = r"TDS Amplitude / %"
 
 
@@ -700,8 +700,9 @@ def plot_r34s(sesme):
     return fig, dikt
 
 
-def plot_calibrator_with_fits(calib):
-    fig, ax = plt.subplots()
+def plot_calibrator_with_fits(calib, fig=None, ax=None):
+    if ax is None and fig is None:
+        fig, ax = plt.subplots()
 
     x = calib.percentages
     sample_x = np.linspace(min(x) * 0.9, max(x) / 0.9, num=100)

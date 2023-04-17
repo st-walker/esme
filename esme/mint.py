@@ -8,6 +8,7 @@ S.Tomin, 2017
 
 from __future__ import absolute_import, print_function
 from typing import Any
+from pathlib import Path
 
 import base64
 import logging
@@ -129,14 +130,17 @@ class Device(object):
 
 
 @dataclass
-class ScreenImage:
+class TimestampedImage:
     channel: str
     image: np.array
     timestamp: datetime
 
     def name(self):
-        cam_name = self.channel.split("/")[-2]
+        cam_name = self.screen_name()
         return f"{cam_name}-{self.timestamp.strftime('%Y%m%d_%H%M%S_%f')[:-3]}"
+
+    def screen_name(self):
+        return Path(self.channel).parent.name
 
 
 from abc import ABC, abstractmethod
@@ -397,7 +401,7 @@ class Machine:
 
     def get_single_image(self, data, all_names):
         ch = self.snapshot.images[0]
-        image = ScreenImage(ch, self.mi.get_value(ch), datetime.utcnow())
+        image = TimestampedImage(ch, self.mi.get_value(ch), datetime.utcnow())
 
         return data, all_names, image
     
@@ -453,6 +457,8 @@ class Machine:
             LOG.warning("Missing other channels, snapshot failed")
             return None
         data, all_names, image = self.get_single_image(data, all_names)
+        all_names = np.append(all_names, image.channel)        
+        data = np.append(data, image.name())
         if len(data) == 0:
             LOG.warning("Missing images, snapshot failed")
             return None

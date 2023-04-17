@@ -43,6 +43,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from dataclasses import dataclass
 import logging
 import time
@@ -59,7 +60,7 @@ import pandas as pd
 from textwrap import dedent
 import numpy as np
 
-from esme.mint import MPS, Machine, XFELMachineInterface, DictionaryXFELMachineInterface
+from esme.mint import MPS, Machine, XFELMachineInterface, DictionaryXFELMachineInterface, TimestampedImage
 from esme.channels import (make_injector_snapshot_template,
                            make_b2d_snapshot_template,
                            I1D_SCREEN_ADDRESS,
@@ -325,7 +326,6 @@ class MeasurementRunner:
         pass
 
 
-
 class DataTaker:
     SLEEP_BETWEEN_SNAPSHOTS = 0.2
     SLEEP_AFTER_TDS_SETTING = 0.5
@@ -395,7 +395,7 @@ class DataTaker:
         LOG.info("Setting up dispersion scan")
         self.set_reference_quads()
         self.set_reference_tds_amplitude()
-        
+
         LOG.info(
             f"Starting dispersion scan: dispersions={self.dscan_config.dispersions}," f" {bg_shots=}, {beam_shots=}"
         )
@@ -414,7 +414,7 @@ class DataTaker:
             LOG.info(f"Setting quad: {name} to {k1l}")
             self.machine.set_quad(name, k1l)
         time.sleep(self.SLEEP_AFTER_QUAD_SETTING)
-    
+
 
     # def dispersion_scan_one_measurement(self, quad_setting: QuadrupoleSetting, *, bg_shots: int, beam_shots: int):
     #     """Do a single dispersion scan measurement."""
@@ -468,36 +468,6 @@ class DataTaker:
     def abs_output_directory(self) -> Path:
         return self.outdir.resolve()
 
-    def save_setpoint_snapshots(self, setpoint_snapshot: SetpointSnapshots) -> str:
-        fname = self.make_snapshots_filename(setpoint_snapshot)
-        fname.parent.mkdir(exist_ok=True, parents=True)
-        with fname.open("wb") as f:
-            pickle.dump(setpoint_snapshot, f)
-        LOG.info(f"Wrote measurement SetpointSnapshots (of {len(setpoint_snapshot)} snapshots) to: {fname}")
-        return fname
-
-    def measure_flat(self):
-        pass
-
-    def flat_dispersion_scan(self, dispersion_setpoint, nbg, nbeam):
-        for qsetting in self.dscan_config.scan_settings:
-            set_quads()
-            for i in range(self.nbg):
-                for payload in self.photographer.take_bg(nbg):
-                    yield payload
-            for i in range(self.nbeam):
-                for payload in self.photographer.take_beam(nbg):
-                    yield payload
-
-
-        pass
-
-    def flat_tds_scan(self, tds_percentage):
-        pass
-
-
-
-
 
     # def self_update_progress_file(self, scan_type: str, scan_setpoint: S, pcl_filename):
     #     from IPython import embed
@@ -506,13 +476,15 @@ class DataTaker:
 
 @dataclass
 class MeasurementPayload:
-    image: np.array
+    image: TimestampedImage
     snapshot: pd.DataFrame
     tds_percentage: float
     dispersion_setpoint: float
     is_bg: bool
     scan_type: ScanType
 
+    def __repr__(self):
+        return f"MeasurementPayload: image:{self.image}, bg:{self.is_bg}, tds={self.tds_percentage}, disp={self.dispersion_setpoint}, scan_type:{self.scan_type}"
 
 class SingleSnapshotter:
     def __init__(self, mps=None, machine=None):
@@ -532,6 +504,7 @@ class SingleSnapshotter:
             self.machine.tds.switch_on_beam()
 
         result = self.take_machine_snapshot(check_if_online=True)
+        print(result)
         # Should ideally still be on beam afterwards, just to be
         # sure...
         # Alternatively: I should check the dataframe says it's on beam...
@@ -547,11 +520,11 @@ class SingleSnapshotter:
 class MockMPS(MPS):
     def beam_off(self):
         super().beam_off()
-        self.mi.set_value("XFEL.DIAG/TOROID/TORA.60.I1/CHARGE.ALL", 0)        
+        self.mi.set_value("XFEL.DIAG/TOROID/TORA.60.I1/CHARGE.ALL", 0)
 
     def beam_on(self):
         super().beam_on()
-        self.mi.set_value("XFEL.DIAG/TOROID/TORA.60.I1/CHARGE.ALL", 250)        
+        self.mi.set_value("XFEL.DIAG/TOROID/TORA.60.I1/CHARGE.ALL", 250)
 
     def num_bunches_requested(self, num_bunches=1):
         self.mi.set_value(self.server + ".UTIL/BUNCH_PATTERN/CONTROL/NUM_BUNCHES_REQUESTED_1", num_bunches)
@@ -810,7 +783,7 @@ class EnergySpreadMeasuringMachine(Machine):
     A1_VOLTAGE_SP = "XFEL.RF/LLRF.CONTROLLER/CTRL.A1.I1/SP.AMPL"
     A1_VOLTAGE_RB = "XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/AMPL.SAMPLE"
 
-    def __init__(self, outdir, mi=None):
+    def __init__(self, outdir=None, mi=None):
         super().__init__(self.make_template(outdir), mi=mi)
         self.tds = self.TDSCLS(mi=mi)
 
@@ -840,7 +813,6 @@ class EnergySpreadMeasuringMachine(Machine):
 
 class TDSCalibratingMachine(Machine):
     def __init__(self):
-        self.outdir = outdir
         self.tds = self.TDSCLS()
         self.mi = XFELMachineInterface()
         self.nphase_points = 60
@@ -943,7 +915,7 @@ class I1DEnergySpreadMeasuringMachineReplayer(I1DEnergySpreadMeasuringMachine):
         # for scan in self.scans:
         #     from IPython import embed; embed()
         #     scan.snapshot[self.TDSCLS.EVENT] = scan.snapshot[self.TDSCLS.BUNCH_ONE]
-        
+
         try:
             bunch_one = self.tscan[0].snapshots[I1TDS.BUNCH_ONE].iloc[0]
         except KeyError:
@@ -953,7 +925,7 @@ class I1DEnergySpreadMeasuringMachineReplayer(I1DEnergySpreadMeasuringMachine):
         # from IPython import embed; embed()
 
         event_10 = self.tscan[0].snapshots[I1TDS.EVENT].iloc[0]
-            
+
         self.mi = DictionaryXFELMachineInterface({I1TDS.BUNCH_ONE:
                                                   bunch_one,
                                                   # Always online:
@@ -1046,7 +1018,9 @@ class I1DEnergySpreadMeasuringMachineReplayer(I1DEnergySpreadMeasuringMachine):
         data = np.append(data, df[ch])
         all_names = np.append(all_names, ch)
 
-        return data, all_names, img
+        image = TimestampedImage(ch, img, datetime.utcnow())
+
+        return data, all_names, image
 
     def set_quad(self, name, value):
         channel = f"XFEL.MAGNETS/MAGNET.ML/{name}/KICK_MRAD.SP"
