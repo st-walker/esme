@@ -268,9 +268,6 @@ def plot_scans(esme: ana.SliceEnergySpreadMeasurement, root_outdir=None) -> None
     plot_tds_scan(esme, ax2)
     plot_dispersion_scan(esme, axt)
 
-    ax2.set_ylabel("")
-    ax3.set_ylabel("")
-
     fig.suptitle("Dispersion and TDS Scans for an Energy Spread Measurement")
 
     if root_outdir is not None:

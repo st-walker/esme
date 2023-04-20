@@ -49,9 +49,9 @@
                <item>
                 <layout class="QHBoxLayout" name="horizontalLayout_4">
                  <item>
-                  <widget class="QRadioButton" name="i1d_radio_button">
+                  <widget class="QRadioButton" name="i1_radio_button">
                    <property name="text">
-                    <string>I1D</string>
+                    <string>I1</string>
                    </property>
                    <property name="checked">
                     <bool>true</bool>
@@ -59,9 +59,9 @@
                   </widget>
                  </item>
                  <item>
-                  <widget class="QRadioButton" name="b2d_radio_buton">
+                  <widget class="QRadioButton" name="b2_radio_buton">
                    <property name="text">
-                    <string>B2D</string>
+                    <string>B2</string>
                    </property>
                    <property name="checkable">
                     <bool>false</bool>

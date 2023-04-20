@@ -60,17 +60,17 @@ import pandas as pd
 from textwrap import dedent
 import numpy as np
 
-from esme.mint import MPS, Machine, XFELMachineInterface, DictionaryXFELMachineInterface, TimestampedImage
+from esme.mint import MPS, Machine, XFELMachineInterface  #, DictionaryXFELMachineInterface, TimestampedImage
 from esme.channels import (make_injector_snapshot_template,
-                           make_b2d_snapshot_template,
-                           I1D_SCREEN_ADDRESS,
+                           make_b2_snapshot_template,
+                           I1_SCREEN_ADDRESS,
                            TDS_I1_AMPLITUDE_READBACK_ADDRESS,
                            BUNCH_ONE_TDS_I1,
                            BUNCH_ONE_TDS_B2,
                            EVENT10_CHANNEL,
                            EVENT12_CHANNEL,
                            BUNCH_ONE_TDS_B2,
-                           B2D_SCREEN_ADDRESS,
+                           B2_SCREEN_ADDRESS,
                            BUNCH_ONE_TOLERANCE,
                            BEAM_ALLOWED_ADDRESS)
 
@@ -784,7 +784,7 @@ class EnergySpreadMeasuringMachine(Machine):
     A1_VOLTAGE_RB = "XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/AMPL.SAMPLE"
 
     def __init__(self, outdir=None, mi=None):
-        super().__init__(self.make_template(outdir), mi=mi)
+        super().__init__(self.make_template(outdir))
         self.tds = self.TDSCLS(mi=mi)
 
     def set_quad(self, name: str, value: float) -> None:
@@ -812,7 +812,8 @@ class EnergySpreadMeasuringMachine(Machine):
 
 
 class TDSCalibratingMachine(Machine):
-    def __init__(self):
+    def __init__(self, outdir):
+        super().__init__(self.make_template(outdir))
         self.tds = self.TDSCLS()
         self.mi = XFELMachineInterface()
         self.nphase_points = 60
@@ -865,16 +866,20 @@ class TDSCalibratingMachine(Machine):
 
 class I1TDSCalibratingMachine(TDSCalibratingMachine):
     TDSCLS = I1TDS
-    SCREEN_CHANNEL = I1D_SCREEN_ADDRESS
+    SCREEN_CHANNEL = I1_SCREEN_ADDRESS
+    TEMPLATE_FN = make_injector_snapshot_template
 
+    @classmethod
+    def make_template(cls, outdir):
+        return cls.TEMPLATE_FN(outdir)
 
 class B2TDSCalibratingMachine(TDSCalibratingMachine):
     TDSCLS = I1TDS
-    SCREEN_CHANNEL = B2D_SCREEN_ADDRESS
+    SCREEN_CHANNEL = B2_SCREEN_ADDRESS
 
 
-class I1DEnergySpreadMeasuringMachine(EnergySpreadMeasuringMachine):
-    SCREEN_CHANNEL = I1D_SCREEN_ADDRESS
+class I1EnergySpreadMeasuringMachine(EnergySpreadMeasuringMachine):
+    SCREEN_CHANNEL = I1_SCREEN_ADDRESS
     TEMPLATE_FN = make_injector_snapshot_template
     TDSCLS = I1TDS
 
@@ -882,9 +887,9 @@ class I1DEnergySpreadMeasuringMachine(EnergySpreadMeasuringMachine):
     def make_template(cls, outdir):
         return cls.TEMPLATE_FN(outdir)
 
-class B2DEnergySpreadMeasuringMachine(EnergySpreadMeasuringMachine):
-    SCREEN_CHANNEL = B2D_SCREEN_ADDRESS
-    TEMPLATE_FN = make_b2d_snapshot_template
+class B2EnergySpreadMeasuringMachine(EnergySpreadMeasuringMachine):
+    SCREEN_CHANNEL = B2_SCREEN_ADDRESS
+    TEMPLATE_FN = make_b2_snapshot_template
     TDSCLS = B2TDS
 
 
@@ -896,7 +901,7 @@ class B2DEnergySpreadMeasuringMachine(EnergySpreadMeasuringMachine):
 class MockI1TDS(MockTDS, I1TDS):
     pass
 
-class I1DEnergySpreadMeasuringMachineReplayer(I1DEnergySpreadMeasuringMachine):
+class I1EnergySpreadMeasuringMachineReplayer(I1EnergySpreadMeasuringMachine):
     def __init__(self, outdir, anatoml):
 
         self.conf = toml.load(anatoml)
@@ -959,9 +964,10 @@ class I1DEnergySpreadMeasuringMachineReplayer(I1DEnergySpreadMeasuringMachine):
             # TDS Scan is easy to check but dispersion scan is tricky,
             # we do it by comparing this particular quadurpole which
             # changes a lot...
+            # XXX!!!
             from math import isclose
-            if isclose(df.iloc[index]["QI.64.I1D"],
-                       self.quads["QI.64.I1D"], abs_tol=1):
+            if isclose(df.iloc[index]["QI.64.I1"],
+                       self.quads["QI.64.I1"], abs_tol=1):
                 return df.iloc[index]
         else:
             print("oh shit!!")

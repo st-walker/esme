@@ -20,7 +20,8 @@ from esme.inout import (
     add_metadata_to_pcls_in_toml,
     i1_dscan_config_from_scan_config_file,
     b2_dscan_config_from_scan_config_file,
-    i1_tds_voltages_from_scan_config_file
+    i1_tds_voltages_from_scan_config_file,
+    get_config_sample_sizes
 )
 
 from . import inout
@@ -186,18 +187,18 @@ def fix(ftoml, new_columns, to_snapshots, alle):
 
 
 @main.command(no_args_is_help=True)
-@option("--i1d", is_flag=True, cls=MutuallyExclusiveOption, mutually_exclusive=["b2d"])
-@option("--b2d", is_flag=True, cls=MutuallyExclusiveOption, mutually_exclusive=["i1d"])
+@option("--i1", is_flag=True, cls=MutuallyExclusiveOption, mutually_exclusive=["b2"])
+@option("--b2", is_flag=True, cls=MutuallyExclusiveOption, mutually_exclusive=["i1"])
 @argument("fname", nargs=1)
-def snapshot(model, i1d, b2d):
+def snapshot(model, i1, b2):
     """Take a snapshot of the file up to the given point in the
-    machine (either I1D or B2D), write it to file, and then exit"""
-    from esme.measurement import I1DEnergySpreadMeasuringMachine, B2DEnergySpreadMeasuringMachine
+    machine (either I1 or B2), write it to file, and then exit"""
+    from esme.measurement import I1EnergySpreadMeasuringMachine, B2EnergySpreadMeasuringMachine
 
-    if i1d:
-        machine = I1DEnergySpreadMeasuringMachine(fname)
-    elif b2d:
-        machine = B2DEnergySpreadMeasuringMachine(fname)
+    if i1:
+        machine = I1EnergySpreadMeasuringMachine(fname)
+    elif b2:
+        machine = B2EnergySpreadMeasuringMachine(fname)
     else:
         raise UsageError("Unrecognised model string")
 
@@ -208,26 +209,27 @@ def snapshot(model, i1d, b2d):
 # @main.command(no_args_is_help=True, hidden=True)
 # @argument("ftoml", nargs=1)
 # @argument("dispersion", nargs=1)
-# @option("--i1d", is_flag=True)
-# @option("--b2d", is_flag=True)
-# def setpoint(ftoml, dispersion, i1d, b2d):
-#     if i1d:
+# @option("--i1", is_flag=True)
+# @option("--b2", is_flag=True)
+# def setpoint(ftoml, dispersion, i1, b2):
+#     if i1:
 #         dconf = i1_dscan_config_from_scan_config_file(ftoml)
-#         print("I1D Dispersion Scan Setpoints")
+#         print("I1 Dispersion Scan Setpoints")
 #         print("Reference Setting:")
 
 
 
 @main.command(no_args_is_help=True)
-@option("--b2d", is_flag=True)
-@option("--i1d", is_flag=True)
+@option("--b2", is_flag=True)
+@option("--i1", is_flag=True)
 @option("--dispersion", is_flag=True, help="Just measure the dispersion (used for debugging purposes)")
 @option("--bscan", is_flag=True, help="Only do the beta scan")
 @option("--dscan", is_flag=True, help="Only do the dispersion scan")
 @option("--tscan", is_flag=True, help="Only do the TDS scan")
 @option("--config", help="Explicitly set the config to be used.", type=Path)
+@argument("outdir", nargs=1, type=Path)
 # @argument("--continue", n) # continue_ file...
-def measure(dispersion, bscan, dscan, tscan, config, b2d, i1d):
+def measure(dispersion, bscan, dscan, tscan, config, b2, i1, outdir):
     """Measure the slice energy spread in the EuXFEL on the command line"""
     config = find_scan_config(config, "./scan.toml")
 
@@ -237,12 +239,12 @@ def measure(dispersion, bscan, dscan, tscan, config, b2d, i1d):
         print(f"{dispersion=}±{dispersion_unc}")
         return
 
-    if b2d:
-        model = "b2d"
-    elif i1d:
-        model = "i1d"
+    if b2:
+        model = "b2"
+    elif i1:
+        model = "i1"
 
-    measurer = make_measurement_runner(config, model)
+    measurer = make_measurement_runner(config, model, outdir=outdir)
 
     bg_shots, beam_shots = get_config_sample_sizes(config)
 
@@ -255,7 +257,7 @@ def measure(dispersion, bscan, dscan, tscan, config, b2d, i1d):
         measurer.beta_scan(bg_shots=bg_shots, beam_shots=beam_shots, measure_dispersion=measure_dispersion)
 
     if not (dscan or tscan or bscan):
-        measurer.run(bg_shots=bg_shots, beam_shots=beam_shots, measure_dispersion=measure_dispersion)
+        measurer.run(bg_shots=bg_shots, beam_shots=beam_shots)
 
 
 @main.command(no_args_is_help=True)
@@ -295,8 +297,8 @@ def tds():
 @argument("fscan", nargs=1)
 @argument("parray", nargs=1, required=False)
 @option("--outdir", "-o", nargs=1, default="./", show_default=True, help="where to write output files to")
-@option("--i1", is_flag=True, cls=MutuallyExclusiveOption, mutually_exclusive=["b2d"])
-@option("--b2", is_flag=True, cls=MutuallyExclusiveOption, mutually_exclusive=["i1d"])
+@option("--i1", is_flag=True, cls=MutuallyExclusiveOption, mutually_exclusive=["b2"])
+@option("--b2", is_flag=True, cls=MutuallyExclusiveOption, mutually_exclusive=["i1"])
 @option("--dscan", is_flag=True)
 @option("--tscan", is_flag=True)
 @option("--escan", is_flag=True)
@@ -316,21 +318,21 @@ def sim(fscan, i1, b2, dscan, tscan, escan, parray, outdir, fast, optics, physic
         i1_tscan_voltages = i1_tds_voltages_from_scan_config_file(fscan)
 
     if i1 and optics and not parray:
-        simplot.a1_to_i1d_design_optics()
-        simplot.qi52_to_i1d_dscan_optics(i1_dscan_conf)
-        simplot.a1_to_i1d_piecewise_measurement_optics(i1_dscan_conf)
-        
+        simplot.a1_to_i1_design_optics()
+        simplot.qi52_to_i1_dscan_optics(i1_dscan_conf)
+        simplot.a1_to_i1_piecewise_measurement_optics(i1_dscan_conf)
+
     elif i1 and optics and parray:
-        simplot.check_a1_to_i1d_design_optics_tracking(parray, outdir)
+        simplot.check_a1_to_i1_design_optics_tracking(parray, outdir)
         # simplot.check_a1_q52_measurement_optics_tracking(parray, outdir)
         # simplot.dscan_piecewise_tracking_optics(parray, i1_dscan_conf, outdir)
         # simplot.dscan_piecewise_tracking_optics(parray, i1_dscan_conf, outdir,
         #                                         do_physics=physics)
     elif i1 and parray:
-        i1dsim = sim.I1DSimulatedEnergySpreadMeasurement(parray,
+        i1sim = sim.I1SimulatedEnergySpreadMeasurement(parray,
                                                          i1_dscan_conf,
                                                          i1_tscan_voltages)
-        i1dsim.write_scans(outdir)
+        i1sim.write_scans(outdir)
         # sim.run_i1_dispersion_scan(i1_dscan_conf, parray, outdir)
 
     if b2:
@@ -338,27 +340,27 @@ def sim(fscan, i1, b2, dscan, tscan, escan, parray, outdir, fast, optics, physic
         b2_tscan_voltages = inout.b2_tds_voltages_from_scan_config_file(fscan)
 
         if optics:
-        # b2dsim = sim.B2DSimulatedEnergySpreadMeasurement(parray,
+        # b2sim = sim.B2SimulatedEnergySpreadMeasurement(parray,
         #                                                  b2_dscan_conf,
         #                                                  b2_tscan_voltages)
 
-            simplot.plot_b2d_design_optics(b2_dscan_conf, b2_tscan_voltages)
+            simplot.plot_b2_design_optics(b2_dscan_conf, b2_tscan_voltages)
 
             simplot.bolko_optics_comparison(b2_dscan_conf, b2_tscan_voltages)
 
-            simplot.gun_to_b2d_bolko_optics(b2_dscan_conf, b2_tscan_voltages)
+            simplot.gun_to_b2_bolko_optics(b2_dscan_conf, b2_tscan_voltages)
 
-            simplot.gun_to_b2d_dispersion_scan_design_energy(b2_dscan_conf, b2_tscan_voltages)
-            simplot.gun_to_b2d_piecewise_dispersion_scan_optics(b2_dscan_conf, b2_tscan_voltages)
-            simplot.gun_to_b2d_tracking_piecewise_optics(b2_dscan_conf, b2_tscan_voltages, parray)
-            simplot.gun_to_b2d_tracking_central_slice_optics(b2_dscan_conf,
+            simplot.gun_to_b2_dispersion_scan_design_energy(b2_dscan_conf, b2_tscan_voltages)
+            simplot.gun_to_b2_piecewise_dispersion_scan_optics(b2_dscan_conf, b2_tscan_voltages)
+            simplot.gun_to_b2_tracking_piecewise_optics(b2_dscan_conf, b2_tscan_voltages, parray)
+            simplot.gun_to_b2_tracking_central_slice_optics(b2_dscan_conf,
                                                              b2_tscan_voltages,
                                                              parray,
                                                              outdir=outdir,
                                                              do_physics=physics)
 
         else:
-            simplot.gun_to_b2d_tracking_central_slice_optics(b2_dscan_conf,
+            simplot.gun_to_b2_tracking_central_slice_optics(b2_dscan_conf,
                                                              b2_tscan_voltages,
                                                              parray,
                                                              outdir=outdir,

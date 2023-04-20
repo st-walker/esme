@@ -1,3 +1,11 @@
+import sys
+
+# Annoying hardcoded path on xfel machines that trumps any conda installation
+try:
+    sys.path.remove("/home/xfeloper/released_software/python/lib")
+except ValueError:
+    pass
+
 from esme.measurement import SetpointSnapshots
 from collections import defaultdict
 import pandas as pd
@@ -449,7 +457,7 @@ class EnergySpreadMeasurementMainWindow(QMainWindow):
             self.fit_worker_thread.start()
 
     def print_result(self):
-        
+        pass
 
     def update_image_from_payload(self, payload):
         # image_event = payload.image.astype("float64")
@@ -470,9 +478,9 @@ class EnergySpreadMeasurementMainWindow(QMainWindow):
         return self.ui.bg_shots_spinner.value()
 
     def measurement_location(self):
-        if self.ui.i1d_radio_button.isChecked():
+        if self.ui.i1_radio_button.isChecked():
             return "i1"
-        elif self.ui.b2d_radio_button.isChecked():
+        elif self.ui.b2_radio_button.isChecked():
             return "b2"
 
     def show_calibration_window(self):
@@ -840,7 +848,7 @@ class TDSCalibrationWindow(QMainWindow):
 
         self.try_and_plot_calibration()
 
-        # self.mi = I1TDSCalibratingMachine()
+        self.mi = I1TDSCalibratingMachine("./")
 
         # self.timer2hz = QTimer()
         # self.timer2hz.timeout.connect(self.show_beam)
@@ -872,7 +880,9 @@ class TDSCalibrationWindow(QMainWindow):
 
     def update_snapshot(self):
         if is_in_controlroom():
-            self.active_snaphot = self.mi.get_machine_snapshot()
+            snapshot, _ = self.mi.get_machine_snapshot()
+            self.active_snapshot = snapshot
+            print(self.active_snapshot, "WOW?")
         else:
             self.active_snapshot = pd.read_pickle("/Users/stuartwalker/repos/emem/pyBigBro_28_11_2022/dx_1.2m_dispersion_one_snapshot.pcl")
 

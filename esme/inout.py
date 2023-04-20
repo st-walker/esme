@@ -262,6 +262,9 @@ def make_measurement_runner(fconfig, machine_area, outdir="./",
 
     measure_dispersion = None
 
+    outdir = Path(outdir)
+    outdir.mkdir(exist_ok=True, parents=True)
+
     if machine_area == "i1":
         tscan_config = i1_tscan_config_from_scan_config_file(fconfig)
         dscan_config = i1_dscan_config_from_scan_config_file(fconfig)
@@ -290,7 +293,7 @@ def make_data_taker(fconfig, machine_area, outdir="./",
                     replay_file=None):
     LOG.debug(f"Making MeasurementRunner instance from config file: {fconfig}")
 
-    # if measure_dispersion is not None:
+    # if measure_is not None:
     #     measure_dispersion = make_dispersion_measurer(fconfig)
 
     measure_dispersion = None

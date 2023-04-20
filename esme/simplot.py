@@ -264,7 +264,7 @@ def dscan_piecewise_tracking_optics(fparray0, dscan_conf, outdir, do_physics=Fal
 
 
 def bolko_optics_comparison(dscan_conf, tscan_voltages):
-    b2 = sim.B2DSimulatedEnergySpreadMeasurement(dscan_conf, tscan_voltages)
+    b2 = sim.B2SimulatedEnergySpreadMeasurement(dscan_conf, tscan_voltages)
 
     twiss, mlat = b2.bolko_optics()
     import pand8
@@ -300,7 +300,7 @@ def bolko_optics_comparison(dscan_conf, tscan_voltages):
 
 
 def new_tds_optics_comparison(dscan_conf, tscan_voltages):
-    b2 = sim.B2DSimulatedEnergySpreadMeasurement(dscan_conf, tscan_voltages)
+    b2 = sim.B2SimulatedEnergySpreadMeasurement(dscan_conf, tscan_voltages)
 
     twiss, mlat = b2.bolko_optics()
     import pand8
@@ -345,14 +345,14 @@ def new_tds_optics_comparison(dscan_conf, tscan_voltages):
     plt.show()
 
 
-def gun_to_b2d_bolko_optics(b2_dscan_conf, b2_tscan_voltages):
+def gun_to_b2_bolko_optics(b2_dscan_conf, b2_tscan_voltages):
     # Plot MAD8 bolko optics
 
-    b2d = sim.B2DSimulatedEnergySpreadMeasurement(b2_dscan_conf, b2_tscan_voltages)
-    sequence = b2d.gun_to_dump_sequence()
+    b2 = sim.B2SimulatedEnergySpreadMeasurement(b2_dscan_conf, b2_tscan_voltages)
+    sequence = b2.gun_to_dump_sequence()
     s_offset = 0
 
-    twiss, mlat = b2d.bolko_optics()
+    twiss, mlat = b2.bolko_optics()
     import pand8
     mad8 = "/Users/stuartwalker/repos/esme-xfel/esme/sections/bolko-optics.tfs"
     df8 = pand8.read(mad8)
@@ -362,7 +362,7 @@ def gun_to_b2d_bolko_optics(b2_dscan_conf, b2_tscan_voltages):
     name2_bolko_start = df8.iloc[1].NAME
     name1_bolko_start = ll.name2_to_name1(name2_bolko_start).item()
 
-    s_offset_df8 = b2d.b2dlat.get_element_start_s(name1_bolko_start)
+    s_offset_df8 = b2.b2lat.get_element_start_s(name1_bolko_start)
 
     df8.SUML += s_offset_df8 + s_offset
 
@@ -371,7 +371,7 @@ def gun_to_b2d_bolko_optics(b2_dscan_conf, b2_tscan_voltages):
 
     # from IPython import embed; embed()
 
-    gtwiss, _ = b2d.gun_to_b2d_bolko_optics()
+    gtwiss, _ = b2.gun_to_b2_bolko_optics()
 
     axbx.plot(df8.SUML, df8.BETX, label="MAD Bolko")
     axbx.plot(gtwiss.s, gtwiss.beta_x, label="OCE Bolko")
@@ -394,15 +394,15 @@ def gun_to_b2d_bolko_optics(b2_dscan_conf, b2_tscan_voltages):
     plt.show()
     # from IPython import embed; embed()
 
-def gun_to_b2d_dispersion_scan_design_energy(b2_dscan_conf, b2_tscan_voltages):
-    b2d = sim.B2DSimulatedEnergySpreadMeasurement(b2_dscan_conf, b2_tscan_voltages)
-    sequence = b2d.gun_to_dump_sequence()
+def gun_to_b2_dispersion_scan_design_energy(b2_dscan_conf, b2_tscan_voltages):
+    b2 = sim.B2SimulatedEnergySpreadMeasurement(b2_dscan_conf, b2_tscan_voltages)
+    sequence = b2.gun_to_dump_sequence()
     s_offset = 0
     bl = latdraw.interfaces.lattice_from_ocelot(sequence, initial_offset=[0, 0, s_offset])
     fig, (mx, axbx, axby, axdy, axe) = latdraw.subplots_with_lattice(bl, nrows=4)
 
-    low_energy_gen = b2d.gun_to_dump_scan_optics(design_energy=False)
-    for i, (dy, full_twiss) in enumerate(b2d.gun_to_dump_scan_optics(design_energy=True)):
+    low_energy_gen = b2.gun_to_dump_scan_optics(design_energy=False)
+    for i, (dy, full_twiss) in enumerate(b2.gun_to_dump_scan_optics(design_energy=True)):
         _, low_e_twiss = next(low_energy_gen)
 
         label1 = ""
@@ -444,14 +444,14 @@ def gun_to_b2d_dispersion_scan_design_energy(b2_dscan_conf, b2_tscan_voltages):
 
     plt.show()
 
-def gun_to_b2d_piecewise_dispersion_scan_optics(b2_dscan_conf, b2_tscan_voltages):
-    b2d = sim.B2DSimulatedEnergySpreadMeasurement(b2_dscan_conf, b2_tscan_voltages)
-    sequence = b2d.gun_to_dump_sequence()
+def gun_to_b2_piecewise_dispersion_scan_optics(b2_dscan_conf, b2_tscan_voltages):
+    b2 = sim.B2SimulatedEnergySpreadMeasurement(b2_dscan_conf, b2_tscan_voltages)
+    sequence = b2.gun_to_dump_sequence()
     bl = latdraw.interfaces.lattice_from_ocelot(sequence)
     fig, (mx, axbx, axby, axdy, axe) = latdraw.subplots_with_lattice(bl, nrows=4)
 
-    low_energy_gen = b2d.gun_to_dump_piecewise_scan_optics()
-    for i, (dy, full_twiss) in enumerate(b2d.gun_to_dump_scan_optics(design_energy=True)):
+    low_energy_gen = b2.gun_to_dump_piecewise_scan_optics()
+    for i, (dy, full_twiss) in enumerate(b2.gun_to_dump_scan_optics(design_energy=True)):
         _, low_e_twiss, matching_points = next(low_energy_gen)
 
         label1 = ""
@@ -472,7 +472,7 @@ def gun_to_b2d_piecewise_dispersion_scan_optics(b2_dscan_conf, b2_tscan_voltages
         (line,) = axe.plot(low_e_twiss.s, low_e_twiss.E * 1e3, linestyle="--", color=line.get_color())
 
     for i, matching_point in enumerate(matching_points):
-        s = b2d.b2dlat.get_element_end_s(matching_point)
+        s = b2.b2lat.get_element_end_s(matching_point)
         axbx.axvline(s, linestyle="-.", color="green", alpha=0.7)
 
         if i == 0:
@@ -504,17 +504,17 @@ def gun_to_b2d_piecewise_dispersion_scan_optics(b2_dscan_conf, b2_tscan_voltages
     plt.show()
 
 
-def gun_to_b2d_tracking_piecewise_optics(b2_dscan_conf, b2_tscan_voltages, fparray0):
-    b2d = sim.B2DSimulatedEnergySpreadMeasurement(b2_dscan_conf, b2_tscan_voltages, fparray0=fparray0)
-    sequence = b2d.gun_to_dump_sequence()
+def gun_to_b2_tracking_piecewise_optics(b2_dscan_conf, b2_tscan_voltages, fparray0):
+    b2 = sim.B2SimulatedEnergySpreadMeasurement(b2_dscan_conf, b2_tscan_voltages, fparray0=fparray0)
+    sequence = b2.gun_to_dump_sequence()
     s_offset = 0
     bl = latdraw.interfaces.lattice_from_ocelot(sequence, initial_offset=[0, 0, s_offset])
     fig, (mx, axbx, axby, axdy, axe) = latdraw.subplots_with_lattice(bl, nrows=4)
 
     # Particle Tracking optics
-    low_energy_gen = b2d.gun_to_dump_piecewise_scan_optics_tracking()
+    low_energy_gen = b2.gun_to_dump_piecewise_scan_optics_tracking()
     # Some twiss optics of some sort:
-    for i, (dy, full_twiss) in enumerate(b2d.gun_to_dump_scan_optics(design_energy=True)):
+    for i, (dy, full_twiss) in enumerate(b2.gun_to_dump_scan_optics(design_energy=True)):
         _, low_e_twiss, matching_points = next(low_energy_gen)
         # matching_points = []
         # low_e_twiss = full_twiss
@@ -536,7 +536,7 @@ def gun_to_b2d_tracking_piecewise_optics(b2_dscan_conf, b2_tscan_voltages, fparr
         (line,) = axe.plot(low_e_twiss.s, low_e_twiss.E * 1e3, linestyle="--", color=line.get_color())
 
     for i, matching_point in enumerate(matching_points):
-        s = b2d.b2dlat.get_element_end_s(matching_point)
+        s = b2.b2lat.get_element_end_s(matching_point)
         axbx.axvline(s, linestyle="-.", color="green", alpha=0.7)
 
         if i == 0:
@@ -569,18 +569,18 @@ def gun_to_b2d_tracking_piecewise_optics(b2_dscan_conf, b2_tscan_voltages, fparr
 
     plt.show()
 
-def gun_to_b2d_tracking_central_slice_optics(b2_dscan_conf, b2_tscan_voltages, fparray0, do_physics=False, outdir=None):
-    b2d = sim.B2DSimulatedEnergySpreadMeasurement(b2_dscan_conf, b2_tscan_voltages, fparray0=fparray0)
-    sequence = b2d.gun_to_dump_sequence()
+def gun_to_b2_tracking_central_slice_optics(b2_dscan_conf, b2_tscan_voltages, fparray0, do_physics=False, outdir=None):
+    b2 = sim.B2SimulatedEnergySpreadMeasurement(b2_dscan_conf, b2_tscan_voltages, fparray0=fparray0)
+    sequence = b2.gun_to_dump_sequence()
     s_offset = 0
     bl = latdraw.interfaces.lattice_from_ocelot(sequence, initial_offset=[0, 0, s_offset])
     fig, (mx, axbx, axby, axdy, axe) = latdraw.subplots_with_lattice(bl, nrows=4)
 
     # Particle Tracking optics that we are trying to make nice.
-    low_energy_gen = b2d.gun_to_dump_central_slice_optics(do_physics=do_physics, outdir=outdir)
+    low_energy_gen = b2.gun_to_dump_central_slice_optics(do_physics=do_physics, outdir=outdir)
 
     # The design optis that we are aiming for:
-    for i, (dy, full_twiss) in enumerate(b2d.gun_to_dump_scan_optics(design_energy=True)):
+    for i, (dy, full_twiss) in enumerate(b2.gun_to_dump_scan_optics(design_energy=True)):
         _, low_e_twiss, matching_points = next(low_energy_gen)
         # matching_points = []
         # low_e_twiss = full_twiss
@@ -605,7 +605,7 @@ def gun_to_b2d_tracking_central_slice_optics(b2_dscan_conf, b2_tscan_voltages, f
         (line,) = axe.plot(low_e_twiss.s, low_e_twiss.E * 1e3, linestyle="--", color=line.get_color(), marker=marker)
 
     for i, matching_point in enumerate(matching_points):
-        s = b2d.b2dlat.get_element_end_s(matching_point)
+        s = b2.b2lat.get_element_end_s(matching_point)
         axbx.axvline(s, linestyle="-.", color="green", alpha=0.7)
 
         if i == 0:
@@ -641,14 +641,14 @@ def gun_to_b2d_tracking_central_slice_optics(b2_dscan_conf, b2_tscan_voltages, f
 
 
 
-def gun_to_b2d_dispersion_scan_low_energy(b2_dscan_conf, b2_tscan_voltages):
-    b2d = sim.B2DSimulatedEnergySpreadMeasurement(b2_dscan_conf, b2_tscan_voltages)
-    sequence = b2d.gun_to_dump_sequence()
+def gun_to_b2_dispersion_scan_low_energy(b2_dscan_conf, b2_tscan_voltages):
+    b2 = sim.B2SimulatedEnergySpreadMeasurement(b2_dscan_conf, b2_tscan_voltages)
+    sequence = b2.gun_to_dump_sequence()
     s_offset = 0.0
     bl = latdraw.interfaces.lattice_from_ocelot(sequence, initial_offset=[0, 0, s_offset])
     fig, (mx, axbx, axby, axdy, axe) = latdraw.subplots_with_lattice(bl, nrows=4)
 
-    for dy, full_twiss in b2d.gun_to_dump_scan_optics(design_energy=False):
+    for dy, full_twiss in b2.gun_to_dump_scan_optics(design_energy=False):
 
         axbx.plot(full_twiss.s, full_twiss.beta_x)
         axby.plot(full_twiss.s, full_twiss.beta_y)
@@ -667,10 +667,10 @@ def gun_to_b2d_dispersion_scan_low_energy(b2_dscan_conf, b2_tscan_voltages):
 
 
 
-def plot_b2d_design_optics(b2_dscan_conf, b2_tscan_voltages):
-    b2d = sim.B2DSimulatedEnergySpreadMeasurement(b2_dscan_conf, b2_tscan_voltages)
+def plot_b2_design_optics(b2_dscan_conf, b2_tscan_voltages):
+    b2 = sim.B2SimulatedEnergySpreadMeasurement(b2_dscan_conf, b2_tscan_voltages)
 
-    sequence = b2d.gun_to_dump_sequence()
+    sequence = b2.gun_to_dump_sequence()
     s_offset = 0
 
 
@@ -689,13 +689,13 @@ def plot_b2d_design_optics(b2_dscan_conf, b2_tscan_voltages):
     # fig, (mx, mx2, axbx, axby, axdy, axax, axay) = latdraw.subplots_with_lattices([bl, bl_igor, None, None, None, None, None])
 
     import pandas as pd
-    itwiss = pd.read_pickle(b2d.IGOR_BC2)
+    itwiss = pd.read_pickle(b2.IGOR_BC2)
 
     itwiss.s += 3.2
 
     # import pand8
-    otwiss, _ = b2d.design_optics()
-    # mtwiss = pand8.read(b2d.B2D_DESIGN_OPTICS)
+    otwiss, _ = b2.design_optics()
+    # mtwiss = pand8.read(b2.B2_DESIGN_OPTICS)
     # mtwiss.SUML += 23.2
 
     axbx.plot(otwiss.s, otwiss.beta_x, label="ESME OCELOT", marker="x")
@@ -731,11 +731,11 @@ def plot_b2d_design_optics(b2_dscan_conf, b2_tscan_voltages):
     # from IPython import embed; embed()
 
 
-def piecewise_a1_to_b2d_optics(b2_dscan_conf, b2_tscan_voltages):
-    b2d = sim.B2DSimulatedEnergySpreadMeasurement(b2_dscan_conf, b2_tscan_voltages)
+def piecewise_a1_to_b2_optics(b2_dscan_conf, b2_tscan_voltages):
+    b2 = sim.B2SimulatedEnergySpreadMeasurement(b2_dscan_conf, b2_tscan_voltages)
 
 
-    seq = b2d.b2dlat.to_navigator().lat.sequence
+    seq = b2.b2lat.to_navigator().lat.sequence
     s_offset = 0
     bl = latdraw.interfaces.lattice_from_ocelot(seq, initial_offset=[0, 0, s_offset])
     fig, (mx, axbx, axby, axdy, axe) = latdraw.subplots_with_lattice(bl, nrows=4)
@@ -750,7 +750,7 @@ def piecewise_a1_to_b2d_optics(b2_dscan_conf, b2_tscan_voltages):
 
 
 
-    for dy, full_twiss in b2d.full_scan_optics():
+    for dy, full_twiss in b2.full_scan_optics():
 
         mad8_offset = full_twiss[full_twiss.id == name1].s
 

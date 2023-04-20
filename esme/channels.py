@@ -11,8 +11,8 @@ from esme.mint import Snapshot, BasicAlarm
 from pathlib import Path
 
 DUMP_SCREEN_ADDRESS: str = "XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"
-I1D_SCREEN_ADDRESS = DUMP_SCREEN_ADDRESS
-B2D_SCREEN_ADDRESS = "NOTHING EYET"
+I1_SCREEN_ADDRESS = DUMP_SCREEN_ADDRESS
+B2_SCREEN_ADDRESS = "NOTHING EYET"
 
 TDS_I1_AMPLITUDE_READBACK_ADDRESS = "XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/SP.AMPL"
 TDS_I1_AMPLITUDE_SAMPLE_ADDRESS = "XFEL.RF/LLRF.CONTROLLER/VS.LLTDSI1/AMPL.SAMPLE"
@@ -74,8 +74,8 @@ TDS_I1_ON_BEAM_EVENT10 = [
 # confirm that the setpoint is matching the rb!  this is a good way of
 # checkign the TDS is on!
 
-I1D_SCREEN = "XFEL.DIAG/SCREEN.ML/OTRC.64.I1D/ONAXIS_LYSO"
-B2D_SCREEN = "XFEL.DIAG/SCREEN.ML/OTRA.473.B2D/ONAXIS_LYSO"
+I1_SCREEN = "XFEL.DIAG/SCREEN.ML/OTRC.64.I1D/ONAXIS_LYSO"
+B2_SCREEN = "XFEL.DIAG/SCREEN.ML/OTRA.473.B2D/ONAXIS_LYSO"
 SCREEN_NOT_IN = 0
 
 
@@ -85,7 +85,7 @@ def make_injector_snapshot_template(outdir: os.PathLike):
     return template
 
 
-def make_b2d_snapshot_template(outdir: os.PathLike):
+def make_b2_snapshot_template(outdir: os.PathLike):
     template = make_common_snapshot_template()
     _add_injector_to_template(template, outdir)
     _add_b2_snapshot_to_template(template, outdir)
