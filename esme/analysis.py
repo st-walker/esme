@@ -36,7 +36,7 @@ from scipy.constants import c, e, m_e
 from uncertainties import ufloat
 from uncertainties.umath import sqrt as usqrt # pylint: disable=no-name-in-module
 
-from esme.calibration import TDS_WAVENUMBER, TDS_LENGTH
+from esme.calibration import TDS_WAVENUMBER, TDS_LENGTH, TrivialTDSCalibrator
 from esme.maths import linear_fit, ValueWithErrorT
 from esme.image import get_slice_properties, process_image
 from esme.channels import (TDS_I1_AMPLITUDE_READBACK_ADDRESS,
@@ -63,6 +63,8 @@ ELECTRON_MASS_EV: float = m_e * c**2 / e
 RawImageT = npt.NDArray
 
 MULTIPROCESSING = True
+
+
 
 
 class TDSScreenImage:
@@ -296,23 +298,31 @@ class TDSScan(ParameterScan):
         return np.array([s.tds_slope for s in self.measurements])
 
     @property
-    def voltage(self):
+    def voltage(self) -> np.array:
         scan_dx = self.dx
 
-        # Check if the dispersion setpoint we use for the TDS scan
-        # differs too much from the dispersion setpoint we did the
-        # calibration at.  If it's too much, then we have a problem.
-        # Do we actually though?  A mapping of amplitudes to voltages has nothing to do with dispersions, no?
-        calibrator_dx = self.calibrator.dispersion_setpoint
+        # OK so the point here is that we need a snapshot to go alongside the TDS calibration (which maps amplitudes to slopes).
+        # If we have a "trivial" tds calibrator then there is no need for such a thing
+        # However if we have a normal calibrator then we need a corresponding snapshot to get the R34 matrix element.
+        # BOLKO tool does not give these matrix elements, so we have to calculate them ourselves by recalling what dispersion setpoint at the screen the calibration was done at.
+        # We then have to fetch a snapshot from one of the snapshots here.  They really must be done at the same dispersion (both the calibration) and the scan to get the correct calibration.
+        # NOTE: This is NOT saying that the calibration impacts the voltage!  Of course it does not.
+
+        try:
+            calibrator_dx = self.calibrator.dispersion_setpoint
+        except AttributeError:
+            return np.array([self.calibrator.get_voltage(ampl) for ampl in self.tds_percentage])
+
 
         if not (scan_dx[0] == scan_dx).all():
             raise EnergySpreadCalculationError(f"TDS Scan dispersions should all be equal: {scan_dx}")
 
-        # if (scan_dx[0] / calibrator_dx) > 0.2:
-        #     scan_dx = np.array2string(scan_dx, separator=", ")
-        #     raise TDSCalibrationError("Optics setpoint used differs"
-        #                               " too much from the scan setpoint used to calculate R34:"
-        #                               f" {calibrator_dx=} & {scan_dx=}")
+        # If we have to use a setpoint where the measured dispersion is different, we should be tolerant of that a bit...
+        if np.abs(((scan_dx[0] - calibrator_dx) / calibrator_dx)) > 0.1:
+            scan_dx = np.array2string(scan_dx, separator=", ")
+            raise TDSCalibrationError("Optics setpoint used differs"
+                                      " too much from the scan setpoint used to calculate R34:"
+                                      f" {calibrator_dx=} & {scan_dx=}")
 
 
         # Get metadata associated with first (non-bg) image of each measurement,
@@ -656,10 +666,19 @@ class FittedBeamParameters:
         return pd.concat([params, alt_params], axis=1)
 
 
-def _get_constant_voltage_for_scan(scan):
+def _get_constant_voltage_for_scan(scan: ParameterScan) -> np.array:
     # By definition in the dispersion scan the voltages all stay the same.
     # Get dispersion at which the calibration was done
-    caldx = scan.calibrator.dispersion_setpoint
+    try:
+        caldx = scan.calibrator.dispersion_setpoint
+    except AttributeError:
+        assert isinstance(scan.calibrator, TrivialTDSCalibrator)
+        voltage = scan.calibrator.get_voltage(scan.tds_percentage[0])
+        return np.ones_like(scan.measurements) * voltage
+
+    # All this faff is because the calibration basically has no
+    # associated snapshot, so I'm getting it from the scan...  not ideal!
+
     # Pick
     idx = np.argmin(abs(scan.dx - caldx))
     measurement = scan.measurements[idx]

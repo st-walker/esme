@@ -59,12 +59,11 @@ class TDSCalibrator:
 
 
 class TrivialTDSCalibrator:
-    def __init__(self, percentages: Sequence[float], voltages: Sequence[float], dispersion_setpoint: float):
+    def __init__(self, percentages: Sequence[float], voltages: Sequence[float]):
         self.percentages = np.array(percentages)
         self.voltages = np.array(voltages)
-        self.dispersion_setpoint = np.squeeze(dispersion_setpoint)
 
-    def get_voltage(self, percentage, snapshot) -> float:
+    def get_voltage(self, percentage) -> float:
         return dict(zip(self.percentages, self.voltages))[percentage]
 
 

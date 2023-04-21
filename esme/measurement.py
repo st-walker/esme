@@ -63,14 +63,14 @@ import numpy as np
 from esme.mint import MPS, Machine, XFELMachineInterface  #, DictionaryXFELMachineInterface, TimestampedImage
 from esme.channels import (make_injector_snapshot_template,
                            make_b2_snapshot_template,
-                           I1_SCREEN_ADDRESS,
+                           I1D_SCREEN_ADDRESS,
                            TDS_I1_AMPLITUDE_READBACK_ADDRESS,
                            BUNCH_ONE_TDS_I1,
                            BUNCH_ONE_TDS_B2,
                            EVENT10_CHANNEL,
                            EVENT12_CHANNEL,
                            BUNCH_ONE_TDS_B2,
-                           B2_SCREEN_ADDRESS,
+                           B2D_SCREEN_ADDRESS,
                            BUNCH_ONE_TOLERANCE,
                            BEAM_ALLOWED_ADDRESS)
 
@@ -866,7 +866,7 @@ class TDSCalibratingMachine(Machine):
 
 class I1TDSCalibratingMachine(TDSCalibratingMachine):
     TDSCLS = I1TDS
-    SCREEN_CHANNEL = I1_SCREEN_ADDRESS
+    SCREEN_CHANNEL = I1D_SCREEN_ADDRESS
     TEMPLATE_FN = make_injector_snapshot_template
 
     @classmethod
@@ -875,11 +875,11 @@ class I1TDSCalibratingMachine(TDSCalibratingMachine):
 
 class B2TDSCalibratingMachine(TDSCalibratingMachine):
     TDSCLS = I1TDS
-    SCREEN_CHANNEL = B2_SCREEN_ADDRESS
+    SCREEN_CHANNEL = B2D_SCREEN_ADDRESS
 
 
 class I1EnergySpreadMeasuringMachine(EnergySpreadMeasuringMachine):
-    SCREEN_CHANNEL = I1_SCREEN_ADDRESS
+    SCREEN_CHANNEL = I1D_SCREEN_ADDRESS
     TEMPLATE_FN = make_injector_snapshot_template
     TDSCLS = I1TDS
 
@@ -888,7 +888,7 @@ class I1EnergySpreadMeasuringMachine(EnergySpreadMeasuringMachine):
         return cls.TEMPLATE_FN(outdir)
 
 class B2EnergySpreadMeasuringMachine(EnergySpreadMeasuringMachine):
-    SCREEN_CHANNEL = B2_SCREEN_ADDRESS
+    SCREEN_CHANNEL = B2D_SCREEN_ADDRESS
     TEMPLATE_FN = make_b2_snapshot_template
     TDSCLS = B2TDS
 
@@ -1053,23 +1053,33 @@ class ScanType(Enum):
     def alt_name(self):
         return self.ALT_NAME_MAP[self]
 
+    @classmethod
+    def from_name(cls, scan_key):
+        if scan_key == "tscan":
+            return ScanType.TDS
+        elif scan_key == "dscan":
+            return ScanType.DISPERSION
+        elif scan_key == "bscan":
+            return ScanType.BETA
+
 
 @dataclass
 class SetpointSnapshots:
     """Class for representing a set of snapshots at a single machine
     setpoint.  On top of the data read directly from the machine (the
     pd.DataFrame), there's also the scan_type, the dispersion setpoint
-    and the corresponding measured dispersion.
+    and the corresponding measured dispersion.   TDS Amplitude is not
+    recorded here because it is stored directly in the dataframe.
 
     """
 
     snapshots: pd.DataFrame
     scan_type: ScanType
     dispersion_setpoint: float
-    measured_dispersion: tuple[float, float]
-    beta: float = None
+    measured_dispersion: Optional[tuple[float, float]]
+    beta: float
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.snapshots)
 
     def timestamped_name(self) -> str:
@@ -1088,7 +1098,7 @@ class SetpointSnapshots:
             raise ValueError("Setpoint is not consistent across snapshots")
         return one_setpoint
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         tname = type(self).__name__
         dx0 = self.dispersion_setpoint
         try:
@@ -1096,7 +1106,7 @@ class SetpointSnapshots:
         except TypeError:
             dx1 = self.measured_dispersion
             dx1e = 0.0
-        bstring = ", beta={self.beta}" if self.beta else ""
+        bstring = f", beta={self.beta}"
 
         try:
             sname = self.scan_type.name
@@ -1107,14 +1117,11 @@ class SetpointSnapshots:
                f" nsnapshots={len(self)}{bstring}>")
         return out
 
-    def resolve_image_path(self, dirname):
+    def resolve_image_path(self, dirname: Path) -> None:
         paths = self.snapshots["XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"]
-        try:
-            self.snapshots["XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"] = dirname / paths
-        except:
-            import ipdb; ipdb.set_trace()
+        self.snapshots["XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"] = dirname / paths
 
-    def drop_bad_snapshots(self):
+    def drop_bad_snapshots(self) -> None:
         df = self.snapshots
         df = df[df['XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ'].notna()]
         self.snapshots = df

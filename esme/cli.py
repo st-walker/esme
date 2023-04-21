@@ -17,7 +17,6 @@ from esme.inout import (
     rm_pcl,
     rm_ims_from_pcl,
     toml_dfs_to_setpoint_snapshots,
-    add_metadata_to_pcls_in_toml,
     i1_dscan_config_from_scan_config_file,
     b2_dscan_config_from_scan_config_file,
     i1_tds_voltages_from_scan_config_file,
@@ -107,7 +106,7 @@ def main(debug, single_threaded):
     "--simple", "-s", is_flag=True, help="Calculate the energy spread without accounting for the impact of the TDS."
 )
 @option("--latex", is_flag=True)
-def calc(scan_tomls, simple, latex):
+def calculate(scan_tomls, simple, latex):
     """Calculate the slice energy spread using a toml analysis file"""
 
     slice_energy_spread_measurements = [load_config(fname) for fname in scan_tomls]
@@ -164,26 +163,6 @@ def plot(scan_tomls, dump_images, widths, magnets, alle, calibration, save):
             plot_quad_strengths(sesme, root_outdir)
         else:
             plot_scans(sesme, root_outdir)
-
-
-@main.command(no_args_is_help=True, hidden=True)
-@argument("ftoml", nargs=1)
-@option("--new-columns", is_flag=True, cls=MutuallyExclusiveOption, mutually_exclusive=["to_snapshot"])
-@option("--to-snapshots", is_flag=True, cls=MutuallyExclusiveOption, mutually_exclusive=["new_columns"])
-@option("--alle", is_flag=True, cls=MutuallyExclusiveOption, mutually_exclusive=["new_columns", "to_snapshot"])
-def fix(ftoml, new_columns, to_snapshots, alle):
-    """Update metadata in old pcl snapshot files to match newer formats"""
-    if new_columns:
-        echo(f"Adding columns to files in {ftoml}.")
-        add_metadata_to_pcls_in_toml(ftoml)
-    elif to_snapshots:
-        echo(f"Converting pcl files in {ftoml} to SetpointSnapshot instances.")
-        toml_dfs_to_setpoint_snapshots(ftoml)
-    elif alle:
-        add_metadata_to_pcls_in_toml(ftoml)
-        toml_dfs_to_setpoint_snapshots(ftoml)
-    else:
-        raise UsageError("No flags provided")
 
 
 @main.command(no_args_is_help=True)

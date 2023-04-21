@@ -6,7 +6,7 @@ import re
 import os
 from pathlib import Path
 import contextlib
-from typing import Union
+from typing import Union, Optional
 
 import toml
 import pandas as pd
@@ -33,8 +33,8 @@ from esme.measurement import (
     DispersionScanConfiguration,
     TDSScanConfiguration,
     QuadrupoleSetting,
-    I1DEnergySpreadMeasuringMachine,
-    I1DEnergySpreadMeasuringMachineReplayer
+    I1EnergySpreadMeasuringMachine,
+    I1EnergySpreadMeasuringMachineReplayer
 )
 from esme.lattice import make_dummy_lookup_sequence
 
@@ -73,95 +73,16 @@ def optics_config_from_toml(tds_name, config: dict) -> OpticalConfig:
     return oconf
 
 
-def _files_from_config(config, scan_name) -> list[Path]:
-    try:
-        basepath = Path(config["data"]["basepath"])
-    except KeyError:
-        basepath = Path(".")
+# def _files_from_config(config, scan_name) -> list[Path]:
+#     try:
+#         basepath = Path(config["data"]["basepath"])
+#     except KeyError:
+#         basepath = Path(".")
 
-    fnames = config["data"][scan_name]["fnames"]
-    paths = [basepath / f for f in fnames]
-    return paths
-
-
-def _dispersion_from_filename(fname: os.PathLike) -> float:
-    path = Path(fname)
-    match = re.search(r"Dx_[0-9]+", path.stem)
-
-    if not match:
-        raise MissingMetadataInFileNameError(fname)
-    dx = float(match.group(0).split("Dx_")[1])
-    return dx / 1000  # convert to metres
-
-
-def tds_magic_number_from_filename(fname: os.PathLike) -> int:
-    path = Path(fname)
-    match = re.search(r"tds_[0-9]+", path.stem)
-
-    if not match:
-        raise MissingMetadataInFileNameError(fname)
-    tds_magic_number = int(match.group(0).split("tds_")[1])
-
-    return tds_magic_number
-
-
-def _beta_from_filename(fname: os.PathLike) -> float:
-    path = Path(fname)
-    match = re.search(r"beta_x_[0-9]+(.[0-9]*)?", path.stem)
-    if not match:
-        raise MissingMetadataInFileNameError(fname)
-    beta = float(match.group(0).split("beta_x_")[1])
-    return beta
-
-
-def add_metadata_to_pickled_df(fname, force_dx=None):
-
-    LOG.debug(f"Adding metadata to pickled file: {fname}")
-
-    df = pd.read_pickle(fname)
-    if isinstance(df, SetpointSnapshots):
-        LOG.debug(f"{fname} is a pickled SetpointSnapshots instance, not a raw df.")
-        return
-
-    tds_amplitude = tds_magic_number_from_filename(fname)
-
-    if not force_dx:
-        dispersion = _dispersion_from_filename(fname)
-    else:
-        dispersion = force_dx
-
-    try:
-        beta = _beta_from_filename(fname)
-    except MissingMetadataInFileNameError:
-        beta = None
-
-    LOG.debug(f"Adding dx, tds: {dispersion=}, {tds_amplitude=}")
-    df["MY_SCREEN_DX"] = dispersion
-
-    if beta:
-        LOG.info(f"Adding BETA metadata to pickled file: {beta=}")
-        df["MY_SCREEN_BETA"] = beta
-    else:
-        with contextlib.suppress(KeyError):
-            del df["MY_SCREEN_BETA"]
-
-    LOG.debug(f"Writing metadata to pickled file: {fname}")
-    df.to_pickle(fname)
-
-
-def add_metadata_to_pcls_in_toml(ftoml):
-    config = toml.load(ftoml)
-    data = config["data"]
-    keys = ["dscan", "tscan", "bscan"]
-    basepath = data["basepath"]
-    for key in keys:
-        scan = data.get(key)
-        if not scan:
-            continue
-        paths = scan["fnames"]
-        force_dx = scan.get("fix_dx")
-        for path in paths:
-            add_metadata_to_pickled_df(basepath / Path(path), force_dx=force_dx)
+#     fnames = config["data"][scan_name]["fnames"]
+#     paths = [basepath / f for f in fnames]
+#     from IPython import embed; embed()
+#     return paths
 
 
 def scan_files_from_toml(tom: Union[os.PathLike, dict]) -> tuple:
@@ -194,12 +115,9 @@ def title_from_toml(tom: Union[os.PathLike, dict]) -> tuple:
 
 
 def load_config(fname: os.PathLike) -> SliceEnergySpreadMeasurement:
-
     config = toml.load(fname)
 
     oconfig = _optics_config_from_dict(config)
-
-    dscan_paths, tscan_paths, bscan_paths = scan_files_from_toml(config)
 
     try:
         calib = config["optics"]["tds"]["calibration"]
@@ -211,32 +129,40 @@ def load_config(fname: os.PathLike) -> SliceEnergySpreadMeasurement:
     except KeyError:
         raise MalformedESMEConfigFile("TDS % info is missing from esme file")
 
-    try:
-        dispersion_setpoint = calib["dispersion_setpoint"]
-    except KeyError:
-        raise MalformedESMEConfigFile("Dispersion at which TDS was calibrated is" " missing from esme run file")
-
     if voltages := calib.get("voltages"):
-        calibrator = TrivialTDSCalibrator(percentages, voltages, dispersion_setpoint)
+        calibrator = TrivialTDSCalibrator(percentages, voltages)
     else:
+        # This is because I do not get snapshots with the calibration
+        # data, so I have to get a similar one from the data taken.
+        # In the future this won't really be necessary as I can take
+        # snapshots in the calibration stage.
+
+        try:
+            dispersion_setpoint = calib["dispersion_setpoint"]
+        except KeyError:
+            raise MalformedESMEConfigFile("Dispersion at which TDS was calibrated is" " missing from esme run file")
+
         tds_slopes = calib["tds_slopes"]
         tds_slopes_units = calib["tds_slope_units"]
         calibrator = TDSCalibrator(percentages, tds_slopes, dispersion_setpoint, tds_slope_units=tds_slopes_units)
 
+
+    dsnapshots, tsnapshots, bsnapshots = load_pickled_snapshots(config["data"])
+
     dscan = DispersionScan(
-        load_pickled_snapshots(dscan_paths),
+        dsnapshots,
         calibrator=calibrator,
     )
 
     tscan = TDSScan(
-        load_pickled_snapshots(tscan_paths),
+        tsnapshots,        
         calibrator=calibrator,
     )
 
     bscan = None
-    if bscan_paths:
+    if bsnapshots is not None:
         bscan = BetaScan(
-            load_pickled_snapshots(bscan_paths),
+            bsnapshots,                    
             calibrator=calibrator,
         )
 
@@ -458,16 +384,67 @@ def toml_dfs_to_setpoint_snapshots(ftoml):
         _loop_pcl_df_files(bscan_paths, ScanType.BETA)
 
 
-def load_pickled_snapshots(paths):
+def load_pickled_snapshots(data_dict: dict) -> tuple[list[SetpointSnapshots], list[SetpointSnapshots], Optional[list[SetpointSnapshots]]]:
+    """data_dict is of form coming
+      from toml file..."""
+    tscan = load_data_config_section(data_dict, "tscan")
+    dscan = load_data_config_section(data_dict, "dscan")
+    bscan = load_data_config_section(data_dict, "bscan")
+
+    return dscan, tscan, bscan
+
+
+def load_data_config_section(data_dict: dict, scan_key: str) -> list[SetpointSnapshots]:
+    section = data_dict[scan_key]
+    if section.get("old_sergey_format", False):
+        return load_old_raw_df_snapshot_format(data_dict, scan_key)
+    return load_new_object_format(data_dict, scan_key)
+
+def load_new_object_format(data_dict, scan_key):
     result = []
+    # This should be able to handle loading the old style format (metadata in the filename)
+    # And new style pickled format
+    basepath = Path(data_dict["basepath"])
+    paths = data_dict[scan_key]["fnames"]
     for path in paths:
-        with path.open("rb") as f:
-            snapshot = pickle.load(f)
-            snapshot.drop_bad_snapshots()
-            snapshot.resolve_image_path(path.parent)
-            result.append(snapshot)
+        full_path = basepath / path
+        with full_path.open("rb") as f:
+            snapshots = pickle.load(f)
+        # Move this to analysis.py and make it a function...
+        # snapshot.drop_bad_snapshots()
+        snapshots.resolve_image_path(full_path.parent)
+        result.append(snapshots)
     return result
 
+
+def load_old_raw_df_snapshot_format(data_dict: dict, scan_key: str) -> list[SetpointSnapshots]:
+    basepath = Path(data_dict["basepath"])
+    paths = data_dict[scan_key]["fnames"]
+    sps = data_dict[scan_key]["setpoint_dispersions"]
+
+    # Maybe we measured the dispersion at each point, but maybe not also.
+    try:
+        dispersions = data_dict[scan_key]["measured_dispersions"]
+    except:
+        dispersions = len(paths) * [None]
+    else:
+        dispersions = [tuple(d) for d in dispersions]
+
+    betas = data_dict[scan_key]["betas"]
+
+    result = []    
+    for path, dispersion_sp, dispersion, beta in zip(paths, sps, dispersions, betas):
+        full_path = basepath / path        
+        df = pd.read_pickle(full_path)
+        sn = SetpointSnapshots(snapshots=df,
+                               scan_type=ScanType.from_name(scan_key),
+                               dispersion_setpoint=dispersion_sp,
+                               measured_dispersion=dispersion,
+                               beta=beta)
+        sn.resolve_image_path(full_path.parent)
+        result.append(sn)
+
+    return result
 
 
 def i1_dscan_config_from_scan_config_file(config_path: os.PathLike):

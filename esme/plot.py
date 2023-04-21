@@ -17,7 +17,6 @@ import esme.analysis as ana
 import esme.calibration as cal
 import esme.lattice as lat
 import esme.beam as beam
-from esme.inout import tds_magic_number_from_filename
 import esme.maths as maths
 import esme.image as image
 from esme.exceptions import TDSCalibrationError
