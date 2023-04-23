@@ -389,7 +389,10 @@ def load_pickled_snapshots(data_dict: dict) -> tuple[list[SetpointSnapshots], li
       from toml file..."""
     tscan = load_data_config_section(data_dict, "tscan")
     dscan = load_data_config_section(data_dict, "dscan")
-    bscan = load_data_config_section(data_dict, "bscan")
+    try:
+        bscan = load_data_config_section(data_dict, "bscan")
+    except KeyError:
+        bscan = None
 
     return dscan, tscan, bscan
 

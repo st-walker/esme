@@ -200,9 +200,9 @@ def _set_ylabel_for_scan(ax):
 
 def plot_tds_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> None:
     widths, errors = esme.tscan.max_energy_slice_widths_and_errors(padding=10)
-    voltages = _get_tds_tscan_abs_voltage_in_mv_from_scans(esme)
+    voltages_mv = _get_tds_tscan_abs_voltage_in_mv_from_scans(esme)
 
-    voltages2_mv2 = (voltages * 1e-6) ** 2
+    voltages2_mv2 = voltages_mv ** 2
     widths_um2, errors_um2 = ana.transform_pixel_widths(widths, errors, pixel_units="um")
 
     a0, a1 = maths.linear_fit(voltages2_mv2, widths_um2, errors_um2)
