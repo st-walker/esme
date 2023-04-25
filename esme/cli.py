@@ -20,7 +20,7 @@ from esme.inout import (
     i1_dscan_config_from_scan_config_file,
     b2_dscan_config_from_scan_config_file,
     i1_tds_voltages_from_scan_config_file,
-    get_config_sample_sizes
+    get_config_sample_sizes,
 )
 
 from . import inout
@@ -34,6 +34,7 @@ from esme.plot import (
     pretty_parameter_table,
     compare_results,
     plot_tds_set_point_vs_readback,
+    formatted_parameter_dfs
 )
 
 
@@ -123,7 +124,22 @@ def calculate(scan_tomls, simple, latex):
             print(f"({espread_kev}±{error_kev})keV")
     else:
         if len(slice_energy_spread_measurements) == 1:
-            print(pretty_parameter_table(slice_energy_spread_measurements[0], latex))
+            fit_df, beam_df = formatted_parameter_dfs(slice_energy_spread_measurements[0],
+                                                      latex=latex)
+            if latex is False:
+                ftoml = Path(scan_tomls[0])
+                name = ftoml.stem
+                beam_file_name = Path(f"{name}-beam.csv")
+                fit_file_name = Path(f"{name}-fit.csv")
+
+                with beam_file_name.open("w") as f:
+                    f.write(beam_df.to_csv())
+
+                with fit_file_name.open("w") as f:
+                    f.write(fit_df.to_csv())
+
+            else:
+                print(pretty_parameter_table(fit_df, beam_df, latex))
         else:
             print(compare_results(slice_energy_spread_measurements, latex))
 

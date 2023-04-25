@@ -479,8 +479,8 @@ def formatted_parameter_dfs(esme: ana.SliceEnergySpreadMeasurement, latex=False)
     return fit_params, beam_params
 
 
-def pretty_parameter_table(esme, latex=False):
-    fit, beam = formatted_parameter_dfs(esme, latex=latex)
+def pretty_parameter_table(fit, beam, latex=False):
+    # fit, beam = formatted_parameter_dfs(esme, latex=latex)
 
     tablefmt = "simple"
     if latex:
