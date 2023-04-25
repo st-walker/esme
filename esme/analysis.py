@@ -66,9 +66,8 @@ MULTIPROCESSING = True
 
 
 
-
 class TDSScreenImage:
-    def __init__(self, metadata):
+    def __init__(self, metadata: pd.Series):
         self.metadata = metadata
         self._image = None
 
@@ -102,7 +101,7 @@ class TDSScreenImage:
         return self.metadata[BEAM_ENERGY_ADDRESS] * eV
 
     @property
-    def is_bad(self):
+    def is_bad(self) -> bool:
         # If the beam was nominally on
         beam_on = not self.is_bg
         # But the TDS was apparently off beam
@@ -114,10 +113,11 @@ class TDSScreenImage:
 
     @property
     def tds_was_on(self):
+    def tds_was_on(self) -> bool:
         return self.metadata[EVENT10_CHANNEL][2] == TDS_I1_ON_BEAM_EVENT10[2]
 
     @property
-    def is_no_bpm_data(self):
+    def is_no_bpm_data(self) -> bool:
         series = self.metadata
         columns = list(series.keys()[series.keys().str.startswith("BPM")])
         bpm_data = series[columns]
@@ -246,11 +246,11 @@ class ParameterScan:
         self.measurements = [ScanMeasurement(sp) for sp in setpoints]
 
     @property
-    def dx(self) -> npt.NDArray:
+    def dx(self) -> np.ndarray:
         return np.array([s.dx for s in self.measurements])
 
     @property
-    def tds_percentage(self) -> npt.NDArray:
+    def tds_percentage(self) -> np.ndarray:
         return np.array([s.tds_percentage for s in self.measurements])
 
     @property
@@ -289,16 +289,16 @@ class ParameterScan:
 
 class DispersionScan(ParameterScan):
     @property
-    def voltage(self):
+    def voltage(self) -> np.ndarray:
         return _get_constant_voltage_for_scan(self)
 
 class TDSScan(ParameterScan):
     @property
-    def tds_slope(self):
+    def tds_slope(self) -> np.ndarray:
         return np.array([s.tds_slope for s in self.measurements])
 
     @property
-    def voltage(self) -> np.array:
+    def voltage(self) -> np.ndarray:
         scan_dx = self.dx
 
         # OK so the point here is that we need a snapshot to go alongside the TDS calibration (which maps amplitudes to slopes).
@@ -337,18 +337,18 @@ class TDSScan(ParameterScan):
 
 class BetaScan(ParameterScan):
     @property
-    def beta(self):
+    def beta(self) -> np.ndarray:
         return np.array([s.beta for s in self.measurements])
 
     @property
-    def voltage(self):
+    def voltage(self) -> np.ndarray:
         return _get_constant_voltage_for_scan(self)
 
 
 
-def transform_pixel_widths(
-        pixel_widths, pixel_widths_errors, *, pixel_units="px", to_variances=True, dimension="x"
-) -> tuple[npt.NDArray, npt.NDArray]:
+def transform_pixel_widths(pixel_widths: npt.NDArray,
+                           pixel_widths_errors: npt.NDArray, *, pixel_units: str = "px",
+                           to_variances: bool = True, dimension: str = "x" ) -> tuple[npt.NDArray, npt.NDArray]:
     """The fits used in the paper are linear relationships between the variances
     (i.e. pixel_std^2) and the square of the independent variable (either
     voltage squared V^2 or dipsersion D^2). This function takes D or V and sigma
@@ -601,7 +601,7 @@ class FittedBeamParameters:
         in_ev = abs(ufloat(*self.reference_voltage)) * TDS_WAVENUMBER * sigma_i
         return in_ev.n, in_ev.s
 
-    def fit_parameters_to_df(self):
+    def fit_parameters_to_df(self) -> pd.DataFrame:
         dx0 = self.reference_dispersion
         v0 = self.reference_voltage
         e0 = self.reference_energy
@@ -628,7 +628,7 @@ class FittedBeamParameters:
 
         return pd.DataFrame({"values": values, "errors": errors}, index=pdict.keys())
 
-    def _beam_parameters_to_df(self):
+    def _beam_parameters_to_df(self) -> pd.DataFrame:
         pdict = {"sigma_e": self.sigma_e,
                  "sigma_i": self.sigma_i,
                  "sigma_e_from_tds": self.sigma_e_from_tds,
@@ -644,7 +644,7 @@ class FittedBeamParameters:
 
         return pd.DataFrame({"values": values, "errors": errors}, index=pdict.keys())
 
-    def _alt_beam_parameters_to_df(self):
+    def _alt_beam_parameters_to_df(self) -> pd.DataFrame:
         pdict = {"sigma_e": self.sigma_e_alt,
                  "sigma_i": self.sigma_i_alt,
                  "sigma_e_from_tds": self.sigma_e_from_tds_alt}
@@ -660,7 +660,7 @@ class FittedBeamParameters:
 
         return pd.DataFrame({"alt_values": values, "alt_errors": errors}, index=pdict.keys())
 
-    def beam_parameters_to_df(self):
+    def beam_parameters_to_df(self) -> pd.DataFrame:
         params = self._beam_parameters_to_df()
         alt_params = self._alt_beam_parameters_to_df()
         return pd.concat([params, alt_params], axis=1)

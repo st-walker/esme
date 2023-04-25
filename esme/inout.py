@@ -155,14 +155,14 @@ def load_config(fname: os.PathLike) -> SliceEnergySpreadMeasurement:
     )
 
     tscan = TDSScan(
-        tsnapshots,        
+        tsnapshots,
         calibrator=calibrator,
     )
 
     bscan = None
     if bsnapshots is not None:
         bscan = BetaScan(
-            bsnapshots,                    
+            bsnapshots,
             calibrator=calibrator,
         )
 

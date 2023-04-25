@@ -7,9 +7,9 @@ S.Tomin, 2017
 """
 
 from __future__ import absolute_import, print_function
-from typing import Any
+from typing import Any, Optional, Type
 from pathlib import Path
-
+from dataclasses import dataclass
 import base64
 import logging
 import subprocess
@@ -21,7 +21,6 @@ from datetime import datetime
 import matplotlib
 import pandas as pd
 import numpy as np
-from dataclasses import dataclass
 
 
 try:
@@ -135,11 +134,11 @@ class TimestampedImage:
     image: np.array
     timestamp: datetime
 
-    def name(self):
+    def name(self) -> str:
         cam_name = self.screen_name()
         return f"{cam_name}-{self.timestamp.strftime('%Y%m%d_%H%M%S_%f')[:-3]}"
 
-    def screen_name(self):
+    def screen_name(self) -> str:
         return Path(self.channel).parent.name
 
 
@@ -158,10 +157,10 @@ class XFELMachineInterfaceABC:
     @abstractmethod
     def get_charge(self) -> float:
         pass
-    
+
 
 class DictionaryXFELMachineInterface(XFELMachineInterfaceABC):
-    def __init__(self, initial_state=None):
+    def __init__(self, initial_state: Optional[dict] = None):
         self._machine_state = {}
         if initial_state is not None:
             self._machine_state |= initial_state
@@ -176,7 +175,7 @@ class DictionaryXFELMachineInterface(XFELMachineInterfaceABC):
         return 250e-12 #?
 
 
-    
+
 
 class XFELMachineInterface(XFELMachineInterfaceABC):
     """
@@ -185,7 +184,6 @@ class XFELMachineInterface(XFELMachineInterfaceABC):
 
     def __init__(self, args=None):
         self.logbook = "xfellog"
-
 
     def get_value(self, channel: str) -> Any:
         """
@@ -198,7 +196,7 @@ class XFELMachineInterface(XFELMachineInterfaceABC):
         val = pydoocs.read(channel)
         return val["data"]
 
-    def set_value(self, channel: str, val: Any):
+    def set_value(self, channel: str, val: Any) -> None:
         """
         Method to set value to a channel
 
@@ -209,10 +207,10 @@ class XFELMachineInterface(XFELMachineInterfaceABC):
         LOG.debug(f"pydoocs.write: {channel} -> {any}")
         pydoocs.write(channel, val)
 
-    def get_charge(self):
+    def get_charge(self) -> float:
         return self.get_value("XFEL.DIAG/CHARGE.ML/TORA.25.I1/CHARGE.SA1")
 
-    def send_to_logbook(self, *args, **kwargs):
+    def send_to_logbook(self, *args, **kwargs) -> bool:
         """
         Send information to the electronic logbook.
 
@@ -278,8 +276,62 @@ class XFELMachineInterface(XFELMachineInterfaceABC):
         return succeded
 
 
+class Snapshot:
+    def __init__(self, sase_sections=None):
+        self.sase_sections = []
+        self.orbit_sections = {}
+        self.magnet_sections = {}
+        self.phase_shifter_sections = {}
+        self.undulators = {}
+        self.channels = []
+        self.channels_tol = []
+
+        # alarm channels
+        self.alarms = []
+
+        # multidim data
+        self.images = []
+        self.image_folders = []
+
+    def add_image(self, ch, folder):
+        # check if folder exists and create if not
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        if ch in self.images:
+            print(f"WARNING: image channel is already added: {ch}")
+            return
+        self.images.append(ch)
+        self.image_folders.append(folder)
+
+    def add_orbit_section(self, sec_id, tol=0.001, track=True):
+        if sec_id in self.orbit_sections:
+            print(f"WARNING: channel is already added: {sec_id}")
+            return
+        self.orbit_sections[sec_id] = {"id": sec_id, "tol": tol, "track": track}
+
+    def add_magnet_section(self, sec_id, tol=0.001, track=True):
+        if sec_id in self.magnet_sections:
+            print(f"WARNING: channel is already added: {sec_id}")
+            return
+        self.magnet_sections[sec_id] = {"id": sec_id, "tol": tol, "track": track}
+
+    def add_undulator(self, sec_id, tol=0.001, track=True):
+        if sec_id in self.sase_sections:
+            print(f"WARNING: channel is already added: {sec_id}")
+            return
+        if sec_id in self.sase_sections:
+            self.undulators[sec_id] = {"id": sec_id, "tol": tol, "track": track}
+
+    def add_channel(self, channel, tol=None):
+        if channel in self.channels:
+            print(f"WARNING: channel is already added: {channel}")
+            return
+        self.channels.append(channel)
+        self.channels_tol.append(tol)
+
+
 class Machine:
-    def __init__(self, snapshot, mi=None):
+    def __init__(self, snapshot: Snapshot, mi: Optional[Type[XFELMachineInterfaceABC]] = None):
         self.snapshot = snapshot
         if mi is None:
             mi = XFELMachineInterface()
@@ -395,7 +447,7 @@ class Machine:
             # print(data)
             # data = list(data)
             # data = np.append(data, np.array([path], dtype=object))
-            data.append(path)
+            data.append(filename)
             all_names = np.append(all_names, ch)
         return data, all_names
 
@@ -404,7 +456,7 @@ class Machine:
         image = TimestampedImage(ch, self.mi.get_value(ch), datetime.utcnow())
 
         return data, all_names, image
-    
+
     def wait_machine_online(self):
         if self.is_machine_online():
             return
@@ -457,7 +509,7 @@ class Machine:
             LOG.warning("Missing other channels, snapshot failed")
             return None
         data, all_names, image = self.get_single_image(data, all_names)
-        all_names = np.append(all_names, image.channel)        
+        all_names = np.append(all_names, image.channel)
         data = np.append(data, image.name())
         if len(data) == 0:
             LOG.warning("Missing images, snapshot failed")
@@ -473,7 +525,7 @@ class Machine:
 
 
 class MPS(Device):
-    def __init__(self, eid=None, server="XFEL", subtrain="SA1", mi=None):
+    def __init__(self, eid: Optional[str] = None, server: str = "XFEL", subtrain: str = "SA1", mi: Optional[Type[XFELMachineInterfaceABC]] = None):
         super(MPS, self).__init__(eid=eid)
         if mi is None:
             mi = XFELMachineInterface()
@@ -481,31 +533,31 @@ class MPS(Device):
         self.subtrain = subtrain
         self.server = server
 
-    def beam_off(self):
+    def beam_off(self) -> None:
         self.mi.set_value(self.server + ".UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED", 0)
 
-    def beam_on(self):
+    def beam_on(self) -> None:
         self.mi.set_value(self.server + ".UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED", 1)
 
-    def num_bunches_requested(self, num_bunches=1):
+    def num_bunches_requested(self, num_bunches: int = 1) -> None:
         self.mi.set_value(self.server + ".UTIL/BUNCH_PATTERN/CONTROL/NUM_BUNCHES_REQUESTED_1", num_bunches)
 
-    def is_beam_on(self):
+    def is_beam_on(self) -> bool:
         return self.mi.get_value(self.server + ".UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED")
 
-    
+
 
 
 # Channel returns [a,b,c,d], we need C!  third element.  so BasicAlarm
 
 class BasicAlarm:
-    def __init__(self, channel, vmin=-np.inf, vmax=+np.inf, explanation=""):
+    def __init__(self, channel: str, vmin: float = -np.inf, vmax: float = +np.inf, explanation: str = ""):
         self.channel = channel
         self.vmin = vmin
         self.vmax = vmax
         self.explanation = ""
 
-    def is_ok(self, value):
+    def is_ok(self, value: float):
         return (value >= self.vmin) and (value < self.vmax)
 
     def offline_message(self) -> str:
@@ -521,58 +573,3 @@ class LambaAlarm:
 
     def is_ok(self, machine, fn):
         values = [machine.read_value(ch) for ch in channels]
-
-
-
-class Snapshot:
-    def __init__(self, sase_sections=None):
-        self.sase_sections = []
-        self.orbit_sections = {}
-        self.magnet_sections = {}
-        self.phase_shifter_sections = {}
-        self.undulators = {}
-        self.channels = []
-        self.channels_tol = []
-
-        # alarm channels
-        self.alarms = []
-
-        # multidim data
-        self.images = []
-        self.image_folders = []
-
-    def add_image(self, ch, folder):
-        # check if folder exists and create if not
-        if not os.path.exists(folder):
-            os.makedirs(folder)
-        if ch in self.images:
-            print(f"WARNING: image channel is already added: {ch}")
-            return
-        self.images.append(ch)
-        self.image_folders.append(folder)
-
-    def add_orbit_section(self, sec_id, tol=0.001, track=True):
-        if sec_id in self.orbit_sections:
-            print(f"WARNING: channel is already added: {sec_id}")
-            return
-        self.orbit_sections[sec_id] = {"id": sec_id, "tol": tol, "track": track}
-
-    def add_magnet_section(self, sec_id, tol=0.001, track=True):
-        if sec_id in self.magnet_sections:
-            print(f"WARNING: channel is already added: {sec_id}")
-            return
-        self.magnet_sections[sec_id] = {"id": sec_id, "tol": tol, "track": track}
-
-    def add_undulator(self, sec_id, tol=0.001, track=True):
-        if sec_id in self.sase_sections:
-            print(f"WARNING: channel is already added: {sec_id}")
-            return
-        if sec_id in self.sase_sections:
-            self.undulators[sec_id] = {"id": sec_id, "tol": tol, "track": track}
-
-    def add_channel(self, channel, tol=None):
-        if channel in self.channels:
-            print(f"WARNING: channel is already added: {channel}")
-            return
-        self.channels.append(channel)
-        self.channels_tol.append(tol)
