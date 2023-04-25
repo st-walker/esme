@@ -1078,6 +1078,7 @@ class SetpointSnapshots:
     dispersion_setpoint: float
     measured_dispersion: Optional[tuple[float, float]]
     beta: float
+    screen_channel: str
 
     def __len__(self) -> int:
         return len(self.snapshots)
@@ -1126,32 +1127,23 @@ class SetpointSnapshots:
         df = df[df['XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ'].notna()]
         self.snapshots = df
 
+    def drop_images(self, bad_image_names: list[str]) -> None:
+        if not bad_image_names:
+            return
 
-def resume_from_output_directory(dirname: Union[os.PathLike, str]):
-    """Resume a measurement from the output directory"""
-    LOG.info(f"Trying to resume measurement in {dirname}")
+        df = self.snapshots
+        image_paths = df[self.screen_channel]
+        # mask True for good images
+        good_mask = np.ones_like(image_paths, dtype="bool")
+        for image_name in bad_image_names:
+            # Flipped to false for bad images...
+            good_mask &= ~image_paths.str.contains(image_name)
 
-    fname = dirname / "scan.toml"
-    tconf = TDSScanConfiguration.from_config_file(fname)
-    dconf = DispersionScanConfiguration.from_config_file(fname)
 
-
-    # What we want, judging by the scan.toml
-    tscan_amplitudes = set(tconf.scan_amplitudes)
-    dscan_dispersions = set(s.dispersion for s in dconf.scan_settings)
-    LOG.info(f"In scan.toml (desired machine setpoints): TDS scan amplitudes:"
-             f" {tscan_amplitudes}, dispersion scan dispersions: {dscan_dispersions}")
-
-    # What we have, judging by the output.
-    for fpcl in dirname.glob("*.pcl"):
-        with fpcl.open("rb") as f:
-            snapshots = pickle.load(fpcl)
-
-            # if not _is_complete_setpoint_measurement(snapshots, nbg, nbeam):
-            #     continue
-
-            tscan_amplitudes.discard(snapshots.tds_amplitude_setpoint)
-            dscan_amplitudes.discard(snapshots.dispersion_setpoint)
+        df = df[good_mask]
+        dropped_images = image_paths[~good_mask]
+        LOG.debug(f"Dropped bad_images: {dropped_images}")
+        self.snapshots = df
 
 
 def _tds_amplitude_setpoint_from_df(df):

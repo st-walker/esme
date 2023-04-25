@@ -3,6 +3,7 @@
 
 import logging
 import pickle
+import shutil
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -44,15 +45,30 @@ def dump_full_scan(esme: ana.SliceEnergySpreadMeasurement, root_outdir) -> None:
         measurement_outdir = dscan_dir / f"{i=},{dx=}"
         measurement_outdir.mkdir(parents=True, exist_ok=True)
 
+        data_dir = measurement_outdir / "raw-beam-images"
+        data_dir.mkdir(exist_ok=True)
+
         for image_index in range(measurement.nimages):
             LOG.debug(f"plotting before/after for image number: {image_index}")
             fig = show_before_after_processing(measurement, image_index)
+
+            image_file_path = measurement[image_index].filename
+
+            shutil.copy(image_file_path, data_dir / image_file_path.name)
 
             if root_outdir is not None:
                 fig.savefig(measurement_outdir / f"{image_index}.png")
                 plt.close()
             else:
                 plt.show()
+
+        background_dir = measurement_outdir / "raw-background-images"
+        background_dir.mkdir(exist_ok=True)
+        for image_index, image in enumerate(measurement.bg):
+            image_file_path = image.filename
+            shutil.copy(image_file_path, background_dir / image_file_path.name)
+
+
 
     dscan_dir = root_outdir / "tds-scan"
     for i, measurement in enumerate(tds_scan):
@@ -63,6 +79,10 @@ def dump_full_scan(esme: ana.SliceEnergySpreadMeasurement, root_outdir) -> None:
         measurement_outdir.mkdir(parents=True, exist_ok=True)
         LOG.debug(f"starting to plot before/after for tds scan, tds = {tds}%")
 
+        data_dir = measurement_outdir / "raw-beam-images"
+        data_dir.mkdir(exist_ok=True)
+
+
         for image_index in range(measurement.nimages):
             LOG.debug(f"plotting before/after for image number: {image_index}")
             fig = show_before_after_processing(measurement, image_index)
@@ -71,6 +91,17 @@ def dump_full_scan(esme: ana.SliceEnergySpreadMeasurement, root_outdir) -> None:
                 plt.close()
             else:
                 plt.show()
+
+            image_file_path = measurement[image_index].filename
+            save = shutil.copy(image_file_path, data_dir / image_file_path.name)
+
+
+        background_dir = measurement_outdir / "raw-background-images"
+        background_dir.mkdir(exist_ok=True)
+        for image_index, image in enumerate(measurement.bg):
+            image_file_path = image.filename
+            shutil.copy(image_file_path, background_dir / image_file_path.name)
+
 
     bscan = esme.bscan
     if not bscan:

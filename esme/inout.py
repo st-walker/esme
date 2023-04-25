@@ -299,7 +299,7 @@ def rm_ims_from_pcl(fpcl: os.PathLike, im_names, dry_run=True):
     with fpcl.open("rb") as f:
         setpoint = pickle.load(f)
 
-    paths = setpoint.snapshots[I1_DUMP_SCREEN_ADDRESS]
+    paths = setpoint.snapshots[I1D_SCREEN_ADDRESS]
     mask = []
     to_delete = []
     for path in paths:
@@ -404,23 +404,32 @@ def load_data_config_section(data_dict: dict, scan_key: str) -> list[SetpointSna
     return load_new_object_format(data_dict, scan_key)
 
 def load_new_object_format(data_dict, scan_key):
+    bad_images = data_dict.get("bad_images", [])
     result = []
     # This should be able to handle loading the old style format (metadata in the filename)
     # And new style pickled format
     basepath = Path(data_dict["basepath"])
     paths = data_dict[scan_key]["fnames"]
+
     for path in paths:
         full_path = basepath / path
         with full_path.open("rb") as f:
             snapshots = pickle.load(f)
-        # Move this to analysis.py and make it a function...
-        # snapshot.drop_bad_snapshots()
+
+        if not hasattr(snapshots, "screen_channel"):
+            snapshots.screen_channel = data_dict["screen_channel"]
+
+        snapshots.drop_bad_snapshots()
+        snapshots.drop_images(bad_images)
         snapshots.resolve_image_path(full_path.parent)
         result.append(snapshots)
+
     return result
 
 
 def load_old_raw_df_snapshot_format(data_dict: dict, scan_key: str) -> list[SetpointSnapshots]:
+    bad_images = data_dict.get("bad_images", [])
+
     basepath = Path(data_dict["basepath"])
     paths = data_dict[scan_key]["fnames"]
     sps = data_dict[scan_key]["setpoint_dispersions"]
@@ -435,15 +444,17 @@ def load_old_raw_df_snapshot_format(data_dict: dict, scan_key: str) -> list[Setp
 
     betas = data_dict[scan_key]["betas"]
 
-    result = []    
+
+    result = []
     for path, dispersion_sp, dispersion, beta in zip(paths, sps, dispersions, betas):
-        full_path = basepath / path        
+        full_path = basepath / path
         df = pd.read_pickle(full_path)
         sn = SetpointSnapshots(snapshots=df,
                                scan_type=ScanType.from_name(scan_key),
                                dispersion_setpoint=dispersion_sp,
                                measured_dispersion=dispersion,
-                               beta=beta)
+                               beta=beta,
+                               screen_channel=data_dict["screen_channel"])
         sn.resolve_image_path(full_path.parent)
         result.append(sn)
 

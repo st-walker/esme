@@ -285,7 +285,7 @@ class ParameterScan:
         return iter(self.measurements)
 
 
-    
+
 
 class DispersionScan(ParameterScan):
     @property

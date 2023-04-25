@@ -249,7 +249,8 @@ def measure(dispersion, bscan, dscan, tscan, config, b2, i1, outdir):
 )
 @option("--imname", "-i", multiple=True)
 def rm(pcl_files, imname, dry_run):
-    """Delete a .pcl snapshots file and all images it refers to"""
+    """Delete a .pcl snapshots file and all images it refers to, or
+    delete a specific snapshot within a .pcl file."""
     if not pcl_files:
         raise UsageError("No .pcl files provided")
     for fpcl in pcl_files:
