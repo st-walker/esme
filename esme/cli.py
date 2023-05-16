@@ -2,6 +2,7 @@
 
 import logging
 from pathlib import Path
+from contextlib import ExitStack
 
 from click import command, option, Option, UsageError, group, argument, echo, UsageError
 
@@ -31,6 +32,7 @@ from esme.plot import (
     plot_quad_strengths,
     plot_scans,
     plot_tds_calibration,
+    write_pixel_widths,
     pretty_parameter_table,
     compare_results,
     plot_tds_set_point_vs_readback,
@@ -166,9 +168,20 @@ def plot(scan_tomls, dump_images, widths, magnets, alle, calibration, save):
             plot_measured_central_widths(sesme, root_outdir, show=False)
             plot_scans(sesme, root_outdir)
             plot_quad_strengths(sesme, root_outdir)
-            plot_tds_calibration(sesme, root_outdir)
-            with (root_outdir / "parameters.txt").open("w") as f:
-                f.write(pretty_parameter_table(sesme))
+            # plot_tds_calibration(sesme, root_outdir)
+            write_pixel_widths(sesme, root_outdir)
+            with ExitStack() as stack:
+                f1 = stack.enter_context(open(root_outdir / "parameters.txt", "w"))
+                f2 = stack.enter_context(open(root_outdir / "fit.csv", "w"))
+                f3 = stack.enter_context(open(root_outdir / "beam.csv", "w"))
+
+                params = sesme.all_fit_parameters()
+                fit_df = params.fit_parameters_to_df()
+                f2.write(fit_df.to_csv())
+                beam_df = params.beam_parameters_to_df()
+                f3.write(beam_df.to_csv())
+                f1.write(pretty_parameter_table(fit_df, beam_df))
+
         elif calibration:
             plot_tds_calibration(sesme, root_outdir)
         elif dump_images:
@@ -251,8 +264,28 @@ def measure(dispersion, bscan, dscan, tscan, config, b2, i1, outdir):
     if bscan:
         measurer.beta_scan(bg_shots=bg_shots, beam_shots=beam_shots, measure_dispersion=measure_dispersion)
 
+    basepath = "./"
     if not (dscan or tscan or bscan):
-        measurer.run(bg_shots=bg_shots, beam_shots=beam_shots)
+        tscan_files, dscan_files = measurer.run(bg_shots=bg_shots, beam_shots=beam_shots)
+        from IPython import embed; embed()
+        template = {'title': 'Jan 2023 Energy Spread Measurement (first of three)',
+                    'optics': {'tds': {'bety': 4.3,
+                                       'alfy': 1.9,
+                                       'wavenumber': 62.88,
+                                       'length': 0.7,
+                                       'calibration': {'percentages': [11, 15, 19, 23],
+                                                       'tds_slopes': [256, 343, 455, 593],
+                                                       'tds_slope_units': 'um/ps',
+                                                       'screen_name': 'OTRC.64.I1D',
+                                                       'dispersion_setpoint': 1.2}},
+                               'screen': {'betx': 0.6}},
+                    'data': {'basepath': basepath,
+                             'screen_channel': 'XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ',
+                             'bad_images': [],
+                             'dscan': {'fnames': dscan_files},
+                             'tscan': {'fnames': tscan_files}}}
+
+
 
 
 @main.command(no_args_is_help=True)
@@ -288,6 +321,13 @@ def gui(ftoml, replay):
 def tds():
     from esme.gui import start_tds_gui
     start_tds_gui()
+
+
+@main.command()
+def error(i1, b2, espread, simulations, ):
+    pass
+
+
 
 @main.command(no_args_is_help=True)
 @argument("fscan", nargs=1)
@@ -361,6 +401,11 @@ def sim(fscan, i1, b2, dscan, tscan, escan, parray, outdir, fast, optics, physic
                                                              parray,
                                                              outdir=outdir,
                                                              do_physics=True)
+
+
+
+# def make_anaconf(outfiles):
+#     pass
 
 if __name__ == "__main__":
     main()  # pragma: no cover, pylint: disable=no-value-for-parameter

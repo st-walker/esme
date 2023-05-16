@@ -196,10 +196,10 @@ def make_measurement_runner(fconfig, machine_area, outdir="./",
         dscan_config = i1_dscan_config_from_scan_config_file(fconfig)
 
         if replay_file:
-            machine = I1DEnergySpreadMeasuringMachineReplayer(outdir, replay_file)
+            machine = I1EnergySpreadMeasuringMachineReplayer(outdir, replay_file)
         else:
             # tds = I1TDS()
-            machine = I1DEnergySpreadMeasuringMachine(outdir)
+            machine = I1EnergySpreadMeasuringMachine(outdir)
     elif machine_area == "b2":
         # tds = B2TDS()
         machine = B2DEnergySpreadMeasuringMachine(outdir)

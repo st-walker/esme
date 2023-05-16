@@ -169,8 +169,9 @@ class MeasurementRunner:
             self.dispersion_measurer = BasicDispersionMeasurer()
 
     def run(self, *, bg_shots: int, beam_shots: int) -> None:
-        self.tds_scan(bg_shots=bg_shots, beam_shots=beam_shots)
-        self.dispersion_scan(bg_shots=bg_shots, beam_shots=beam_shots)
+        tds_filenames = self.tds_scan(bg_shots=bg_shots, beam_shots=beam_shots)
+        dispersion_filenames = self.dispersion_scan(bg_shots=bg_shots, beam_shots=beam_shots)
+        return tds_filenames, dispersion_filenames
 
     def tds_scan(self, *, bg_shots: int, beam_shots: int) -> list[Path]:
         """Do the TDS scan for this energy spread measurement"""

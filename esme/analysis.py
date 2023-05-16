@@ -112,8 +112,9 @@ class TDSScreenImage:
         return beam_on and (tds_off or no_bpm_data)
 
     @property
-    def tds_was_on(self):
     def tds_was_on(self) -> bool:
+        print("ASSUMING TDS WAS ALWAYS ON!!!!!!!!!!!!")
+        return True
         return self.metadata[EVENT10_CHANNEL][2] == TDS_I1_ON_BEAM_EVENT10[2]
 
     @property
@@ -155,7 +156,7 @@ class ScanMeasurement:
             image = TDSScreenImage(metadata)
 
             if image.is_bad:
-                LOG.info(f"Skipping bad image: {i} (TDS was off whilst beam was on)")
+                LOG.info(f"Skipping bad image: {i}")
                 continue
 
             if image.is_bg:

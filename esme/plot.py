@@ -229,6 +229,36 @@ def _set_ylabel_for_scan(ax):
     # ax.set_ylabel(r"$\sigma_M^2\,/\,\mathrm{px}^2$")
 
 
+def write_pixel_widths(esme, outdir):
+    dwidths, derrors = esme.dscan.max_energy_slice_widths_and_errors(padding=10)
+    twidths, terrors = esme.tscan.max_energy_slice_widths_and_errors(padding=10)
+    dwidths_um, derrors_um = ana.transform_pixel_widths(dwidths, derrors, pixel_units="um", to_variances=False)
+    twidths_um, terrors_um = ana.transform_pixel_widths(twidths, terrors, pixel_units="um", to_variances=False)
+    dscan_data = pd.DataFrame({
+        "dx": esme.dscan.dx,
+        "amplitude": esme.dscan.tds_percentage,
+        "voltage": esme.dscan.voltage,
+        "px_widths": dwidths,
+        "px_errors": derrors,
+        "um_widths": dwidths_um,
+        "um_errors": derrors_um,
+    })
+
+    tds_data = pd.DataFrame({
+        "dx": esme.tscan.dx,
+        "amplitude": esme.tscan.tds_percentage,
+        "voltage": esme.tscan.voltage,
+        "px_widths": twidths,
+        "px_errors": terrors,
+        "um_widths": twidths_um,
+        "um_errors": terrors_um,
+    })
+
+    dscan_data.to_csv(outdir / "dscan_central_slices.csv")
+    tds_data.to_csv(outdir / "tscan_central_slices.csv")    
+
+
+
 def plot_tds_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> None:
     widths, errors = esme.tscan.max_energy_slice_widths_and_errors(padding=10)
     voltages_mv = _get_tds_tscan_abs_voltage_in_mv_from_scans(esme)
@@ -467,6 +497,8 @@ def formatted_parameter_dfs(esme: ana.SliceEnergySpreadMeasurement, latex=False)
     }
 
     varnames = None
+    from IPython import embed; embed()
+
     if latex:
         varnames = latex_variables
         units = {var_name: latex_units[unit_str] for (var_name, unit_str) in units.items()}
@@ -948,7 +980,7 @@ def _get_tds_tscan_abs_voltage_in_mv_from_scans(sesme):
     """this is simply to handle the case where i accidentally
     calibrated the TDS at a different dispersion to what i did the
     tds scan at"""
-    # What we actually used in our scan:    
+    # What we actually used in our scan:
     tds_percentage = sesme.tscan.tds_percentage
     try:
         derived_voltage = abs(sesme.tscan.voltage * 1e-6)  # MV
@@ -960,4 +992,3 @@ def _get_tds_tscan_abs_voltage_in_mv_from_scans(sesme):
         correct_snapshot = np.array(sesme.dscan.measurements)[sesme.dscan.dx == sesme.dscan.calibrator.dispersion_setpoint].item().metadata.iloc[0]
         derived_voltage = abs(sesme.tscan.calibrator.get_voltage(tds_percentage, correct_snapshot)) * 1e-6
     return derived_voltage
-    
