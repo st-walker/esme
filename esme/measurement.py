@@ -54,6 +54,7 @@ from typing import TypeVar, Optional, Type, Union
 from enum import Enum, auto
 from dataclasses import dataclass
 import pickle
+import matplotlib.image
 
 import toml
 import pandas as pd
@@ -162,11 +163,13 @@ class MeasurementRunner:
             templ = make_injector_snapshot_template(self.abs_output_directory())
             self.machine = EnergySpreadMeasuringMachine(templ)
 
-        self.snapshotter = Snapshotter(machine=self.machine, mps=mps)
+        self.snapshotter = Snapshotter(machine=self.machine, mps=mps, outdir=outdir)
         self.dispersion_measurer = dispersion_measurer
         if self.dispersion_measurer is None:
-            LOG.debug("Using BasicDispersionMeasurer: will not automatically measure dispersion.")
-            self.dispersion_measurer = BasicDispersionMeasurer()
+            LOG.debug("Assuming dispersion is always exactly correct...")
+
+
+            self.dispersion_measurer = None # BasicDispersionMeasurer()
 
     def run(self, *, bg_shots: int, beam_shots: int) -> None:
         tds_filenames = self.tds_scan(bg_shots=bg_shots, beam_shots=beam_shots)
@@ -219,9 +222,10 @@ class MeasurementRunner:
         scan_df = self.snapshotter.take_data(
             bg_shots=bg_shots, beam_shots=beam_shots, delay=self.SLEEP_BETWEEN_SNAPSHOTS
         )
-
         return SetpointSnapshots(
-            scan_df, "tds", dispersion_setpoint=dispersion_setpoint, measured_dispersion=measured_dispersion
+            scan_df, ScanType.TDS, dispersion_setpoint=dispersion_setpoint, measured_dispersion=measured_dispersion,
+            beta=0.6,
+            screen_channel=self.machine.SCREEN_CHANNEL
         )
 
     def dispersion_scan(self, *, bg_shots: int, beam_shots: int) -> list[Path]:  # initial_dispersion=? to save time..
@@ -257,13 +261,17 @@ class MeasurementRunner:
             bg_shots=bg_shots, beam_shots=beam_shots, delay=self.SLEEP_BETWEEN_SNAPSHOTS
         )
         return SetpointSnapshots(
-            scan_df, "dispersion", dispersion, quad_setting.dispersion, (dispersion, dispersion_unc)
+            scan_df, scan_type=ScanType.DISPERSION,
+            dispersion_setpoint=quad_setting.dispersion,
+            measured_dispersion=(dispersion, dispersion_unc),
+            screen_channel=self.machine.SCREEN_CHANNEL,
+            beta=0.6
         )
 
     def set_quads_and_get_dispersion(self, quadrupole_setting: QuadrupoleSetting) -> tuple[float, float]:
         LOG.info(f"Setting dispersion for quad setting: at intended dispersion = {quadrupole_setting}.")
         self._apply_quad_setting(quadrupole_setting)
-        return self.dispersion_measurer.measure()
+        return quadrupole_setting.dispersion, 0
 
     def set_reference_tds_amplitude(self) -> None:
         """Set the TDS amplitude to the reference value, i.e. the
@@ -433,7 +441,7 @@ class DataTaker:
     def set_quads_and_get_dispersion(self, quadrupole_setting: QuadrupoleSetting) -> tuple[float, float]:
         LOG.info(f"Setting dispersion for quad setting: at intended dispersion = {quadrupole_setting}.")
         self._apply_quad_setting(quadrupole_setting)
-        return self.dispersion_measurer.measure()
+        return quadrupole_setting.dispersion, 0.0
 
     def set_reference_tds_amplitude(self) -> None:
         """Set the TDS amplitude to the reference value, i.e. the
@@ -534,20 +542,29 @@ class MockMPS(MPS):
         return self.mi.get_value(self.server + ".UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED")
 
 class Snapshotter:
-    def __init__(self, mps=None, machine=None):
+    def __init__(self, mps=None, machine=None, outdir=None):
         self.mps = mps if mps is not None else MPS()
         self.machine = machine
         if machine is None:
             self.machine = EnergySpreadMeasuringMachine(SNAPSHOT_TEMPL)
+        if outdir is None:
+            self.outdir = outdir
 
     def take_background_images(self, nshots: int, *, delay: float = 1):
         LOG.info("Taking background")
         self.switch_beam_off()
-        time.sleep(delay)
+        time.sleep(2)
         snapshots = []
         for i in range(nshots):
             LOG.info(f"Background snapshot: {i} / {nshots - 1}")
-            snapshots.append(self.take_machine_snapshot(check_if_online=False))
+            df, image = self.take_machine_snapshot(check_if_online=False)
+            path = self.machine.snapshot.image_folders[0] / (image.name() + ".png")
+            matplotlib.image.imsave(path, image.image)
+            with path.with_suffix(".pcl").open("wb") as f:
+                import pickle
+                pickle.dump(image.image, f)
+
+            snapshots.append(df)
             time.sleep(delay)
         LOG.info("Finished taking background")
         self.switch_beam_on()
@@ -561,7 +578,13 @@ class Snapshotter:
         ishot = 0
         while ishot < total_shots:
             LOG.info(f"Taking snapshot {ishot} / {total_shots - 1}")
-            snapshots.append(self.take_machine_snapshot(check_if_online=True))
+            df, image = self.take_machine_snapshot(check_if_online=False)
+            snapshots.append(df)
+            path = self.machine.snapshot.image_folders[0] / (image.name() + ".png")
+            matplotlib.image.imsave(path, image.image)
+            with path.with_suffix(".pcl").open("wb") as f:
+                import pickle
+                pickle.dump(image.image, f)
 
             # Check if the snapshot failed and we need to repeat the
             # snapshot procedure.
@@ -606,6 +629,8 @@ class Snapshotter:
 
 class BaseDispersionMeasurer:
     pass
+
+# class DispersionNonMeasurer:
 
 
 class DispersionMeasurer(BaseDispersionMeasurer):
@@ -1026,7 +1051,6 @@ class I1EnergySpreadMeasuringMachineReplayer(I1EnergySpreadMeasuringMachine):
         all_names = np.append(all_names, ch)
 
         image = TimestampedImage(ch, img, datetime.utcnow())
-
         return data, all_names, image
 
     def set_quad(self, name, value):

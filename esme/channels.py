@@ -160,7 +160,7 @@ def _add_injector_to_template(template, outdir=None):
         outdir = Path("./")
 
     screen_name = Path("XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ").parent.name
-    image_dir = Path(outdir) / f"images-{screen_name}"
+    image_dir = Path(outdir) / f"images"
     template.add_image(DUMP_SCREEN_ADDRESS, folder=image_dir)
 
     # Alarms
@@ -230,7 +230,7 @@ def _add_injector_to_template(template, outdir=None):
 
 def _add_bc2_channels_to_template(template, outdir):
     screen_name = Path("XFEL.DIAG/CAMERA/OTRA.473.B2D/IMAGE_EXT_ZMQ").parent.name
-    image_dir = Path(outdir) / f"images-{screen_name}"
+    image_dir = Path(outdir) / f"images"
     template.add_image(DUMP_SCREEN_ADDRESS, folder=image_dir)
 
     # Magnets

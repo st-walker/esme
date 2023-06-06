@@ -113,9 +113,11 @@ class TDSScreenImage:
 
     @property
     def tds_was_on(self) -> bool:
-        print("ASSUMING TDS WAS ALWAYS ON!!!!!!!!!!!!")
-        return True
-        return self.metadata[EVENT10_CHANNEL][2] == TDS_I1_ON_BEAM_EVENT10[2]
+        # print("ASSUMING TDS WAS ALWAYS ON!!!!!!!!!!!!")
+        # return True
+        on = self.metadata[EVENT10_CHANNEL][2] == TDS_I1_ON_BEAM_EVENT10[2]
+        LOG.debug(f"TDS 'on' state: {on}")
+        return on
 
     @property
     def is_no_bpm_data(self) -> bool:

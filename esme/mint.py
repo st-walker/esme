@@ -356,7 +356,6 @@ class Machine:
 
             # Check if it's OK:
             if not alarm.is_ok(val):
-                import ipdb; ipdb.set_trace()
                 LOG.info(f"Machine is offline. Reason: {alarm.offline_message()}")
                 return False
 
@@ -379,8 +378,8 @@ class Machine:
             except Exception as e:
                 print("orbit id: " + sec_id + " ERROR: " + str(e))
                 return [], []
-            x = orbit_x[:, 1].astype(np.float)
-            y = orbit_y[:, 1].astype(np.float)
+            x = orbit_x[:, 1].astype(float)
+            y = orbit_y[:, 1].astype(float)
             xy = np.append(x, y)
 
             names_x = [name + ".X" for name in orbit_x[:, 4]]
@@ -397,7 +396,7 @@ class Machine:
             except Exception as e:
                 print("magnets id: " + sec_id + " ERROR: " + str(e))
                 return [], []
-            vals = magnets[:, 1].astype(np.float)
+            vals = magnets[:, 1].astype(float)
 
             names = [name for name in magnets[:, 4]]
             data = np.append(data, vals)
@@ -510,7 +509,7 @@ class Machine:
             return None
         data, all_names, image = self.get_single_image(data, all_names)
         all_names = np.append(all_names, image.channel)
-        data = np.append(data, image.name())
+        data.append("images/" + image.name() + ".png")
         if len(data) == 0:
             LOG.warning("Missing images, snapshot failed")
             return None

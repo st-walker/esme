@@ -229,10 +229,10 @@ def make_data_taker(fconfig, machine_area, outdir="./",
         dscan_config = i1_dscan_config_from_scan_config_file(fconfig)
 
         if replay_file:
-            machine = I1DEnergySpreadMeasuringMachineReplayer(outdir, replay_file)
+            machine = I1EnergySpreadMeasuringMachineReplayer(outdir, replay_file)
         else:
             # tds = I1TDS()
-            machine = I1DEnergySpreadMeasuringMachine(outdir)
+            machine = I1EnergySpreadMeasuringMachine(outdir)
     elif machine_area == "b2":
         # tds = B2TDS()
         machine = B2DEnergySpreadMeasuringMachine(outdir)
@@ -257,7 +257,7 @@ def make_dispersion_measurer(fconfig):
     config = toml.load(fconfig)
     confd = config["dispersion"]
     a1_voltages = np.linspace(confd["a1_voltage_min"], confd["a1_voltage_max"], num=confd["a1_npoints"])
-    return DispersionMeasurer(a1_voltages, I1DEnergySpreadMeasuringMachine("./"))
+    return DispersionMeasurer(a1_voltages, I1EnergySpreadMeasuringMachine("./"))
 
 
 def find_scan_config(fconfig: Path, default_name):

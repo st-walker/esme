@@ -7,7 +7,7 @@ from typing import Iterable
 import numpy as np
 import pandas as pd
 
-from ocelot.utils.fel_track import SectionedFEL, FELSection
+from oxfel.fel_track import SectionedFEL, FELSection
 from ocelot.cpbd.elements import Quadrupole, SBend, RBend
 
 from esme.measurement import QuadrupoleSetting

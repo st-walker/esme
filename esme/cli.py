@@ -265,9 +265,10 @@ def measure(dispersion, bscan, dscan, tscan, config, b2, i1, outdir):
         measurer.beta_scan(bg_shots=bg_shots, beam_shots=beam_shots, measure_dispersion=measure_dispersion)
 
     basepath = "./"
+    import toml
     if not (dscan or tscan or bscan):
         tscan_files, dscan_files = measurer.run(bg_shots=bg_shots, beam_shots=beam_shots)
-        from IPython import embed; embed()
+        # from IPython import embed; embed()
         template = {'title': 'Jan 2023 Energy Spread Measurement (first of three)',
                     'optics': {'tds': {'bety': 4.3,
                                        'alfy': 1.9,
@@ -279,11 +280,13 @@ def measure(dispersion, bscan, dscan, tscan, config, b2, i1, outdir):
                                                        'screen_name': 'OTRC.64.I1D',
                                                        'dispersion_setpoint': 1.2}},
                                'screen': {'betx': 0.6}},
-                    'data': {'basepath': basepath,
+                    'data': {'basepath': str(basepath),
                              'screen_channel': 'XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ',
                              'bad_images': [],
-                             'dscan': {'fnames': dscan_files},
-                             'tscan': {'fnames': tscan_files}}}
+                             'dscan': {'fnames': [str(x) for x in dscan_files]},
+                             'tscan': {'fnames': [str(x) for x in tscan_files]}}}
+        with open(str(outdir) + ".toml", "w") as f:
+            toml.dump(template, f)
 
 
 
