@@ -214,4 +214,3 @@ def make_dummy_lookup_sequence():
     strengths and lengths etc.  Obviously not for tracking, because
     it's not in the right order."""
     return sections.i1.make_cell() + sections.i1d.make_cell() + sections.l1.make_cell() + sections.l2.make_cell() + sections.b2d.make_cell()
-

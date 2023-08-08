@@ -66,13 +66,13 @@ def get_longest_two_monotonic_intervals(phase, com):
     lengths = [len(x[0]) for x in intervals]
 
     *_, isecond, ifirst = np.argpartition(lengths, kth=len(lengths)-1)
-    
+
 
     # # Get first and second longest intervals
     # first, = np.where(np.argsort(lengths) == 0)
     # second, = np.where(np.argsort(lengths) == 1)
 
-    
+
     return intervals[ifirst], intervals[isecond]
 
 
@@ -98,12 +98,12 @@ def get_truncated_longest_sections(phase, com, com_window_size):
     com2_mid = com2.mean()
 
     com1_mid = 2330 / 2
-    com2_mid = 2330 / 2    
+    com2_mid = 2330 / 2
 
 
     mask1 = (com1 > (com1_mid - com_window_size)) & (com1 < (com1_mid + com_window_size))
     mask2 = (com2 > (com2_mid - com_window_size)) & (com2 < (com2_mid + com_window_size))
-    
+
     return ((phi1[mask1], com1[mask1]), (phi2[mask2], com2[mask2]))
 
 def plot_truncated_longest_sections(phase, com, ax=None, com_window_size=None):
@@ -115,10 +115,10 @@ def plot_truncated_longest_sections(phase, com, ax=None, com_window_size=None):
 
     ((phi1, com1), (phi2, com2)) = get_truncated_longest_sections(phase, com,
                                                                   com_window_size=com_window_size)
-    
+
     ax.plot(phi1, com1)
-    ax.plot(phi2, com2)    
-    
+    ax.plot(phi2, com2)
+
 
 def main(dname):
     npzdir = Path(dname)

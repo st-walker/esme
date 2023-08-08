@@ -71,7 +71,7 @@ def get_calibration_outdir():
 
 def start_gui(scantoml, debug_mode, replay):
     """Main entry point to starting the GUI.  Reads from"""
-    the scan.toml
+    # the scan.toml
     # make pyqt threadsafe
     QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
     # create the application
@@ -131,10 +131,10 @@ class FitWorker(QThread):
 
     def generate_fitted_parameters(self):
         dispersions = np.array(self.dscan_widths.keys())
-        dwidths = self.dscan_widths.values()        
+        dwidths = self.dscan_widths.values()
 
         voltage = np.array(self.tscan_widths.keys())
-        twidths = self.tscan_widths.values()        
+        twidths = self.tscan_widths.values()
 
         tdata = TDSScanData(voltage, twidths)
         ddata = DispersionScanData(dispersions, dwidths)
@@ -450,7 +450,7 @@ class EnergySpreadMeasurementMainWindow(QMainWindow):
 
             self.ana_thread.processed_image_result_signal.connect(self.fit_worker_thread.receive_processed_image)
 
-            
+
 
         self.ana_thread.start()
         self.data_taking_thread.start()

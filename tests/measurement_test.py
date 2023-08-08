@@ -149,7 +149,7 @@ def test_MeasurementRunner_tds_scan(mocked_mrqd, mocked_runner):
 
     from IPython import embed; embed()
 
-    
+
 
 
 def test_MeasurementRunner_set_reference_quads(mocked_runner):

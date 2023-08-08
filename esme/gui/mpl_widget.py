@@ -13,4 +13,3 @@ class MatplotlibCanvas(FigureCanvasQTAgg):
         fig = Figure(figsize=(width, height), dpi=dpi)
         self.axes = fig.add_subplot(111)
         super(MatplotlibCanvas, self).__init__(fig)
-

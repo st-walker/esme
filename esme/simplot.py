@@ -160,7 +160,7 @@ def check_a1_to_i1d_design_optics_tracking(parray0, outdir):
     axe.set_xlabel(Z_LABEL_STRING)
 
     _, particle_twiss = sim.i1d_design_optics_from_tracking(parray0)
-    
+
     axbx.plot(particle_twiss.s, particle_twiss.beta_x, label="Particle Tracking", marker="x")
     axby.plot(particle_twiss.s, particle_twiss.beta_y, marker="x")#, label="Particle Tracking")
     axax.plot(particle_twiss.s, particle_twiss.alpha_x, label="Particle Tracking", marker="x")

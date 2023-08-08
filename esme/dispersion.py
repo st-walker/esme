@@ -63,7 +63,7 @@ class BasicDispersionMeasurer(BaseDispersionMeasurer):
         dispersion = _repeat_float_input_until_valid("Enter dispersion in m: ")
         dispersion_unc = _repeat_float_input_until_valid("Enter dispersion unc in m: ")
         return dispersion, dispersion_unc
-    
+
 
 
 
@@ -77,5 +77,3 @@ def _repeat_float_input_until_valid(prompt):
             continue
         else:
             return dispersion
-
-

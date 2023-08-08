@@ -258,7 +258,7 @@ def write_pixel_widths(esme, outdir):
     })
 
     dscan_data.to_csv(outdir / "dscan_central_slices.csv")
-    tds_data.to_csv(outdir / "tscan_central_slices.csv")    
+    tds_data.to_csv(outdir / "tscan_central_slices.csv")
 
 
 

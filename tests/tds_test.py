@@ -60,13 +60,13 @@ def test_TDSController_read_on_beam_timing(mtds):
     assert mtds.read_on_beam_timing() == expected_bunch_one
     mtds._mi.get_value.assert_called_with(address)
 
-    
+
 
 # def test_TDSController_read_sp_amplitude(mtds):
 #     value = 3
 #     address = mtds.addies.amplitude_setpoint
 #     mtds._mi.get_value.return_Value
-    
+
 # def test_TDSController_read_sp_amplitude(mtds):
 #     value = 3
 #     address = mtds.addies.amplitude_setpoint
@@ -74,4 +74,3 @@ def test_TDSController_read_on_beam_timing(mtds):
 #     assert mtds.read_rb_amplitude() == value
 
     # mtds._mi.set_value.assert_called_with(address, value)
-    

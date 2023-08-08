@@ -507,7 +507,7 @@ def _dscan_config_from_scan_config(scan_config: dict, section) -> DispersionScan
     else:
         quad_k1ls = named_k1s_to_k1ls(dscan_quad_names, quad_k1s)
 
-    
+
     scan_settings = []
     for dispersion, scan_k1ls in zip(quads["dispersions"], quad_k1ls):
         scan_settings.append(QuadrupoleSetting(dscan_quad_names, scan_k1ls, dispersion))

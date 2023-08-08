@@ -16,13 +16,13 @@ class TDSScanConfiguration:
     voltages: list
     quad_setting: QuadrupoleSetting
     # scan_dispersion: float
-    
+
 
 @dataclass
 class SetpointReadbackPair:
     setpoint: str
     readback: str
-    
+
 @dataclass
 class TDSAddresses:
     amplitude: SetpointReadbackPair
@@ -161,5 +161,3 @@ class TDSCalibratingMachine(Machine):
         channel = self.SCREEN_CHANNEL
         LOG.debug(f"Reading image from {channel}")
         return self.mi.get_value(channel)
-
-

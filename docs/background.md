@@ -20,7 +20,7 @@ $$
 
 So the voltage $V_0$ is given by
 $$
-V_0 = \frac{E}{e\omega R_{34}} \frac{\left < \Delta y \right >}{\Delta t} 
+V_0 = \frac{E}{e\omega R_{34}} \frac{\left < \Delta y \right >}{\Delta t}
 $$
 
 
