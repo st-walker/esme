@@ -20,10 +20,14 @@ class Ui_TDSCalibrationWindow(object):
         self.gridLayout = QtWidgets.QGridLayout(self.centralwidget)
         self.gridLayout.setObjectName("gridLayout")
         self.widget_plot_1 = MatplotlibCanvas(self.centralwidget)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.widget_plot_1.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.widget_plot_1.sizePolicy().hasHeightForWidth()
+        )
         self.widget_plot_1.setSizePolicy(sizePolicy)
         self.widget_plot_1.setObjectName("widget_plot_1")
         self.gridLayout.addWidget(self.widget_plot_1, 0, 0, 2, 1)
@@ -52,10 +56,14 @@ class Ui_TDSCalibrationWindow(object):
         self.verticalLayout.addLayout(self.horizontalLayout_2)
         self.gridLayout.addLayout(self.verticalLayout, 1, 1, 1, 1)
         self.widget_plot_2 = MatplotlibCanvas(self.centralwidget)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.widget_plot_2.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.widget_plot_2.sizePolicy().hasHeightForWidth()
+        )
         self.widget_plot_2.setSizePolicy(sizePolicy)
         self.widget_plot_2.setObjectName("widget_plot_2")
         self.gridLayout.addWidget(self.widget_plot_2, 2, 0, 1, 1)
@@ -82,7 +90,9 @@ class Ui_TDSCalibrationWindow(object):
         self.horizontalLayout_5.addLayout(self.horizontalLayout_4)
         self.gridLayout_2.addLayout(self.horizontalLayout_5, 0, 0, 1, 1)
         self.start_voltage_calibration_button = QtWidgets.QPushButton(self.groupBox_2)
-        self.start_voltage_calibration_button.setObjectName("start_voltage_calibration_button")
+        self.start_voltage_calibration_button.setObjectName(
+            "start_voltage_calibration_button"
+        )
         self.gridLayout_2.addWidget(self.start_voltage_calibration_button, 1, 0, 1, 1)
         self.horizontalLayout_10 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_10.setObjectName("horizontalLayout_10")
@@ -126,7 +136,9 @@ class Ui_TDSCalibrationWindow(object):
 
     def retranslateUi(self, TDSCalibrationWindow):
         _translate = QtCore.QCoreApplication.translate
-        TDSCalibrationWindow.setWindowTitle(_translate("TDSCalibrationWindow", "MainWindow"))
+        TDSCalibrationWindow.setWindowTitle(
+            _translate("TDSCalibrationWindow", "MainWindow")
+        )
         self.calibration_info.setHtml(
             _translate(
                 "TDSCalibrationWindow",
@@ -144,24 +156,37 @@ class Ui_TDSCalibrationWindow(object):
                 "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"># Warning: TDS Calibration <span style=\" font-weight:700;\">MUST</span> be done at OTRC.64.I1D (to be fixed)</p></body></html>",
             )
         )
-        self.apply_calibration_button.setText(_translate("TDSCalibrationWindow", "Apply"))
-        self.update_voltage_button.setText(_translate("TDSCalibrationWindow", "Recalculate Voltages"))
-        self.load_tds_calibration_button.setText(_translate("TDSCalibrationWindow", "Load"))
-        self.save_tds_calibration_button.setText(_translate("TDSCalibrationWindow", "Save "))
+        self.apply_calibration_button.setText(
+            _translate("TDSCalibrationWindow", "Apply")
+        )
+        self.update_voltage_button.setText(
+            _translate("TDSCalibrationWindow", "Recalculate Voltages")
+        )
+        self.load_tds_calibration_button.setText(
+            _translate("TDSCalibrationWindow", "Load")
+        )
+        self.save_tds_calibration_button.setText(
+            _translate("TDSCalibrationWindow", "Save ")
+        )
         self.groupBox_2.setTitle(_translate("TDSCalibrationWindow", "Time Calibration"))
         self.location_label.setText(_translate("TDSCalibrationWindow", "Location"))
         self.i1d_radio_button.setText(_translate("TDSCalibrationWindow", "I1D"))
         self.b2d_radio_buton.setText(_translate("TDSCalibrationWindow", "B2D"))
-        self.start_voltage_calibration_button.setText(_translate("TDSCalibrationWindow", "Start Calibration"))
+        self.start_voltage_calibration_button.setText(
+            _translate("TDSCalibrationWindow", "Start Calibration")
+        )
         self.phase_step_label.setText(_translate("TDSCalibrationWindow", "Phase Step"))
-        self.sample_amplitudes_label.setText(_translate("TDSCalibrationWindow", "Sample Amplitudes"))
+        self.sample_amplitudes_label.setText(
+            _translate("TDSCalibrationWindow", "Sample Amplitudes")
+        )
         self.menuMenu.setTitle(_translate("TDSCalibrationWindow", "Menu"))
-        self.actionPrint_to_Logbook.setText(_translate("TDSCalibrationWindow", "Print to Logbook"))
+        self.actionPrint_to_Logbook.setText(
+            _translate("TDSCalibrationWindow", "Print to Logbook")
+        )
         self.actionQuit.setText(_translate("TDSCalibrationWindow", "Quit"))
 
 
 from esme.gui.mpl_widget import MatplotlibCanvas
-
 
 if __name__ == "__main__":
     import sys

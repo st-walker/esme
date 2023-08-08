@@ -1,20 +1,20 @@
 import copy
-from unittest.mock import patch, MagicMock, call
 from pathlib import Path
+from unittest.mock import MagicMock, call, patch
 
-import pytest
 import pandas as pd
+import pytest
 
 from esme.measurement import (
-    QuadrupoleSetting,
-    DispersionScanConfiguration,
-    TDSScanConfiguration,
-    ScreenPhotographer,
-    MeasurementRunner,
-    EnergySpreadMeasuringMachine,
     MPS,
     SNAPSHOT_TEMPL,
     BasicDispersionMeasurer,
+    DispersionScanConfiguration,
+    EnergySpreadMeasuringMachine,
+    MeasurementRunner,
+    QuadrupoleSetting,
+    ScreenPhotographer,
+    TDSScanConfiguration,
 )
 
 
@@ -50,7 +50,9 @@ def test_QuadrupoleSetting_init(quad_setting):
 
 @pytest.fixture
 def photographer():
-    return ScreenPhotographer(mps=MagicMock(name="MPS_mock"), machine=MagicMock(name="Machine_mock"))
+    return ScreenPhotographer(
+        mps=MagicMock(name="MPS_mock"), machine=MagicMock(name="Machine_mock")
+    )
 
 
 def test_ScreenPhotographer_switch_beam_on(photographer):
@@ -143,7 +145,9 @@ def test_MeasurementRunner_init(quad_scan_config, tscan_config):
 
 
 # @patch.object(MeasurementRunner, "make_df_filename", return_value="mocked-df-filename")
-@patch.object(MeasurementRunner, "measure_reference_quads_dispersion", return_value=(1.2, 0.1))
+@patch.object(
+    MeasurementRunner, "measure_reference_quads_dispersion", return_value=(1.2, 0.1)
+)
 def test_MeasurementRunner_tds_scan(mocked_mrqd, mocked_runner):
     # TDS scan args
     nbg = 4
@@ -153,7 +157,11 @@ def test_MeasurementRunner_tds_scan(mocked_mrqd, mocked_runner):
     # Call the method I want to test
     outdir = mocked_runner.outdir
     # I mock make_df_filename because it relies
-    with patch.object(MeasurementRunner, "make_df_filename", return_value=(outdir / "mocked_df_filename.pcl")):
+    with patch.object(
+        MeasurementRunner,
+        "make_df_filename",
+        return_value=(outdir / "mocked_df_filename.pcl"),
+    ):
         mocked_runner.tds_scan(nbg, nbeam, delay)
         from IPython import embed
 
@@ -167,7 +175,9 @@ def test_MeasurementRunner_tds_scan(mocked_mrqd, mocked_runner):
     # Basically Confirms the TDS scan is indeed cycling through the
     # TDS amplitudes (voltages).
     amplitudes = mocked_runner.tds_config.scan_amplitudes
-    mocked_runner.machine.set_tds_amplitude.call_args_list == [call(amp) for amp in amplitudes]
+    mocked_runner.machine.set_tds_amplitude.call_args_list == [
+        call(amp) for amp in amplitudes
+    ]
 
     from IPython import embed
 
@@ -185,7 +195,10 @@ def test_MeasurementRunner_set_reference_quads(mocked_runner):
     ref_quad_strengths = ref_setting.strengths
     # Make call instances for each pair and assert that we correctly
     # called machine.set_quad with those pairs.
-    calls = [call(name, strength) for name, strength in zip(ref_quad_names, ref_quad_strengths)]
+    calls = [
+        call(name, strength)
+        for name, strength in zip(ref_quad_names, ref_quad_strengths)
+    ]
     assert mocked_runner.machine.set_quad.call_args_list == calls
 
 

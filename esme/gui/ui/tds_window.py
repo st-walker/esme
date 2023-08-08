@@ -20,10 +20,14 @@ class Ui_MainWindow(object):
         self.gridLayout_6 = QtWidgets.QGridLayout(self.centralwidget)
         self.gridLayout_6.setObjectName("gridLayout_6")
         self.screen_display_widget = GraphicsLayoutWidget(self.centralwidget)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.screen_display_widget.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.screen_display_widget.sizePolicy().hasHeightForWidth()
+        )
         self.screen_display_widget.setSizePolicy(sizePolicy)
         self.screen_display_widget.setObjectName("screen_display_widget")
         self.gridLayout_6.addWidget(self.screen_display_widget, 0, 0, 1, 1)
@@ -122,10 +126,14 @@ class Ui_MainWindow(object):
         self.horizontalLayout_5.addLayout(self.verticalLayout_2)
         self.gridLayout_6.addLayout(self.horizontalLayout_5, 0, 1, 2, 1)
         self.voltage_calibration_plot = MatplotlibCanvas(self.centralwidget)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.voltage_calibration_plot.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.voltage_calibration_plot.sizePolicy().hasHeightForWidth()
+        )
         self.voltage_calibration_plot.setSizePolicy(sizePolicy)
         self.voltage_calibration_plot.setObjectName("voltage_calibration_plot")
         self.gridLayout_6.addWidget(self.voltage_calibration_plot, 1, 0, 1, 1)
@@ -163,13 +171,15 @@ class Ui_MainWindow(object):
         self.phase_spin_box.setText(_translate("MainWindow", "Amplitude"))
         self.phase_label.setText(_translate("MainWindow", "Phase"))
         self.menuMenu.setTitle(_translate("MainWindow", "Menu"))
-        self.actionPrint_to_Logbook.setText(_translate("MainWindow", "Print to Logbook"))
+        self.actionPrint_to_Logbook.setText(
+            _translate("MainWindow", "Print to Logbook")
+        )
         self.actionQuit.setText(_translate("MainWindow", "Quit"))
 
 
-from esme.gui.mpl_widget import MatplotlibCanvas
 from pyqtgraph import GraphicsLayoutWidget
 
+from esme.gui.mpl_widget import MatplotlibCanvas
 
 if __name__ == "__main__":
     import sys

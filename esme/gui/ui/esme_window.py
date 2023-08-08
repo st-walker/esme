@@ -79,7 +79,9 @@ class Ui_MainWindow(object):
         self.tds_calibration_button.setObjectName("tds_calibration_button")
         self.gridLayout_5.addWidget(self.tds_calibration_button, 1, 0, 1, 1)
         self.dispersion_setpoint_combo_box = QtWidgets.QComboBox(self.groupBox)
-        self.dispersion_setpoint_combo_box.setObjectName("dispersion_setpoint_combo_box")
+        self.dispersion_setpoint_combo_box.setObjectName(
+            "dispersion_setpoint_combo_box"
+        )
         self.gridLayout_5.addWidget(self.dispersion_setpoint_combo_box, 0, 0, 1, 1)
         self.gridLayout_6.addLayout(self.gridLayout_5, 0, 1, 1, 1)
         self.horizontalLayout_3 = QtWidgets.QHBoxLayout()
@@ -115,10 +117,14 @@ class Ui_MainWindow(object):
         self.verticalLayout_3.addWidget(self.groupBox)
         self.gridLayout.addLayout(self.verticalLayout_3, 0, 2, 1, 1)
         self.screen_widget = ImageView(self.centralwidget)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+        )
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.screen_widget.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.screen_widget.sizePolicy().hasHeightForWidth()
+        )
         self.screen_widget.setSizePolicy(sizePolicy)
         self.screen_widget.setObjectName("screen_widget")
         self.gridLayout.addWidget(self.screen_widget, 0, 0, 1, 1)
@@ -152,21 +158,30 @@ class Ui_MainWindow(object):
         self.location_label.setText(_translate("MainWindow", "Location"))
         self.i1_radio_button.setText(_translate("MainWindow", "I1"))
         self.b2_radio_buton.setText(_translate("MainWindow", "B2"))
-        self.background_shots_label.setText(_translate("MainWindow", "Background shots "))
+        self.background_shots_label.setText(
+            _translate("MainWindow", "Background shots ")
+        )
         self.beam_shots_label.setText(_translate("MainWindow", "Beam Shots"))
-        self.tds_calibration_button.setText(_translate("MainWindow", "TDS Calibration..."))
-        self.start_measurement_button.setText(_translate("MainWindow", "Start Measurement"))
-        self.measurement_name_label.setText(_translate("MainWindow", "Output Directory"))
+        self.tds_calibration_button.setText(
+            _translate("MainWindow", "TDS Calibration...")
+        )
+        self.start_measurement_button.setText(
+            _translate("MainWindow", "Start Measurement")
+        )
+        self.measurement_name_label.setText(
+            _translate("MainWindow", "Output Directory")
+        )
         self.save_data_checkbox.setText(_translate("MainWindow", "Online Analysis"))
         self.menuMenu.setTitle(_translate("MainWindow", "Menu"))
         self.actionClose.setText(_translate("MainWindow", "Close"))
         self.actionClose.setShortcut(_translate("MainWindow", "Ctrl+Q"))
-        self.actionPrint_to_Logbook.setText(_translate("MainWindow", "Print to Logbook"))
+        self.actionPrint_to_Logbook.setText(
+            _translate("MainWindow", "Print to Logbook")
+        )
         self.actionPrint_to_Logbook.setShortcut(_translate("MainWindow", "Ctrl+P"))
 
 
 from pyqtgraph import ImageView
-
 
 if __name__ == "__main__":
     import sys

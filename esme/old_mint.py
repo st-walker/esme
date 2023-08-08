@@ -7,19 +7,19 @@ S.Tomin, 2017
 """
 
 from __future__ import absolute_import, print_function
-from typing import Any
 
 import base64
 import logging
-import subprocess
-import pickle
 import os
+import pickle
+import subprocess
 import time
 from datetime import datetime
+from typing import Any
 
 import matplotlib
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 try:
     import pydoocs
@@ -99,7 +99,15 @@ class Device(object):
     def check_limits(self, value):
         limits = self.get_limits()
         if value < limits[0] or value > limits[1]:
-            print('limits exceeded for ', self.id, " - ", value, limits[0], value, limits[1])
+            print(
+                'limits exceeded for ',
+                self.id,
+                " - ",
+                value,
+                limits[0],
+                value,
+                limits[1],
+            )
             return True
         return False
 
@@ -225,7 +233,9 @@ class XFELMachineInterface:
         # open printer process
         try:
             lpr = subprocess.Popen(
-                ['/usr/bin/lp', '-o', 'raw', '-d', elog], stdin=subprocess.PIPE, stdout=subprocess.PIPE
+                ['/usr/bin/lp', '-o', 'raw', '-d', elog],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
             )
             # send printer job
             lpr.communicate(elogXMLString.encode('utf-8'))
@@ -293,13 +303,27 @@ class Machine:
             try:
                 orbit_x = np.array(
                     self.mi.get_value(
-                        self.server + ".DIAG/" + self.bpm_server + "/*." + sec_id + "/X." + self.subtrain + self.suffix
+                        self.server
+                        + ".DIAG/"
+                        + self.bpm_server
+                        + "/*."
+                        + sec_id
+                        + "/X."
+                        + self.subtrain
+                        + self.suffix
                     )
                 )
 
                 orbit_y = np.array(
                     self.mi.get_value(
-                        self.server + ".DIAG/" + self.bpm_server + "/*." + sec_id + "/Y." + self.subtrain + self.suffix
+                        self.server
+                        + ".DIAG/"
+                        + self.bpm_server
+                        + "/*."
+                        + sec_id
+                        + "/Y."
+                        + self.subtrain
+                        + self.suffix
                     )
                 )
             except Exception as e:
@@ -319,7 +343,11 @@ class Machine:
     def get_magnets(self, data, all_names):
         for sec_id in self.snapshot.magnet_sections:
             try:
-                magnets = np.array(self.mi.get_value("XFEL.MAGNETS/MAGNET.ML/*." + sec_id + "/KICK_MRAD.SP"))
+                magnets = np.array(
+                    self.mi.get_value(
+                        "XFEL.MAGNETS/MAGNET.ML/*." + sec_id + "/KICK_MRAD.SP"
+                    )
+                )
             except Exception as e:
                 print("magnets id: " + sec_id + " ERROR: " + str(e))
                 return [], []
@@ -453,10 +481,15 @@ class MPS(Device):
         self.mi.set_value(self.server + ".UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED", 1)
 
     def num_bunches_requested(self, num_bunches=1):
-        self.mi.set_value(self.server + ".UTIL/BUNCH_PATTERN/CONTROL/NUM_BUNCHES_REQUESTED_1", num_bunches)
+        self.mi.set_value(
+            self.server + ".UTIL/BUNCH_PATTERN/CONTROL/NUM_BUNCHES_REQUESTED_1",
+            num_bunches,
+        )
 
     def is_beam_on(self):
-        return self.mi.get_value(self.server + ".UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED")
+        return self.mi.get_value(
+            self.server + ".UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED"
+        )
 
 
 class CavityA1(Device):
@@ -490,7 +523,10 @@ class BasicAlarm:
         return (value >= self.vmin) and (value < self.vmax)
 
     def offline_message(self) -> str:
-        return f"{self.channel} out of bounds, bounds = {(self.vmin, self.vmax)}." f" explanation:  {self.explanation}"
+        return (
+            f"{self.channel} out of bounds, bounds = {(self.vmin, self.vmax)}."
+            f" explanation:  {self.explanation}"
+        )
 
 
 # class BasicAlarm:
@@ -561,7 +597,11 @@ class Snapshot:
             print("WARNING: channel is already added")
             return
         if sec_id in self.sase_sections:
-            self.phase_shifter_sections[sec_id] = {"id": sec_id, "tol": tol, "track": track}
+            self.phase_shifter_sections[sec_id] = {
+                "id": sec_id,
+                "tol": tol,
+                "track": track,
+            }
 
     def add_undulator(self, sec_id, tol=0.001, track=True):
         if sec_id in self.sase_sections:

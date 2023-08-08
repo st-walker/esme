@@ -1,44 +1,37 @@
 """Console script for esme."""
 
 import logging
-from pathlib import Path
 from contextlib import ExitStack
+from pathlib import Path
 
-from click import command, option, Option, UsageError, group, argument, echo, UsageError
+from click import Option, UsageError, argument, echo, group, option
 
-from esme.analysis import calculate_energy_spread_simple
 import esme.analysis
+from esme.analysis import calculate_energy_spread_simple
 from esme.inout import (
-    load_config,
-    scan_files_from_toml,
-    title_from_toml,
-    make_measurement_runner,
-    make_dispersion_measurer,
     find_scan_config,
-    rm_pcl,
-    rm_ims_from_pcl,
-    toml_dfs_to_setpoint_snapshots,
-    i1_dscan_config_from_scan_config_file,
-    b2_dscan_config_from_scan_config_file,
-    i1_tds_voltages_from_scan_config_file,
     get_config_sample_sizes,
+    i1_dscan_config_from_scan_config_file,
+    i1_tds_voltages_from_scan_config_file,
+    load_config,
+    make_dispersion_measurer,
+    make_measurement_runner,
+    rm_ims_from_pcl,
+    rm_pcl,
 )
-
-from . import inout
-
 from esme.plot import (
+    compare_results,
     dump_full_scan,
+    formatted_parameter_dfs,
     plot_measured_central_widths,
     plot_quad_strengths,
     plot_scans,
     plot_tds_calibration,
-    write_pixel_widths,
     pretty_parameter_table,
-    compare_results,
-    plot_tds_set_point_vs_readback,
-    formatted_parameter_dfs,
+    write_pixel_widths,
 )
 
+from . import inout
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
@@ -52,7 +45,10 @@ class MutuallyExclusiveOption(Option):
         help = kwargs.get('help', '')
         if self.mutually_exclusive:
             ex_str = ', '.join(self.mutually_exclusive)
-            kwargs['help'] = help + (' NOTE: This argument is mutually exclusive with ' f' arguments: [{ex_str}].')
+            kwargs['help'] = help + (
+                ' NOTE: This argument is mutually exclusive with '
+                f' arguments: [{ex_str}].'
+            )
         super(MutuallyExclusiveOption, self).__init__(*args, **kwargs)
 
     def handle_parse_result(self, ctx, opts, args):
@@ -72,7 +68,10 @@ def main(debug, single_threaded):
     """Main entrypoint."""
     echo("esme-xfel")
     echo("=" * len("esme-xfel"))
-    echo("Automatic calibration, data taking and analysis for" " uncorrelated energy spread measurements at the EuXFEL")
+    echo(
+        "Automatic calibration, data taking and analysis for"
+        " uncorrelated energy spread measurements at the EuXFEL"
+    )
 
     if single_threaded:
         esme.analysis.MULTIPROCESSING = False
@@ -92,7 +91,10 @@ def main(debug, single_threaded):
 @main.command(no_args_is_help=True)
 @argument("scan-tomls", nargs=-1)
 @option(
-    "--simple", "-s", is_flag=True, help="Calculate the energy spread without accounting for the impact of the TDS."
+    "--simple",
+    "-s",
+    is_flag=True,
+    help="Calculate the energy spread without accounting for the impact of the TDS.",
 )
 @option("--latex", is_flag=True)
 def calculate(scan_tomls, simple, latex):
@@ -112,7 +114,9 @@ def calculate(scan_tomls, simple, latex):
             print(f"({espread_kev}±{error_kev})keV")
     else:
         if len(slice_energy_spread_measurements) == 1:
-            fit_df, beam_df = formatted_parameter_dfs(slice_energy_spread_measurements[0], latex=latex)
+            fit_df, beam_df = formatted_parameter_dfs(
+                slice_energy_spread_measurements[0], latex=latex
+            )
             if latex is False:
                 ftoml = Path(scan_tomls[0])
                 name = ftoml.stem
@@ -133,8 +137,18 @@ def calculate(scan_tomls, simple, latex):
 
 @main.command(no_args_is_help=True)
 @argument("scan-tomls", nargs=-1)
-@option("--dump-images", "-d", is_flag=True, help="Dump all images used in the calculation to file")
-@option("--widths", "-w", is_flag=True, help="Dump all images used in the calculation to file")
+@option(
+    "--dump-images",
+    "-d",
+    is_flag=True,
+    help="Dump all images used in the calculation to file",
+)
+@option(
+    "--widths",
+    "-w",
+    is_flag=True,
+    help="Dump all images used in the calculation to file",
+)
 @option("--magnets", "-m", is_flag=True)
 @option("--calibration", "-c", is_flag=True)
 @option("--alle", is_flag=True)
@@ -186,7 +200,10 @@ def plot(scan_tomls, dump_images, widths, magnets, alle, calibration, save):
 def snapshot(model, i1, b2):
     """Take a snapshot of the file up to the given point in the
     machine (either I1 or B2), write it to file, and then exit"""
-    from esme.measurement import I1EnergySpreadMeasuringMachine, B2EnergySpreadMeasuringMachine
+    from esme.measurement import (
+        B2EnergySpreadMeasuringMachine,
+        I1EnergySpreadMeasuringMachine,
+    )
 
     if i1:
         machine = I1EnergySpreadMeasuringMachine(fname)
@@ -214,7 +231,11 @@ def snapshot(model, i1, b2):
 @main.command(no_args_is_help=True)
 @option("--b2", is_flag=True)
 @option("--i1", is_flag=True)
-@option("--dispersion", is_flag=True, help="Just measure the dispersion (used for debugging purposes)")
+@option(
+    "--dispersion",
+    is_flag=True,
+    help="Just measure the dispersion (used for debugging purposes)",
+)
 @option("--bscan", is_flag=True, help="Only do the beta scan")
 @option("--dscan", is_flag=True, help="Only do the dispersion scan")
 @option("--tscan", is_flag=True, help="Only do the TDS scan")
@@ -242,17 +263,31 @@ def measure(dispersion, bscan, dscan, tscan, config, b2, i1, outdir):
 
     measure_dispersion = False
     if dscan:
-        measurer.dispersion_scan(bg_shots=bg_shots, beam_shots=beam_shots, measure_dispersion=measure_dispersion)
+        measurer.dispersion_scan(
+            bg_shots=bg_shots,
+            beam_shots=beam_shots,
+            measure_dispersion=measure_dispersion,
+        )
     if tscan:
-        measurer.tds_scan(bg_shots=bg_shots, beam_shots=beam_shots, measure_dispersion=measure_dispersion)
+        measurer.tds_scan(
+            bg_shots=bg_shots,
+            beam_shots=beam_shots,
+            measure_dispersion=measure_dispersion,
+        )
     if bscan:
-        measurer.beta_scan(bg_shots=bg_shots, beam_shots=beam_shots, measure_dispersion=measure_dispersion)
+        measurer.beta_scan(
+            bg_shots=bg_shots,
+            beam_shots=beam_shots,
+            measure_dispersion=measure_dispersion,
+        )
 
     basepath = "./"
     import toml
 
     if not (dscan or tscan or bscan):
-        tscan_files, dscan_files = measurer.run(bg_shots=bg_shots, beam_shots=beam_shots)
+        tscan_files, dscan_files = measurer.run(
+            bg_shots=bg_shots, beam_shots=beam_shots
+        )
         # from IPython import embed; embed()
         template = {
             'title': 'Jan 2023 Energy Spread Measurement (first of three)',
@@ -335,7 +370,14 @@ def error(
 @main.command(no_args_is_help=True)
 @argument("fscan", nargs=1)
 @argument("parray", nargs=1, required=False)
-@option("--outdir", "-o", nargs=1, default="./", show_default=True, help="where to write output files to")
+@option(
+    "--outdir",
+    "-o",
+    nargs=1,
+    default="./",
+    show_default=True,
+    help="where to write output files to",
+)
 @option("--i1", is_flag=True, cls=MutuallyExclusiveOption, mutually_exclusive=["b2"])
 @option("--b2", is_flag=True, cls=MutuallyExclusiveOption, mutually_exclusive=["i1"])
 @option("--dscan", is_flag=True)
@@ -347,8 +389,7 @@ def error(
 def sim(fscan, i1, b2, dscan, tscan, escan, parray, outdir, fast, optics, physics):
     """This is basically just for checking optics and showing the basic functions work."""
     # from .sim import run_i1_dispersion_scan
-    from . import simplot
-    from . import sim
+    from . import sim, simplot
 
     if i1:
         i1_dscan_conf = i1_dscan_config_from_scan_config_file(fscan)
@@ -366,7 +407,9 @@ def sim(fscan, i1, b2, dscan, tscan, escan, parray, outdir, fast, optics, physic
         # simplot.dscan_piecewise_tracking_optics(parray, i1_dscan_conf, outdir,
         #                                         do_physics=physics)
     elif i1 and parray:
-        i1sim = sim.I1SimulatedEnergySpreadMeasurement(parray, i1_dscan_conf, i1_tscan_voltages)
+        i1sim = sim.I1SimulatedEnergySpreadMeasurement(
+            parray, i1_dscan_conf, i1_tscan_voltages
+        )
         i1sim.write_scans(outdir)
         # sim.run_i1_dispersion_scan(i1_dscan_conf, parray, outdir)
 
@@ -385,11 +428,21 @@ def sim(fscan, i1, b2, dscan, tscan, escan, parray, outdir, fast, optics, physic
 
             simplot.gun_to_b2_bolko_optics(b2_dscan_conf, b2_tscan_voltages)
 
-            simplot.gun_to_b2_dispersion_scan_design_energy(b2_dscan_conf, b2_tscan_voltages)
-            simplot.gun_to_b2_piecewise_dispersion_scan_optics(b2_dscan_conf, b2_tscan_voltages)
-            simplot.gun_to_b2_tracking_piecewise_optics(b2_dscan_conf, b2_tscan_voltages, parray)
+            simplot.gun_to_b2_dispersion_scan_design_energy(
+                b2_dscan_conf, b2_tscan_voltages
+            )
+            simplot.gun_to_b2_piecewise_dispersion_scan_optics(
+                b2_dscan_conf, b2_tscan_voltages
+            )
+            simplot.gun_to_b2_tracking_piecewise_optics(
+                b2_dscan_conf, b2_tscan_voltages, parray
+            )
             simplot.gun_to_b2_tracking_central_slice_optics(
-                b2_dscan_conf, b2_tscan_voltages, parray, outdir=outdir, do_physics=physics
+                b2_dscan_conf,
+                b2_tscan_voltages,
+                parray,
+                outdir=outdir,
+                do_physics=physics,
             )
 
         else:

@@ -4,21 +4,24 @@
 
 import logging
 from copy import deepcopy
-import pandas as pd
 from pathlib import Path
+
 import pand8
-
+import pandas as pd
+from ocelot.cpbd.beam import beam_matching, moments_from_parray, optics_from_moments
 from ocelot.cpbd.io import load_particle_array, save_particle_array
-from ocelot.cpbd.optics import twiss as oce_calc_twiss, Twiss
-from ocelot.utils.fel_track import FELSimulationConfig
-from ocelot.cpbd.beam import moments_from_parray, optics_from_moments, beam_matching
-from ocelot.cpbd.track import track
 from ocelot.cpbd.magnetic_lattice import MagneticLattice
-from ocelot.utils.fel_track import SliceTwissCalculator, TwissCalculator, EuXFELController, NoTwiss
+from ocelot.cpbd.optics import Twiss
+from ocelot.utils.fel_track import (
+    EuXFELController,
+    FELSimulationConfig,
+    NoTwiss,
+    SliceTwissCalculator,
+    TwissCalculator,
+)
 
-from .sections import sections
-from .sections.i1 import make_twiss0_at_a1_start, Z_START
 from . import lattice
+from .sections.i1 import make_twiss0_at_a1_start
 
 LOG = logging.getLogger(__name__)
 LONGLIST = "/Users/stuartwalker/repos/esme-xfel/bin/longlist.csv"
@@ -44,7 +47,9 @@ def make_i1_dscan_simulation_configs(dscan_conf, do_physics=True):
     return result
 
 
-def make_i1_tscan_simulation_configs(reference_quad_setting, tscan_voltages, do_physics=True):
+def make_i1_tscan_simulation_configs(
+    reference_quad_setting, tscan_voltages, do_physics=True
+):
     quad_dict = _quadrupole_setting_to_config_dict(reference_quad_setting)
     high_level_config = make_pre_qi52_measurement_config(do_physics=do_physics)
 
@@ -52,7 +57,10 @@ def make_i1_tscan_simulation_configs(reference_quad_setting, tscan_voltages, do_
     for voltage in tscan_voltages:
         hlc = deepcopy(high_level_config)
         hlc.controller.components = quad_dict
-        hlc.metadata = {"dispersion": reference_quad_setting.dispersion, "voltage": voltage}
+        hlc.metadata = {
+            "dispersion": reference_quad_setting.dispersion,
+            "voltage": voltage,
+        }
 
         hlc.tds1.phi = 0
         # 0.61 MV (units in ocelot are in GV)
@@ -104,7 +112,10 @@ def run_i1_dispersion_scan(dscan_conf, fparray, dirname, fast=False):
     i1dlat = lattice.make_to_i1d_lattice()
 
     # Track to just in front of QI52
-    twiss_to_q52, parray_q52 = a1_to_q52_matching_point_measurement_optics_from_tracking(
+    (
+        twiss_to_q52,
+        parray_q52,
+    ) = a1_to_q52_matching_point_measurement_optics_from_tracking(
         fparray0, do_physics=do_physics
     )
 
@@ -113,7 +124,9 @@ def run_i1_dispersion_scan(dscan_conf, fparray, dirname, fast=False):
     stop = None
     twiss_at_q52 = make_twiss_at_q52()
 
-    fel_sim_configs = make_i1_dscan_simulation_configs(dscan_conf, do_physics=do_physics)
+    fel_sim_configs = make_i1_dscan_simulation_configs(
+        dscan_conf, do_physics=do_physics
+    )
     for dispersion, twiss_from_q52, mlat_from_q52 in _calculate_dscan_tracked_optics(
         i1dlat, parray_q52.copy(), fel_sim_configs, start=start, stop=stop
     ):
@@ -143,7 +156,9 @@ def _calculate_dscan_optics(lat, twiss0, dscan_sim_configs, start, stop):
     for setpoint_sim_conf in dscan_sim_configs:
         twiss0 = make_twiss_at_q52()
         dispersion = setpoint_sim_conf.metadata["dispersion"]
-        full_twiss, mlat = lat.calculate_twiss(twiss0=twiss0, start=start, stop=stop, felconfig=setpoint_sim_conf)
+        full_twiss, mlat = lat.calculate_twiss(
+            twiss0=twiss0, start=start, stop=stop, felconfig=setpoint_sim_conf
+        )
 
         yield dispersion, full_twiss, mlat
 
@@ -156,12 +171,18 @@ def _calculate_dscan_tracked_optics(lat, parray0, dscan_sim_configs, start, stop
         dispersion = setpoint_sim_conf.metadata["dispersion"]
         # parray0 is automatically matched to twiss0 within track_gaussian_optics.
         full_twiss, mlat = lat.track_gaussian_optics(
-            twiss0, start=start, parray0=parray0.copy(), stop=stop, felconfig=setpoint_sim_conf
+            twiss0,
+            start=start,
+            parray0=parray0.copy(),
+            stop=stop,
+            felconfig=setpoint_sim_conf,
         )
         yield dispersion, full_twiss, mlat
 
 
-def _run_dispersion_scan_from_matching_point(lat, parray_mp, dscan_sim_configs, start, stop):
+def _run_dispersion_scan_from_matching_point(
+    lat, parray_mp, dscan_sim_configs, start, stop
+):
     s_offset = lat.get_element_end_s(start)
 
     for setpoint_sim_conf in dscan_sim_configs:
@@ -169,7 +190,11 @@ def _run_dispersion_scan_from_matching_point(lat, parray_mp, dscan_sim_configs, 
         dispersion = setpoint_sim_conf.metadata["dispersion"]
         # parray_mp is automatically matched to twiss0 within track_gaussian_optics.
         full_twiss, mlat = lat.track_gaussian_optics(
-            twiss0, start=start, parray_mp=parray_mp.copy(), stop=stop, felconfig=setpoint_sim_conf
+            twiss0,
+            start=start,
+            parray_mp=parray_mp.copy(),
+            stop=stop,
+            felconfig=setpoint_sim_conf,
         )
         yield dispersion, full_twiss, mlat
 
@@ -198,7 +223,9 @@ class SimulatedEnergySpreadMeasurement:
         else:
             kwargs["opticscls"] = NoTwiss
 
-        navi = self.dlat.to_navigator(start=kwargs["start"], stop=kwargs["stop"], felconfig=kwargs["felconfig"])
+        navi = self.dlat.to_navigator(
+            start=kwargs["start"], stop=kwargs["stop"], felconfig=kwargs["felconfig"]
+        )
         parray1, twiss = self.dlat.track_optics(**kwargs)
         return parray1, twiss, navi.lat.sequence
 
@@ -299,7 +326,12 @@ class SimulatedI1DEnergySpreadMeasurement(SimulatedEnergySpreadMeasurement):
         conf.ah1.active = False
         conf.a1.phi = 0
         conf.a1.v = 125 / 8 * 1e-3
-        parrayq52 = self.i1dlat.track(parray0=self.parray0.copy(), start=start_name, stop=stop_name, felconfig=conf)
+        parrayq52 = self.i1dlat.track(
+            parray0=self.parray0.copy(),
+            start=start_name,
+            stop=stop_name,
+            felconfig=conf,
+        )
         self._match_parray(parrayq52, self.twiss_at_q52, matching_slice="Emax")
         self._parrayq52 = parrayq52
         return self._parrayq52
@@ -315,7 +347,9 @@ class SimulatedI1DEnergySpreadMeasurement(SimulatedEnergySpreadMeasurement):
         )
 
     def run_dispersion_scan(self):
-        fel_sim_configs = make_i1_dscan_simulation_configs(self.dscan_conf, do_physics=True)
+        fel_sim_configs = make_i1_dscan_simulation_configs(
+            self.dscan_conf, do_physics=True
+        )
         for config in fel_sim_configs:
             dispersion = config.metadata["dispersion"]
             parray_otrc64 = self.i1dlat.track(
@@ -392,7 +426,9 @@ class B2DSimulatedEnergySpreadMeasurement:
         )
 
     def run_dispersion_scan(self):
-        fel_sim_configs = make_i1_dscan_simulation_configs(self.dscan_conf, do_physics=True)
+        fel_sim_configs = make_i1_dscan_simulation_configs(
+            self.dscan_conf, do_physics=True
+        )
         for config in fel_sim_configs:
             dispersion = config.metadata["dispersion"]
             parray_otrc64 = self.i1dlat.track(
@@ -464,7 +500,9 @@ class B2DSimulatedEnergySpreadMeasurement:
         mad8 = self.BOLKO_OPTICS
         df8 = pand8.read(mad8)
 
-        felconfig = FELSimulationConfig(controller=EuXFELController(components=_mad8_optics_to_magnet_config(df8)))
+        felconfig = FELSimulationConfig(
+            controller=EuXFELController(components=_mad8_optics_to_magnet_config(df8))
+        )
         return felconfig
 
     def _full_dscan_configs(self, design_energy=False):
@@ -509,7 +547,9 @@ class B2DSimulatedEnergySpreadMeasurement:
             twiss0.alpha_x = df8.iloc[0].ALFX
             twiss0.alpha_y = df8.iloc[0].ALFY
 
-            twiss, mlat = self.b2dlat.calculate_twiss(twiss0, start=start_name1, stop=stop_name1, felconfig=felconfig)
+            twiss, mlat = self.b2dlat.calculate_twiss(
+                twiss0, start=start_name1, stop=stop_name1, felconfig=felconfig
+            )
 
             yield dy, twiss
 
@@ -535,14 +575,19 @@ class B2DSimulatedEnergySpreadMeasurement:
             twiss0.alpha_x = df8.iloc[0].ALFX
             twiss0.alpha_y = df8.iloc[0].ALFY
             twiss0.E = energy0
-            twiss, mlat = self.b2dlat.calculate_twiss(twiss0, start=start_name2, stop=stop_name1, felconfig=felconfig)
+            twiss, mlat = self.b2dlat.calculate_twiss(
+                twiss0, start=start_name2, stop=stop_name1, felconfig=felconfig
+            )
             yield dy, twiss
 
     def optics_q52_to_b2_matching_point(self, twiss0):
         start_name = "matching-point-at-start-of-q52"
         stop_name = "BC2 matching point"
         full_twiss, mlat = self.b2dlat.calculate_twiss(
-            twiss0, start=start_name, stop=stop_name, felconfig=next(self._full_dscan_configs())
+            twiss0,
+            start=start_name,
+            stop=stop_name,
+            felconfig=next(self._full_dscan_configs()),
         )
         return full_twiss, mlat
 
@@ -559,33 +604,51 @@ class B2DSimulatedEnergySpreadMeasurement:
         mad8 = self.BOLKO_OPTICS
         df8 = pand8.read(mad8)
 
-        felconfig = FELSimulationConfig(controller=EuXFELController(components=_mad8_optics_to_magnet_config(df8)))
+        felconfig = FELSimulationConfig(
+            controller=EuXFELController(components=_mad8_optics_to_magnet_config(df8))
+        )
         return self.b2dlat.calculate_twiss(felconfig=felconfig)
 
     def gun_to_dump_scan_optics(self, design_energy=False):
-        for i, felconfig in enumerate(self._full_dscan_configs(design_energy=design_energy)):
+        for i, felconfig in enumerate(
+            self._full_dscan_configs(design_energy=design_energy)
+        ):
             dy = self.dscan_conf.dispersions[i]
             twiss, mlat = self.b2dlat.calculate_twiss(felconfig=felconfig)
             yield dy, twiss
 
     def gun_to_dump_piecewise_scan_optics(self):
         i = 0
-        matching_points = ["matching-point-at-start-of-q52", "MATCH.174.L1", "MATCH.428.B2"]  # "MATCH.414.B2",
+        matching_points = [
+            "matching-point-at-start-of-q52",
+            "MATCH.174.L1",
+            "MATCH.428.B2",
+        ]  # "MATCH.414.B2",
         for felconfig, refconfig in zip(
-            self._full_dscan_configs(design_energy=False), self._full_dscan_configs(design_energy=True)
+            self._full_dscan_configs(design_energy=False),
+            self._full_dscan_configs(design_energy=True),
         ):
             dy = self.dscan_conf.dispersions[i]
             felconfig.matching_config = refconfig
             felconfig.matching_points = matching_points
-            twiss, mlat = self.b2dlat.calculate_twiss(felconfig=felconfig, design_config=refconfig)
+            twiss, mlat = self.b2dlat.calculate_twiss(
+                felconfig=felconfig, design_config=refconfig
+            )
             i += 1
             yield dy, twiss, matching_points
 
-    def gun_to_dump_piecewise_scan_optics_tracking(self, design_energy=True, do_physics=False):
-        matching_points = ["matching-point-at-start-of-q52", "MATCH.174.L1", "MATCH.428.B2"]
+    def gun_to_dump_piecewise_scan_optics_tracking(
+        self, design_energy=True, do_physics=False
+    ):
+        matching_points = [
+            "matching-point-at-start-of-q52",
+            "MATCH.174.L1",
+            "MATCH.428.B2",
+        ]
         i = 0
         for felconfig, refconfig in zip(
-            self._full_dscan_configs(design_energy=False), self._full_dscan_configs(design_energy=True)
+            self._full_dscan_configs(design_energy=False),
+            self._full_dscan_configs(design_energy=True),
         ):
             dy = self.dscan_conf.dispersions[i]
             felconfig.matching_points = matching_points
@@ -600,12 +663,19 @@ class B2DSimulatedEnergySpreadMeasurement:
             i += 1
             yield dy, twiss, matching_points
 
-    def gun_to_dump_central_slice_optics(self, design_energy=True, outdir=None, do_physics=False):
+    def gun_to_dump_central_slice_optics(
+        self, design_energy=True, outdir=None, do_physics=False
+    ):
         # do_
-        matching_points = ["matching-point-at-start-of-q52", "MATCH.174.L1", "MATCH.428.B2"]
+        matching_points = [
+            "matching-point-at-start-of-q52",
+            "MATCH.174.L1",
+            "MATCH.428.B2",
+        ]
         i = 0
         for felconfig, refconfig in zip(
-            self._full_dscan_configs(design_energy=False), self._full_dscan_configs(design_energy=True)
+            self._full_dscan_configs(design_energy=False),
+            self._full_dscan_configs(design_energy=True),
         ):
             dy = self.dscan_conf.dispersions[i]
             felconfig.matching_points = matching_points  #
@@ -691,16 +761,22 @@ def qi52_matching_point_to_i1d_measurement_optics(dscan_quad_settings):
     twiss0 = make_twiss_at_q52()
 
     fel_sim_configs = make_i1_dscan_simulation_configs(dscan_quad_settings)
-    yield from _calculate_dscan_optics(i1dlat, twiss0, fel_sim_configs, start=start, stop=stop)
+    yield from _calculate_dscan_optics(
+        i1dlat, twiss0, fel_sim_configs, start=start, stop=stop
+    )
 
 
-def qi52_matching_point_to_i1d_measurement_optics_tracking(parray0, dscan_quad_settings):
+def qi52_matching_point_to_i1d_measurement_optics_tracking(
+    parray0, dscan_quad_settings
+):
     i1dlat = lattice.make_to_i1d_lattice()
     start = "matching-point-at-start-of-q52"
     stop = None
 
     fel_sim_configs = make_i1_dscan_simulation_configs(dscan_quad_settings)
-    yield from _calculate_dscan_optics_tracking(i1dlat, parray0, fel_sim_configs, start=start, stop=stop)
+    yield from _calculate_dscan_optics_tracking(
+        i1dlat, parray0, fel_sim_configs, start=start, stop=stop
+    )
 
 
 def a1_dscan_piecewise_optics(dscan_conf, do_physics=False):
@@ -711,7 +787,9 @@ def a1_dscan_piecewise_optics(dscan_conf, do_physics=False):
     stop = None
     twiss_at_q52 = make_twiss_at_q52()
 
-    fel_sim_configs = make_i1_dscan_simulation_configs(dscan_conf, do_physics=do_physics)
+    fel_sim_configs = make_i1_dscan_simulation_configs(
+        dscan_conf, do_physics=do_physics
+    )
     for dispersion, twiss_from_q52, mlat_from_q52 in _calculate_dscan_optics(
         i1dlat, twiss_at_q52, fel_sim_configs, start=start, stop=stop
     ):
@@ -720,7 +798,10 @@ def a1_dscan_piecewise_optics(dscan_conf, do_physics=False):
 
 
 def a1_dscan_piecewise_tracked_optics(fparray0, dscan_conf, do_physics=False):
-    twiss_to_q52, parray_q52 = a1_to_q52_matching_point_measurement_optics_from_tracking(
+    (
+        twiss_to_q52,
+        parray_q52,
+    ) = a1_to_q52_matching_point_measurement_optics_from_tracking(
         fparray0, do_physics=do_physics
     )
 
@@ -729,7 +810,9 @@ def a1_dscan_piecewise_tracked_optics(fparray0, dscan_conf, do_physics=False):
     stop = None
     twiss_at_q52 = make_twiss_at_q52()
 
-    fel_sim_configs = make_i1_dscan_simulation_configs(dscan_conf, do_physics=do_physics)
+    fel_sim_configs = make_i1_dscan_simulation_configs(
+        dscan_conf, do_physics=do_physics
+    )
     for dispersion, twiss_from_q52, mlat_from_q52 in _calculate_dscan_tracked_optics(
         i1dlat, parray_q52.copy(), fel_sim_configs, start=start, stop=stop
     ):
@@ -747,11 +830,15 @@ def i1d_design_optics_from_tracking(fparray0):
     start_name = "G1-A1 interface: up to where we track using ASTRA and just right the first A1 cavity"
     conf = FELSimulationConfig(do_physics=False)
     # all_twiss = i1dlat.track_gaussian_optics(twiss0, start=start_name, felconfig=conf, correct_dispersion=True)
-    all_twiss = i1dlat.track_optics(parray0.copy(), opticscls=TwissCalculator, start=start_name, felconfig=conf)
+    all_twiss = i1dlat.track_optics(
+        parray0.copy(), opticscls=TwissCalculator, start=start_name, felconfig=conf
+    )
     return all_twiss
 
 
-def a1_to_q52_matching_point_measurement_optics_from_tracking(fparray0, do_physics=False):
+def a1_to_q52_matching_point_measurement_optics_from_tracking(
+    fparray0, do_physics=False
+):
     parray0 = load_particle_array(fparray0)
     cathode_to_a1_twiss, _ = cathode_to_first_a1_cavity_optics()
 

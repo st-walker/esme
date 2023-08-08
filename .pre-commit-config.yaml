@@ -17,3 +17,31 @@ repos:
     rev: 23.7.0
     hooks:
     -   id: black
+-   repo: https://github.com/PyCQA/isort
+    rev: 5.11.5
+    hooks:
+    -   id: isort
+        args: [ "--filter-files" ]
+# -   repo: https://github.com/PyCQA/flake8
+#     rev: 6.1.0
+#     hooks:
+#       - id: flake8
+#         additional_dependencies:
+#           - flake8-black>=0.1.1
+
+# -   repo: https://github.com/python-poetry/poetry
+#     rev: 1.4.2
+#     hooks:
+#       - id: poetry-check
+      # - id: poetry-lock
+      # - id: poetry-export
+      #   args: ["-f", "requirements.txt", "-o", "requirements.txt"]
+# -   repo: github.com/pre-commit/mirrors-mypy
+#     rev: v1.4.1
+
+# To do:
+# Complain if no type info
+# Complain if no docstring
+# Mypy
+# Coverage
+# poetry

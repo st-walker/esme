@@ -1,13 +1,12 @@
 """The image processing module"""
 
+import cv2
 import numpy as np
 import numpy.typing as npt
 import scipy.ndimage as ndi
-import cv2
 from uncertainties import ufloat
 
 import esme.maths as maths
-
 
 CENTRAL_SLICE_SEARCH_WINDOW_RELATIVE_WIDTH = 9
 
@@ -17,7 +16,9 @@ RawImageT = npt.NDArray
 NOISE_THRESHOLD: float = 0.08  # By eye...
 
 
-def get_cropping_bounds(im: RawImageT, just_central_slices=False) -> tuple[tuple[int, int], tuple[int, int]]:
+def get_cropping_bounds(
+    im: RawImageT, just_central_slices=False
+) -> tuple[tuple[int, int], tuple[int, int]]:
     non_zero_mask = im != 0
 
     # "Along axis 1" -> each input to np.any is a row (axis 1 "points to the
@@ -103,10 +104,14 @@ def remove_all_disconnected_pixels(im: RawImageT) -> RawImageT:
     return masked_image
 
 
-def get_slice_properties(image: RawImageT, fast: bool = True) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
+def get_slice_properties(
+    image: RawImageT, fast: bool = True
+) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
     #  Get bounds of image (i.e. to remove all fully-zero rows and columns)---this
     # speeds up the fitting procedure a lot by only fitting region of interest.
-    (irow0, irow1), (icol0, icol1) = get_cropping_bounds(image, just_central_slices=fast)
+    (irow0, irow1), (icol0, icol1) = get_cropping_bounds(
+        image, just_central_slices=fast
+    )
 
     # Do the actual cropping
     imcropped = image[irow0:irow1, icol0:icol1]
@@ -117,7 +122,9 @@ def get_slice_properties(image: RawImageT, fast: bool = True) -> tuple[npt.NDArr
     mean_slice_position_error = []
     sigma_slice = []
     sigma_slice_error = []
-    for beam_slice in imcropped:  # Iterates over the ROWS, so each one is a slice of the beam.
+    for (
+        beam_slice
+    ) in imcropped:  # Iterates over the ROWS, so each one is a slice of the beam.
         try:
             popt, perr = maths.get_gaussian_fit(row_index, beam_slice)
         except RuntimeError:  # Happens if curve_fit fails to converge.
@@ -144,8 +151,12 @@ def get_slice_properties(image: RawImageT, fast: bool = True) -> tuple[npt.NDArr
         | np.isnan(sigma_slice_error)
     )
 
-    mean_slice_position = np.array([ufloat(n, s) for n, s in zip(mean_slice_position, mean_slice_position_error)])
-    slice_width = np.array([ufloat(n, s) for n, s in zip(sigma_slice, sigma_slice_error)])
+    mean_slice_position = np.array(
+        [ufloat(n, s) for n, s in zip(mean_slice_position, mean_slice_position_error)]
+    )
+    slice_width = np.array(
+        [ufloat(n, s) for n, s in zip(sigma_slice, sigma_slice_error)]
+    )
 
     row_index = row_index[nan_mask]
     mean_slice_position = mean_slice_position[nan_mask]

@@ -1,12 +1,10 @@
 """Module for calibrating the TDS.  You tell it: I want these voltages
 and it goes away and does it for you..."""
+import logging
 from dataclasses import dataclass
 
 from .dispersion import QuadrupoleSetting
-
 from .mint import Machine
-
-import logging
 
 LOG = logging.getLogger(__name__)
 
@@ -48,7 +46,9 @@ class TDSController:
 
     def set_amplitude(self, amplitude: float) -> None:
         """Set the TDS amplitude"""
-        LOG.debug(f"Setting TDS amplitude: {self.addies.amplitude.setpoint} @ {amplitude}")
+        LOG.debug(
+            f"Setting TDS amplitude: {self.addies.amplitude.setpoint} @ {amplitude}"
+        )
         self._mi.set_value(self.addies.amplitude.setpoint, amplitude)
 
     def read_rb_amplitude(self) -> float:
@@ -81,7 +81,9 @@ class TDSController:
         sp = self.read_sp_amplitude()
         relative_difference = abs(rb - sp) / sp
         powered = relative_difference < self.RB_SP_TOLERANCE
-        LOG.debug(f"TDS RB ampl = {rb}; TDS SP = {sp}: {relative_difference=} -> {powered}")
+        LOG.debug(
+            f"TDS RB ampl = {rb}; TDS SP = {sp}: {relative_difference=} -> {powered}"
+        )
         return powered
 
     def read_timing(self):
@@ -110,7 +112,9 @@ class TDSController:
 
         on_data = [bunch_number, 111, self.read_on_beam_timing(), 1]
         if not on:
-            on_data[2] *= 10000  # Simply a big number and so very far from being on beam.
+            on_data[
+                2
+            ] *= 10000  # Simply a big number and so very far from being on beam.
         self._mi.set_value(self.addies.event, on_data)
 
 
@@ -139,12 +143,10 @@ class TDSCalibratingMachine(Machine):
         outdir = pathlib.Path("tds-calibration")
         outdir = outdir / f"amplitude={int(amplitude)}"
         outdir.mkdir(exist_ok=True, parents=True)
-        import pickle
 
         ycoms = []
         total = []
         all_images = []
-        import pickle
 
         print("Phase is currently", self.tds.read_rb_phase())
         for phase in phases:

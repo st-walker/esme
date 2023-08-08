@@ -1,7 +1,8 @@
-from unittest.mock import patch, MagicMock, call
-from esme.tds import TDSController, TDSAddresses, SetpointReadbackPair
+from unittest.mock import MagicMock, call, patch
 
 import pytest
+
+from esme.tds import SetpointReadbackPair, TDSAddresses, TDSController
 
 
 @pytest.fixture

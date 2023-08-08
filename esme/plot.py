@@ -7,19 +7,18 @@ import shutil
 
 import matplotlib.pyplot as plt
 import numpy as np
-import tabulate
-from scipy.constants import e, c
-from uncertainties import ufloat
-import pandas as pd
 import numpy.typing as npt
-
+import pandas as pd
+import tabulate
+from scipy.constants import c, e
+from uncertainties import ufloat
 
 import esme.analysis as ana
-import esme.calibration as cal
-import esme.lattice as lat
 import esme.beam as beam
-import esme.maths as maths
+import esme.calibration as cal
 import esme.image as image
+import esme.lattice as lat
+import esme.maths as maths
 from esme.exceptions import TDSCalibrationError
 
 LOG = logging.getLogger(__name__)
@@ -123,7 +122,9 @@ def dump_full_scan(esme: ana.SliceEnergySpreadMeasurement, root_outdir) -> None:
                 plt.show()
 
 
-def show_before_after_processing(measurement: ana.ScanMeasurement, index: int) -> plt.Figure:
+def show_before_after_processing(
+    measurement: ana.ScanMeasurement, index: int
+) -> plt.Figure:
     im = measurement.to_im(index, process=False)
     imp = measurement.to_im(index, process=True)
 
@@ -137,7 +138,9 @@ def show_before_after_processing(measurement: ana.ScanMeasurement, index: int) -
     ax3.imshow(imp, aspect="auto")
 
     y, slice_mus, _ = ana.get_slice_properties(imp)
-    idy_emax = y[np.argmin(slice_mus)]  # Min not max because image index counts from top.
+    idy_emax = y[
+        np.argmin(slice_mus)
+    ]  # Min not max because image index counts from top.
 
     ax1.axhline(idy_emax, alpha=0.25, color="white")
     ax3.axhline(idy_emax, alpha=0.25, color="white")
@@ -181,7 +184,11 @@ def show_before_after_processing(measurement: ana.ScanMeasurement, index: int) -
     ax2.set_ylabel("Pixel Brightness")
     ax4.set_ylabel("Pixel Brightness")
     m = measurement
-    fname = measurement.metadata["XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"].iloc[index].name
+    fname = (
+        measurement.metadata["XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"]
+        .iloc[index]
+        .name
+    )
     fig.suptitle(
         fr"TDS Ampl. = {m.tds_percentage}%, $D_\mathrm{{OTR}}={m.dx}\,\mathrm{{m}}$, image {index}, before/after image processing: {fname}"
     )
@@ -202,7 +209,9 @@ def plot_dispersion_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> Non
     widths, errors = scan.max_energy_slice_widths_and_errors(padding=10)
     dx2 = scan.dx**2
 
-    widths_um2, errors_um2 = ana.transform_pixel_widths(widths, errors, pixel_units="um", to_variances=True)
+    widths_um2, errors_um2 = ana.transform_pixel_widths(
+        widths, errors, pixel_units="um", to_variances=True
+    )
     a0, a1 = maths.linear_fit(dx2, widths_um2, errors_um2)
 
     d2sample = np.linspace(0, 1.1 * max(dx2))
@@ -210,7 +219,9 @@ def plot_dispersion_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> Non
 
     if ax is None:
         fig, ax = plt.subplots(figsize=(14, 8))
-    ax.errorbar(dx2, widths_um2, yerr=errors_um2, label="Data", marker=".", linestyle="")
+    ax.errorbar(
+        dx2, widths_um2, yerr=errors_um2, label="Data", marker=".", linestyle=""
+    )
     ax.plot(d2sample, sigma2fit, label="Fit")
     ax.legend(loc="lower right")
 
@@ -230,8 +241,12 @@ def _set_ylabel_for_scan(ax):
 def write_pixel_widths(esme, outdir):
     dwidths, derrors = esme.dscan.max_energy_slice_widths_and_errors(padding=10)
     twidths, terrors = esme.tscan.max_energy_slice_widths_and_errors(padding=10)
-    dwidths_um, derrors_um = ana.transform_pixel_widths(dwidths, derrors, pixel_units="um", to_variances=False)
-    twidths_um, terrors_um = ana.transform_pixel_widths(twidths, terrors, pixel_units="um", to_variances=False)
+    dwidths_um, derrors_um = ana.transform_pixel_widths(
+        dwidths, derrors, pixel_units="um", to_variances=False
+    )
+    twidths_um, terrors_um = ana.transform_pixel_widths(
+        twidths, terrors, pixel_units="um", to_variances=False
+    )
     dscan_data = pd.DataFrame(
         {
             "dx": esme.dscan.dx,
@@ -265,7 +280,9 @@ def plot_tds_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> None:
     voltages_mv = _get_tds_tscan_abs_voltage_in_mv_from_scans(esme)
 
     voltages2_mv2 = voltages_mv**2
-    widths_um2, errors_um2 = ana.transform_pixel_widths(widths, errors, pixel_units="um")
+    widths_um2, errors_um2 = ana.transform_pixel_widths(
+        widths, errors, pixel_units="um"
+    )
 
     a0, a1 = maths.linear_fit(voltages2_mv2, widths_um2, errors_um2)
 
@@ -275,7 +292,14 @@ def plot_tds_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> None:
 
     if ax is None:
         fig, ax = plt.subplots(figsize=(14, 8))
-    ax.errorbar(voltages2_mv2, widths_um2, yerr=errors_um2, label="Data", marker=".", linestyle="")
+    ax.errorbar(
+        voltages2_mv2,
+        widths_um2,
+        yerr=errors_um2,
+        label="Data",
+        marker=".",
+        linestyle="",
+    )
     ax.plot(v2_sample, sigma2fit, label="Fit")
     ax.legend(loc="lower right")
 
@@ -291,7 +315,9 @@ def plot_beta_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> None:
 
     beta = esme.bscan.beta
 
-    widths_um2, errors_um2 = ana.transform_pixel_widths(widths, errors, pixel_units="um")
+    widths_um2, errors_um2 = ana.transform_pixel_widths(
+        widths, errors, pixel_units="um"
+    )
 
     a0, a1 = maths.linear_fit(beta, widths_um2, errors_um2)
 
@@ -302,7 +328,9 @@ def plot_beta_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> None:
     if ax is None:
         fig, ax = plt.subplots(figsize=(14, 8))
 
-    ax.errorbar(beta, widths_um2, yerr=errors_um2, label="Data", marker=".", linestyle="")
+    ax.errorbar(
+        beta, widths_um2, yerr=errors_um2, label="Data", marker=".", linestyle=""
+    )
     ax.plot(beta_sample, sigma2fit, label="Fit")
     ax.legend(loc="lower right")
 
@@ -348,11 +376,22 @@ def add_info_box(ax, symbol, xunits, c, m) -> None:
         ]
     )
 
-    ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=14, verticalalignment='top', bbox=props)
+    ax.text(
+        0.05,
+        0.95,
+        textstr,
+        transform=ax.transAxes,
+        fontsize=14,
+        verticalalignment='top',
+        bbox=props,
+    )
 
 
 def plot_measured_central_widths(
-    esme: ana.SliceEnergySpreadMeasurement, root_outdir=None, show=True, write_widths=True
+    esme: ana.SliceEnergySpreadMeasurement,
+    root_outdir=None,
+    show=True,
+    write_widths=True,
 ) -> None:
     fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(nrows=2, ncols=2, figsize=(14, 8))
 
@@ -364,7 +403,9 @@ def plot_measured_central_widths(
 
     if dscan.measurements:
         dwidths, derrors = dscan.max_energy_slice_widths_and_errors(padding=10)
-        dwidths_um, derrors_um = ana.transform_pixel_widths(dwidths, derrors, pixel_units="um", to_variances=False)
+        dwidths_um, derrors_um = ana.transform_pixel_widths(
+            dwidths, derrors, pixel_units="um", to_variances=False
+        )
         plot_scan_central_widths(dscan, dx, ax1, ax3)
 
         if write_widths:
@@ -379,7 +420,9 @@ def plot_measured_central_widths(
 
     if tscan.measurements:
         twidths, terrors = tscan.max_energy_slice_widths_and_errors(padding=10)
-        twidths_um, terrors_um = ana.transform_pixel_widths(twidths, terrors, pixel_units="um", to_variances=False)
+        twidths_um, terrors_um = ana.transform_pixel_widths(
+            twidths, terrors, pixel_units="um", to_variances=False
+        )
         plot_scan_central_widths(tscan, voltages, ax2, ax4)
 
         if write_widths:
@@ -398,7 +441,9 @@ def plot_measured_central_widths(
     # ax4.set_xlabel("TDS Voltage / MV")
     ax4.set_xlabel("TDS Amplitude / %")
 
-    fig.suptitle(fr"Measured maximum-energy slice widths for pixel scale X = {ana.PIXEL_SCALE_X_UM} $\mathrm{{\mu m}}$")
+    fig.suptitle(
+        fr"Measured maximum-energy slice widths for pixel scale X = {ana.PIXEL_SCALE_X_UM} $\mathrm{{\mu m}}$"
+    )
 
     if show:
         plt.show()
@@ -409,7 +454,9 @@ def plot_measured_central_widths(
 
 def plot_scan_central_widths(scan: ana.DispersionScan, x, ax1, ax2):
     widths, errors = scan.max_energy_slice_widths_and_errors(padding=10)
-    widths_um, errors_um = ana.transform_pixel_widths(widths, errors, pixel_units="um", to_variances=False)
+    widths_um, errors_um = ana.transform_pixel_widths(
+        widths, errors, pixel_units="um", to_variances=False
+    )
 
     ax1.errorbar(x, widths, yerr=errors, marker="x")
     ax2.errorbar(x, widths_um, yerr=errors_um, marker="x")
@@ -440,7 +487,9 @@ def formatted_parameter_dfs(esme: ana.SliceEnergySpreadMeasurement, latex=False)
     fit_params.loc[["V_0", "E_0"]] *= 1e-6  # To MV / MeV
 
     beam_params = params.beam_parameters_to_df()
-    beam_params.loc[["emitx", "sigma_i", "sigma_b", "sigma_r"]] *= 1e6  # to mm.mrad & um
+    beam_params.loc[
+        ["emitx", "sigma_i", "sigma_b", "sigma_r"]
+    ] *= 1e6  # to mm.mrad & um
     beam_params.loc[["sigma_e", "sigma_e_from_tds"]] *= 1e-3  # to keV
 
     units = {
@@ -504,12 +553,20 @@ def formatted_parameter_dfs(esme: ana.SliceEnergySpreadMeasurement, latex=False)
 
     if latex:
         varnames = latex_variables
-        units = {var_name: latex_units[unit_str] for (var_name, unit_str) in units.items()}
+        units = {
+            var_name: latex_units[unit_str] for (var_name, unit_str) in units.items()
+        }
 
     beam_params = _format_df_for_printing(
-        beam_params, [["values", "errors"], ["alt_values", "alt_errors"]], units, new_varnames=varnames, latex=latex
+        beam_params,
+        [["values", "errors"], ["alt_values", "alt_errors"]],
+        units,
+        new_varnames=varnames,
+        latex=latex,
     )
-    fit_params = _format_df_for_printing(fit_params, [["values", "errors"]], units, new_varnames=varnames, latex=latex)
+    fit_params = _format_df_for_printing(
+        fit_params, [["values", "errors"]], units, new_varnames=varnames, latex=latex
+    )
 
     return fit_params, beam_params
 
@@ -521,13 +578,19 @@ def pretty_parameter_table(fit, beam, latex=False):
     if latex:
         tablefmt = "latex_raw"
 
-    fit_table = tabulate.tabulate(fit, tablefmt=tablefmt, headers=["Variable", "Value", "Units"])
-    beam_table = tabulate.tabulate(beam, tablefmt=tablefmt, headers=["Variable", "Value", "Alt. Value", "Units"])
+    fit_table = tabulate.tabulate(
+        fit, tablefmt=tablefmt, headers=["Variable", "Value", "Units"]
+    )
+    beam_table = tabulate.tabulate(
+        beam, tablefmt=tablefmt, headers=["Variable", "Value", "Alt. Value", "Units"]
+    )
 
     return f"{beam_table}\n\n\n{fit_table}"
 
 
-def _format_df_for_printing(df, value_error_name_pairs, units, new_varnames=None, latex=False):
+def _format_df_for_printing(
+    df, value_error_name_pairs, units, new_varnames=None, latex=False
+):
     if new_varnames is None:
         new_varnames = {}
     # Provide pairs of names of value column with associated error
@@ -598,8 +661,12 @@ def compare_results(esmes, latex=False):
 
     fit_headers = ["Variable"] + list(fit_comparision_df.keys())
     beam_headers = ["Variable"] + list(beam_comparision_df.keys())
-    fit_table = tabulate.tabulate(fit_comparision_df, tablefmt=tablefmt, headers=fit_headers)
-    beam_table = tabulate.tabulate(beam_comparision_df, tablefmt=tablefmt, headers=beam_headers)
+    fit_table = tabulate.tabulate(
+        fit_comparision_df, tablefmt=tablefmt, headers=fit_headers
+    )
+    beam_table = tabulate.tabulate(
+        beam_comparision_df, tablefmt=tablefmt, headers=beam_headers
+    )
 
     return f"{fit_table}\n\n\n{beam_table}"
 
@@ -615,14 +682,18 @@ def fexp(number):
     return len(digits) + exponent - 1
 
 
-def plot_quad_strengths(esme: ana.SliceEnergySpreadMeasurement, root_outdir=None) -> plt.Figure:
+def plot_quad_strengths(
+    esme: ana.SliceEnergySpreadMeasurement, root_outdir=None
+) -> plt.Figure:
     _plot_quad_strengths_dscan(esme, root_outdir=root_outdir)
     _plot_quad_strengths_tds(esme, root_outdir=root_outdir)
     if root_outdir is None:
         plt.show()
 
 
-def _plot_quad_strengths_dscan(esme: ana.SliceEnergySpreadMeasurement, root_outdir=None) -> plt.Figure:
+def _plot_quad_strengths_dscan(
+    esme: ana.SliceEnergySpreadMeasurement, root_outdir=None
+) -> plt.Figure:
     fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(14, 8))
     ((ax1, ax2), (ax3, ax4)) = axes
     axes = axes.flatten()
@@ -637,9 +708,16 @@ def _plot_quad_strengths_dscan(esme: ana.SliceEnergySpreadMeasurement, root_outd
     ):
         ax.set_title(rf"Dispersion scan optics for $D_x={dx_actual}\,\mathrm{{m}}$")
         ax.errorbar(
-            df_actual.s, df_actual.kick_mean, yerr=df_actual.kick_std, label="Readback", linestyle="", marker="x"
+            df_actual.s,
+            df_actual.kick_mean,
+            yerr=df_actual.kick_std,
+            label="Readback",
+            linestyle="",
+            marker="x",
         )
-        ax.plot(df_design.s, df_design.kick_mean, linestyle="", label="Intended", marker=".")
+        ax.plot(
+            df_design.s, df_design.kick_mean, linestyle="", label="Intended", marker="."
+        )
         # ax.bar(df_design.s, df_design.kick_mean, alpha=0.25)
 
     ylabel = r"$K_1 L\,/\,\mathrm{mrad\cdot{}m^{-1}}$"
@@ -703,7 +781,12 @@ def _plot_quad_strengths(dfs, scan_var, scan_var_name, ax) -> plt.Figure:
 
     for dx, df in zip(scan_var, scan_quads):
         ax.errorbar(
-            df["s"], df["kick_mean"], yerr=df["kick_std"], label=f"{scan_var_name}={dx}", linestyle="", marker="x"
+            df["s"],
+            df["kick_mean"],
+            yerr=df["kick_std"],
+            label=f"{scan_var_name}={dx}",
+            linestyle="",
+            marker="x",
         )
     ax.legend()
 
@@ -805,13 +888,25 @@ def plot_calibrated_tds(sesme):
     sergey_percentages = sesme.tscan.calibrator.percentages
 
     fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(14, 8))
-    ax1.plot(tds_percentage, derived_voltage, marker="x", label="TDS Scan Derived Voltages")
+    ax1.plot(
+        tds_percentage, derived_voltage, marker="x", label="TDS Scan Derived Voltages"
+    )
 
     sergey_tds_slopes = sesme.tscan.calibrator.tds_slopes
     popt, _ = sesme.tscan.calibrator.fit()
 
-    ax2.plot(sergey_percentages, sergey_tds_slopes * 1e-6, marker="x", label="TDS Calibration data")
-    ax2.plot(sergey_percentages, maths.line(sergey_percentages, *popt) * 1e-6, marker="x", label="Fit")
+    ax2.plot(
+        sergey_percentages,
+        sergey_tds_slopes * 1e-6,
+        marker="x",
+        label="TDS Calibration data",
+    )
+    ax2.plot(
+        sergey_percentages,
+        maths.line(sergey_percentages, *popt) * 1e-6,
+        marker="x",
+        label="Fit",
+    )
 
     ax2.set_ylabel(TDS_CALIBRATION_LABEL)
 
@@ -819,7 +914,9 @@ def plot_calibrated_tds(sesme):
     ax1.set_ylabel(r"$|V_\mathrm{TDS}|$ / MV")
     ax2.legend()
 
-    fig.suptitle("TDS Calibration data we took beforehand (below) and applied to scan (above)")
+    fig.suptitle(
+        "TDS Calibration data we took beforehand (below) and applied to scan (above)"
+    )
 
     dikt = {"tds_scan_percentages": tds_percentage, "tds_scan_voltage": derived_voltage}
 
@@ -879,7 +976,9 @@ def plot_tds_voltage(sesme):
 
 
 def plot_streaking_parameters(sesme):
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(ncols=2, nrows=2, figsize=(14, 8), sharey=False)
+    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(
+        ncols=2, nrows=2, figsize=(14, 8), sharey=False
+    )
 
     dscan_streak = abs(_streaks_from_scan(sesme.dscan))
 
@@ -916,10 +1015,18 @@ def plot_streaking_parameters(sesme):
     ax1.set_ylabel(r"$|S|$")
 
     tscan_streak = abs(
-        _streaks_from_scan(sesme.tscan, scan_voltages=_get_tds_tscan_abs_voltage_in_mv_from_scans(sesme) * 1e6)
+        _streaks_from_scan(
+            sesme.tscan,
+            scan_voltages=_get_tds_tscan_abs_voltage_in_mv_from_scans(sesme) * 1e6,
+        )
     )
 
-    ax2.plot(_get_tds_tscan_abs_voltage_in_mv_from_scans(sesme), tscan_streak, marker="x", linestyle="")
+    ax2.plot(
+        _get_tds_tscan_abs_voltage_in_mv_from_scans(sesme),
+        tscan_streak,
+        marker="x",
+        linestyle="",
+    )
 
     raw_bunch_lengths, raw_bl_errors = beam.apparent_bunch_lengths(sesme.tscan)
     true_bunch_lengths, true_bl_errors = beam.true_bunch_lengths(
@@ -988,7 +1095,9 @@ def plot_tds_set_point_vs_readback(dscan_files, tscan_files, title=""):
     ax1.errorbar(fname_amplitudes, rb_amplitudes, yerr=rb_stdevs, label="Readback")
     ax1.errorbar(sample, sample, label="$y=x$", linestyle="--")
 
-    ax1.set_xlim(0.9 * min(fname_amplitudes), max(fname_amplitudes) + 0.1 * min(fname_amplitudes))
+    ax1.set_xlim(
+        0.9 * min(fname_amplitudes), max(fname_amplitudes) + 0.1 * min(fname_amplitudes)
+    )
     ax1.legend()
     ax1.set_xlabel("TDS setpoint from file name")
     ax1.set_ylabel("TDS Amplitude from DOOCs")
@@ -1011,9 +1120,14 @@ def _get_tds_tscan_abs_voltage_in_mv_from_scans(sesme):
         # getting the correct snapshot (and therefore R34) from the
         # *dispersion* scan, and then use that to calculate the TDS voltage.
         correct_snapshot = (
-            np.array(sesme.dscan.measurements)[sesme.dscan.dx == sesme.dscan.calibrator.dispersion_setpoint]
+            np.array(sesme.dscan.measurements)[
+                sesme.dscan.dx == sesme.dscan.calibrator.dispersion_setpoint
+            ]
             .item()
             .metadata.iloc[0]
         )
-        derived_voltage = abs(sesme.tscan.calibrator.get_voltage(tds_percentage, correct_snapshot)) * 1e-6
+        derived_voltage = (
+            abs(sesme.tscan.calibrator.get_voltage(tds_percentage, correct_snapshot))
+            * 1e-6
+        )
     return derived_voltage

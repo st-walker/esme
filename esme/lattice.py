@@ -6,14 +6,12 @@ from typing import Iterable
 
 import numpy as np
 import pandas as pd
-
-from oxfel.fel_track import Linac
-from ocelot.cpbd.elements import Quadrupole, SBend, RBend
-
-from esme.dispersion import QuadrupoleSetting
+from ocelot.cpbd.elements import Quadrupole, RBend, SBend
 from oxfel.accelerator import sections
 from oxfel.accelerator.sections import i1, i1d
-from oxfel.longlist import XFELComponentList
+from oxfel.fel_track import Linac
+
+from esme.dispersion import QuadrupoleSetting
 
 LOG = logging.getLogger(__name__)
 
@@ -63,7 +61,11 @@ def design_quad_strengths() -> pd.DataFrame:
         strengths = upstream_strengths + strengths
         stds = np.zeros_like(strengths)
         quad_names = upstream_quad_names + scan_quad_names
-        df = pd.DataFrame(np.vstack((strengths, stds)).T, index=quad_names, columns=["kick_mean", "kick_std"])
+        df = pd.DataFrame(
+            np.vstack((strengths, stds)).T,
+            index=quad_names,
+            columns=["kick_mean", "kick_std"],
+        )
 
         df = _append_element_positions_and_names(df, quad_names)
         result.append(df)
@@ -113,7 +115,9 @@ def cell_to_bc2_dump():
     return make_i1_cell() + make_l1_cell() + make_l2_cell() + make_b2d_cell()
 
 
-def injector_cell_from_snapshot(snapshot: pd.Series, check=True, change_correctors=False):
+def injector_cell_from_snapshot(
+    snapshot: pd.Series, check=True, change_correctors=False
+):
     quad_mask = snapshot.index.str.contains(r"^Q(?:I?|L[NS])\.")
     solenoid_mask = snapshot.index.str.contains(r"^SOL[AB]\.")
     corrector_mask = snapshot.index.str.contains(r"^C[IK]?[XY]\.")
@@ -126,7 +130,9 @@ def injector_cell_from_snapshot(snapshot: pd.Series, check=True, change_correcto
         timestamp_mask = snapshot.index == "timestamp"
         sextupole_mask = snapshot.index.str.contains(r"^SC\.")
         other_kickers_mask = snapshot.index.str.contains(r"CB[LB]\.")
-        unused_mask = xfel_mask | bpm_mask | timestamp_mask | sextupole_mask | other_kickers_mask
+        unused_mask = (
+            xfel_mask | bpm_mask | timestamp_mask | sextupole_mask | other_kickers_mask
+        )
         my_added_metadata = snapshot.index.str.startswith("MY_")
         the_rest_mask = ~(used_mask | unused_mask | my_added_metadata)
         snapshot[the_rest_mask]
@@ -135,7 +141,9 @@ def injector_cell_from_snapshot(snapshot: pd.Series, check=True, change_correcto
 
         expected = {"RF.23.I1", "BK.24.I1"}
         if set(the_rest.index) != expected:
-            LOG.warning(f"Unexpected item in DF.  Expected: {expected}, got: {the_rest}")
+            LOG.warning(
+                f"Unexpected item in DF.  Expected: {expected}, got: {the_rest}"
+            )
 
     cell = cell_to_injector_dump()
 
@@ -144,13 +152,17 @@ def injector_cell_from_snapshot(snapshot: pd.Series, check=True, change_correcto
             # from IPython import embed; embed()
             k1l = snapshot[element.id]
             k1 = k1l * 1e-3 / element.l  # Convert to rad/m from mrad/m then to k1.
-            LOG.debug(f"setting quad strength from snapshot: {element.id}, {element.k1=} to {k1=}")
+            LOG.debug(
+                f"setting quad strength from snapshot: {element.id}, {element.k1=} to {k1=}"
+            )
             element.k1 = k1
 
         if isinstance(element, (SBend, RBend)):
             angle_mrad = snapshot[element.id]
             angle = -angle_mrad * 1e-3
-            LOG.debug(f"setting dipole angle from snapshot: {element.id}, {element.angle=} to {angle=}")
+            LOG.debug(
+                f"setting dipole angle from snapshot: {element.id}, {element.angle=} to {angle=}"
+            )
             element.angle = angle
 
     # for quad_name, int_strength in snapshot[quad_mask].items():
@@ -185,7 +197,9 @@ def injector_cell_from_snapshot(snapshot: pd.Series, check=True, change_correcto
 
 
 def apply_quad_setting_to_lattice(lattice: Linac, qset: QuadrupoleSetting):
-    LOG.debug("Applying quadrupole strengths from QuadrupoleSetting instance to OCELOT SectionLattice.")
+    LOG.debug(
+        "Applying quadrupole strengths from QuadrupoleSetting instance to OCELOT SectionLattice."
+    )
     for section in lattice.sections:
         sequence = section.lattice.sequence
         for element in sequence:

@@ -1,9 +1,9 @@
-from typing import Any, Sequence, Union, Optional
 import warnings
+from typing import Any, Optional, Sequence, Union
 
 import numpy as np
 import pandas as pd
-from scipy.constants import e, c
+from scipy.constants import c, e
 from scipy.optimize import curve_fit
 
 with warnings.catch_warnings():

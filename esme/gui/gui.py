@@ -6,43 +6,50 @@ try:
 except ValueError:
     pass
 
-from esme.measurement import SetpointSnapshots
-from collections import defaultdict
-import pandas as pd
-import matplotlib
-from esme.maths import linear_fit, ValueWithErrorT
-from dataclasses import dataclass
-from collections import defaultdict
-import pandas as pd
-from pathlib import Path
-import os
-import sys
-from matplotlib import cm
-import numpy as np
-import socket
-import re
-from esme.inout import i1_dscan_config_from_scan_config_file, i1_tds_amplitudes_from_scan_config_file
-import time
-import toml
-from esme.plot import TDS_CALIBRATION_LABEL, TDS_AMPLITUDE_LABEL, plot_calibrator_with_fits
-from esme.calibration import TDSCalibrator, TDSVoltageCalibration
-import pickle
-
-from PyQt5.QtWidgets import QFrame, QMainWindow, QApplication, QMessageBox, QFileDialog
-from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import QThread, pyqtSignal, QObject, QTimer
-
-from esme.measurement import MeasurementPayload, ScanType, I1TDSCalibratingMachine
-import esme.image as iana
-from esme.analysis import transform_pixel_widths, FittedBeamParameters, OpticalConfig
-
-import pyqtgraph as pg
-
-
-from esme.inout import make_measurement_runner, make_data_taker
-from .ui import esme_window, tds_window, tds_calibration
-
 import logging
+import os
+import pickle
+import re
+import socket
+import sys
+import time
+from collections import defaultdict
+from dataclasses import dataclass
+from pathlib import Path
+
+import matplotlib
+import numpy as np
+import pandas as pd
+import pyqtgraph as pg
+import toml
+from matplotlib import cm
+from PyQt5 import QtCore, QtGui
+from PyQt5.QtCore import QObject, QThread, QTimer, pyqtSignal
+from PyQt5.QtWidgets import QApplication, QFileDialog, QFrame, QMainWindow, QMessageBox
+
+import esme.image as iana
+from esme.analysis import FittedBeamParameters, OpticalConfig, transform_pixel_widths
+from esme.calibration import TDSCalibrator, TDSVoltageCalibration
+from esme.inout import (
+    i1_dscan_config_from_scan_config_file,
+    i1_tds_amplitudes_from_scan_config_file,
+    make_data_taker,
+    make_measurement_runner,
+)
+from esme.maths import ValueWithErrorT, linear_fit
+from esme.measurement import (
+    I1TDSCalibratingMachine,
+    MeasurementPayload,
+    ScanType,
+    SetpointSnapshots,
+)
+from esme.plot import (
+    TDS_AMPLITUDE_LABEL,
+    TDS_CALIBRATION_LABEL,
+    plot_calibrator_with_fits,
+)
+
+from .ui import esme_window, tds_calibration, tds_window
 
 LOG = logging.getLogger(__name__)
 
@@ -79,7 +86,9 @@ def start_gui(scantoml, debug_mode, replay):
     QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
     # create the application
     app = QApplication(sys.argv)
-    path = os.path.join(os.path.dirname(sys.modules[__name__].__file__), 'gui/hirex.png')
+    path = os.path.join(
+        os.path.dirname(sys.modules[__name__].__file__), 'gui/hirex.png'
+    )
     app.setWindowIcon(QtGui.QIcon(path))
 
     main_window = EnergySpreadMeasurementMainWindow(scantoml, replay_file=replay)
@@ -94,7 +103,9 @@ def start_tds_gui():
     QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
     # create the application
     app = QApplication(sys.argv)
-    path = os.path.join(os.path.dirname(sys.modules[__name__].__file__), 'gui/hirex.png')
+    path = os.path.join(
+        os.path.dirname(sys.modules[__name__].__file__), 'gui/hirex.png'
+    )
     app.setWindowIcon(QtGui.QIcon(path))
 
     main_window = TDSMainWindow()
@@ -143,7 +154,12 @@ class FitWorker(QThread):
         ddata = DispersionScanData(dispersions, dwidths)
 
         sem = SliceEnergySpreadMeasurement(
-            dscan, tscan, self.oconfig, self.reference_dispersion, self.reference_voltage, self.beam_energy
+            dscan,
+            tscan,
+            self.oconfig,
+            self.reference_dispersion,
+            self.reference_voltage,
+            self.beam_energy,
         )
 
         return sem.all_fit_parameters()
@@ -198,7 +214,9 @@ class ImageAnalysisThread(QThread):
     def append_background_image(self, payload: MeasurementPayload):
         assert payload.is_bg, "Not a background image payload!"
         if payload.scan_type is ScanType.DISPERSION:
-            self.dscan_background[payload.dispersion_setpoint].append(payload.image.image)
+            self.dscan_background[payload.dispersion_setpoint].append(
+                payload.image.image
+            )
         elif payload.scan_type is ScanType.TDS:
             self.tscan_background[payload.tds_percentage].append(payload.image.image)
         else:
@@ -265,7 +283,9 @@ class TDSScanData:
     def fit(self):
         widths, errors = self.get_mean_slice_widths_and_errors()
         voltages2 = self.voltages**2
-        widths2_m2, errors2_m2 = transform_pixel_widths(widths, errors, pixel_units="m", to_variances=True)
+        widths2_m2, errors2_m2 = transform_pixel_widths(
+            widths, errors, pixel_units="m", to_variances=True
+        )
         a_v, b_v = linear_fit(voltages2, widths2_m2, errors2_m2)
         return a_v, b_v
 
@@ -285,7 +305,9 @@ class DispersionScanData:
         widths, errors = self.get_mean_slice_widths_and_errors()
         dx2 = self.dispersions**2
         # widths, errors = transform_units_for_pixel_widths(widths, errors)
-        widths2_m2, errors2_m2 = transform_pixel_widths(widths, errors, pixel_units="m", to_variances=True)
+        widths2_m2, errors2_m2 = transform_pixel_widths(
+            widths, errors, pixel_units="m", to_variances=True
+        )
         a_v, b_v = linear_fit(dx2, widths2_m2, errors2_m2)
         return a_v, b_v
 
@@ -311,14 +333,18 @@ class SliceEnergySpreadMeasurement:
         widths, errors = self.dscan.max_energy_slice_widths_and_errors(padding=10)
         dx2 = self.dscan.dx**2
         # widths, errors = transform_units_for_pixel_widths(widths, errors)
-        widths2_m2, errors2_m2 = transform_pixel_widths(widths, errors, pixel_units="m", to_variances=True)
+        widths2_m2, errors2_m2 = transform_pixel_widths(
+            widths, errors, pixel_units="m", to_variances=True
+        )
         a_v, b_v = linear_fit(dx2, widths2_m2, errors2_m2)
         return a_v, b_v
 
     def tds_scan_fit(self) -> tuple[ValueWithErrorT, ValueWithErrorT]:
         widths, errors = self.tscan.max_energy_slice_widths_and_errors(padding=10)
         voltages2 = self.tscan.voltage**2
-        widths2_m2, errors2_m2 = transform_pixel_widths(widths, errors, pixel_units="m", to_variances=True)
+        widths2_m2, errors2_m2 = transform_pixel_widths(
+            widths, errors, pixel_units="m", to_variances=True
+        )
         a_v, b_v = linear_fit(voltages2, widths2_m2, errors2_m2)
         return a_v, b_v
 
@@ -436,7 +462,9 @@ class EnergySpreadMeasurementMainWindow(QMainWindow):
         self.ana_thread = ImageAnalysisThread(
             percentages, dispersions, nbg, nbeam, tds_calibration=self.tds_calibration
         )
-        self.ana_thread.progress_signal.connect(self.ui.measurement_progress_bar.setValue)
+        self.ana_thread.progress_signal.connect(
+            self.ui.measurement_progress_bar.setValue
+        )
         self.data_taking_thread.payload_signal.connect(self.ana_thread.process_payload)
         self.ana_thread.processed_image_signal.connect(self.update_image_from_payload)
 
@@ -450,8 +478,12 @@ class EnergySpreadMeasurementMainWindow(QMainWindow):
 
             beam_energy = conf["i1"]["tds"]["optics"]["beam_energy"]
 
-            reference_voltage = self.calibration.get_voltage(conf["i1"]["tds"]["reference_amplitude"])
-            reference_dispersion = self.calibration.get_voltage(conf["i1"]["tds"]["scan_dispersion"])
+            reference_voltage = self.calibration.get_voltage(
+                conf["i1"]["tds"]["reference_amplitude"]
+            )
+            reference_dispersion = self.calibration.get_voltage(
+                conf["i1"]["tds"]["scan_dispersion"]
+            )
 
             self.fit_worker_thread = FitWorker(
                 oconf,
@@ -460,7 +492,9 @@ class EnergySpreadMeasurementMainWindow(QMainWindow):
                 beam_energy=beam_energy,
             )
 
-            self.ana_thread.processed_image_result_signal.connect(self.fit_worker_thread.receive_processed_image)
+            self.ana_thread.processed_image_result_signal.connect(
+                self.fit_worker_thread.receive_processed_image
+            )
 
         self.ana_thread.start()
         self.data_taking_thread.start()
@@ -511,7 +545,11 @@ class EnergySpreadMeasurementMainWindow(QMainWindow):
             return
         LOG.info(f"TDS Amplitudes: {calibration.amplitudes}")
         vstring = np.array2string(
-            calibration.voltages, separator=", ", max_line_width=400, floatmode="fixed", precision=0
+            calibration.voltages,
+            separator=", ",
+            max_line_width=400,
+            floatmode="fixed",
+            precision=0,
         )
         LOG.info(f"Derived Voltages: {vstring}")
         self._tds_calibration = calibration
@@ -543,7 +581,9 @@ class DataTakingThread(QThread):
     def run(self):
         said_save_already = False
 
-        for i, payload in enumerate(self.runner.measure(bg_shots=self.nbg, beam_shots=self.nbeam)):
+        for i, payload in enumerate(
+            self.runner.measure(bg_shots=self.nbg, beam_shots=self.nbeam)
+        ):
             self.payload_signal.emit(payload)
 
             if payload.scan_type is ScanType.DISPERSION:
@@ -612,7 +652,9 @@ class DataTakingThread(QThread):
     def append_snapshot(self, payload):
         if payload.scan_type is ScanType.DISPERSION:
             df = self.dscan_dfs[payload.dispersion_setpoint]
-            self.dscan_dfs[payload.dispersion_setpoint] = pd.concat([df, payload.snapshot])
+            self.dscan_dfs[payload.dispersion_setpoint] = pd.concat(
+                [df, payload.snapshot]
+            )
 
         elif payload.scan_type is ScanType.TDS:
             df = self.tscan_dfs[payload.tds_percentage]
@@ -659,7 +701,9 @@ class TDSCalibrationPayload:
 
     def gradient1(self):
         phase, com = self.section1()
-        com, _ = transform_pixel_widths(com, np.zeros_like(com), pixel_units="m", dimension="y", to_variances=False)
+        com, _ = transform_pixel_widths(
+            com, np.zeros_like(com), pixel_units="m", dimension="y", to_variances=False
+        )
         grad = np.gradient(com, phase)
         seconds_per_degree = TDS_PERIOD / 360
         grad2 = grad / seconds_per_degree
@@ -667,7 +711,9 @@ class TDSCalibrationPayload:
 
     def gradient2(self):
         phase, com = self.section2()
-        com, _ = transform_pixel_widths(com, np.zeros_like(com), pixel_units="m", dimension="y", to_variances=False)
+        com, _ = transform_pixel_widths(
+            com, np.zeros_like(com), pixel_units="m", dimension="y", to_variances=False
+        )
         grad = np.gradient(com, phase)  # in m / degree
         seconds_per_degree = TDS_PERIOD / 360
         grad2 = grad / seconds_per_degree
@@ -696,7 +742,11 @@ class TDSTimeCalibrationWorker(QThread):
             self.calibration_payload_signal.emit(payload)
 
 
-from .calibrate_tds import smooth, get_longest_two_monotonic_intervals, get_truncated_longest_sections
+from .calibrate_tds import (
+    get_longest_two_monotonic_intervals,
+    get_truncated_longest_sections,
+    smooth,
+)
 
 
 class TDSMainWindow(QMainWindow):
@@ -728,7 +778,9 @@ class TDSMainWindow(QMainWindow):
         self.ui.minus_180_phase.clicked.connect(
             lambda: self.machine.tds.set_phase(-180 + self.machine.tds.read_sp_phase())
         )
-        self.ui.start_voltage_calibration_button.clicked.connect(self.do_time_calibration)
+        self.ui.start_voltage_calibration_button.clicked.connect(
+            self.do_time_calibration
+        )
         self.add_plot()
         # embed()
 
@@ -751,8 +803,12 @@ class TDSMainWindow(QMainWindow):
         return [float(x) for x in line]
 
     def do_time_calibration(self):
-        self.time_calibration_thread = TDSTimeCalibrationWorker(self.machine, self.get_amplitudes())
-        self.time_calibration_thread.calibration_payload_signal.connect(self.update_time_calibration_plot)
+        self.time_calibration_thread = TDSTimeCalibrationWorker(
+            self.machine, self.get_amplitudes()
+        )
+        self.time_calibration_thread.calibration_payload_signal.connect(
+            self.update_time_calibration_plot
+        )
         self.time_calibration_thread.start()
 
     def update_time_calibration_plot(self, payload):
@@ -791,7 +847,9 @@ class TDSMainWindow(QMainWindow):
 
         colormap = cm.get_cmap('viridis')  # "nipy_spectral")  # cm.get_cmap("CMRmap")
         colormap._init()
-        lut = (colormap._lut * 255).view(np.ndarray)  # Convert matplotlib colormap from 0-1 to 0 -255 for Qt
+        lut = (colormap._lut * 255).view(
+            np.ndarray
+        )  # Convert matplotlib colormap from 0-1 to 0 -255 for Qt
 
         # Custom ROI for selecting an image region
         # self.roi = pg.ROI([20, 20], [6, 50])
@@ -881,10 +939,14 @@ class TDSCalibrationWindow(QMainWindow):
         self.active_snapshot = None
         self.ui.update_voltage_button.clicked.connect(self.display_voltage)
 
-        self.ui.apply_calibration_button.clicked.connect(self.apply_calibration_to_parent_widget)
+        self.ui.apply_calibration_button.clicked.connect(
+            self.apply_calibration_to_parent_widget
+        )
         self.ui.save_tds_calibration_button.clicked.connect(self.save_calibration_file)
         self.ui.load_tds_calibration_button.clicked.connect(self.open_calibration_file)
-        self.ui.apply_calibration_button.clicked.connect(self.send_calibrator_to_parent_widget)
+        self.ui.apply_calibration_button.clicked.connect(
+            self.send_calibrator_to_parent_widget
+        )
 
         if self.parent is None:
             self.ui.apply_calibration_button.disabled()
@@ -922,7 +984,9 @@ class TDSCalibrationWindow(QMainWindow):
         tds_slopes = conf["tds_slopes"]
         units = conf["tds_slope_units"]
 
-        calib = TDSCalibrator(ampls, tds_slopes, dispersion_setpoint=1.2, tds_slope_units=units)
+        calib = TDSCalibrator(
+            ampls, tds_slopes, dispersion_setpoint=1.2, tds_slope_units=units
+        )
 
         return calib
 
@@ -942,7 +1006,9 @@ class TDSCalibrationWindow(QMainWindow):
     def offer_to_update_machine_snapshot(self):
         msg = QMessageBox(self)
         msg.setWindowTitle("New Machine Snapshot")
-        msg.setText("Would you like to take a new machine snapshot for calculating R<sub>34</sub> (R<sub>12</sub>)?")
+        msg.setText(
+            "Would you like to take a new machine snapshot for calculating R<sub>34</sub> (R<sub>12</sub>)?"
+        )
         msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
 
         button = msg.exec()
@@ -968,7 +1034,11 @@ class TDSCalibrationWindow(QMainWindow):
         self.ui.widget_plot_2.figure.tight_layout()
         self.ui.widget_plot_2.draw()
         vstring = np.array2string(
-            abs(voltage * 1e-6), separator=", ", max_line_width=200, floatmode="fixed", precision=4
+            abs(voltage * 1e-6),
+            separator=", ",
+            max_line_width=200,
+            floatmode="fixed",
+            precision=4,
         )
         conf_dict = self.text_box_to_conf_dict()
         conf_dict["tds_voltage"] = vstring

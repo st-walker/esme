@@ -1,9 +1,9 @@
-import matplotlib.pyplot as plt
-
 import sys
+from pathlib import Path
+
+import matplotlib.pyplot as plt
 import numpy as np
 import scipy.ndimage as ndi
-from pathlib import Path
 
 
 def com_label(ax):
@@ -105,8 +105,12 @@ def get_truncated_longest_sections(phase, com, com_window_size):
     com1_mid = 2330 / 2
     com2_mid = 2330 / 2
 
-    mask1 = (com1 > (com1_mid - com_window_size)) & (com1 < (com1_mid + com_window_size))
-    mask2 = (com2 > (com2_mid - com_window_size)) & (com2 < (com2_mid + com_window_size))
+    mask1 = (com1 > (com1_mid - com_window_size)) & (
+        com1 < (com1_mid + com_window_size)
+    )
+    mask2 = (com2 > (com2_mid - com_window_size)) & (
+        com2 < (com2_mid + com_window_size)
+    )
 
     return ((phi1[mask1], com1[mask1]), (phi2[mask2], com2[mask2]))
 
@@ -118,7 +122,9 @@ def plot_truncated_longest_sections(phase, com, ax=None, com_window_size=None):
     if ax is None:
         fig, ax = plt.subplots()
 
-    ((phi1, com1), (phi2, com2)) = get_truncated_longest_sections(phase, com, com_window_size=com_window_size)
+    ((phi1, com1), (phi2, com2)) = get_truncated_longest_sections(
+        phase, com, com_window_size=com_window_size
+    )
 
     ax.plot(phi1, com1)
     ax.plot(phi2, com2)
@@ -180,7 +186,9 @@ def main(dname):
     ax.plot(phases, ycoms, label="Raw Data", linestyle="--", alpha=0.2)
     ax.set_ylabel(r"$y_\mathrm{com}$")
     ax.set_xlabel(r"$\phi$ / deg")
-    plot_truncated_longest_sections(phases_smoothed, ycoms_smoothed, ax=ax, com_window_size=com_window_size)
+    plot_truncated_longest_sections(
+        phases_smoothed, ycoms_smoothed, ax=ax, com_window_size=com_window_size
+    )
     ax.legend()
 
     frequency = 3e9

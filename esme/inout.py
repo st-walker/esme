@@ -1,37 +1,36 @@
 #!/usr/bin/env python3
 
-import pickle
 import logging
-import re
 import os
+import pickle
 from pathlib import Path
-import contextlib
-from typing import Union, Optional
+from typing import Optional, Union
 
-import toml
-import pandas as pd
 import numpy as np
+import pandas as pd
+import toml
 from oxfel.longlist import make_default_longlist
 
 from esme.analysis import (
+    BetaScan,
     DispersionScan,
     OpticalConfig,
     SliceEnergySpreadMeasurement,
     TDSScan,
-    BetaScan,
-    ScanMeasurement,
 )
 from esme.calibration import TDSCalibrator, TrivialTDSCalibrator
-from esme.channels import TDS_I1_AMPLITUDE_READBACK_ADDRESS, I1D_SCREEN_ADDRESS
-from esme.measurement import (
-    MeasurementRunner,
-    DataTaker,
-    SetpointMachineSnapshots,
-    ScanType,
-    # I1EnergySpreadMeasuringMachine,
-    # I1EnergySpreadMeasuringMachineReplayer
+from esme.channels import I1D_SCREEN_ADDRESS
+from esme.dispersion import (
+    DispersionMeasurer,
+    DispersionScanConfiguration,
+    QuadrupoleSetting,
 )
-from esme.dispersion import DispersionScanConfiguration, QuadrupoleSetting, DispersionMeasurer
+from esme.measurement import (  # I1EnergySpreadMeasuringMachine,; I1EnergySpreadMeasuringMachineReplayer
+    DataTaker,
+    MeasurementRunner,
+    ScanType,
+    SetpointMachineSnapshots,
+)
 from esme.tds import TDSScanConfiguration
 
 # from esme.lattice import make_dummy_lookup_sequence
@@ -139,11 +138,19 @@ def load_config(fname: os.PathLike) -> SliceEnergySpreadMeasurement:
         try:
             dispersion_setpoint = calib["dispersion_setpoint"]
         except KeyError:
-            raise MalformedESMEConfigFile("Dispersion at which TDS was calibrated is" " missing from esme run file")
+            raise MalformedESMEConfigFile(
+                "Dispersion at which TDS was calibrated is"
+                " missing from esme run file"
+            )
 
         tds_slopes = calib["tds_slopes"]
         tds_slopes_units = calib["tds_slope_units"]
-        calibrator = TDSCalibrator(percentages, tds_slopes, dispersion_setpoint, tds_slope_units=tds_slopes_units)
+        calibrator = TDSCalibrator(
+            percentages,
+            tds_slopes,
+            dispersion_setpoint,
+            tds_slope_units=tds_slopes_units,
+        )
 
     dsnapshots, tsnapshots, bsnapshots = load_pickled_snapshots(config["data"])
 
@@ -175,7 +182,9 @@ def setpoint_snapshots_from_pcls(pcl_files):
     return result
 
 
-def make_measurement_runner(fconfig, machine_area, outdir="./", measure_dispersion=False, replay_file=None):
+def make_measurement_runner(
+    fconfig, machine_area, outdir="./", measure_dispersion=False, replay_file=None
+):
     LOG.debug(f"Making MeasurementRunner instance from config file: {fconfig}")
 
     # if measure_dispersion is not None:
@@ -212,7 +221,9 @@ def make_measurement_runner(fconfig, machine_area, outdir="./", measure_dispersi
     )
 
 
-def make_data_taker(fconfig, machine_area, outdir="./", measure_dispersion=False, replay_file=None):
+def make_data_taker(
+    fconfig, machine_area, outdir="./", measure_dispersion=False, replay_file=None
+):
     LOG.debug(f"Making MeasurementRunner instance from config file: {fconfig}")
 
     # if measure_is not None:
@@ -237,7 +248,9 @@ def make_data_taker(fconfig, machine_area, outdir="./", measure_dispersion=False
     else:
         raise ValueError("Unknown machine_area string:", machine_area)
 
-    return DataTaker(dscan_config=dscan_config, tds_config=tscan_config, machine=machine)
+    return DataTaker(
+        dscan_config=dscan_config, tds_config=tscan_config, machine=machine
+    )
 
 
 def get_config_sample_sizes(fconfig):
@@ -250,7 +263,9 @@ def get_config_sample_sizes(fconfig):
 def make_dispersion_measurer(fconfig):
     config = toml.load(fconfig)
     confd = config["dispersion"]
-    a1_voltages = np.linspace(confd["a1_voltage_min"], confd["a1_voltage_max"], num=confd["a1_npoints"])
+    a1_voltages = np.linspace(
+        confd["a1_voltage_min"], confd["a1_voltage_max"], num=confd["a1_npoints"]
+    )
     return DispersionMeasurer(a1_voltages, I1EnergySpreadMeasuringMachine("./"))
 
 
@@ -360,7 +375,11 @@ def raw_df_pcl_to_setpoint_snapshots(fpcl, scan_type):
     dispersion_setpoint = dispersion_setpoints[isetpoint]
 
     return SetpointMachineSnapshots(
-        df, scan_type, dispersion_setpoint=dispersion_setpoint, measured_dispersion=(dx, 0.0), beta=beta
+        df,
+        scan_type,
+        dispersion_setpoint=dispersion_setpoint,
+        measured_dispersion=(dx, 0.0),
+        beta=beta,
     )
 
 
@@ -380,7 +399,11 @@ def toml_dfs_to_setpoint_snapshots(ftoml):
 
 def load_pickled_snapshots(
     data_dict: dict,
-) -> tuple[list[SetpointMachineSnapshots], list[SetpointMachineSnapshots], Optional[list[SetpointMachineSnapshots]]]:
+) -> tuple[
+    list[SetpointMachineSnapshots],
+    list[SetpointMachineSnapshots],
+    Optional[list[SetpointMachineSnapshots]],
+]:
     """data_dict is of form coming
     from toml file..."""
     tscan = load_data_config_section(data_dict, "tscan")
@@ -393,7 +416,9 @@ def load_pickled_snapshots(
     return dscan, tscan, bscan
 
 
-def load_data_config_section(data_dict: dict, scan_key: str) -> list[SetpointMachineSnapshots]:
+def load_data_config_section(
+    data_dict: dict, scan_key: str
+) -> list[SetpointMachineSnapshots]:
     section = data_dict[scan_key]
     if section.get("old_sergey_format", False):
         return load_old_raw_df_snapshot_format(data_dict, scan_key)
@@ -424,7 +449,9 @@ def load_new_object_format(data_dict, scan_key):
     return result
 
 
-def load_old_raw_df_snapshot_format(data_dict: dict, scan_key: str) -> list[SetpointMachineSnapshots]:
+def load_old_raw_df_snapshot_format(
+    data_dict: dict, scan_key: str
+) -> list[SetpointMachineSnapshots]:
     bad_images = data_dict.get("bad_images", [])
 
     basepath = Path(data_dict["basepath"])
@@ -484,7 +511,9 @@ def b2_dscan_config_from_scan_config_file(config_path: os.PathLike):
     return _dscan_config_from_scan_config(conf, "b2")
 
 
-def _dscan_config_from_scan_config(scan_config: dict, section) -> DispersionScanConfiguration:
+def _dscan_config_from_scan_config(
+    scan_config: dict, section
+) -> DispersionScanConfiguration:
     dscan = scan_config[section]["dscan"]
 
     ref = dscan["reference_optics"]
@@ -518,7 +547,9 @@ def _dscan_config_from_scan_config(scan_config: dict, section) -> DispersionScan
     return DispersionScanConfiguration(reference_setting, scan_settings, tds_voltage)
 
 
-def _tscan_config_from_scan_config_file(key, config_path: os.PathLike) -> TDSScanConfiguration:
+def _tscan_config_from_scan_config_file(
+    key, config_path: os.PathLike
+) -> TDSScanConfiguration:
     conf = toml.load(config_path)
     tscan = conf[key]["tscan"]
     voltages = tscan["voltages"]
@@ -528,7 +559,9 @@ def _tscan_config_from_scan_config_file(key, config_path: os.PathLike) -> TDSSca
 
     assert tscan["dispersion_setpoint"] == dconf.reference_setting.dispersion
 
-    return TDSScanConfiguration(voltages=tscan["voltages"], quad_setting=dconf.reference_setting)
+    return TDSScanConfiguration(
+        voltages=tscan["voltages"], quad_setting=dconf.reference_setting
+    )
 
     # return TDSScanConfiguration(
     #     reference_amplitude=tds["reference_amplitude"],

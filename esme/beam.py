@@ -1,9 +1,14 @@
 import numpy as np
 from scipy.constants import e
 
-from esme.analysis import ScanMeasurement, ParameterScan, SliceEnergySpreadMeasurement, transform_pixel_widths
-from esme.image import crop_image, get_slice_properties
-from esme.calibration import r34s_from_scan, TDS_WAVENUMBER
+from esme.analysis import (
+    ParameterScan,
+    ScanMeasurement,
+    SliceEnergySpreadMeasurement,
+    transform_pixel_widths,
+)
+from esme.calibration import TDS_WAVENUMBER, r34s_from_scan
+from esme.image import crop_image
 from esme.maths import get_gaussian_fit
 
 
@@ -26,7 +31,11 @@ def bunch_lengths_from_scan_measurement(measurement: ScanMeasurement, pixel_unit
 
     # Transform units from px to whatever was chosen
     mean_length, mean_error = transform_pixel_widths(
-        [mean_length], [mean_error], to_variances=False, pixel_units=pixel_units, dimension="y"
+        [mean_length],
+        [mean_error],
+        to_variances=False,
+        pixel_units=pixel_units,
+        dimension="y",
     )
     return mean_length, mean_error
 

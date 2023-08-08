@@ -6,9 +6,9 @@ Script to collect tuning data
 """
 
 import os
-
-from esme.mint import Snapshot, BasicAlarm
 from pathlib import Path
+
+from esme.mint import BasicAlarm, Snapshot
 
 DUMP_SCREEN_ADDRESS: str = "XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"
 I1D_SCREEN_ADDRESS = DUMP_SCREEN_ADDRESS
@@ -143,10 +143,18 @@ def make_common_snapshot_template():
     template.add_channel("XFEL.MAGNETS/CHICANE/BC2/ANGLE")
 
     # Laser Heater
-    template.add_channel("XFEL.UTIL/LASERHEATER.MOTOR/P1X.LHOS0/FPOS")  # Laser position x compare with BPM.48 and .52
-    template.add_channel("XFEL.UTIL/LASERHEATER.MOTOR/P1Z.LHOS0/FPOS")  # Laser position y
-    template.add_channel("XFEL.UTIL/LASERHEATER.MOTOR/LAMBDA2.LHOS0/POS")  # laser intensity, min at 0 max at 7000
-    template.add_channel("XFEL.UTIL/LASERHEATER.MOTOR/DL.LHLVL5/FPOS")  # delay line, on beam at -241
+    template.add_channel(
+        "XFEL.UTIL/LASERHEATER.MOTOR/P1X.LHOS0/FPOS"
+    )  # Laser position x compare with BPM.48 and .52
+    template.add_channel(
+        "XFEL.UTIL/LASERHEATER.MOTOR/P1Z.LHOS0/FPOS"
+    )  # Laser position y
+    template.add_channel(
+        "XFEL.UTIL/LASERHEATER.MOTOR/LAMBDA2.LHOS0/POS"
+    )  # laser intensity, min at 0 max at 7000
+    template.add_channel(
+        "XFEL.UTIL/LASERHEATER.MOTOR/DL.LHLVL5/FPOS"
+    )  # delay line, on beam at -241
     template.add_channel("XFEL.UTIL/LASERINT/GUN/SH3_OPEN")  # UG5 shutter open
     template.add_channel("XFEL.UTIL/LASERINT/GUN/SH4_OPEN")  # UG7 shutter open
     # template.add_channel("XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSB2/SP.PHASE")
@@ -163,7 +171,9 @@ def _add_injector_to_template(template, outdir=None):
     template.add_image(DUMP_SCREEN_ADDRESS, folder=image_dir)
 
     # Alarms
-    template.alarms.append(BasicAlarm("XFEL.DIAG/TOROID/TORA.60.I1/CHARGE.ALL", vmin=0.005))
+    template.alarms.append(
+        BasicAlarm("XFEL.DIAG/TOROID/TORA.60.I1/CHARGE.ALL", vmin=0.005)
+    )
 
     # template.alarms.append(BinaryOpAlarm(),
 
@@ -212,10 +222,18 @@ def _add_injector_to_template(template, outdir=None):
     template.add_channel("XFEL.MAGNETS/CHICANE/BC2/ANGLE")
 
     # Laser Heater
-    template.add_channel("XFEL.UTIL/LASERHEATER.MOTOR/P1X.LHOS0/FPOS")  # Laser position x compare with BPM.48 and .52
-    template.add_channel("XFEL.UTIL/LASERHEATER.MOTOR/P1Z.LHOS0/FPOS")  # Laser position y
-    template.add_channel("XFEL.UTIL/LASERHEATER.MOTOR/LAMBDA2.LHOS0/POS")  # laser intensity, min at 0 max at 7000
-    template.add_channel("XFEL.UTIL/LASERHEATER.MOTOR/DL.LHLVL5/FPOS")  # delay line, on beam at -241
+    template.add_channel(
+        "XFEL.UTIL/LASERHEATER.MOTOR/P1X.LHOS0/FPOS"
+    )  # Laser position x compare with BPM.48 and .52
+    template.add_channel(
+        "XFEL.UTIL/LASERHEATER.MOTOR/P1Z.LHOS0/FPOS"
+    )  # Laser position y
+    template.add_channel(
+        "XFEL.UTIL/LASERHEATER.MOTOR/LAMBDA2.LHOS0/POS"
+    )  # laser intensity, min at 0 max at 7000
+    template.add_channel(
+        "XFEL.UTIL/LASERHEATER.MOTOR/DL.LHLVL5/FPOS"
+    )  # delay line, on beam at -241
     template.add_channel("XFEL.UTIL/LASERINT/GUN/SH3_OPEN")  # UG5 shutter open
     template.add_channel("XFEL.UTIL/LASERINT/GUN/SH4_OPEN")  # UG7 shutter open
     # template.add_channel("XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSB2/SP.PHASE")
