@@ -23,6 +23,7 @@ class SetpointReadbackPair:
     setpoint: str
     readback: str
 
+
 @dataclass
 class TDSAddresses:
     amplitude: SetpointReadbackPair
@@ -34,8 +35,10 @@ class TDSAddresses:
 class MockTDS:
     pass
 
+
 class TDSController:
     RB_SP_TOLERANCE = 0.02
+
     def __init__(self, addresses: TDSAddresses, mi=None):
         if mi is None:
             mi = XFELMachineInterface()
@@ -102,7 +105,7 @@ class TDSController:
         self._switch_tds_on_off_beam(on=True)
 
     def _switch_tds_on_off_beam(self, *, on: bool) -> None:
-        bunch_number = 1 # Hardcoded, always nuch
+        bunch_number = 1  # Hardcoded, always nuch
         on_data = [bunch_number, int(on), 0, 0]  # 3rd: "kicker", 4th: "WS-subtrain"
 
         on_data = [bunch_number, 111, self.read_on_beam_timing(), 1]
@@ -134,13 +137,15 @@ class TDSCalibratingMachine(Machine):
         phases = np.linspace(-200, 200, self.nphase_points)
         amplitude = self.tds.read_sp_amplitude()
         outdir = pathlib.Path("tds-calibration")
-        outdir = (outdir / f"amplitude={int(amplitude)}")
+        outdir = outdir / f"amplitude={int(amplitude)}"
         outdir.mkdir(exist_ok=True, parents=True)
         import pickle
+
         ycoms = []
         total = []
         all_images = []
         import pickle
+
         print("Phase is currently", self.tds.read_rb_phase())
         for phase in phases:
             print("setting to phase: ", phase)
@@ -148,11 +153,13 @@ class TDSCalibratingMachine(Machine):
             screen = self.get_screen_image()
             time.sleep(1.1)
             from esme.image import process_image
+
             all_images = process_image(screen, 0)
             from scipy.ndimage import center_of_mass
+
             ycoms.append(center_of_mass(screen)[1])
             total.append(screen.sum())
-            outpath =  (outdir / str(phase)).with_suffix(".npz")
+            outpath = (outdir / str(phase)).with_suffix(".npz")
             with outpath.open("wb") as f:
                 np.savez(outpath, screen)
 

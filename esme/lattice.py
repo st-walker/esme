@@ -108,8 +108,10 @@ def mean_quad_strengths(df: pd.DataFrame, include_s=True, dropna=True):
 def cell_to_injector_dump():
     return i1.make_cell() + i1d.make_cell()
 
+
 def cell_to_bc2_dump():
     return make_i1_cell() + make_l1_cell() + make_l2_cell() + make_b2d_cell()
+
 
 def injector_cell_from_snapshot(snapshot: pd.Series, check=True, change_correctors=False):
     quad_mask = snapshot.index.str.contains(r"^Q(?:I?|L[NS])\.")
@@ -205,7 +207,19 @@ def make_to_i1d_lattice(twiss0, outdir="./"):
 
 
 def make_to_b2d_lattice(twiss0, outdir="./"):
-    all_sections = [sections.G1, sections.A1, sections.AH1, sections.LH, sections.DL, sections.BC0, sections.L1, sections.BC1, sections.L2, sections.BC2, sections.B2D]
+    all_sections = [
+        sections.G1,
+        sections.A1,
+        sections.AH1,
+        sections.LH,
+        sections.DL,
+        sections.BC0,
+        sections.L1,
+        sections.BC1,
+        sections.L2,
+        sections.BC2,
+        sections.B2D,
+    ]
     return Linac(all_sections, twiss0, outdir=outdir)
 
 
@@ -213,4 +227,10 @@ def make_dummy_lookup_sequence():
     """Just make a cell of every single element for looking up
     strengths and lengths etc.  Obviously not for tracking, because
     it's not in the right order."""
-    return sections.i1.make_cell() + sections.i1d.make_cell() + sections.l1.make_cell() + sections.l2.make_cell() + sections.b2d.make_cell()
+    return (
+        sections.i1.make_cell()
+        + sections.i1d.make_cell()
+        + sections.l1.make_cell()
+        + sections.l2.make_cell()
+        + sections.b2d.make_cell()
+    )

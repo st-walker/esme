@@ -36,14 +36,13 @@ from esme.plot import (
     pretty_parameter_table,
     compare_results,
     plot_tds_set_point_vs_readback,
-    formatted_parameter_dfs
+    formatted_parameter_dfs,
 )
 
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 LOG = logging.getLogger(__name__)
-
 
 
 class MutuallyExclusiveOption(Option):
@@ -53,28 +52,17 @@ class MutuallyExclusiveOption(Option):
         help = kwargs.get('help', '')
         if self.mutually_exclusive:
             ex_str = ', '.join(self.mutually_exclusive)
-            kwargs['help'] = help + (
-                ' NOTE: This argument is mutually exclusive with '
-                f' arguments: [{ex_str}].'
-            )
+            kwargs['help'] = help + (' NOTE: This argument is mutually exclusive with ' f' arguments: [{ex_str}].')
         super(MutuallyExclusiveOption, self).__init__(*args, **kwargs)
 
     def handle_parse_result(self, ctx, opts, args):
         if self.mutually_exclusive.intersection(opts) and self.name in opts:
             raise UsageError(
                 "Illegal usage: `{}` is mutually exclusive with "
-                "arguments `{}`.".format(
-                    self.name,
-                    ', '.join(self.mutually_exclusive)
-                )
+                "arguments `{}`.".format(self.name, ', '.join(self.mutually_exclusive))
             )
 
-        return super(MutuallyExclusiveOption, self).handle_parse_result(
-            ctx,
-            opts,
-            args
-        )
-
+        return super(MutuallyExclusiveOption, self).handle_parse_result(ctx, opts, args)
 
 
 @group()
@@ -84,9 +72,7 @@ def main(debug, single_threaded):
     """Main entrypoint."""
     echo("esme-xfel")
     echo("=" * len("esme-xfel"))
-    echo(
-        "Automatic calibration, data taking and analysis for" " uncorrelated energy spread measurements at the EuXFEL"
-    )
+    echo("Automatic calibration, data taking and analysis for" " uncorrelated energy spread measurements at the EuXFEL")
 
     if single_threaded:
         esme.analysis.MULTIPROCESSING = False
@@ -126,8 +112,7 @@ def calculate(scan_tomls, simple, latex):
             print(f"({espread_kev}±{error_kev})keV")
     else:
         if len(slice_energy_spread_measurements) == 1:
-            fit_df, beam_df = formatted_parameter_dfs(slice_energy_spread_measurements[0],
-                                                      latex=latex)
+            fit_df, beam_df = formatted_parameter_dfs(slice_energy_spread_measurements[0], latex=latex)
             if latex is False:
                 ftoml = Path(scan_tomls[0])
                 name = ftoml.stem
@@ -226,7 +211,6 @@ def snapshot(model, i1, b2):
 #         print("Reference Setting:")
 
 
-
 @main.command(no_args_is_help=True)
 @option("--b2", is_flag=True)
 @option("--i1", is_flag=True)
@@ -266,29 +250,38 @@ def measure(dispersion, bscan, dscan, tscan, config, b2, i1, outdir):
 
     basepath = "./"
     import toml
+
     if not (dscan or tscan or bscan):
         tscan_files, dscan_files = measurer.run(bg_shots=bg_shots, beam_shots=beam_shots)
         # from IPython import embed; embed()
-        template = {'title': 'Jan 2023 Energy Spread Measurement (first of three)',
-                    'optics': {'tds': {'bety': 4.3,
-                                       'alfy': 1.9,
-                                       'wavenumber': 62.88,
-                                       'length': 0.7,
-                                       'calibration': {'percentages': [11, 15, 19, 23],
-                                                       'tds_slopes': [256, 343, 455, 593],
-                                                       'tds_slope_units': 'um/ps',
-                                                       'screen_name': 'OTRC.64.I1D',
-                                                       'dispersion_setpoint': 1.2}},
-                               'screen': {'betx': 0.6}},
-                    'data': {'basepath': str(basepath),
-                             'screen_channel': 'XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ',
-                             'bad_images': [],
-                             'dscan': {'fnames': [str(x) for x in dscan_files]},
-                             'tscan': {'fnames': [str(x) for x in tscan_files]}}}
+        template = {
+            'title': 'Jan 2023 Energy Spread Measurement (first of three)',
+            'optics': {
+                'tds': {
+                    'bety': 4.3,
+                    'alfy': 1.9,
+                    'wavenumber': 62.88,
+                    'length': 0.7,
+                    'calibration': {
+                        'percentages': [11, 15, 19, 23],
+                        'tds_slopes': [256, 343, 455, 593],
+                        'tds_slope_units': 'um/ps',
+                        'screen_name': 'OTRC.64.I1D',
+                        'dispersion_setpoint': 1.2,
+                    },
+                },
+                'screen': {'betx': 0.6},
+            },
+            'data': {
+                'basepath': str(basepath),
+                'screen_channel': 'XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ',
+                'bad_images': [],
+                'dscan': {'fnames': [str(x) for x in dscan_files]},
+                'tscan': {'fnames': [str(x) for x in tscan_files]},
+            },
+        }
         with open(str(outdir) + ".toml", "w") as f:
             toml.dump(template, f)
-
-
 
 
 @main.command(no_args_is_help=True)
@@ -318,18 +311,25 @@ def rm(pcl_files, imname, dry_run):
 def gui(ftoml, replay):
     """Start the measurement GUI"""
     from esme.gui import start_gui
+
     start_gui(ftoml, debug_mode=True, replay=replay)
+
 
 @main.command()
 def tds():
     from esme.gui import start_tds_gui
+
     start_tds_gui()
 
 
 @main.command()
-def error(i1, b2, espread, simulations, ):
+def error(
+    i1,
+    b2,
+    espread,
+    simulations,
+):
     pass
-
 
 
 @main.command(no_args_is_help=True)
@@ -350,8 +350,6 @@ def sim(fscan, i1, b2, dscan, tscan, escan, parray, outdir, fast, optics, physic
     from . import simplot
     from . import sim
 
-
-
     if i1:
         i1_dscan_conf = i1_dscan_config_from_scan_config_file(fscan)
         i1_tscan_voltages = i1_tds_voltages_from_scan_config_file(fscan)
@@ -368,9 +366,7 @@ def sim(fscan, i1, b2, dscan, tscan, escan, parray, outdir, fast, optics, physic
         # simplot.dscan_piecewise_tracking_optics(parray, i1_dscan_conf, outdir,
         #                                         do_physics=physics)
     elif i1 and parray:
-        i1sim = sim.I1SimulatedEnergySpreadMeasurement(parray,
-                                                         i1_dscan_conf,
-                                                         i1_tscan_voltages)
+        i1sim = sim.I1SimulatedEnergySpreadMeasurement(parray, i1_dscan_conf, i1_tscan_voltages)
         i1sim.write_scans(outdir)
         # sim.run_i1_dispersion_scan(i1_dscan_conf, parray, outdir)
 
@@ -379,9 +375,9 @@ def sim(fscan, i1, b2, dscan, tscan, escan, parray, outdir, fast, optics, physic
         b2_tscan_voltages = inout.b2_tds_voltages_from_scan_config_file(fscan)
 
         if optics:
-        # b2sim = sim.B2SimulatedEnergySpreadMeasurement(parray,
-        #                                                  b2_dscan_conf,
-        #                                                  b2_tscan_voltages)
+            # b2sim = sim.B2SimulatedEnergySpreadMeasurement(parray,
+            #                                                  b2_dscan_conf,
+            #                                                  b2_tscan_voltages)
 
             simplot.plot_b2_design_optics(b2_dscan_conf, b2_tscan_voltages)
 
@@ -392,19 +388,14 @@ def sim(fscan, i1, b2, dscan, tscan, escan, parray, outdir, fast, optics, physic
             simplot.gun_to_b2_dispersion_scan_design_energy(b2_dscan_conf, b2_tscan_voltages)
             simplot.gun_to_b2_piecewise_dispersion_scan_optics(b2_dscan_conf, b2_tscan_voltages)
             simplot.gun_to_b2_tracking_piecewise_optics(b2_dscan_conf, b2_tscan_voltages, parray)
-            simplot.gun_to_b2_tracking_central_slice_optics(b2_dscan_conf,
-                                                             b2_tscan_voltages,
-                                                             parray,
-                                                             outdir=outdir,
-                                                             do_physics=physics)
+            simplot.gun_to_b2_tracking_central_slice_optics(
+                b2_dscan_conf, b2_tscan_voltages, parray, outdir=outdir, do_physics=physics
+            )
 
         else:
-            simplot.gun_to_b2_tracking_central_slice_optics(b2_dscan_conf,
-                                                             b2_tscan_voltages,
-                                                             parray,
-                                                             outdir=outdir,
-                                                             do_physics=True)
-
+            simplot.gun_to_b2_tracking_central_slice_optics(
+                b2_dscan_conf, b2_tscan_voltages, parray, outdir=outdir, do_physics=True
+            )
 
 
 # def make_anaconf(outfiles):

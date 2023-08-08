@@ -35,6 +35,7 @@ LOG = logging.getLogger(__name__)
 class EuXFELMachineError(RuntimeError):
     pass
 
+
 class Device(object):
     def __init__(self, eid=None):
         self.eid = eid
@@ -172,9 +173,7 @@ class DictionaryXFELMachineInterface(XFELMachineInterfaceABC):
         self._machine_state[channel] = val
 
     def get_charge(self) -> float:
-        return 250e-12 #?
-
-
+        return 250e-12  # ?
 
 
 class XFELMachineInterface(XFELMachineInterfaceABC):
@@ -350,7 +349,6 @@ class Machine:
         """
 
         for alarm in self.snapshot.alarms:
-
             # Read from the Machine the value
             val = self.mi.get_value(alarm.channel)
 
@@ -402,7 +400,6 @@ class Machine:
             data = np.append(data, vals)
             all_names = np.append(all_names, names)
         return data, all_names
-
 
     def get_channels(self, data, all_names):
         data = list(data)
@@ -504,7 +501,6 @@ class Machine:
             return None
         data, all_names = self.get_channels(data, all_names)
         if len(data) == 0:
-
             LOG.warning("Missing other channels, snapshot failed")
             return None
         data, all_names, image = self.get_single_image(data, all_names)
@@ -522,9 +518,14 @@ class Machine:
         return df, image
 
 
-
 class MPS(Device):
-    def __init__(self, eid: Optional[str] = None, server: str = "XFEL", subtrain: str = "SA1", mi: Optional[Type[XFELMachineInterfaceABC]] = None):
+    def __init__(
+        self,
+        eid: Optional[str] = None,
+        server: str = "XFEL",
+        subtrain: str = "SA1",
+        mi: Optional[Type[XFELMachineInterfaceABC]] = None,
+    ):
         super(MPS, self).__init__(eid=eid)
         if mi is None:
             mi = XFELMachineInterface()
@@ -545,9 +546,8 @@ class MPS(Device):
         return self.mi.get_value(self.server + ".UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED")
 
 
-
-
 # Channel returns [a,b,c,d], we need C!  third element.  so BasicAlarm
+
 
 class BasicAlarm:
     def __init__(self, channel: str, vmin: float = -np.inf, vmax: float = +np.inf, explanation: str = ""):
@@ -560,8 +560,7 @@ class BasicAlarm:
         return (value >= self.vmin) and (value < self.vmax)
 
     def offline_message(self) -> str:
-        return (f"{self.channel} out of bounds, bounds = {(self.vmin, self.vmax)}."
-                f" explanation:  {self.explanation}")
+        return f"{self.channel} out of bounds, bounds = {(self.vmin, self.vmax)}." f" explanation:  {self.explanation}"
 
 
 class LambaAlarm:

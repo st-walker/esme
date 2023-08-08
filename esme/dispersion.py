@@ -3,8 +3,6 @@
 from dataclasses import dataclass
 
 
-
-
 @dataclass
 class QuadrupoleSetting:
     """Class for storing a single strength configuration of the
@@ -26,6 +24,7 @@ class QuadrupoleSetting:
     def k1l_from_name(self, name):
         index = self.names.index(name)
         return self.k1ls[index]
+
 
 @dataclass
 class DispersionScanConfiguration:
@@ -51,11 +50,10 @@ class DispersionMeasurer(BaseDispersionMeasurer):
         self.a1_voltages = a1_voltages
         self.machine = machine
         # if machine is None:
-            # self.machine = EnergySpreadMeasuringMachine(SNAPSHOT_TEMPL)
+        # self.machine = EnergySpreadMeasuringMachine(SNAPSHOT_TEMPL)
 
     def measure(self):
         raise NotImplementedError()
-
 
 
 class BasicDispersionMeasurer(BaseDispersionMeasurer):
@@ -63,8 +61,6 @@ class BasicDispersionMeasurer(BaseDispersionMeasurer):
         dispersion = _repeat_float_input_until_valid("Enter dispersion in m: ")
         dispersion_unc = _repeat_float_input_until_valid("Enter dispersion unc in m: ")
         return dispersion, dispersion_unc
-
-
 
 
 def _repeat_float_input_until_valid(prompt):

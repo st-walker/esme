@@ -20,6 +20,7 @@ from datetime import datetime
 import matplotlib
 import pandas as pd
 import numpy as np
+
 try:
     import pydoocs
 except ImportError:
@@ -31,6 +32,7 @@ LOG = logging.getLogger(__name__)
 
 class EuXFELMachineError(RuntimeError):
     pass
+
 
 class Device(object):
     def __init__(self, eid=None):
@@ -125,7 +127,6 @@ class Device(object):
         return phys_val
 
 
-
 class XFELMachineInterface:
     """
     Machine Interface for European XFEL
@@ -141,7 +142,6 @@ class XFELMachineInterface:
         self.hide_dispersion_tab = False
         self.twiss_periodic = False
         self.analyse_correction = True
-
 
     def get_value(self, channel: str) -> Any:
         """
@@ -260,7 +260,6 @@ class Machine:
         """
 
         for alarm in self.snapshot.alarms:
-
             # Read from the Machine the value
             val = self.mi.get_value(alarm.channel)
 
@@ -270,7 +269,6 @@ class Machine:
                 return False
 
         return True
-
 
     # def is_machine_online(self) -> bool:
     #     """
@@ -332,7 +330,6 @@ class Machine:
             all_names = np.append(all_names, names)
         return data, all_names
 
-
     def get_channels(self, data, all_names):
         data = list(data)
         for ch in self.snapshot.channels:
@@ -380,7 +377,6 @@ class Machine:
         return data, all_names
 
     def wait_machine_online(self):
-
         if self.is_machine_online():
             return
 
@@ -428,12 +424,10 @@ class Machine:
             return None
         data, all_names = self.get_channels(data, all_names)
         if len(data) == 0:
-
             LOG.warning("Missing other channels, snapshot failed")
             return None
         data, all_names = self.get_images(data, all_names)
         if len(data) == 0:
-
             LOG.warning("Missing images, snapshot failed")
             return None
 
@@ -443,7 +437,6 @@ class Machine:
 
         df = pd.DataFrame(data_dict, columns=data_dict.keys())
         return df
-
 
 
 class MPS(Device):
@@ -485,6 +478,7 @@ class CavityA1(Device):
 
 # Channel returns [a,b,c,d], we need C!  third element.  so BasicAlarm
 
+
 class BasicAlarm:
     def __init__(self, channel, vmin=-np.inf, vmax=+np.inf, explanation=""):
         self.channel = channel
@@ -496,8 +490,8 @@ class BasicAlarm:
         return (value >= self.vmin) and (value < self.vmax)
 
     def offline_message(self) -> str:
-        return (f"{self.channel} out of bounds, bounds = {(self.vmin, self.vmax)}."
-                f" explanation:  {self.explanation}")
+        return f"{self.channel} out of bounds, bounds = {(self.vmin, self.vmax)}." f" explanation:  {self.explanation}"
+
 
 # class BasicAlarm:
 #     def __init__(self, channel, vmin=-np.inf, vmax=+np.inf, explanation=""):
@@ -514,7 +508,6 @@ class BasicAlarm:
 #                 f" explanation:  {self.explanation}")
 
 
-
 class LambaAlarm:
     def __init__(self, channels, fn):
         self.channels = channels
@@ -522,7 +515,6 @@ class LambaAlarm:
 
     def is_ok(self, machine, fn):
         values = [machine.read_value(ch) for ch in channels]
-
 
 
 class Snapshot:

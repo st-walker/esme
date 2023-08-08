@@ -163,11 +163,14 @@ class Ui_MainWindow(object):
         self.actionClose.setShortcut(_translate("MainWindow", "Ctrl+Q"))
         self.actionPrint_to_Logbook.setText(_translate("MainWindow", "Print to Logbook"))
         self.actionPrint_to_Logbook.setShortcut(_translate("MainWindow", "Ctrl+P"))
+
+
 from pyqtgraph import ImageView
 
 
 if __name__ == "__main__":
     import sys
+
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()

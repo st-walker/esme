@@ -41,9 +41,8 @@ EVENT12_CHANNEL = "XFEL.DIAG/TIMER.CENTRAL/MASTER/EVENT12"
 # himself (last time, at time of writing, 2 years ago).  I assume this
 # is correct for a given machine configuration
 # Each tick here is in units of 9.23 nanoseconds
-BUNCH_ONE_TDS_I1 = "XFEL.SDIAG/SPECIAL_BUNCHES.ML/TDSA.52.I1/BUNCH_ONE"   # 4_597_792
-BUNCH_ONE_TDS_B2 = "XFEL.SDIAG/SPECIAL_BUNCHES.ML/TDSB.428.B2/BUNCH_ONE" # 6_540_490
-
+BUNCH_ONE_TDS_I1 = "XFEL.SDIAG/SPECIAL_BUNCHES.ML/TDSA.52.I1/BUNCH_ONE"  # 4_597_792
+BUNCH_ONE_TDS_B2 = "XFEL.SDIAG/SPECIAL_BUNCHES.ML/TDSB.428.B2/BUNCH_ONE"  # 6_540_490
 
 
 BUNCH_ONE_TOLERANCE = 0.05
@@ -154,8 +153,8 @@ def make_common_snapshot_template():
 
     return template
 
-def _add_injector_to_template(template, outdir=None):
 
+def _add_injector_to_template(template, outdir=None):
     if outdir is None:
         outdir = Path("./")
 
@@ -164,8 +163,7 @@ def _add_injector_to_template(template, outdir=None):
     template.add_image(DUMP_SCREEN_ADDRESS, folder=image_dir)
 
     # Alarms
-    template.alarms.append(BasicAlarm("XFEL.DIAG/TOROID/TORA.60.I1/CHARGE.ALL",
-                                      vmin=0.005))
+    template.alarms.append(BasicAlarm("XFEL.DIAG/TOROID/TORA.60.I1/CHARGE.ALL", vmin=0.005))
 
     # template.alarms.append(BinaryOpAlarm(),
 
@@ -208,7 +206,7 @@ def _add_injector_to_template(template, outdir=None):
     template.add_channel("XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/I1D/ENERGY.ALL", tol=0.2)
 
     # BC settings
-    template.add_channel("XFEL.MAGNETS/CHICANE/LH/ANGLE") # mrad
+    template.add_channel("XFEL.MAGNETS/CHICANE/LH/ANGLE")  # mrad
     template.add_channel("XFEL.MAGNETS/CHICANE/BC0/ANGLE")
     template.add_channel("XFEL.MAGNETS/CHICANE/BC1/ANGLE")
     template.add_channel("XFEL.MAGNETS/CHICANE/BC2/ANGLE")
@@ -225,8 +223,9 @@ def _add_injector_to_template(template, outdir=None):
     # TDS injector
     template.add_channel(TDS_I1_AMPLITUDE_SAMPLE_ADDRESS)
     template.add_channel(TDS_I1_AMPLITUDE_READBACK_ADDRESS)
-    template.add_channel(EVENT10_CHANNEL) # TDS timing (returns 4-tuple)
-    template.add_channel(BUNCH_ONE_TDS_I1) # Timing of TDS for first on-beam bunch.
+    template.add_channel(EVENT10_CHANNEL)  # TDS timing (returns 4-tuple)
+    template.add_channel(BUNCH_ONE_TDS_I1)  # Timing of TDS for first on-beam bunch.
+
 
 def _add_bc2_channels_to_template(template, outdir):
     screen_name = Path("XFEL.DIAG/CAMERA/OTRA.473.B2D/IMAGE_EXT_ZMQ").parent.name
@@ -246,7 +245,6 @@ def _add_bc2_channels_to_template(template, outdir):
     template.add_orbit_section("L2", tol=0.01)
     template.add_orbit_section("B2", tol=0.01)
     template.add_orbit_section("B2D", tol=0.01)
-
 
     # L1
     template.add_channel("XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/PHASE.SAMPLE", tol=0.02)
@@ -281,5 +279,5 @@ def _add_bc2_channels_to_template(template, outdir):
     # TDS B2
     template.add_channel(TDS_B2_AMPLITUDE_SAMPLE_ADDRESS)
     template.add_channel(TDS_B2_AMPLITUDE_READBACK_ADDRESS)
-    template.add_channel(EVENT12_CHANNEL) # TDS timing (returns 4-tuple)
-    template.add_channel(BUNCH_ONE_TDS_B2) # Timing of TDS for first on-beam bunch.
+    template.add_channel(EVENT12_CHANNEL)  # TDS timing (returns 4-tuple)
+    template.add_channel(BUNCH_ONE_TDS_B2)  # Timing of TDS for first on-beam bunch.

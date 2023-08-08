@@ -37,8 +37,6 @@ from esme.tds import TDSScanConfiguration
 # from esme.lattice import make_dummy_lookup_sequence
 
 
-
-
 LOG = logging.getLogger(__name__)
 
 
@@ -59,6 +57,7 @@ def _optics_config_from_dict(config: dict) -> OpticalConfig:
         tds_alfy=tds["alfy"],
         ocr_betx=screen_betax,
     )
+
 
 def optics_config_from_toml(tds_name, config: dict) -> OpticalConfig:
     tds = config[tds_name]["tds"]["optics"]
@@ -146,7 +145,6 @@ def load_config(fname: os.PathLike) -> SliceEnergySpreadMeasurement:
         tds_slopes_units = calib["tds_slope_units"]
         calibrator = TDSCalibrator(percentages, tds_slopes, dispersion_setpoint, tds_slope_units=tds_slopes_units)
 
-
     dsnapshots, tsnapshots, bsnapshots = load_pickled_snapshots(config["data"])
 
     dscan = DispersionScan(
@@ -177,10 +175,7 @@ def setpoint_snapshots_from_pcls(pcl_files):
     return result
 
 
-
-def make_measurement_runner(fconfig, machine_area, outdir="./",
-                            measure_dispersion=False,
-                            replay_file=None):
+def make_measurement_runner(fconfig, machine_area, outdir="./", measure_dispersion=False, replay_file=None):
     LOG.debug(f"Making MeasurementRunner instance from config file: {fconfig}")
 
     # if measure_dispersion is not None:
@@ -208,15 +203,16 @@ def make_measurement_runner(fconfig, machine_area, outdir="./",
     else:
         raise ValueError("Unknown machine_area string:", machine_area)
 
-    return MeasurementRunner(dscan_config=dscan_config,
-                             tds_config=tscan_config, outdir=outdir,
-                             dispersion_measurer=measure_dispersion,
-                             machine=machine)
+    return MeasurementRunner(
+        dscan_config=dscan_config,
+        tds_config=tscan_config,
+        outdir=outdir,
+        dispersion_measurer=measure_dispersion,
+        machine=machine,
+    )
 
 
-def make_data_taker(fconfig, machine_area, outdir="./",
-                    measure_dispersion=False,
-                    replay_file=None):
+def make_data_taker(fconfig, machine_area, outdir="./", measure_dispersion=False, replay_file=None):
     LOG.debug(f"Making MeasurementRunner instance from config file: {fconfig}")
 
     # if measure_is not None:
@@ -241,9 +237,7 @@ def make_data_taker(fconfig, machine_area, outdir="./",
     else:
         raise ValueError("Unknown machine_area string:", machine_area)
 
-    return DataTaker(dscan_config=dscan_config,
-                     tds_config=tscan_config,
-                     machine=machine)
+    return DataTaker(dscan_config=dscan_config, tds_config=tscan_config, machine=machine)
 
 
 def get_config_sample_sizes(fconfig):
@@ -384,9 +378,11 @@ def toml_dfs_to_setpoint_snapshots(ftoml):
         _loop_pcl_df_files(bscan_paths, ScanType.BETA)
 
 
-def load_pickled_snapshots(data_dict: dict) -> tuple[list[SetpointMachineSnapshots], list[SetpointMachineSnapshots], Optional[list[SetpointMachineSnapshots]]]:
+def load_pickled_snapshots(
+    data_dict: dict,
+) -> tuple[list[SetpointMachineSnapshots], list[SetpointMachineSnapshots], Optional[list[SetpointMachineSnapshots]]]:
     """data_dict is of form coming
-      from toml file..."""
+    from toml file..."""
     tscan = load_data_config_section(data_dict, "tscan")
     dscan = load_data_config_section(data_dict, "dscan")
     try:
@@ -402,6 +398,7 @@ def load_data_config_section(data_dict: dict, scan_key: str) -> list[SetpointMac
     if section.get("old_sergey_format", False):
         return load_old_raw_df_snapshot_format(data_dict, scan_key)
     return load_new_object_format(data_dict, scan_key)
+
 
 def load_new_object_format(data_dict, scan_key):
     bad_images = data_dict.get("bad_images", [])
@@ -444,17 +441,18 @@ def load_old_raw_df_snapshot_format(data_dict: dict, scan_key: str) -> list[Setp
 
     betas = data_dict[scan_key]["betas"]
 
-
     result = []
     for path, dispersion_sp, dispersion, beta in zip(paths, sps, dispersions, betas):
         full_path = basepath / path
         df = pd.read_pickle(full_path)
-        sn = SetpointMachineSnapshots(snapshots=df,
-                               scan_type=ScanType.from_name(scan_key),
-                               dispersion_setpoint=dispersion_sp,
-                               measured_dispersion=dispersion,
-                               beta=beta,
-                               screen_channel=data_dict["screen_channel"])
+        sn = SetpointMachineSnapshots(
+            snapshots=df,
+            scan_type=ScanType.from_name(scan_key),
+            dispersion_setpoint=dispersion_sp,
+            measured_dispersion=dispersion,
+            beta=beta,
+            screen_channel=data_dict["screen_channel"],
+        )
         sn.resolve_image_path(full_path.parent)
         result.append(sn)
 
@@ -465,17 +463,21 @@ def i1_dscan_config_from_scan_config_file(config_path: os.PathLike):
     conf = toml.load(config_path)
     return _dscan_config_from_scan_config(conf, "i1")
 
+
 def i1_tds_voltages_from_scan_config_file(config_path: os.PathLike):
     conf = toml.load(config_path)
     return conf["i1"]["tds"]["scan_voltages"]
+
 
 def i1_tds_amplitudes_from_scan_config_file(config_path: os.PathLike):
     conf = toml.load(config_path)
     return conf["i1"]["tds"]["scan_amplitudes"]
 
+
 def b2_tds_voltages_from_scan_config_file(config_path: os.PathLike):
     conf = toml.load(config_path)
     return conf["b2"]["tds"]["scan_voltages"]
+
 
 def b2_dscan_config_from_scan_config_file(config_path: os.PathLike):
     conf = toml.load(config_path)
@@ -484,7 +486,6 @@ def b2_dscan_config_from_scan_config_file(config_path: os.PathLike):
 
 def _dscan_config_from_scan_config(scan_config: dict, section) -> DispersionScanConfiguration:
     dscan = scan_config[section]["dscan"]
-
 
     ref = dscan["reference_optics"]
 
@@ -507,7 +508,6 @@ def _dscan_config_from_scan_config(scan_config: dict, section) -> DispersionScan
     else:
         quad_k1ls = named_k1s_to_k1ls(dscan_quad_names, quad_k1s)
 
-
     scan_settings = []
     for dispersion, scan_k1ls in zip(quads["dispersions"], quad_k1ls):
         scan_settings.append(QuadrupoleSetting(dscan_quad_names, scan_k1ls, dispersion))
@@ -528,9 +528,7 @@ def _tscan_config_from_scan_config_file(key, config_path: os.PathLike) -> TDSSca
 
     assert tscan["dispersion_setpoint"] == dconf.reference_setting.dispersion
 
-    return TDSScanConfiguration(
-        voltages=tscan["voltages"],
-        quad_setting=dconf.reference_setting)
+    return TDSScanConfiguration(voltages=tscan["voltages"], quad_setting=dconf.reference_setting)
 
     # return TDSScanConfiguration(
     #     reference_amplitude=tds["reference_amplitude"],
@@ -541,9 +539,11 @@ def _tscan_config_from_scan_config_file(key, config_path: os.PathLike) -> TDSSca
 def i1_tscan_config_from_scan_config_file(config_path: os.PathLike):
     return _tscan_config_from_scan_config_file("i1", config_path)
 
+
 def b2_tscan_config_from_scan_config_file(config_path: os.PathLike):
     conf = toml.load(config_path)
     return _tscan_config_from_scan_config_file("b2", config_path)
+
 
 def named_k1s_to_k1ls(names, k1s):
     ll = make_default_longlist()

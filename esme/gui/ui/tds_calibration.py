@@ -127,18 +127,23 @@ class Ui_TDSCalibrationWindow(object):
     def retranslateUi(self, TDSCalibrationWindow):
         _translate = QtCore.QCoreApplication.translate
         TDSCalibrationWindow.setWindowTitle(_translate("TDSCalibrationWindow", "MainWindow"))
-        self.calibration_info.setHtml(_translate("TDSCalibrationWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
-"<html><head><meta name=\"qrichtext\" content=\"1\" /><meta charset=\"utf-8\" /><style type=\"text/css\">\n"
-"p, li { white-space: pre-wrap; }\n"
-"hr { height: 1px; border-width: 0; }\n"
-"li.unchecked::marker { content: \"\\2610\"; }\n"
-"li.checked::marker { content: \"\\2612\"; }\n"
-"</style></head><body style=\" font-family:\'.AppleSystemUIFont\'; font-size:13pt; font-weight:400; font-style:normal;\">\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">percentages = [8, 10, 13, 15, 17, 18, 19, 20, 24]</p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">tds_slopes = [204, 245, 320, 388, 464, 492, 548, 589, 670]</p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">tds_slope_units = &quot;um/ps&quot;</p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">screen_name=&quot;OTRC.64.I1D&quot;</p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"># Warning: TDS Calibration <span style=\" font-weight:700;\">MUST</span> be done at OTRC.64.I1D (to be fixed)</p></body></html>"))
+        self.calibration_info.setHtml(
+            _translate(
+                "TDSCalibrationWindow",
+                "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
+                "<html><head><meta name=\"qrichtext\" content=\"1\" /><meta charset=\"utf-8\" /><style type=\"text/css\">\n"
+                "p, li { white-space: pre-wrap; }\n"
+                "hr { height: 1px; border-width: 0; }\n"
+                "li.unchecked::marker { content: \"\\2610\"; }\n"
+                "li.checked::marker { content: \"\\2612\"; }\n"
+                "</style></head><body style=\" font-family:\'.AppleSystemUIFont\'; font-size:13pt; font-weight:400; font-style:normal;\">\n"
+                "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">percentages = [8, 10, 13, 15, 17, 18, 19, 20, 24]</p>\n"
+                "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">tds_slopes = [204, 245, 320, 388, 464, 492, 548, 589, 670]</p>\n"
+                "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">tds_slope_units = &quot;um/ps&quot;</p>\n"
+                "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">screen_name=&quot;OTRC.64.I1D&quot;</p>\n"
+                "<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"># Warning: TDS Calibration <span style=\" font-weight:700;\">MUST</span> be done at OTRC.64.I1D (to be fixed)</p></body></html>",
+            )
+        )
         self.apply_calibration_button.setText(_translate("TDSCalibrationWindow", "Apply"))
         self.update_voltage_button.setText(_translate("TDSCalibrationWindow", "Recalculate Voltages"))
         self.load_tds_calibration_button.setText(_translate("TDSCalibrationWindow", "Load"))
@@ -153,11 +158,14 @@ class Ui_TDSCalibrationWindow(object):
         self.menuMenu.setTitle(_translate("TDSCalibrationWindow", "Menu"))
         self.actionPrint_to_Logbook.setText(_translate("TDSCalibrationWindow", "Print to Logbook"))
         self.actionQuit.setText(_translate("TDSCalibrationWindow", "Quit"))
+
+
 from esme.gui.mpl_widget import MatplotlibCanvas
 
 
 if __name__ == "__main__":
     import sys
+
     app = QtWidgets.QApplication(sys.argv)
     TDSCalibrationWindow = QtWidgets.QMainWindow()
     ui = Ui_TDSCalibrationWindow()

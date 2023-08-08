@@ -28,7 +28,11 @@ def sqrt(x, a0, a1) -> Any:
 
 class TDSCalibrator:
     def __init__(
-        self, percentages: Sequence[float], tds_slopes: Sequence[float], dispersion_setpoint: float, tds_slope_units: Optional[str] = None
+        self,
+        percentages: Sequence[float],
+        tds_slopes: Sequence[float],
+        dispersion_setpoint: float,
+        tds_slope_units: Optional[str] = None,
     ):
         self.percentages = np.array(percentages)
         self.tds_slopes = np.array(tds_slopes)
@@ -73,6 +77,7 @@ class TDSVoltageCalibration:
     the data points (i.e. no needs no snapshots)
 
     """
+
     def __init__(self, amplitudes: Sequence[float], voltages):
         self.amplitudes = amplitudes
         self.voltages = voltages
@@ -106,7 +111,9 @@ def r34_from_tds_to_screen(snapshot: pd.Series) -> float:
     return r34
 
 
-def get_tds_voltage(gradient_m_per_s: Union[float, Sequence[float]], snapshot: pd.Series) -> Union[float, Sequence[float]]:
+def get_tds_voltage(
+    gradient_m_per_s: Union[float, Sequence[float]], snapshot: pd.Series
+) -> Union[float, Sequence[float]]:
     r34 = r34_from_tds_to_screen(snapshot)
     energy = snapshot[I1D_ENERGY_ADDRESS]
     angular_frequency = TDS_FREQUENCY * 2 * np.pi  # to rad/s

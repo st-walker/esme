@@ -71,8 +71,6 @@ def dump_full_scan(esme: ana.SliceEnergySpreadMeasurement, root_outdir) -> None:
             image_file_path = image.filename
             shutil.copy(image_file_path, background_dir / image_file_path.name)
 
-
-
     dscan_dir = root_outdir / "tds-scan"
     for i, measurement in enumerate(tds_scan):
         # dx = measurement.dx
@@ -84,7 +82,6 @@ def dump_full_scan(esme: ana.SliceEnergySpreadMeasurement, root_outdir) -> None:
 
         data_dir = measurement_outdir / "raw-beam-images"
         data_dir.mkdir(exist_ok=True)
-
 
         for image_index in range(measurement.nimages):
             LOG.debug(f"plotting before/after for image number: {image_index}")
@@ -98,13 +95,11 @@ def dump_full_scan(esme: ana.SliceEnergySpreadMeasurement, root_outdir) -> None:
             image_file_path = measurement[image_index].filename
             save = shutil.copy(image_file_path, data_dir / image_file_path.name)
 
-
         background_dir = measurement_outdir / "raw-background-images"
         background_dir.mkdir(exist_ok=True)
         for image_index, image in enumerate(measurement.bg):
             image_file_path = image.filename
             shutil.copy(image_file_path, background_dir / image_file_path.name)
-
 
     bscan = esme.bscan
     if not bscan:
@@ -237,36 +232,39 @@ def write_pixel_widths(esme, outdir):
     twidths, terrors = esme.tscan.max_energy_slice_widths_and_errors(padding=10)
     dwidths_um, derrors_um = ana.transform_pixel_widths(dwidths, derrors, pixel_units="um", to_variances=False)
     twidths_um, terrors_um = ana.transform_pixel_widths(twidths, terrors, pixel_units="um", to_variances=False)
-    dscan_data = pd.DataFrame({
-        "dx": esme.dscan.dx,
-        "amplitude": esme.dscan.tds_percentage,
-        "voltage": esme.dscan.voltage,
-        "px_widths": dwidths,
-        "px_errors": derrors,
-        "um_widths": dwidths_um,
-        "um_errors": derrors_um,
-    })
+    dscan_data = pd.DataFrame(
+        {
+            "dx": esme.dscan.dx,
+            "amplitude": esme.dscan.tds_percentage,
+            "voltage": esme.dscan.voltage,
+            "px_widths": dwidths,
+            "px_errors": derrors,
+            "um_widths": dwidths_um,
+            "um_errors": derrors_um,
+        }
+    )
 
-    tds_data = pd.DataFrame({
-        "dx": esme.tscan.dx,
-        "amplitude": esme.tscan.tds_percentage,
-        "voltage": esme.tscan.voltage,
-        "px_widths": twidths,
-        "px_errors": terrors,
-        "um_widths": twidths_um,
-        "um_errors": terrors_um,
-    })
+    tds_data = pd.DataFrame(
+        {
+            "dx": esme.tscan.dx,
+            "amplitude": esme.tscan.tds_percentage,
+            "voltage": esme.tscan.voltage,
+            "px_widths": twidths,
+            "px_errors": terrors,
+            "um_widths": twidths_um,
+            "um_errors": terrors_um,
+        }
+    )
 
     dscan_data.to_csv(outdir / "dscan_central_slices.csv")
     tds_data.to_csv(outdir / "tscan_central_slices.csv")
-
 
 
 def plot_tds_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> None:
     widths, errors = esme.tscan.max_energy_slice_widths_and_errors(padding=10)
     voltages_mv = _get_tds_tscan_abs_voltage_in_mv_from_scans(esme)
 
-    voltages2_mv2 = voltages_mv ** 2
+    voltages2_mv2 = voltages_mv**2
     widths_um2, errors_um2 = ana.transform_pixel_widths(widths, errors, pixel_units="um")
 
     a0, a1 = maths.linear_fit(voltages2_mv2, widths_um2, errors_um2)
@@ -500,7 +498,9 @@ def formatted_parameter_dfs(esme: ana.SliceEnergySpreadMeasurement, latex=False)
     }
 
     varnames = None
-    from IPython import embed; embed()
+    from IPython import embed
+
+    embed()
 
     if latex:
         varnames = latex_variables
@@ -741,7 +741,6 @@ def plot_tds_calibration(sesme, root_outdir):
         pickle.dump(dikt5, f)
 
 
-
 def plot_r34s(sesme):
     fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(14, 8))
 
@@ -757,7 +756,12 @@ def plot_r34s(sesme):
     ax2.set_xlabel(r"TDS Amplitude / %")
     ax2.set_ylabel(r"$R_{34}\,/\,\mathrm{m\cdot{}rad^{-1}}$")
 
-    dikt = {"dscan_dx": sesme.dscan.dx, "dscan_r34s": dscan_r34s, "tscan_percentage": sesme.tscan.tds_percentage, "tscan_r34s": tscan_r34s}
+    dikt = {
+        "dscan_dx": sesme.dscan.dx,
+        "dscan_r34s": dscan_r34s,
+        "tscan_percentage": sesme.tscan.tds_percentage,
+        "tscan_r34s": tscan_r34s,
+    }
 
     return fig, dikt
 
@@ -794,7 +798,6 @@ def plot_calibrated_tds(sesme):
         return
 
     # Secondly the derived voltages for the TDS scan.
-
 
     tds_percentage = sesme.tscan.tds_percentage
     derived_voltage = _get_tds_tscan_abs_voltage_in_mv_from_scans(sesme)
@@ -865,7 +868,12 @@ def plot_tds_voltage(sesme):
     tit2 = rf"TDS-scan; $\eta_\mathrm{{OTR}}={{{tscan_dx[0]}}}\mathrm{{m}}$"
     ax2.set_title(tit2)
 
-    dikt = {"dscan_dx": dscan_dx, "dscan_voltage": dscan_voltage, "tscan_percent": tscan_percent, "tscan_voltage": tscan_voltage}
+    dikt = {
+        "dscan_dx": dscan_dx,
+        "dscan_voltage": dscan_voltage,
+        "tscan_percent": tscan_percent,
+        "tscan_voltage": tscan_voltage,
+    }
 
     return fig, dikt
 
@@ -883,11 +891,21 @@ def plot_streaking_parameters(sesme):
         return (length / c) * 1e12
 
     ax3.errorbar(
-        sesme.dscan.dx, to_ps(raw_bunch_lengths), linestyle="", yerr=to_ps(raw_bl_errors), label="Raw bunch length", marker=".",
+        sesme.dscan.dx,
+        to_ps(raw_bunch_lengths),
+        linestyle="",
+        yerr=to_ps(raw_bl_errors),
+        label="Raw bunch length",
+        marker=".",
     )
 
     ax3.errorbar(
-        sesme.dscan.dx, to_ps(true_bunch_lengths), linestyle="", yerr=to_ps(true_bl_errors), label="True bunch length", marker=".",
+        sesme.dscan.dx,
+        to_ps(true_bunch_lengths),
+        linestyle="",
+        yerr=to_ps(true_bl_errors),
+        label="True bunch length",
+        marker=".",
     )
 
     ax3.legend()
@@ -895,18 +913,18 @@ def plot_streaking_parameters(sesme):
 
     ax1.plot(sesme.dscan.dx, dscan_streak, marker="x", linestyle="")
 
-
     ax1.set_ylabel(r"$|S|$")
 
-    tscan_streak = abs(_streaks_from_scan(
-        sesme.tscan,
-        scan_voltages=_get_tds_tscan_abs_voltage_in_mv_from_scans(sesme) * 1e6)
-                       )
+    tscan_streak = abs(
+        _streaks_from_scan(sesme.tscan, scan_voltages=_get_tds_tscan_abs_voltage_in_mv_from_scans(sesme) * 1e6)
+    )
 
     ax2.plot(_get_tds_tscan_abs_voltage_in_mv_from_scans(sesme), tscan_streak, marker="x", linestyle="")
 
     raw_bunch_lengths, raw_bl_errors = beam.apparent_bunch_lengths(sesme.tscan)
-    true_bunch_lengths, true_bl_errors = beam.true_bunch_lengths(sesme.tscan, _get_tds_tscan_abs_voltage_in_mv_from_scans(sesme)*1e6)
+    true_bunch_lengths, true_bl_errors = beam.true_bunch_lengths(
+        sesme.tscan, _get_tds_tscan_abs_voltage_in_mv_from_scans(sesme) * 1e6
+    )
 
     ax4.errorbar(
         _get_tds_tscan_abs_voltage_in_mv_from_scans(sesme),
@@ -992,6 +1010,10 @@ def _get_tds_tscan_abs_voltage_in_mv_from_scans(sesme):
         # dispersion sp.  oops!  Calculate it more "by hand" by
         # getting the correct snapshot (and therefore R34) from the
         # *dispersion* scan, and then use that to calculate the TDS voltage.
-        correct_snapshot = np.array(sesme.dscan.measurements)[sesme.dscan.dx == sesme.dscan.calibrator.dispersion_setpoint].item().metadata.iloc[0]
+        correct_snapshot = (
+            np.array(sesme.dscan.measurements)[sesme.dscan.dx == sesme.dscan.calibrator.dispersion_setpoint]
+            .item()
+            .metadata.iloc[0]
+        )
         derived_voltage = abs(sesme.tscan.calibrator.get_voltage(tds_percentage, correct_snapshot)) * 1e-6
     return derived_voltage

@@ -153,6 +153,7 @@ def get_slice_properties(image: RawImageT, fast: bool = True) -> tuple[npt.NDArr
 
     return row_index, mean_slice_position, slice_width
 
+
 def get_central_slice_width_from_slice_properties(means, sigmas, padding=10):
     centre_index = means.argmin()
     return np.mean(sigmas[centre_index - padding : centre_index + padding])

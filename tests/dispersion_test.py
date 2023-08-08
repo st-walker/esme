@@ -1,5 +1,6 @@
 from esme.dispersion import DispersionScanConfiguration
 
+
 def test_ScanOpticsConfiguration_init(quad_setting, quad_setting2, quad_setting3):
     inst = DispersionScanConfiguration(quad_setting, [quad_setting2, quad_setting3])
 

@@ -15,9 +15,7 @@ def linear_fit(indep_var, dep_var, dep_var_err) -> tuple[ValueWithErrorT, ValueW
     absolute_sigma = True
     if dep_var_err is None:
         absolute_sigma = False
-    popt, pcov = curve_fit(line, indep_var, dep_var,
-                           sigma=dep_var_err,
-                           absolute_sigma=absolute_sigma)
+    popt, pcov = curve_fit(line, indep_var, dep_var, sigma=dep_var_err, absolute_sigma=absolute_sigma)
     perr = np.sqrt(np.diag(pcov))
 
     # Present as tuples

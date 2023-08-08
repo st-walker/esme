@@ -165,12 +165,15 @@ class Ui_MainWindow(object):
         self.menuMenu.setTitle(_translate("MainWindow", "Menu"))
         self.actionPrint_to_Logbook.setText(_translate("MainWindow", "Print to Logbook"))
         self.actionQuit.setText(_translate("MainWindow", "Quit"))
+
+
 from esme.gui.mpl_widget import MatplotlibCanvas
 from pyqtgraph import GraphicsLayoutWidget
 
 
 if __name__ == "__main__":
     import sys
+
     app = QtWidgets.QApplication(sys.argv)
     MainWindow = QtWidgets.QMainWindow()
     ui = Ui_MainWindow()

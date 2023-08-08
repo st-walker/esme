@@ -34,6 +34,7 @@ from ocelot.cpbd.optics import twiss as twissc, Twiss
 # So we treat SectionedFEL as as "navigator" factory I guess?
 # Track to this point.  Then track to that one using this previous parray.  And so on.
 
+
 def _save_fig_or_show(fig, outdir, name):
     if outdir is None:
         plt.show()
@@ -91,7 +92,6 @@ def qi52_to_i1d_dscan_optics(dscan_conf, outdir=None):
     axd.set_ylabel(DX_LABEL_STRING)
     axt.set_ylabel(BETX_LABEL_STRING)
 
-
     screen_s = twiss.s[twiss.id == "OTRC.64.I1D"].item()
     vlargs = {"x": screen_s, "label": "OTRC.64.I1D", "linestyle": ":", "color": "black"}
     axt.axvline(**vlargs)
@@ -101,7 +101,6 @@ def qi52_to_i1d_dscan_optics(dscan_conf, outdir=None):
     max_beta_x_up_to_screen = max(twiss.set_index(keys="id").loc[:"OTRC.64.I1D"].beta_x)
     mx.set_xlim(twiss.iloc[0].s, twiss.iloc[-1].s)
     axt.set_ylim(axt.get_ylim()[0], max_beta_x_up_to_screen * 1.1)
-
 
     mx.set_title("QI.52.I1 to I1D Dispersion Scan Optics")
     axt.legend()
@@ -125,7 +124,7 @@ def a1_to_i1d_piecewise_measurement_optics(dscan_conf, outdir=None):
         axd.plot(twiss.s, twiss.Dx, label=fr"$D_x\,=\,{dispersion}\,\mathrm{{m}}$")
 
         (line,) = axt.plot(twiss.s, twiss.beta_x)
-        axe.plot(twiss.s, twiss.E*1e3)
+        axe.plot(twiss.s, twiss.E * 1e3)
 
     axd.set_ylabel(DX_LABEL_STRING)
     axd.legend()
@@ -155,17 +154,17 @@ def check_a1_to_i1d_design_optics_tracking(parray0, outdir):
     axay.plot(all_twiss.s, all_twiss.alpha_y)
     axdx.plot(all_twiss.s, all_twiss.Dx)
     axdy.plot(all_twiss.s, all_twiss.Dy)
-    axe.plot(all_twiss.s, all_twiss.E*1e3)
+    axe.plot(all_twiss.s, all_twiss.E * 1e3)
 
     axe.set_xlabel(Z_LABEL_STRING)
 
     _, particle_twiss = sim.i1d_design_optics_from_tracking(parray0)
 
     axbx.plot(particle_twiss.s, particle_twiss.beta_x, label="Particle Tracking", marker="x")
-    axby.plot(particle_twiss.s, particle_twiss.beta_y, marker="x")#, label="Particle Tracking")
+    axby.plot(particle_twiss.s, particle_twiss.beta_y, marker="x")  # , label="Particle Tracking")
     axax.plot(particle_twiss.s, particle_twiss.alpha_x, label="Particle Tracking", marker="x")
-    axay.plot(particle_twiss.s, particle_twiss.alpha_y, marker="x")#, label="Particle Tracking")
-    axe.plot(particle_twiss.s, particle_twiss.E*1e3, marker="x")#, label="Particle Tracking")
+    axay.plot(particle_twiss.s, particle_twiss.alpha_y, marker="x")  # , label="Particle Tracking")
+    axe.plot(particle_twiss.s, particle_twiss.E * 1e3, marker="x")  # , label="Particle Tracking")
 
     axdx.set_ylabel(DX_LABEL_STRING)
     axdy.set_ylabel(DY_LABEL_STRING)
@@ -182,6 +181,7 @@ def check_a1_to_i1d_design_optics_tracking(parray0, outdir):
     axe.set_ylabel(E_LABEL_STRING)
     plt.show()
 
+
 def check_a1_q52_measurement_optics_tracking(fparray0, outdir):
     all_twiss, mlat = sim.a1_to_q52_matching_point_measurement_optics()
     s_offset = all_twiss.iloc[0].s
@@ -192,12 +192,11 @@ def check_a1_q52_measurement_optics_tracking(fparray0, outdir):
 
     axbx.plot(all_twiss.s, all_twiss.beta_x, label="Linear Optics")
     axdx.plot(all_twiss.s, all_twiss.Dx)
-    axe.plot(all_twiss.s, all_twiss.E*1e3)
+    axe.plot(all_twiss.s, all_twiss.E * 1e3)
 
     axbx.plot(particle_twiss.s, particle_twiss.beta_x, label="Particle Tracking", marker="x")
     axdx.plot(particle_twiss.s, particle_twiss.Dx)
-    axe.plot(particle_twiss.s, particle_twiss.E*1e3, marker="x")#, label="Particle Tracking")
-
+    axe.plot(particle_twiss.s, particle_twiss.E * 1e3, marker="x")  # , label="Particle Tracking")
 
     axbx.legend()
 
@@ -207,6 +206,7 @@ def check_a1_q52_measurement_optics_tracking(fparray0, outdir):
     axe.set_xlabel(Z_LABEL_STRING)
 
     plt.show()
+
 
 def dscan_piecewise_tracking_optics(fparray0, dscan_conf, outdir, do_physics=False):
     all_twiss, mlat = sim.a1_to_i1d_design_optics()
@@ -233,13 +233,13 @@ def dscan_piecewise_tracking_optics(fparray0, dscan_conf, outdir, do_physics=Fal
 
         (line1,) = axbx.plot(otwiss.s, otwiss.beta_x, label=blabel1)
         (line2,) = axdx.plot(otwiss.s, otwiss.Dx, label=fr"$D_x\,=\,{dispersion}\,\mathrm{{m}}$")
-        (line3,) = axe.plot(otwiss.s, otwiss.E*1e3)
+        (line3,) = axe.plot(otwiss.s, otwiss.E * 1e3)
 
         axbx.plot(ptwiss.s, ptwiss.beta_x, label=blabel2, marker="x", linestyle="", color=line1.get_color())
         axdx.plot(ptwiss.s, ptwiss.Dx, linestyle="", marker="x", color=line2.get_color())
-        axe.plot(ptwiss.s, ptwiss.E*1e3, marker="x", linestyle="", color=line3.get_color())#, label="Particle Tracking")
-
-
+        axe.plot(
+            ptwiss.s, ptwiss.E * 1e3, marker="x", linestyle="", color=line3.get_color()
+        )  # , label="Particle Tracking")
 
     screen_s = all_twiss.s[all_twiss.id == "OTRC.64.I1D"].item()
     vlargs = {"x": screen_s, "linestyle": ":", "color": "black"}
@@ -268,6 +268,7 @@ def bolko_optics_comparison(dscan_conf, tscan_voltages):
 
     twiss, mlat = b2.bolko_optics()
     import pand8
+
     mad8 = "/Users/stuartwalker/repos/esme-xfel/esme/sections/bolko-optics.tfs"
     df8 = pand8.read(mad8)
 
@@ -304,6 +305,7 @@ def new_tds_optics_comparison(dscan_conf, tscan_voltages):
 
     twiss, mlat = b2.bolko_optics()
     import pand8
+
     mad8 = "/Users/stuartwalker/repos/esme-xfel/esme/sections/bolko-optics.tfs"
     df8 = pand8.read(mad8)
 
@@ -311,12 +313,10 @@ def new_tds_optics_comparison(dscan_conf, tscan_voltages):
     bl = latdraw.interfaces.lattice_from_ocelot(mlat.sequence, initial_offset=[0, 0, s_offset])
     fig, (mx, axbx, axby, axdy) = latdraw.subplots_with_lattice(bl, nrows=3)
 
-
     for dy, twiss in b2.new_optics_scan():
         # if i == 0:
 
         #     axbx.plot(
-
 
         axbx.plot(twiss.s, twiss.beta_x)
         axby.plot(twiss.s, twiss.beta_y)
@@ -329,7 +329,6 @@ def new_tds_optics_comparison(dscan_conf, tscan_voltages):
         axby.set_ylabel(BETY_LABEL_STRING)
         axdy.set_ylabel(DY_LABEL_STRING)
 
-
     screen_s = twiss.s[twiss.id == "OTRA.473.B2D"].item()
     vlargs = {"x": screen_s, "linestyle": ":", "color": "black"}
     axbx.axvline(**vlargs)
@@ -340,7 +339,6 @@ def new_tds_optics_comparison(dscan_conf, tscan_voltages):
     axdy.set_xlabel(Z_LABEL_STRING)
 
     mx.set_title("Nina's B2D dispersion scan optics in OCELOT")
-
 
     plt.show()
 
@@ -354,9 +352,9 @@ def gun_to_b2_bolko_optics(b2_dscan_conf, b2_tscan_voltages):
 
     twiss, mlat = b2.bolko_optics()
     import pand8
+
     mad8 = "/Users/stuartwalker/repos/esme-xfel/esme/sections/bolko-optics.tfs"
     df8 = pand8.read(mad8)
-
 
     ll = sim.XFELLonglist("/Users/stuartwalker/repos/esme-xfel/bin/longlist.csv")
     name2_bolko_start = df8.iloc[1].NAME
@@ -394,6 +392,7 @@ def gun_to_b2_bolko_optics(b2_dscan_conf, b2_tscan_voltages):
     plt.show()
     # from IPython import embed; embed()
 
+
 def gun_to_b2_dispersion_scan_design_energy(b2_dscan_conf, b2_tscan_voltages):
     b2 = sim.B2SimulatedEnergySpreadMeasurement(b2_dscan_conf, b2_tscan_voltages)
     sequence = b2.gun_to_dump_sequence()
@@ -419,8 +418,8 @@ def gun_to_b2_dispersion_scan_design_energy(b2_dscan_conf, b2_tscan_voltages):
 
         axdy.plot(full_twiss.s, full_twiss.Dy, label=fr"$D_y\,=\,{dy}\,\mathrm{{m}}$")
 
-        (line,) = axe.plot(full_twiss.s, full_twiss.E*1e3)
-        (line,) = axe.plot(low_e_twiss.s, low_e_twiss.E*1e3, linestyle="--", color=line.get_color())
+        (line,) = axe.plot(full_twiss.s, full_twiss.E * 1e3)
+        (line,) = axe.plot(low_e_twiss.s, low_e_twiss.E * 1e3, linestyle="--", color=line.get_color())
 
     screen_s = full_twiss.s[full_twiss.id == "OTRA.473.B2D"].item()
     vlargs = {"x": screen_s, "linestyle": ":", "color": "black"}
@@ -443,6 +442,7 @@ def gun_to_b2_dispersion_scan_design_energy(b2_dscan_conf, b2_tscan_voltages):
     axdy.legend(loc="center left")
 
     plt.show()
+
 
 def gun_to_b2_piecewise_dispersion_scan_optics(b2_dscan_conf, b2_tscan_voltages):
     b2 = sim.B2SimulatedEnergySpreadMeasurement(b2_dscan_conf, b2_tscan_voltages)
@@ -481,7 +481,6 @@ def gun_to_b2_piecewise_dispersion_scan_optics(b2_dscan_conf, b2_tscan_voltages)
         axdy.axvline(s, linestyle="-.", color="green", alpha=0.7)
         axe.axvline(s, linestyle="-.", color="green", alpha=0.7)
 
-
     screen_s = b2d.b2dlat.get_element_end_s("OTRA.473.B2D")
     vlargs = {"x": screen_s, "linestyle": ":", "color": "black"}
     axbx.axvline(**vlargs)
@@ -490,7 +489,6 @@ def gun_to_b2_piecewise_dispersion_scan_optics(b2_dscan_conf, b2_tscan_voltages)
     vlargs["label"] = "OTRA.473.B2D"
     axby.axvline(**vlargs)
     axby.legend()
-
 
     axbx.set_ylabel(BETX_LABEL_STRING)
     axby.set_ylabel(BETY_LABEL_STRING)
@@ -545,7 +543,6 @@ def gun_to_b2_tracking_piecewise_optics(b2_dscan_conf, b2_tscan_voltages, fparra
         axdy.axvline(s, linestyle="-.", color="green", alpha=0.7)
         axe.axvline(s, linestyle="-.", color="green", alpha=0.7)
 
-
     screen_s = b2d.b2dlat.get_element_end_s("OTRA.473.B2D")
     vlargs = {"x": screen_s, "linestyle": ":", "color": "black"}
     axbx.axvline(**vlargs)
@@ -557,7 +554,6 @@ def gun_to_b2_tracking_piecewise_optics(b2_dscan_conf, b2_tscan_voltages, fparra
 
     mx.set_title("B2D Dispersion Scan Optics from partile traking at design energy and 130MeV with artificial matching")
 
-
     axbx.set_ylabel(BETX_LABEL_STRING)
     axby.set_ylabel(BETY_LABEL_STRING)
     axe.set_ylabel(E_LABEL_STRING)
@@ -568,6 +564,7 @@ def gun_to_b2_tracking_piecewise_optics(b2_dscan_conf, b2_tscan_voltages, fparra
     axdy.legend(loc="center left")
 
     plt.show()
+
 
 def gun_to_b2_tracking_central_slice_optics(b2_dscan_conf, b2_tscan_voltages, fparray0, do_physics=False, outdir=None):
     b2 = sim.B2SimulatedEnergySpreadMeasurement(b2_dscan_conf, b2_tscan_voltages, fparray0=fparray0)
@@ -594,7 +591,9 @@ def gun_to_b2_tracking_central_slice_optics(b2_dscan_conf, b2_tscan_voltages, fp
         marker = ""
 
         (line,) = axbx.plot(full_twiss.s, full_twiss.beta_x, label=label1)
-        (line,) = axbx.plot(low_e_twiss.s, low_e_twiss.beta_x, linestyle="--", color=line.get_color(), label=label2, marker=marker)
+        (line,) = axbx.plot(
+            low_e_twiss.s, low_e_twiss.beta_x, linestyle="--", color=line.get_color(), label=label2, marker=marker
+        )
 
         (line,) = axby.plot(full_twiss.s, full_twiss.beta_y)
         (line,) = axby.plot(low_e_twiss.s, low_e_twiss.beta_y, linestyle="--", color=line.get_color(), marker=marker)
@@ -614,7 +613,6 @@ def gun_to_b2_tracking_central_slice_optics(b2_dscan_conf, b2_tscan_voltages, fp
         axdy.axvline(s, linestyle="-.", color="green", alpha=0.7)
         axe.axvline(s, linestyle="-.", color="green", alpha=0.7)
 
-
     screen_s = b2d.b2dlat.get_element_end_s("OTRA.473.B2D")
     vlargs = {"x": screen_s, "linestyle": ":", "color": "black"}
     axbx.axvline(**vlargs)
@@ -624,9 +622,10 @@ def gun_to_b2_tracking_central_slice_optics(b2_dscan_conf, b2_tscan_voltages, fp
     axby.axvline(**vlargs)
     axby.legend()
 
-    mx.set_title("B2D Dispersion Scan Optics at Design Energy and 130MeV "
-                 f"with Artificially Matched Central Slices: Physics: {do_physics}")
-
+    mx.set_title(
+        "B2D Dispersion Scan Optics at Design Energy and 130MeV "
+        f"with Artificially Matched Central Slices: Physics: {do_physics}"
+    )
 
     axbx.set_ylabel(BETX_LABEL_STRING)
     axby.set_ylabel(BETY_LABEL_STRING)
@@ -640,7 +639,6 @@ def gun_to_b2_tracking_central_slice_optics(b2_dscan_conf, b2_tscan_voltages, fp
     plt.show()
 
 
-
 def gun_to_b2_dispersion_scan_low_energy(b2_dscan_conf, b2_tscan_voltages):
     b2 = sim.B2SimulatedEnergySpreadMeasurement(b2_dscan_conf, b2_tscan_voltages)
     sequence = b2.gun_to_dump_sequence()
@@ -649,11 +647,10 @@ def gun_to_b2_dispersion_scan_low_energy(b2_dscan_conf, b2_tscan_voltages):
     fig, (mx, axbx, axby, axdy, axe) = latdraw.subplots_with_lattice(bl, nrows=4)
 
     for dy, full_twiss in b2.gun_to_dump_scan_optics(design_energy=False):
-
         axbx.plot(full_twiss.s, full_twiss.beta_x)
         axby.plot(full_twiss.s, full_twiss.beta_y)
         axdy.plot(full_twiss.s, full_twiss.Dy, label=fr"$D_y\,=\,{dy}\,\mathrm{{m}}$")
-        axe.plot(full_twiss.s, full_twiss.E*1e3)
+        axe.plot(full_twiss.s, full_twiss.E * 1e3)
 
     axbx.set_ylabel(BETX_LABEL_STRING)
     axby.set_ylabel(BETY_LABEL_STRING)
@@ -666,29 +663,27 @@ def gun_to_b2_dispersion_scan_low_energy(b2_dscan_conf, b2_tscan_voltages):
     plt.show()
 
 
-
 def plot_b2_design_optics(b2_dscan_conf, b2_tscan_voltages):
     b2 = sim.B2SimulatedEnergySpreadMeasurement(b2_dscan_conf, b2_tscan_voltages)
 
     sequence = b2.gun_to_dump_sequence()
     s_offset = 0
 
-
     import pandas as pd
+
     igor_lat = pd.read_pickle("/Users/stuartwalker/repos/esme-xfel/bin/igors-b2d-lattice.pcl")
     bl_igor = latdraw.interfaces.lattice_from_ocelot(igor_lat, initial_offset=[0, 0, 3.2])
     bl = latdraw.interfaces.lattice_from_ocelot(sequence, initial_offset=[0, 0, 0])
-
 
     bl8 = latdraw.interfaces.read_mad8("/Users/stuartwalker/repos/esme-xfel/esme/sections/TWISS_B2D")
     # from IPython import embed; embed()
     bl8.add_offset([0, 0, 0])
 
-
     fig, (mx, axbx, axby, axdy, axe) = latdraw.subplots_with_lattice(bl, nrows=4)
     # fig, (mx, mx2, axbx, axby, axdy, axax, axay) = latdraw.subplots_with_lattices([bl, bl_igor, None, None, None, None, None])
 
     import pandas as pd
+
     itwiss = pd.read_pickle(b2.IGOR_BC2)
 
     itwiss.s += 3.2
@@ -704,13 +699,11 @@ def plot_b2_design_optics(b2_dscan_conf, b2_tscan_voltages):
     axby.plot(otwiss.s, otwiss.alpha_x, marker="x")
     axby.plot(itwiss.s, itwiss.alpha_x, marker="x")
 
-
     axdy.plot(otwiss.s, otwiss.Dy)
     axdy.plot(itwiss.s, itwiss.Dy)
 
     axe.plot(otwiss.s, otwiss.E)
     axe.plot(itwiss.s, itwiss.E)
-
 
     axbx.set_ylim(-5, 100)
     axby.set_ylim(-5, 100)
@@ -720,7 +713,6 @@ def plot_b2_design_optics(b2_dscan_conf, b2_tscan_voltages):
     axdy.set_ylabel(DY_LABEL_STRING)
 
     axe.set_ylabel(E_LABEL_STRING)
-
 
     axe.set_xlabel(Z_LABEL_STRING)
 
@@ -734,31 +726,25 @@ def plot_b2_design_optics(b2_dscan_conf, b2_tscan_voltages):
 def piecewise_a1_to_b2_optics(b2_dscan_conf, b2_tscan_voltages):
     b2 = sim.B2SimulatedEnergySpreadMeasurement(b2_dscan_conf, b2_tscan_voltages)
 
-
     seq = b2.b2lat.to_navigator().lat.sequence
     s_offset = 0
     bl = latdraw.interfaces.lattice_from_ocelot(seq, initial_offset=[0, 0, s_offset])
     fig, (mx, axbx, axby, axdy, axe) = latdraw.subplots_with_lattice(bl, nrows=4)
 
-
-
     import pand8
+
     mad8 = "/Users/stuartwalker/repos/esme-xfel/esme/sections/bolko-optics.tfs"
     df8 = pand8.read(mad8)
     ll = sim.XFELLonglist("/Users/stuartwalker/repos/esme-xfel/bin/longlist.csv")
     name1 = ll.name2_to_name1(df8.iloc[1].NAME)
 
-
-
     for dy, full_twiss in b2.full_scan_optics():
-
         mad8_offset = full_twiss[full_twiss.id == name1].s
 
         # from IPython import embed; embed()
 
         axbx.plot(full_twiss.s, full_twiss.beta_x)
-        axe.plot(full_twiss.s, full_twiss.E*1e3)
-
+        axe.plot(full_twiss.s, full_twiss.E * 1e3)
 
     axe.set_ylabel(E_LABEL_STRING)
     axbx.set_ylabel(BETX_LABEL_STRING)

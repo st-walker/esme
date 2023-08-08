@@ -34,17 +34,19 @@ import numpy.typing as npt
 import pandas as pd
 from scipy.constants import c, e, m_e
 from uncertainties import ufloat
-from uncertainties.umath import sqrt as usqrt # pylint: disable=no-name-in-module
+from uncertainties.umath import sqrt as usqrt  # pylint: disable=no-name-in-module
 
 from esme.calibration import TDS_WAVENUMBER, TDS_LENGTH, TrivialTDSCalibrator
 from esme.maths import linear_fit, ValueWithErrorT
 from esme.image import get_slice_properties, process_image
-from esme.channels import (TDS_I1_AMPLITUDE_READBACK_ADDRESS,
-                           BEAM_ALLOWED_ADDRESS,
-                           BEAM_ENERGY_ADDRESS,
-                           EVENT10_CHANNEL,
-                           TDS_I1_ON_BEAM_EVENT10,
-                           DUMP_SCREEN_ADDRESS)
+from esme.channels import (
+    TDS_I1_AMPLITUDE_READBACK_ADDRESS,
+    BEAM_ALLOWED_ADDRESS,
+    BEAM_ENERGY_ADDRESS,
+    EVENT10_CHANNEL,
+    TDS_I1_ON_BEAM_EVENT10,
+    DUMP_SCREEN_ADDRESS,
+)
 from esme.measurement import SetpointMachineSnapshots
 from esme.exceptions import TDSCalibrationError, EnergySpreadCalculationError
 
@@ -63,7 +65,6 @@ ELECTRON_MASS_EV: float = m_e * c**2 / e
 RawImageT = npt.NDArray
 
 MULTIPROCESSING = True
-
 
 
 class TDSScreenImage:
@@ -125,6 +126,7 @@ class TDSScreenImage:
         columns = list(series.keys()[series.keys().str.startswith("BPM")])
         bpm_data = series[columns]
         return bpm_data.isnull().all()
+
 
 class ScanMeasurement:
     DF_DX_SCREEN_KEY = "MY_SCREEN_DX"
@@ -204,10 +206,8 @@ class ScanMeasurement:
             # Get slice properties for this image
             _, means, sigmas = get_slice_properties(image)
             # Find highest energy slice (min because 0 is at the top in the image)
-            sigma = image.get_central_slice_width_from_slice_properties(means, sigmas,
-                                                                        padding=padding)
+            sigma = image.get_central_slice_width_from_slice_properties(means, sigmas, padding=padding)
             image_fitted_sigmas.append(sigma)
-
 
         width_with_error = np.mean(image_fitted_sigmas)
 
@@ -236,6 +236,7 @@ class ScanMeasurement:
         nimages = len(self.images)
         nbg = len(self.bg)
         return f"<{tname}: Dx={self.dx} nimages = {nimages}, nbg={nbg}>"
+
 
 def _f(measurement):
     return measurement.mean_central_slice_width_with_error(padding=10)
@@ -287,12 +288,11 @@ class ParameterScan:
         return iter(self.measurements)
 
 
-
-
 class DispersionScan(ParameterScan):
     @property
     def voltage(self) -> np.ndarray:
         return _get_constant_voltage_for_scan(self)
+
 
 class TDSScan(ParameterScan):
     @property
@@ -315,17 +315,17 @@ class TDSScan(ParameterScan):
         except AttributeError:
             return np.array([self.calibrator.get_voltage(ampl) for ampl in self.tds_percentage])
 
-
         if not (scan_dx[0] == scan_dx).all():
             raise EnergySpreadCalculationError(f"TDS Scan dispersions should all be equal: {scan_dx}")
 
         # If we have to use a setpoint where the measured dispersion is different, we should be tolerant of that a bit...
         if np.abs(((scan_dx[0] - calibrator_dx) / calibrator_dx)) > 0.1:
             scan_dx = np.array2string(scan_dx, separator=", ")
-            raise TDSCalibrationError("Optics setpoint used differs"
-                                      " too much from the scan setpoint used to calculate R34:"
-                                      f" {calibrator_dx=} & {scan_dx=}")
-
+            raise TDSCalibrationError(
+                "Optics setpoint used differs"
+                " too much from the scan setpoint used to calculate R34:"
+                f" {calibrator_dx=} & {scan_dx=}"
+            )
 
         # Get metadata associated with first (non-bg) image of each measurement,
         # and reasonably assume it's the same for every image of the scan.
@@ -347,10 +347,14 @@ class BetaScan(ParameterScan):
         return _get_constant_voltage_for_scan(self)
 
 
-
-def transform_pixel_widths(pixel_widths: npt.NDArray,
-                           pixel_widths_errors: npt.NDArray, *, pixel_units: str = "px",
-                           to_variances: bool = True, dimension: str = "x" ) -> tuple[npt.NDArray, npt.NDArray]:
+def transform_pixel_widths(
+    pixel_widths: npt.NDArray,
+    pixel_widths_errors: npt.NDArray,
+    *,
+    pixel_units: str = "px",
+    to_variances: bool = True,
+    dimension: str = "x",
+) -> tuple[npt.NDArray, npt.NDArray]:
     """The fits used in the paper are linear relationships between the variances
     (i.e. pixel_std^2) and the square of the independent variable (either
     voltage squared V^2 or dipsersion D^2). This function takes D or V and sigma
@@ -402,8 +406,6 @@ def calculate_energy_spread_simple(scan: DispersionScan) -> ValueWithErrorT:
     return value, error  # in eV
 
 
-
-
 @dataclass
 class OpticalConfig:
     ocr_betx: float
@@ -416,7 +418,9 @@ class OpticalConfig:
 
 
 class SliceEnergySpreadMeasurement:
-    def __init__(self, dscan: DispersionScan, tscan: TDSScan, optical_config: OpticalConfig, bscan: Optional[BetaScan] = None):
+    def __init__(
+        self, dscan: DispersionScan, tscan: TDSScan, optical_config: OpticalConfig, bscan: Optional[BetaScan] = None
+    ):
         self.dscan = dscan
         self.tscan = tscan
         self.oconfig = optical_config
@@ -452,9 +456,9 @@ class SliceEnergySpreadMeasurement:
 
         # Values and errors, here we just say there is 0 error in the
         # dispersion and voltage, not strictly true.
-        energy = self.tscan.beam_energy(), 0.  # in eV
-        dispersion = self.tscan.dx.mean(), 0.
-        voltage = self.dscan.voltage[0], 0.
+        energy = self.tscan.beam_energy(), 0.0  # in eV
+        dispersion = self.tscan.dx.mean(), 0.0
+        voltage = self.dscan.voltage[0], 0.0
 
         try:
             a_beta, b_beta = self.beta_scan_fit()
@@ -471,7 +475,7 @@ class SliceEnergySpreadMeasurement:
             reference_voltage=voltage,
             oconfig=self.oconfig,
             a_beta=a_beta,
-            b_beta=b_beta
+            b_beta=b_beta,
         )
 
 
@@ -537,7 +541,7 @@ class FittedBeamParameters:
 
         dx0 = ufloat(*self.reference_dispersion)
         v0 = abs(ufloat(*self.reference_voltage))
-        e0j = ufloat(*self.reference_energy) * e # Convert to joules
+        e0j = ufloat(*self.reference_energy) * e  # Convert to joules
         k = TDS_WAVENUMBER
         result = (e0j / (dx0 * e * k * v0)) * usqrt(ad - av + dx0**2 * bd)
         return result.n, result.s
@@ -611,13 +615,7 @@ class FittedBeamParameters:
         av, bv = self.a_v, self.b_v
         ad, bd = self.a_d, self.b_d
 
-        pdict = {"V_0": v0,
-                 "D_0": dx0,
-                 "E_0": e0,
-                 "A_V": av,
-                 "B_V": bv,
-                 "A_D": ad,
-                 "B_D": bd}
+        pdict = {"V_0": v0, "D_0": dx0, "E_0": e0, "A_V": av, "B_V": bv, "A_D": ad, "B_D": bd}
 
         if self.a_beta and self.b_beta:
             pdict |= {"A_beta": self.a_beta, "B_beta": self.b_beta}
@@ -631,12 +629,14 @@ class FittedBeamParameters:
         return pd.DataFrame({"values": values, "errors": errors}, index=pdict.keys())
 
     def _beam_parameters_to_df(self) -> pd.DataFrame:
-        pdict = {"sigma_e": self.sigma_e,
-                 "sigma_i": self.sigma_i,
-                 "sigma_e_from_tds": self.sigma_e_from_tds,
-                 "sigma_b": self.sigma_b,
-                 "sigma_r": self.sigma_r,
-                 "emitx": self.emitx}
+        pdict = {
+            "sigma_e": self.sigma_e,
+            "sigma_i": self.sigma_i,
+            "sigma_e_from_tds": self.sigma_e_from_tds,
+            "sigma_b": self.sigma_b,
+            "sigma_r": self.sigma_r,
+            "emitx": self.emitx,
+        }
 
         values = []
         errors = []
@@ -647,13 +647,13 @@ class FittedBeamParameters:
         return pd.DataFrame({"values": values, "errors": errors}, index=pdict.keys())
 
     def _alt_beam_parameters_to_df(self) -> pd.DataFrame:
-        pdict = {"sigma_e": self.sigma_e_alt,
-                 "sigma_i": self.sigma_i_alt,
-                 "sigma_e_from_tds": self.sigma_e_from_tds_alt}
+        pdict = {
+            "sigma_e": self.sigma_e_alt,
+            "sigma_i": self.sigma_i_alt,
+            "sigma_e_from_tds": self.sigma_e_from_tds_alt,
+        }
         if self.a_beta and self.b_beta:
-            pdict |= {"sigma_b": self.sigma_b_alt,
-                      "sigma_r": self.sigma_r_alt,
-                      "emitx": self.emitx_alt}
+            pdict |= {"sigma_b": self.sigma_b_alt, "sigma_r": self.sigma_r_alt, "emitx": self.emitx_alt}
         values = []
         errors = []
         for key, pair in pdict.items():
@@ -689,7 +689,6 @@ def _get_constant_voltage_for_scan(scan: ParameterScan) -> np.array:
     if not (tds_ampl[0] == tds_ampl).all():
         raise EnergySpreadCalculationError(f"Dispersion scan TDS voltages should all be equal: {tds_ampl}")
 
-
     metadata = measurement.images[0].metadata
     voltage = scan.calibrator.get_voltage(measurement.tds_percentage, metadata)
     measurement_dx = measurement.dx
@@ -701,10 +700,11 @@ def _get_constant_voltage_for_scan(scan: ParameterScan) -> np.array:
     # voltages.
     calibrator_dx = scan.calibrator.dispersion_setpoint
     if abs((calibrator_dx - measurement_dx) / calibrator_dx) > 0.2:
-        raise TDSCalibrationError("Optics setpoint used differs"
-                                  " too much from the scan setpoint used to calculate R34:"
-                                  f" {calibrator_dx=} & {measurement_dx=}")
-
+        raise TDSCalibrationError(
+            "Optics setpoint used differs"
+            " too much from the scan setpoint used to calculate R34:"
+            f" {calibrator_dx=} & {measurement_dx=}"
+        )
 
     LOG.debug("Deriving constant voltage for dispersion scan.  Calibrator: {scan.calibrator} @ Dx={dx}")
     return np.ones_like(scan.measurements) * voltage
