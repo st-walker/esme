@@ -564,7 +564,6 @@ class BasicAlarm:
                 f" explanation:  {self.explanation}")
 
 
-
 class LambaAlarm:
     def __init__(self, channels, fn):
         self.channels = channels
@@ -572,3 +571,19 @@ class LambaAlarm:
 
     def is_ok(self, machine, fn):
         values = [machine.read_value(ch) for ch in channels]
+
+
+class MockMPS(MPS):
+    def beam_off(self):
+        super().beam_off()
+        self.mi.set_value("XFEL.DIAG/TOROID/TORA.60.I1/CHARGE.ALL", 0)
+
+    def beam_on(self):
+        super().beam_on()
+        self.mi.set_value("XFEL.DIAG/TOROID/TORA.60.I1/CHARGE.ALL", 250)
+
+    def num_bunches_requested(self, num_bunches=1):
+        self.mi.set_value(self.server + ".UTIL/BUNCH_PATTERN/CONTROL/NUM_BUNCHES_REQUESTED_1", num_bunches)
+
+    def is_beam_on(self):
+        return self.mi.get_value(self.server + ".UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED")

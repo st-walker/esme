@@ -45,7 +45,7 @@ from esme.channels import (TDS_I1_AMPLITUDE_READBACK_ADDRESS,
                            EVENT10_CHANNEL,
                            TDS_I1_ON_BEAM_EVENT10,
                            DUMP_SCREEN_ADDRESS)
-from esme.measurement import SetpointSnapshots
+from esme.measurement import SetpointMachineSnapshots
 from esme.exceptions import TDSCalibrationError, EnergySpreadCalculationError
 
 
@@ -202,11 +202,10 @@ class ScanMeasurement:
         for i in range(self.nimages):
             image = self.to_im(i)
             # Get slice properties for this image
-            x, means, sigmas = get_slice_properties(image)
+            _, means, sigmas = get_slice_properties(image)
             # Find highest energy slice (min because 0 is at the top in the image)
-            centre_index = means.argmin()
-
-            sigma = np.mean(sigmas[centre_index - padding : centre_index + padding])
+            sigma = image.get_central_slice_width_from_slice_properties(means, sigmas,
+                                                                        padding=padding)
             image_fitted_sigmas.append(sigma)
 
 

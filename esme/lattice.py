@@ -7,12 +7,13 @@ from typing import Iterable
 import numpy as np
 import pandas as pd
 
-from oxfel.fel_track import SectionedFEL, FELSection
+from oxfel.fel_track import Linac
 from ocelot.cpbd.elements import Quadrupole, SBend, RBend
 
-from esme.measurement import QuadrupoleSetting
-from .sections import sections
-from .sections import i1, i1d
+from esme.dispersion import QuadrupoleSetting
+from oxfel.accelerator import sections
+from oxfel.accelerator.sections import i1, i1d
+from oxfel.longlist import XFELComponentList
 
 LOG = logging.getLogger(__name__)
 
@@ -146,7 +147,7 @@ def injector_cell_from_snapshot(snapshot: pd.Series, check=True, change_correcto
 
         if isinstance(element, (SBend, RBend)):
             angle_mrad = snapshot[element.id]
-            angle = -angle_mrad * 1e-3            
+            angle = -angle_mrad * 1e-3
             LOG.debug(f"setting dipole angle from snapshot: {element.id}, {element.angle=} to {angle=}")
             element.angle = angle
 
@@ -181,7 +182,7 @@ def injector_cell_from_snapshot(snapshot: pd.Series, check=True, change_correcto
     return cell
 
 
-def apply_quad_setting_to_lattice(lattice: SectionedFEL, qset: QuadrupoleSetting):
+def apply_quad_setting_to_lattice(lattice: Linac, qset: QuadrupoleSetting):
     LOG.debug("Applying quadrupole strengths from QuadrupoleSetting instance to OCELOT SectionLattice.")
     for section in lattice.sections:
         sequence = section.lattice.sequence
@@ -200,14 +201,17 @@ def apply_quad_setting_to_lattice(lattice: SectionedFEL, qset: QuadrupoleSetting
 
 def make_to_i1d_lattice(twiss0, outdir="./"):
     all_sections = [sections.G1, sections.A1, sections.AH1, sections.LH, sections.I1D]
-    return SectionedFEL(all_sections, twiss0, outdir=outdir)
+    return Linac(all_sections, twiss0, outdir=outdir)
+
 
 def make_to_b2d_lattice(twiss0, outdir="./"):
     all_sections = [sections.G1, sections.A1, sections.AH1, sections.LH, sections.DL, sections.BC0, sections.L1, sections.BC1, sections.L2, sections.BC2, sections.B2D]
-    return SectionedFEL(all_sections, twiss0, outdir=outdir)
+    return Linac(all_sections, twiss0, outdir=outdir)
+
 
 def make_dummy_lookup_sequence():
     """Just make a cell of every single element for looking up
     strengths and lengths etc.  Obviously not for tracking, because
     it's not in the right order."""
     return sections.i1.make_cell() + sections.i1d.make_cell() + sections.l1.make_cell() + sections.l2.make_cell() + sections.b2d.make_cell()
+

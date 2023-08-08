@@ -70,6 +70,8 @@ def get_calibration_outdir():
         Path("./")
 
 def start_gui(scantoml, debug_mode, replay):
+    """Main entry point to starting the GUI.  Reads from"""
+    the scan.toml
     # make pyqt threadsafe
     QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
     # create the application

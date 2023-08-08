@@ -41,12 +41,6 @@ def test_QuadrupoleSetting_init(quad_setting):
     assert quad_setting.strengths == [1, 2, 3]
     assert quad_setting.dispersion == 123
 
-def test_ScanOpticsConfiguration_init(quad_setting, quad_setting2, quad_setting3):
-    inst = DispersionScanConfiguration(quad_setting, [quad_setting2, quad_setting3])
-
-    assert inst.reference_setting == quad_setting
-    assert inst.scan_settings == [quad_setting2, quad_setting3]
-
 @pytest.fixture
 def photographer():
     return ScreenPhotographer(mps=MagicMock(name="MPS_mock"),

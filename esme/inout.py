@@ -11,6 +11,7 @@ from typing import Union, Optional
 import toml
 import pandas as pd
 import numpy as np
+from oxfel.longlist import make_default_longlist
 
 from esme.analysis import (
     DispersionScan,
@@ -25,18 +26,17 @@ from esme.channels import TDS_I1_AMPLITUDE_READBACK_ADDRESS, I1D_SCREEN_ADDRESS
 from esme.measurement import (
     MeasurementRunner,
     DataTaker,
-    DispersionScanConfiguration,
-    TDSScanConfiguration,
-    DispersionMeasurer,
-    SetpointSnapshots,
+    SetpointMachineSnapshots,
     ScanType,
-    DispersionScanConfiguration,
-    TDSScanConfiguration,
-    QuadrupoleSetting,
-    I1EnergySpreadMeasuringMachine,
-    I1EnergySpreadMeasuringMachineReplayer
+    # I1EnergySpreadMeasuringMachine,
+    # I1EnergySpreadMeasuringMachineReplayer
 )
-from esme.lattice import make_dummy_lookup_sequence
+from esme.dispersion import DispersionScanConfiguration, QuadrupoleSetting, DispersionMeasurer
+from esme.tds import TDSScanConfiguration
+
+# from esme.lattice import make_dummy_lookup_sequence
+
+
 
 
 LOG = logging.getLogger(__name__)
@@ -343,8 +343,8 @@ def raw_df_pcl_to_setpoint_snapshots(fpcl, scan_type):
     df = pd.read_pickle(fpcl)
     # except EOFError:
 
-    if isinstance(df, SetpointSnapshots):
-        LOG.info(f"{fpcl} is already a pickled SetpointSnapshots instance")
+    if isinstance(df, SetpointMachineSnapshots):
+        LOG.info(f"{fpcl} is already a pickled SetpointMachineSnapshots instance")
         raise TypeError("already a SetpointSnapshot")
 
     # Measured dispersion
@@ -365,14 +365,14 @@ def raw_df_pcl_to_setpoint_snapshots(fpcl, scan_type):
 
     dispersion_setpoint = dispersion_setpoints[isetpoint]
 
-    return SetpointSnapshots(
+    return SetpointMachineSnapshots(
         df, scan_type, dispersion_setpoint=dispersion_setpoint, measured_dispersion=(dx, 0.0), beta=beta
     )
 
 
 def toml_dfs_to_setpoint_snapshots(ftoml):
     """This is for porting old pure dataframes (referred to in the
-    toml files) to the newer SetpointSnapshots instances.
+    toml files) to the newer SetpointMachineSnapshots instances.
 
     """
     dscan_paths, tscan_paths, bscan_paths = scan_files_from_toml(ftoml)
@@ -384,7 +384,7 @@ def toml_dfs_to_setpoint_snapshots(ftoml):
         _loop_pcl_df_files(bscan_paths, ScanType.BETA)
 
 
-def load_pickled_snapshots(data_dict: dict) -> tuple[list[SetpointSnapshots], list[SetpointSnapshots], Optional[list[SetpointSnapshots]]]:
+def load_pickled_snapshots(data_dict: dict) -> tuple[list[SetpointMachineSnapshots], list[SetpointMachineSnapshots], Optional[list[SetpointMachineSnapshots]]]:
     """data_dict is of form coming
       from toml file..."""
     tscan = load_data_config_section(data_dict, "tscan")
@@ -397,7 +397,7 @@ def load_pickled_snapshots(data_dict: dict) -> tuple[list[SetpointSnapshots], li
     return dscan, tscan, bscan
 
 
-def load_data_config_section(data_dict: dict, scan_key: str) -> list[SetpointSnapshots]:
+def load_data_config_section(data_dict: dict, scan_key: str) -> list[SetpointMachineSnapshots]:
     section = data_dict[scan_key]
     if section.get("old_sergey_format", False):
         return load_old_raw_df_snapshot_format(data_dict, scan_key)
@@ -427,7 +427,7 @@ def load_new_object_format(data_dict, scan_key):
     return result
 
 
-def load_old_raw_df_snapshot_format(data_dict: dict, scan_key: str) -> list[SetpointSnapshots]:
+def load_old_raw_df_snapshot_format(data_dict: dict, scan_key: str) -> list[SetpointMachineSnapshots]:
     bad_images = data_dict.get("bad_images", [])
 
     basepath = Path(data_dict["basepath"])
@@ -449,7 +449,7 @@ def load_old_raw_df_snapshot_format(data_dict: dict, scan_key: str) -> list[Setp
     for path, dispersion_sp, dispersion, beta in zip(paths, sps, dispersions, betas):
         full_path = basepath / path
         df = pd.read_pickle(full_path)
-        sn = SetpointSnapshots(snapshots=df,
+        sn = SetpointMachineSnapshots(snapshots=df,
                                scan_type=ScanType.from_name(scan_key),
                                dispersion_setpoint=dispersion_sp,
                                measured_dispersion=dispersion,
@@ -463,8 +463,7 @@ def load_old_raw_df_snapshot_format(data_dict: dict, scan_key: str) -> list[Setp
 
 def i1_dscan_config_from_scan_config_file(config_path: os.PathLike):
     conf = toml.load(config_path)
-    return _dscan_config_from_scan_config_file(conf["i1"]["quads"])
-
+    return _dscan_config_from_scan_config(conf, "i1")
 
 def i1_tds_voltages_from_scan_config_file(config_path: os.PathLike):
     conf = toml.load(config_path)
@@ -480,11 +479,14 @@ def b2_tds_voltages_from_scan_config_file(config_path: os.PathLike):
 
 def b2_dscan_config_from_scan_config_file(config_path: os.PathLike):
     conf = toml.load(config_path)
-    return _dscan_config_from_scan_config_file(conf["b2"]["quads"])
+    return _dscan_config_from_scan_config(conf, "b2")
 
 
-def _dscan_config_from_scan_config_file(quads: dict) -> DispersionScanConfiguration:
-    ref = quads["reference_optics"]
+def _dscan_config_from_scan_config(scan_config: dict, section) -> DispersionScanConfiguration:
+    dscan = scan_config[section]["dscan"]
+
+
+    ref = dscan["reference_optics"]
 
     try:
         ref_k1s = ref["k1s"]
@@ -495,29 +497,45 @@ def _dscan_config_from_scan_config_file(quads: dict) -> DispersionScanConfigurat
 
     reference_setting = QuadrupoleSetting(ref["names"], ref_k1ls, ref["dispersion"])
 
-    dscan = quads["dscan"]
-    dscan_quad_names = dscan["names"]
+    quads = dscan["quads"]
+    dscan_quad_names = quads["names"]
+
     try:
-        dscan_k1s = dscan["k1s"]
+        quad_k1s = quads["k1s"]
     except KeyError:
-        dscan_k1ls = dscan["k1ls"]
+        quad_k1ls = quads["k1ls"]
     else:
-        dscan_k1ls = named_k1s_to_k1ls(dscan_quad_names, dscan_k1s)
+        quad_k1ls = named_k1s_to_k1ls(dscan_quad_names, quad_k1s)
 
-
+    
     scan_settings = []
-    for dispersion, scan_k1ls in zip(dscan["dispersions"], dscan_k1ls):
+    for dispersion, scan_k1ls in zip(quads["dispersions"], quad_k1ls):
         scan_settings.append(QuadrupoleSetting(dscan_quad_names, scan_k1ls, dispersion))
-    return DispersionScanConfiguration(reference_setting, scan_settings)
+
+    # from IPython import embed; embed()
+
+    tds_voltage = dscan["tds_voltage"]
+    return DispersionScanConfiguration(reference_setting, scan_settings, tds_voltage)
 
 
 def _tscan_config_from_scan_config_file(key, config_path: os.PathLike) -> TDSScanConfiguration:
     conf = toml.load(config_path)
-    tds = conf[key]["tds"]
+    tscan = conf[key]["tscan"]
+    voltages = tscan["voltages"]
+    dispersion = tscan["dispersion_setpoint"]
+
+    dconf = _dscan_config_from_scan_config(conf, key)
+
+    assert tscan["dispersion_setpoint"] == dconf.reference_setting.dispersion
+
     return TDSScanConfiguration(
-        reference_amplitude=tds["reference_amplitude"],
-        scan_amplitudes=tds["scan_amplitudes"],
-        scan_dispersion=tds["scan_dispersion"])
+        voltages=tscan["voltages"],
+        quad_setting=dconf.reference_setting)
+
+    # return TDSScanConfiguration(
+    #     reference_amplitude=tds["reference_amplitude"],
+    #     scan_amplitudes=tds["scan_amplitudes"],
+    #     scan_dispersion=tds["scan_dispersion"])
 
 
 def i1_tscan_config_from_scan_config_file(config_path: os.PathLike):
@@ -528,6 +546,6 @@ def b2_tscan_config_from_scan_config_file(config_path: os.PathLike):
     return _tscan_config_from_scan_config_file("b2", config_path)
 
 def named_k1s_to_k1ls(names, k1s):
-    lookup_cell = make_dummy_lookup_sequence()
-    lengths = np.array([lookup_cell[name].l for name in names])
+    ll = make_default_longlist()
+    lengths = np.array(ll[names].LENGTH)
     return lengths * k1s

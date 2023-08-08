@@ -24,8 +24,11 @@ from esme.exceptions import TDSCalibrationError
 
 LOG = logging.getLogger(__name__)
 
+SLICE_WIDTH_LABEL = r"$\sigma_M\,/\,\mathrm{\mu m}$"
 ETA_LABEL = r"$\eta_\mathrm{{OTR}}\,/\,\mathrm{m}$"
+ETA2_LABEL = r"$\eta^2_\mathrm{{OTR}}\,/\,\mathrm{m}$"
 VOLTAGE_LABEL = r"$|V_\mathrm{TDS}|\,/\,\mathrm{MV}$"
+VOLTAGE2_LABEL = r"$|V^2_\mathrm{TDS}|\,/\,\mathrm{MV}$"
 TDS_CALIBRATION_LABEL = r"Gradient / $\mathrm{\mu{}mps^{-1}}$"
 TDS_AMPLITUDE_LABEL = r"TDS Amplitude / %"
 
