@@ -1,0 +1,36 @@
+
+kickers:
+- name: KAX.54.I1
+  number: 1
+  adio24_stem: "XFEL.SDIAG/ADIO24/SD54I1.0"
+  trigger_channel: "SD54I1/RTM.TRG1"
+- name: KAX.56.I1
+  number: 2
+  adio24_stem: "XFEL.SDIAG/ADIO24/SD54I1.2"
+  trigger_channel: "SD54I1/RTM.TRG3"
+  
+
+screens:
+- name: OTRC.55.I1
+  polarity: -1
+  voltage: 9000
+  delay: 46
+  kicker_name: KAX.54.I1
+
+- name: OTRC.56.I1
+  polarity: +1
+  voltage: 7000
+  delay: 32
+  kicker_name: KAX.54.I1
+
+- name: OTRC.58.I1
+  polarity: +1
+  voltage: 11000
+  delay: 27
+  kicker_name: KAX.56.I1
+
+- name: OTRC.59.I1
+  polarity: -1
+  voltage: 7000
+  delay: 32
+  kicker_name: KAX.54.I1

@@ -1,0 +1,2 @@
+class EuXFELUserError(RuntimeError):
+    pass

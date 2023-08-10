@@ -76,6 +76,7 @@ doc = [
 
 [tool.poetry.scripts]
 esme = 'esme.cli:main'
+lpsgui = 'esme.gui.gui:start_gui'
 
 [tool.black]
 line-length = 88
