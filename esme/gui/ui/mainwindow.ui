@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Energy Spread Measurement</string>
+   <string>Diagnostic Sections Utility</string>
   </property>
   <property name="documentMode">
    <bool>false</bool>
