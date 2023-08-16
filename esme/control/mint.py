@@ -36,105 +36,31 @@ class EuXFELMachineError(RuntimeError):
     pass
 
 
-class Device(object):
-    def __init__(self, eid=None):
-        self.eid = eid
-        self.id = eid
-        self.values = []
-        self.times = []
-        self.simplex_step = 0
-        self.mi = None
-        self.tol = 0.001
-        self.timeout = 5  # seconds
-        self.target = None
-        self.low_limit = 0
-        self.high_limit = 0
-        self.phys2hw_factor = 1.0
-        self.hw2phys_factor = 1.0
+def make_doocs_channel_string(facility="", device="", location="", prop=""):
+    return f"{facility}/{device}/{location}/{prop}"
 
-    def set_value(self, val):
-        self.values.append(val)
-        self.times.append(time.time())
-        self.target = val
-        self.mi.set_value(self.eid, val)
+class DOOCSAddress:
+    def __init__(self, facility="", device="", location="", prop=""):
+        self.facility = facility
+        self.device = device
+        self.location = location
+        self.prop = prop
 
-    def set_low_limit(self, val):
-        self.low_limit = val
+    @classmethod
+    def from_string(cls, string):
+        components = string.split("/")
+        if len(components) > 4:
+            raise ValueError(f"Malformed DOOCs address string: {string}")
+        return cls(*components)
 
-    def set_high_limit(self, val):
-        self.high_limit = val
+    def resolve(self):
+        return f"{self.facility}/{self.device}/{self.location}/{self.prop}"
 
-    def get_value(self):
-        val = self.mi.get_value(self.eid)
-        return val
-
-    def trigger(self):
+    def filled(self, facility=None, device=None, location=None, prop=None):
         pass
 
-    def wait(self):
-        if self.target is None:
-            return
-
-        start_time = time.time()
-        while start_time + self.timeout <= time.time():
-            if abs(self.get_value() - self.target) < self.tol:
-                return
-            time.sleep(0.05)
-
-    def state(self):
-        """
-        Check if device is readable
-
-        :return: state, True if readable and False if not
-        """
-        state = True
-        try:
-            self.get_value()
-        except:
-            state = False
-        return state
-
-    def clean(self):
-        self.values = []
-        self.times = []
-
-    def check_limits(self, value):
-        limits = self.get_limits()
-        if value < limits[0] or value > limits[1]:
-            print(
-                'limits exceeded for ',
-                self.id,
-                " - ",
-                value,
-                limits[0],
-                value,
-                limits[1],
-            )
-            return True
-        return False
-
-    def get_limits(self):
-        return [self.low_limit, self.high_limit]
-
-    def phys2hw(self, phys_val):
-        """
-        Method to translate physical units to hardware units, e.g. angle [rad] to current [A]
-
-        :param phys_val: physical unit
-        :return: hardware unit
-        """
-        hw_val = phys_val * self.phys2hw_factor
-        return hw_val
-
-    def hw2phys(self, hw_val):
-        """
-        Method to translate hardware units to physical units, e.g. current [A] to angle [rad]
-
-        :param hw_val: hardware unit
-        :return: physical unit
-        """
-        phys_val = hw_val * self.hw2phys_factor
-        return phys_val
+    def __repr__(self):
+        return f'<{type(self).__name__} @ {hex(id(self))}: "{self.resolve()}">'
 
 
 @dataclass
@@ -168,30 +94,10 @@ class XFELMachineInterfaceABC:
         pass
 
 
-class DictionaryXFELMachineInterface(XFELMachineInterfaceABC):
-    def __init__(self, initial_state: Optional[dict] = None):
-        self._machine_state = {}
-        if initial_state is not None:
-            self._machine_state |= initial_state
-
-    def get_value(self, channel: str) -> Any:
-        return self._machine_state[channel]
-
-    def set_value(self, channel: str, val: Any) -> None:
-        self._machine_state[channel] = val
-
-    def get_charge(self) -> float:
-        return 250e-12  # ?
-
-
 class XFELMachineInterface(XFELMachineInterfaceABC):
     """
     Machine Interface for European XFEL
     """
-
-    def __init__(self, args=None):
-        self.logbook = "xfellog"
-
     def get_value(self, channel: str) -> Any:
         """
         Getter function for XFEL.
@@ -554,90 +460,18 @@ class Machine:
         return df, image
 
 
-class MPS(Device):
-    def __init__(
-        self,
-        eid: Optional[str] = None,
-        server: str = "XFEL",
-        subtrain: str = "SA1",
-        mi: Optional[Type[XFELMachineInterfaceABC]] = None,
-    ):
-        super(MPS, self).__init__(eid=eid)
-        if mi is None:
-            mi = XFELMachineInterface()
-        self.mi = mi
-        self.subtrain = subtrain
-        self.server = server
+class DictionaryXFELMachineInterface(XFELMachineInterfaceABC):
+    def __init__(self, initial_state: Optional[dict] = None):
+        self._machine_state = {}
+        if initial_state is not None:
+            self._machine_state |= initial_state
 
-    def beam_off(self) -> None:
-        self.mi.set_value(self.server + ".UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED", 0)
+    def get_value(self, channel: str) -> Any:
+        return self._machine_state[channel]
 
-    def beam_on(self) -> None:
-        self.mi.set_value(self.server + ".UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED", 1)
+    def set_value(self, channel: str, val: Any) -> None:
+        self._machine_state[channel] = val
 
-    def num_bunches_requested(self, num_bunches: int = 1) -> None:
-        self.mi.set_value(
-            self.server + ".UTIL/BUNCH_PATTERN/CONTROL/NUM_BUNCHES_REQUESTED_1",
-            num_bunches,
-        )
-
-    def is_beam_on(self) -> bool:
-        return self.mi.get_value(
-            self.server + ".UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED"
-        )
-
-
-# Channel returns [a,b,c,d], we need C!  third element.  so BasicAlarm
-
-
-class BasicAlarm:
-    def __init__(
-        self,
-        channel: str,
-        vmin: float = -np.inf,
-        vmax: float = +np.inf,
-        explanation: str = "",
-    ):
-        self.channel = channel
-        self.vmin = vmin
-        self.vmax = vmax
-        self.explanation = ""
-
-    def is_ok(self, value: float):
-        return (value >= self.vmin) and (value < self.vmax)
-
-    def offline_message(self) -> str:
-        return (
-            f"{self.channel} out of bounds, bounds = {(self.vmin, self.vmax)}."
-            f" explanation:  {self.explanation}"
-        )
-
-
-class LambaAlarm:
-    def __init__(self, channels, fn):
-        self.channels = channels
-        self.fn = fn
-
-    def is_ok(self, machine, fn):
-        values = [machine.read_value(ch) for ch in channels]
-
-
-class MockMPS(MPS):
-    def beam_off(self):
-        super().beam_off()
-        self.mi.set_value("XFEL.DIAG/TOROID/TORA.60.I1/CHARGE.ALL", 0)
-
-    def beam_on(self):
-        super().beam_on()
-        self.mi.set_value("XFEL.DIAG/TOROID/TORA.60.I1/CHARGE.ALL", 250)
-
-    def num_bunches_requested(self, num_bunches=1):
-        self.mi.set_value(
-            self.server + ".UTIL/BUNCH_PATTERN/CONTROL/NUM_BUNCHES_REQUESTED_1",
-            num_bunches,
-        )
-
-    def is_beam_on(self):
-        return self.mi.get_value(
-            self.server + ".UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED"
-        )
+    def get_charge(self) -> float:
+        return 250e-12  # ?
+    

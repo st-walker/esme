@@ -1,61 +1,66 @@
-from .mint import XFELMachineInterface
-from enum import Enum, auto
-from .exceptions import EuXFELUserError
-from dataclasses import dataclass
-
 import logging
+from textwrap import dedent
+from dataclasses import dataclass
+from enum import IntEnum
+from typing import Optional
+
+from .mint import XFELMachineInterface
+from .exceptions import EuXFELUserError
+
 
 LOG = logging.getLogger(__name__)
 
-class PolarityType(Enum):
+class PolarityType(IntEnum):
     POSITIVE = +1
     NEGATIVE = -1
 
+
 @dataclass
-class ScreenConfig:
+class FastKickerSetpoint:
     name: str
-    polarity: PolarityType
     voltage: float
     delay: int
-    kicker_name: str
+    polarity: Optional[PolarityType]
     
+
 class KickerOperationError(EuXFELUserError):
     pass
 
-class Kicker:
-    HV_ON_READ = "DIO_CH.14"
-    # What HV_ON_READ should be if the HV is on.
-    HV_ON_READ_VALUE_ON = 0
-    HV_EIN_SET = "DIO_CH.18"
-    HV_AUS_SET = "DIO_CH.19"
-    POSITIVE_SET = "DIO_CH.21"
-    NEGATIVE_SET = "DIO_CH.22"
-    def __init__(self, *, name: str , adio24_stem:str , trigger_channel:str, number: int, mi=None):
+
+class FastKicker:
+    HV_ON_READ_PROP = "DIO_CH.14"
+    # What HV_ON_READ_PROP should be if the HV is on.
+    HV_ON_READ_PROP_VALUE_ON = 0
+    HV_EIN_SET_PROP = "DIO_CH.18"
+    HV_AUS_SET_PROP = "DIO_CH.19"
+    POSITIVE_SET_PROP = "DIO_CH.21"
+    NEGATIVE_SET_PROP = "DIO_CH.22"
+    def __init__(self, *, name: str , adio24_fdl:str , trigger_channel:str, mi=None):
         self.name = name
-        self.adio24_stem = adio24_stem
+        self.adio24_fdl = adio24_fdl
         self.trigger_channel = trigger_channel
         self.mi = mi if mi else XFELMachineInterface()
         
     def _full_path(self, leaf):
-        return f"{self.adio24_stem}/{leaf}"
+        return f"{self.adio24_fdl}/{leaf}"
 
     def set_hv_off(self):
-        self.mi.set_value(self._full_path(self.HV_AUS_SET), 1)
+        self.mi.set_value(self._full_path(self.HV_AUS_SET_PROP), 1)
 
     def set_hv_on(self):
-        self.mi.set_value(self._full_path(self.HV_EIN_SET), 1)
+        self.mi.set_value(self._full_path(self.HV_EIN_SET_PROP), 1)
 
     def is_hv_on(self):
-        val = self.mi.get_value(self._full_path(self.HV_ON_READ))
-        return val == self.HV_ON_READ_VALUE_ON
+        val = self.mi.get_value(self._full_path(self.HV_ON_READ_PROP))
+        return val == self.HV_ON_READ_PROP_VALUE_ON
 
     def set_polarity(self, polarity: PolarityType) -> None:
         if self.is_hv_on():
             raise KickerOperationError("Trying to change the polarity whilst HV is still on.")
         if polarity is PolarityType.POSITIVE:
-            self.mi.set_value(f"{self.adio24_stem}/{self.POSITIVE_SET}", 1)
+            self.mi.set_value(f"{self.adio24_fdl}/{self.POSITIVE_SET_PROP}", 1)
         elif polarity is PolarityType.NEGATIVE:
-            self.mi.set_value(f"{self.adio24_stem}/{self.NEGATIVE_SET}", 1)
+            self.mi.set_value(f"{self.adio24_fdl}/{self.NEGATIVE_SET_PROP}", 1)
         else:
             raise TypeError(f"Unrecognised Polarity {polarity}")
 
@@ -71,31 +76,24 @@ class Kicker:
         channel = f"XFEL.SDIAG/KICKER.PS/{self.name}/S0"
         self.mi.set_value(channel, voltage)
 
+    def get_number(self):
+        return self.mi.get_value(f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/{self.name}/KICKER_NUMBER")
 
-class KickerController:
-    def __init__(self, screens: list[ScreenConfig], kickers: list[Kicker], mi=None):
-        self.screens = screens
+    def is_operational(self):
+        return self.mi.get_value(f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/{self.name}/KICKER_STATUS") == 0
+
+
+class FastKickerController:
+    def __init__(self, kickers: list[FastKicker], mi=None):
         self.kickers = kickers
 
         self.mi = mi if mi else XFELMachineInterface()
 
     @property
-    def screen_names(self) -> list[str]:
-        return [screen.name for screen in self.screens]
-
-    @property
     def kicker_names(self) -> list[str]:
         return [kicker.name for kicker in self.kickers]
 
-    def get_screen_config(self, screen_name: str) -> None:
-        try:
-            screen_index = self.screen_names.index(screen_name)
-        except ValueError:
-            raise KickerOperationError(f"Unrecognised screen name {screen_name}")
-        else:
-            return self.screens[screen_index]
-
-    def get_kicker(self, kicker_name: str) -> None:
+    def get_kicker(self, kicker_name: str) -> FastKicker:
         try:
             kicker_index = self.kicker_names.index(kicker_name)
         except ValueError:
@@ -103,12 +101,14 @@ class KickerController:
         else:
             return self.kickers[kicker_index]
 
-    def configure_kicker_for_screen(self, screen_name: str) -> None:
-        screen_config = self.get_screen_config(screen_name)
-        kicker = self.get_kicker(screen_config.kicker_name)
+    def apply_fast_kicker_setpoint(self, ksp: FastKickerSetpoint) -> None:
+        kicker = self.get_kicker(ksp.name)
 
+        # TODO: this should work when there is no polarity change!
         kicker.set_hv_off()
-        kicker.set_polarity(screen_config.polarity)
+        if ksp.polarity is not None:
+            kicker.set_polarity(ksp.polarity)
         kicker.set_hv_on()
-        kicker.set_delay(screen_config.delay)
-        kicker.set_voltage(screen_config.voltage)
+        kicker.set_delay(ksp.delay)
+        kicker.set_voltage(ksp.voltage)
+

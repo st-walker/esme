@@ -1,36 +1,118 @@
 
 kickers:
 - name: KAX.54.I1
-  number: 1
-  adio24_stem: "XFEL.SDIAG/ADIO24/SD54I1.0"
-  trigger_channel: "SD54I1/RTM.TRG1"
+  adio24_fdl: XFEL.SDIAG/ADIO24/SD54I1.0
+  trigger_channel: SD54I1/RTM.TRG1
 - name: KAX.56.I1
-  number: 2
-  adio24_stem: "XFEL.SDIAG/ADIO24/SD54I1.2"
-  trigger_channel: "SD54I1/RTM.TRG3"
-  
+  adio24_fdl: XFEL.SDIAG/ADIO24/SD54I1.2
+  trigger_channel: SD54I1/RTM.TRG3
+- name: KDY.445.B2
+  adio24_fdl: XFEL.SDIAG/ADIO24/SD449B2.0
+  trigger_channel: SD449B2/RTM.TRG1
+- name: KDY.446.B2
+  adio24_fdl: XFEL.SDIAG/ADIO24/SD449B2.1
+  trigger_channel: SD449B2/RTM.TRG1
+- name: KDY.452.B2
+  adio24_fdl: XFEL.SDIAG/ADIO24/SD449B2.2
+  trigger_channel: SD449B2/RTM.TRG1
+- name: KDY.453.B2
+  adio24_fdl: XFEL.SDIAG/ADIO24/SD449B2.3
+  trigger_channel: SD449B2/RTM.TRG1
 
 screens:
 - name: OTRC.55.I1
-  polarity: -1
-  voltage: 9000
-  delay: 46
-  kicker_name: KAX.54.I1
+  area: I1
+  kickers:
+    KAX.54.I1:
+      polarity: -1
+      voltage: 9000
+      delay: 46
 
 - name: OTRC.56.I1
-  polarity: +1
-  voltage: 7000
-  delay: 32
-  kicker_name: KAX.54.I1
+  area: I1
+  kickers:
+    KAX.54.I1:
+      polarity: +1
+      voltage: 7000
+      delay: 32
 
 - name: OTRC.58.I1
-  polarity: +1
-  voltage: 11000
-  delay: 27
-  kicker_name: KAX.56.I1
+  area: I1
+  kickers:
+    KAX.56.I1:
+      polarity: +1
+      voltage: 11000
+      delay: 27
+
 
 - name: OTRC.59.I1
-  polarity: -1
-  voltage: 7000
-  delay: 32
-  kicker_name: KAX.54.I1
+  area: I1
+  kickers:
+    KAX.54.I1:
+      polarity: -1
+      voltage: 7000
+      delay: 32
+
+- name: OTRC.64.I1D
+  area: I1
+
+- name: OTRD.64.I1D
+  area: I1
+
+- name: OTRB.450.B2
+  area: B2
+  kickers:
+    KDY.445.B2:
+      voltage: 11_500
+      delay: 29
+    KDY.446.B2:
+      voltage: 11_500
+      delay: 29
+
+- name: OTRB.454.B2
+  area: B2
+  kickers:
+    KDY.445.B2:
+      voltage: 11_000
+      delay: 29
+    KDY.446.B2:
+      voltage: 11_000
+      delay: 29
+
+- name: OTRB.457.B2
+  area: B2
+  kickers:
+    KDY.452.B2:
+      voltage: 14_500
+      delay: 32
+    KDY.453.B2:
+      voltage: 14_500
+      delay: 32
+
+- name: OTRB.461.B2
+  area: B2
+  kickers:
+    KDY.452.B2:
+      voltage: 14_500
+      delay: 32
+    KDY.453.B2:
+      voltage: 14_500
+      delay: 32
+
+- name: OTRA.473.B2D
+  area: B2
+
+- name: OTRA.478.B2D
+  area: B2
+
+
+deflectors:
+  - name: TDSI1
+    area: I1
+    sp_fdl: XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/
+    rb_fdl: XFEL.RF/LLRF.CONTROLLER/VS.LLTDSI1/
+
+  - name: TDSB2
+    area: B2
+    sp_fdl: XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSB2/
+    rb_fdl: XFEL.RF/LLRF.CONTROLLER/VS.LLTDSB2/

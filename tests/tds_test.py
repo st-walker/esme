@@ -1,81 +1,37 @@
-from unittest.mock import MagicMock, call, patch
-
 import pytest
 
-from esme.tds import SetpointReadbackPair, TDSAddresses, TDSController
+from esme.control import TransverseDeflector
 
 
-@pytest.fixture
-def i1_addresses():
-    return TDSAddresses(
-        amplitude=SetpointReadbackPair(setpoint="asp", readback="arb"),
-        phase=SetpointReadbackPair(setpoint="psp", readback="prb"),
-        event="event_channel",
-        bunch_one="b1_channel",
-    )
+def test_deflector_get_phase_rb(mocked_deflector):
+    rb = mocked_deflector.get_phase_rb()
+    ch = f"{mocked_deflector.rb_fdl}{TransverseDeflector.PHASE_RB_PROP}"
+    mocked_deflector.mi.get_value.assert_called_once_with(ch)
 
+def test_deflector_get_amplitude_rb(mocked_deflector):
+    rb = mocked_deflector.get_amplitude_rb()
+    ch = f"{mocked_deflector.rb_fdl}{TransverseDeflector.AMPLITUDE_RB_PROP}"
+    mocked_deflector.mi.get_value.assert_called_once_with(ch)
 
-@pytest.fixture
-def mtds(i1_addresses):
-    machine_mock = MagicMock(name="Machine_mock")
-    return TDSController(i1_addresses, mi=machine_mock)
+def test_deflector_get_phase_sp(mocked_deflector):
+    rb = mocked_deflector.get_phase_sp()
+    ch = f"{mocked_deflector.sp_fdl}{TransverseDeflector.PHASE_SP_PROP}"
+    mocked_deflector.mi.get_value.assert_called_once_with(ch)
 
+def test_deflector_get_amplitude_sp(mocked_deflector):
+    rb = mocked_deflector.get_amplitude_sp()
+    ch = f"{mocked_deflector.sp_fdl}{TransverseDeflector.AMPLITUDE_SP_PROP}"
+    mocked_deflector.mi.get_value.assert_called_once_with(ch)
 
-def test_TDSController_set_amplitude(mtds):
-    value = 3
-    address = mtds.addies.amplitude.setpoint
-    mtds.set_amplitude(value)
-    mtds._mi.set_value.assert_called_with(address, value)
+def test_deflector_set_amplitude(mocked_deflector):
+    value = 5.0
+    rb = mocked_deflector.set_amplitude(value)
+    ch = f"{mocked_deflector.sp_fdl}{TransverseDeflector.AMPLITUDE_SP_PROP}"
+    mocked_deflector.mi.set_value.assert_called_once_with(ch, value)
 
-
-def test_TDSController_read_rb_amplitude(mtds):
-    value = 3
-    address = mtds.addies.amplitude.readback
-    mtds._mi.get_value.return_value = value
-    assert mtds.read_rb_amplitude() == value
-    mtds._mi.get_value.assert_called_with(address)
-
-
-def test_TDSController_read_sp_amplitude(mtds):
-    value = 3
-    address = mtds.addies.amplitude.setpoint
-    mtds._mi.get_value.return_value = value
-    assert mtds.read_sp_amplitude() == value
-    mtds._mi.get_value.assert_called_with(address)
-
-
-def test_TDSController_set_phase(mtds):
-    phase = 4
-    address = mtds.addies.phase.setpoint
-    mtds.set_phase(phase)
-    mtds._mi.set_value.assert_called_with(address, phase)
-
-
-def test_TDSController_read_rb_phase(mtds):
-    expected_phase = 3
-    address = mtds.addies.phase.readback
-    mtds._mi.get_value.return_value = expected_phase
-    assert mtds.read_rb_phase() == expected_phase
-    mtds._mi.get_value.assert_called_with(address)
-
-
-def test_TDSController_read_on_beam_timing(mtds):
-    expected_bunch_one = 3
-    address = mtds.addies.bunch_one
-    mtds._mi.get_value.return_value = expected_bunch_one
-    assert mtds.read_on_beam_timing() == expected_bunch_one
-    mtds._mi.get_value.assert_called_with(address)
-
-
-# def test_TDSController_read_sp_amplitude(mtds):
-#     value = 3
-#     address = mtds.addies.amplitude_setpoint
-#     mtds._mi.get_value.return_Value
-
-# def test_TDSController_read_sp_amplitude(mtds):
-#     value = 3
-#     address = mtds.addies.amplitude_setpoint
-#     mtds._mi.get_value.return_value = value
-#     assert mtds.read_rb_amplitude() == value
-
-# mtds._mi.set_value.assert_called_with(address, value)
+def test_deflector_set_phase(mocked_deflector):
+    value = 5.0
+    rb = mocked_deflector.set_phase(value)
+    ch = f"{mocked_deflector.sp_fdl}{TransverseDeflector.PHASE_SP_PROP}"
+    mocked_deflector.mi.set_value.assert_called_once_with(ch, value)
+    
