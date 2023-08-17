@@ -1,6 +1,6 @@
 import numpy as np
 
-# import pydoocs
+import pydoocs
 from dataclasses import dataclass
 
 from .mint import XFELMachineInterface
@@ -11,9 +11,6 @@ BR_TRANSITION = 1 << 24
 
 
 def get_bunch_pattern():
-    return np.loadtxt(
-        "/Users/stuartwalker/Downloads/example-bunch-pattern.txt", dtype=np.int32
-    )
     return pydoocs.read("XFEL.DIAG/TIMER/DI1914TL/BUNCH_PATTERN")["data"]
 
 

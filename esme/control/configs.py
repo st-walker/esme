@@ -60,7 +60,7 @@ def build_simple_machine_from_config(yamlf: os.PathLike) -> BunchLengthMachine:
     screenservice = load_screens_from_config(config)
     deflectors = load_deflectors_from_config(config)
 
-    return BunchLengthMachine(kickercontroller, screenservice, deflectors)
+    return BunchLengthMachine(kickercontroller, screenservice, deflectors, initial_location=DiagnosticRegion.I1)
     
 
     

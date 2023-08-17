@@ -24,15 +24,15 @@ class SpecialBunchesControl:
         self.mi = mi if mi else XFELMachineInterface()
 
     def set_beam_region(self, br: int) -> None:
-        """Note this is zero counting!"""
+        """Note is zero counting (weird)!"""
         ch = self.beamregion_address()
-        LOG.info(f"Setting beam region: {ch} = {br}")
+        LOG.info(f"Setting beam region (zero counting here): {ch} = {br}")
         self.mi.set_value(ch, br)
 
-    def get_beam_region(self, br: int) -> None:
+    def get_beam_region(self) -> None:
         """Note this is zero counting!"""
         ch = self.beamregion_address()
-        return self.mi.set_value(ch)
+        return self.mi.get_value(ch)
 
     def set_npulses(self, npulses: int) -> None:
         ch = self.npulses_address()
@@ -59,6 +59,10 @@ class SpecialBunchesControl:
         clist[0] = int(bn)
         self.mi.set_value(self.control_address(), clist)
 
+    def get_bunch_number(self) -> int:
+        clist = self.get_kicker_control_list()
+        return int(clist[0])
+        
     def set_use_tds(self, use_tds: bool) -> None:
         clist = self.get_kicker_control_list()
         clist[1] = int(use_tds)
@@ -72,10 +76,13 @@ class SpecialBunchesControl:
         LOG.info(f"Writing to CONTROL, {kicker_name=}, {kicker_number=}")
         self.mi.set_value(self.control_address(), clist)
 
+    def set_use_fast_kickers(self):
+        
+
     def set_dont_use_fast_kickers(self):
         clist = self.get_kicker_control_list()
         kmap = self.get_kicker_name_to_kicker_index_map()
-        kicker_number = kmap[kicker_name]
+
         clist[2] = kicker_number
         LOG.info(f"Writing to CONTROL, {kicker_name=}, {kicker_number=}")
         self.mi.set_value(self.control_address(), clist)

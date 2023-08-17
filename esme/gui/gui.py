@@ -15,6 +15,7 @@ from esme.gui.ui import mainwindow
 from .calibration import CalibrationMainWindow
 from esme.control.configs import build_simple_machine_from_config
 from esme.control.sbunches import DiagnosticRegion
+from esme.control.pattern import get_beam_regions, get_bunch_pattern
 
 pg.setConfigOption("useNumba", True)
 pg.setConfigOption("imageAxisOrder", "row-major")
@@ -109,9 +110,11 @@ class LPSMainWindow(QMainWindow):
         self.ui.use_fast_kickers_checkbox.stateChanged.connect(self.set_use_fast_kickers)
 
         # Bunch control buttons
-        self.ui.beamregion_spinbox.valueChanged.connect(self.machine.sbunches.set_beam_region)
+        self.ui.beamregion_spinbox.valueChanged.connect(lambda n: self.machine.sbunches.set_beam_region(n - 1))
         self.ui.bunch_spinbox.valueChanged.connect(self.machine.sbunches.set_bunch_number)
         self.ui.npulses_spinbox.valueChanged.connect(self.machine.sbunches.set_npulses)
+        self.ui.go_to_last_laserpulse_pushbutton.clicked.connect(self.goto_last_bunch_in_machine)
+        self.ui.go_to_last_bunch_in_br_pushbutton.clicked.connect(self.goto_last_bunch_in_br)
 
     def set_use_fast_kickers(self):
         if self.ui.use_fast_kickers_checkbox.isChecked():
@@ -121,7 +124,7 @@ class LPSMainWindow(QMainWindow):
             LOG.info(f"Enabling fast kickers for {screen_name}: kickers: {kicker_names}")
             # Just use first one and assume they are the same (they should be
             # configured as such on the doocs server...)
-            self.machine.sbunches.set_kicker(kicker_names[0].name)
+            self.machine.sbunches.set_kicker(kicker_names[0])
         else:
             self.machine.sbunches.set_dont_use_fast_kickers()
 
@@ -135,11 +138,38 @@ class LPSMainWindow(QMainWindow):
         indicator = self.ui.indicator_panel.add_indicator("Screen")
         indicator = self.ui.indicator_panel.add_indicator("Kicker")
 
+    def goto_last_bunch_in_machine(self):
+        beam_regions = get_beam_regions(get_bunch_pattern())
+        last_beam_region = beam_regions[-1]
+        nbunches = last_beam_region.nbunches()
+        beam_region_number = last_beam_region.idn
+        diagnostic_bunch_number = nbunches + 1
+        # assert last_beam_region > 0
+        LOG.info(f"Found last bunch in machine: BR = {beam_region_number}, last normal bunch no. = {nbunches}, diagnostic bunch no. = {diagnostic_bunch_number}")
+        self.machine.sbunches.set_beam_region(beam_region_number - 1)
+        self.machine.sbunches.set_bunch_number(diagnostic_bunch_number)
+
+    def goto_last_bunch_in_br(self):
+        beam_regions = get_beam_regions(get_bunch_pattern())
+        # This is zero counting!! beam region 1 is 0 when read from sbunch midlayer!
+        selected_beam_region = self.machine.sbunches.get_beam_region()
+        assert selected_beam_region >= 0
+        try:
+            br = beam_regions[selected_beam_region]
+        except IndexError:
+            LOG.info(f"User tried to select last bunch of nonexistent beam region: {selected_beam_region}.")
+            box = QMessageBox(self) #, "Invalid Beam Region", 
+            box.setText(f"Beam Region {selected_beam_region} does not exist.")
+            box.exec()
+            return
+        else:
+            self.machine.sbunches.set_bunch_number(br.nbunches())
+
     def set_bunch_control_enabled(self, enabled):
         self.ui.beamregion_spinbox.setEnabled(enabled)
         self.ui.bunch_spinbox.setEnabled(enabled)
-        # self.ui.go_to_last_bunch_in_br_pushbutton.setEnabled(enabled)
-        # self.ui.go_to_last_laserpulse_pushbutton.setEnabled(enabled)
+        self.ui.go_to_last_bunch_in_br_pushbutton.setEnabled(enabled)
+        self.ui.go_to_last_laserpulse_pushbutton.setEnabled(enabled)
         self.ui.i1_radio_button.setEnabled(enabled)
         self.ui.b2_radio_button.setEnabled(enabled)
         self.ui.use_fast_kickers_checkbox.setEnabled(enabled)
@@ -151,8 +181,14 @@ class LPSMainWindow(QMainWindow):
         timer.timeout.connect(lambda: None)
         tds = self.machine.deflectors
         timer.timeout.connect(self.read_from_machine)
+        # timer.timeout.connect(self.read_from_machine)
         timer.start(period)
         return timer
+
+
+    def read_from_machine(self):
+        self.ui.beamregion_spinbox.setValue(self.machine.sbunches.get_beam_region() + 1)
+        self.ui.bunch_spinbox.setValue(self.machine.sbunches.get_bunch_number())      
 
     def setup_screen_worker(self):
         LOG.debug("Initialising screen worker thread")
@@ -170,7 +206,7 @@ class LPSMainWindow(QMainWindow):
         self.machine.set_kicker_for_screen(self.get_selected_screen_name())
         self.screen_worker.screen_name = self.get_selected_screen_name()
 
-    def get_selected_screen_names(self):
+    def get_selected_screen_name(self):
         return self.ui.select_screen_combobox.currentText()
 
     def post_beam_image(self, image):
