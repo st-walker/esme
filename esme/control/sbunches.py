@@ -64,6 +64,11 @@ class SpecialBunchesControl:
         clist[1] = int(use_tds)
         self.mi.set_value(self.control_address(), clist)
 
+    def set_use_kickers(self, use_kickers: bool) -> None:
+        clist = self.get_kicker_control_list()
+        clist[1] = int(use_tds)
+        self.mi.set_value(self.control_address(), clist)
+
     def set_kicker(self, kicker_name) -> None:
         clist = self.get_kicker_control_list()
         kmap = self.get_kicker_name_to_kicker_index_map()
@@ -127,5 +132,3 @@ class SpecialBunchesControl:
     #                  self.status_address("TDS"),
     #                  self.status_address("SCREEN"),
     #                  self.status_address
-                     
-                     
