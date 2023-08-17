@@ -62,7 +62,7 @@ class LPSMainWindow(QMainWindow):
 
         self.setup_indicators()
 
-        self.timer = self.build_main_timer(period=100)
+        self.timer = self.build_main_timer(period=1000)
 
     @pyqtSlot()
     def start_stop_special_bunches(self):
@@ -91,6 +91,7 @@ class LPSMainWindow(QMainWindow):
         self.read_from_machine()
 
     def set_location(self):
+        self.clear_image()
         if self.ui.i1_radio_button.isChecked():
             LOG.debug("Setting location to I1")
             self.machine.set_measurement_location(DiagnosticRegion("I1"))
@@ -101,10 +102,8 @@ class LPSMainWindow(QMainWindow):
             self.update_screen_combo_box()
 
     def read_from_machine(self):
-        return
-        self.ui.tds_phase_readback_line.setText(str(self.machine.deflectors.get_phase_rb()))
-        self.ui.tds_amplitude_readback_line.setText(str(self.machine.deflectors.get_amplitude_rb()))
-        # self.ui.beam_region_spinbox.setValue(self.machine.
+        self.ui.tds_phase_readback_line.setText(f"{self.machine.deflectors.get_phase_rb():.3f}")
+        self.ui.tds_amplitude_readback_line.setText(f"{self.machine.deflectors.get_amplitude_rb():.3f}")
 
     def connect_buttons(self):
         # Location buttons
@@ -140,6 +139,7 @@ class LPSMainWindow(QMainWindow):
         self.calibration_window.show()
 
     def setup_indicators(self):
+        self.indicator_timer = QTimer()
         indicator = self.ui.indicator_panel.add_indicator("TDS")
         indicator = self.ui.indicator_panel.add_indicator("Screen")
         indicator = self.ui.indicator_panel.add_indicator("Kicker")
@@ -160,7 +160,7 @@ class LPSMainWindow(QMainWindow):
         timer.timeout.connect(lambda: None)
 
         tds = self.machine.deflectors
-        # timer.timeout.connect(lambda: self.ui.tds_phase_readback_line.setText(sel)
+        timer.timeout.connect(self.read_from_machine)
         timer.start(period)
         return timer
 
@@ -175,6 +175,7 @@ class LPSMainWindow(QMainWindow):
         return screen_worker, screen_thread
 
     def configure_kickers(self):
+        self.clear_image()
         LOG.info(f"Configuring kickers for screen: {self.get_selected_screen_name()}")
         self.machine.set_kicker_for_screen(self.get_selected_screen_name())
         self.screen_worker.screen_name = self.get_selected_screen_name()
@@ -187,12 +188,17 @@ class LPSMainWindow(QMainWindow):
         assert len(items) == 1
         image_item = items[0]
         LOG.debug("Posting beam image...")
-        image = self.machine.screens.get_image(get_selected_screen_name())
+        # image = self.machine.screens.get_image(self.get_selected_screen_name())
         image_item.setImage(image)
 
+    def clear_image(self):
+        self.image_plot.items[0].clear()
+
     def closeEvent(self, event):
-        self.screen_thread.kill = True
-        self.screen_thread.quit()
+        self.screen_worker.kill = True
+        self.screen_thread.terminate()
+        self.screen_thread.wait()
+        # self.screen_thread.exit()
 
 
 class QPlainTextEditLogger(QObject, logging.Handler):
@@ -203,7 +209,7 @@ class QPlainTextEditLogger(QObject, logging.Handler):
         self.log_signal.emit(msg)
 
 class ScreenWatcher(QObject):
-    image_signal = pyqtSignal(object)
+    image_signal = pyqtSignal(np.ndarray)
     def __init__(self, machine):
         super().__init__()
         self.machine = machine
@@ -217,7 +223,12 @@ class ScreenWatcher(QObject):
 
     def run(self):
         while not self.kill:
-            self.image_signal.emit(self.get_image())
+            time.sleep(0.1)
+            image = self.get_image()
+            if image is None:
+                continue
+            else:
+                self.image_signal.emit(image)
 
     def update_screen_name(self, screen_name):
         self.screen_name = screen_name
@@ -234,11 +245,11 @@ def setup_screen_display_widget(widget):
 
     image_plot.addItem(image)
 
-    # colormap = cm.get_cmap("viridis")
-    # colormap._init()
-    # lut = (colormap._lut * 255).view(np.ndarray)
+    colormap = cm.get_cmap("viridis")
+    colormap._init()
+    lut = (colormap._lut * 255).view(np.ndarray)
 
-    # image.setLookupTable(lut)
+    image.setLookupTable(lut)
     # print(lut.shape)
 
     return image_plot
