@@ -242,107 +242,7 @@
              </property>
              <layout class="QGridLayout" name="gridLayout_2">
               <item row="0" column="0">
-               <widget class="QLabel" name="phase_label_2">
-                <property name="text">
-                 <string>Phase / °</string>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="1" colspan="2">
-               <widget class="QDoubleSpinBox" name="tds_phase_spinbox">
-                <property name="minimum">
-                 <double>-1080.000000000000000</double>
-                </property>
-                <property name="maximum">
-                 <double>1080.000000000000000</double>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="3">
-               <widget class="QLabel" name="phase_rb_label">
-                <property name="text">
-                 <string>Phase RB</string>
-                </property>
-               </widget>
-              </item>
-              <item row="0" column="4">
-               <widget class="QLineEdit" name="tds_phase_readback_line">
-                <property name="maxLength">
-                 <number>14</number>
-                </property>
-                <property name="readOnly">
-                 <bool>true</bool>
-                </property>
-                <property name="clearButtonEnabled">
-                 <bool>false</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="0">
-               <widget class="QLabel" name="amplitude_label">
-                <property name="text">
-                 <string>Ampl. / %</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="1" colspan="2">
-               <widget class="QDoubleSpinBox" name="tds_amplitude_spinbox">
-                <property name="maximum">
-                 <double>100.000000000000000</double>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="3">
-               <widget class="QLabel" name="amplitude_rb_label">
-                <property name="text">
-                 <string>Ampl. RB</string>
-                </property>
-               </widget>
-              </item>
-              <item row="1" column="4">
-               <widget class="QLineEdit" name="tds_amplitude_readback_line">
-                <property name="maxLength">
-                 <number>14</number>
-                </property>
-                <property name="readOnly">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="0" colspan="2">
-               <widget class="QLabel" name="voltage_label">
-                <property name="text">
-                 <string>Voltage / MV</string>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="2" colspan="2">
-               <widget class="QDoubleSpinBox" name="tds_voltage_spinbox">
-                <property name="enabled">
-                 <bool>false</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="4" rowspan="2">
-               <widget class="QPushButton" name="tds_calibration_pushbutton">
-                <property name="text">
-                 <string>Calibration...</string>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="0" colspan="2">
-               <widget class="QLabel" name="streak">
-                <property name="text">
-                 <string>Streak</string>
-                </property>
-               </widget>
-              </item>
-              <item row="3" column="2" colspan="2">
-               <widget class="QDoubleSpinBox" name="streak_spinbox">
-                <property name="enabled">
-                 <bool>false</bool>
-                </property>
-               </widget>
+               <widget class="TDSControl" name="widget" native="true"/>
               </item>
              </layout>
             </widget>
@@ -398,12 +298,7 @@
           </layout>
           <zorder>screen_selection_groupbox</zorder>
           <zorder>bunch_control_group_box</zorder>
-          <zorder>use_fast_kickers_checkbox</zorder>
-          <zorder>select_screen_combobox</zorder>
-          <zorder>screen_label</zorder>
           <zorder>tds_group_box</zorder>
-          <zorder>measure_bunch_length_button</zorder>
-          <zorder>pushButton</zorder>
           <zorder>measurements_group_box</zorder>
           <zorder>indicator_panel</zorder>
           <zorder>groupBox</zorder>
@@ -485,6 +380,12 @@
    <class>IndicatorPanel</class>
    <extends>QWidget</extends>
    <header>esme.gui.indicator</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>TDSControl</class>
+   <extends>QWidget</extends>
+   <header>esme.gui.tds</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

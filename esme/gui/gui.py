@@ -101,10 +101,6 @@ class LPSMainWindow(QMainWindow):
             self.machine.set_measurement_location(DiagnosticRegion("B2"))
             self.update_screen_combo_box()
 
-    def read_from_machine(self):
-        self.ui.tds_phase_readback_line.setText(f"{self.machine.deflectors.get_phase_rb():.3f}")
-        self.ui.tds_amplitude_readback_line.setText(f"{self.machine.deflectors.get_amplitude_rb():.3f}")
-
     def connect_buttons(self):
         # Location buttons
         self.ui.i1_radio_button.toggled.connect(self.set_location)
@@ -116,11 +112,6 @@ class LPSMainWindow(QMainWindow):
         self.ui.beamregion_spinbox.valueChanged.connect(self.machine.sbunches.set_beam_region)
         self.ui.bunch_spinbox.valueChanged.connect(self.machine.sbunches.set_bunch_number)
         self.ui.npulses_spinbox.valueChanged.connect(self.machine.sbunches.set_npulses)
-
-        # TDS Buttons
-        self.ui.tds_phase_spinbox.valueChanged.connect(self.machine.deflectors.set_phase)
-        self.ui.tds_amplitude_spinbox.valueChanged.connect(self.machine.deflectors.set_amplitude)
-        self.ui.tds_calibration_pushbutton.clicked.connect(self.open_calibration_window)
 
     def set_use_fast_kickers(self):
         if self.ui.use_fast_kickers_checkbox.isChecked():
@@ -158,7 +149,6 @@ class LPSMainWindow(QMainWindow):
     def build_main_timer(self, period):
         timer = QTimer()
         timer.timeout.connect(lambda: None)
-
         tds = self.machine.deflectors
         timer.timeout.connect(self.read_from_machine)
         timer.start(period)
@@ -180,7 +170,7 @@ class LPSMainWindow(QMainWindow):
         self.machine.set_kicker_for_screen(self.get_selected_screen_name())
         self.screen_worker.screen_name = self.get_selected_screen_name()
 
-    def get_selected_screen_name(self):
+    def get_selected_screen_names(self):
         return self.ui.select_screen_combobox.currentText()
 
     def post_beam_image(self, image):
@@ -257,3 +247,8 @@ def setup_screen_display_widget(widget):
 
 if __name__ == "__main__":
     start_gui()
+
+# i22.laser1
+# i1.laser3
+# i1.laser2
+# i1.laser1M
