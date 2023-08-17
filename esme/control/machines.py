@@ -28,7 +28,7 @@ class BunchLengthMachine:
     #     pass
 
     def set_measurement_location(self, location: DiagnosticRegion):
-        self.sbunches.area = location
+        self.sbunches.location = location
         self.screens.location = location
         self.deflectors.location = location
     
