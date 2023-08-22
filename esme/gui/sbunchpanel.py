@@ -33,6 +33,7 @@ class SpecialBunchControl(QtWidgets.QWidget):
         self.timer = QTimer()
         self.timer.timeout.connect(lambda: None)
         self.timer.timeout.connect(self.update)
+        self.timer.start(100)
 
     def update(self):
         self.update_screen_combo_box()
