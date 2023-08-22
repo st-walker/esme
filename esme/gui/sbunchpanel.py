@@ -6,9 +6,11 @@ import logging
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QObject, QThread, QTimer, pyqtSignal, pyqtSlot
+from PyQt5.QtWidgets import QMessageBox
 
 from .ui.special_bunch_panel import Ui_special_bunch_panel
 from esme.control.configs import build_simple_machine_from_config
+from esme.control.pattern import get_beam_regions, get_bunch_pattern
 
 LOG = logging.getLogger(__name__)
 
@@ -26,21 +28,28 @@ class SpecialBunchControl(QtWidgets.QWidget):
         else:
             self.machine = machine
 
-
         self.ui = Ui_special_bunch_panel()
         self.ui.setupUi(self)
 
         self.connect_buttons()
 
+        self.update_screen_combo_box()
         self.timer = QTimer()
         self.timer.timeout.connect(lambda: None)
         self.timer.timeout.connect(self.update)
-        self.timer.start(100)
+        self.timer.start(500)
+
+    def update_location(self, location):
+        LOG.info(f"Setting location for SpecialBunchControl panel: {location=}")
+        self.machine.set_measurement_location(location)
+        self.update_screen_combo_box()
+        self.set_use_fast_kickers()
+        self.emit_current_screen_name()
 
     def update(self):
-        self.update_screen_combo_box()
         self.ui.beamregion_spinbox.setValue(self.machine.sbunches.get_beam_region() + 1)
-        self.ui.bunch_spinbox.setValue(self.machine.sbunches.get_bunch_number())      
+        self.ui.bunch_spinbox.setValue(self.machine.sbunches.get_bunch_number())
+        self.ui.npulses_spinbox.setValue(self.machine.sbunches.get_npulses())
 
     def set_bunch_control_enabled(self, enabled):
         self.ui.beamregion_spinbox.setEnabled(enabled)
@@ -53,9 +62,9 @@ class SpecialBunchControl(QtWidgets.QWidget):
         self.ui.npulses_spinbox.setEnabled(enabled)
 
     def connect_buttons(self):
-        self.ui.select_screen_combobox.currentTextChanged.connect(self.machine.set_kicker_for_screen)
-        self.ui.select_screen_combobox.currentTextChanged.connect(self.screen_name_signal)
+        self.ui.select_screen_combobox.activated.connect(self.set_kickers_for_picked_screen)
         self.ui.use_fast_kickers_checkbox.stateChanged.connect(self.set_use_fast_kickers)
+        self.ui.use_tds_checkbox.stateChanged.connect(self.machine.sbunches.set_use_tds)
         self.ui.beamregion_spinbox.valueChanged.connect(lambda n: self.machine.sbunches.set_beam_region(n - 1))
         self.ui.bunch_spinbox.valueChanged.connect(self.machine.sbunches.set_bunch_number)
         self.ui.npulses_spinbox.valueChanged.connect(self.machine.sbunches.set_npulses)
@@ -63,10 +72,18 @@ class SpecialBunchControl(QtWidgets.QWidget):
         self.ui.go_to_last_bunch_in_br_pushbutton.clicked.connect(self.goto_last_bunch_in_br)
         self.ui.start_stop_button.clicked.connect(self.start_stop_special_bunches)
 
+    def set_kickers_for_picked_screen(self, index):
+        screen_name = self.ui.select_screen_combobox.itemText(index)
+        self.machine.set_kicker_for_screen(screen_name)
+        self.set_use_fast_kickers()
+        self.emit_current_screen_name()
+
+    def emit_current_screen_name(self):
+        self.screen_name_signal.emit(self.get_selected_screen_name())
+        
     def update_screen_combo_box(self):
         self.ui.select_screen_combobox.clear()
-        for screen_name in self.machine.screens.active_region_screen_names():
-            self.ui.select_screen_combobox.addItem(screen_name)
+        self.ui.select_screen_combobox.addItems(self.machine.screens.active_region_screen_names())
 
     def set_use_fast_kickers(self):
         if self.ui.use_fast_kickers_checkbox.isChecked():
@@ -76,9 +93,27 @@ class SpecialBunchControl(QtWidgets.QWidget):
             LOG.info(f"Enabling fast kickers for {screen_name}: kickers: {kicker_names}")
             # Just use first one and assume they are the same (they should be
             # configured as such on the doocs server...)
-            self.machine.sbunches.set_kicker(kicker_names[0])
+            self.machine.sbunches.set_kicker_name(kicker_names[0])
+            if not self.machine.sbunches.get_use_kicker():
+                self.power_on_kickers()
         else:
-            self.machine.sbunches.set_dont_use_fast_kickers()
+            self.machine.sbunches.dont_use_kickers()
+
+    # def set_use_tds(self):
+    #     sekf,
+    #     if self.ui.use_fast_kickers_checkbox.isChecked():
+    #         screen_name = self.get_selected_screen_name()
+    #         kicker_sps = self.machine.screens.get_fast_kicker_setpoints_for_screen(screen_name)
+    #         kicker_names = [k.name for k in kicker_sps]
+    #         LOG.info(f"Enabling fast kickers for {screen_name}: kickers: {kicker_names}")
+    #         # Just use first one and assume they are the same (they should be
+    #         # configured as such on the doocs server...)
+    #         self.machine.sbunches.set_kicker_name(kicker_names[0])
+    #         if not self.machine.sbunches.get_use_kicker():
+    #             self.power_on_kickers()
+    #     else:
+    #         self.machine.sbunches.set_use_tds(
+        
 
     def goto_last_bunch_in_machine(self):
         beam_regions = get_beam_regions(get_bunch_pattern())
@@ -101,7 +136,7 @@ class SpecialBunchControl(QtWidgets.QWidget):
         except IndexError:
             LOG.info(f"User tried to select last bunch of nonexistent beam region: {selected_beam_region}.")
             box = QMessageBox(self) #, "Invalid Beam Region", 
-            box.setText(f"Beam Region {selected_beam_region} does not exist.")
+            box.setText(f"Beam Region {selected_beam_region+1} does not exist.")
             box.exec()
             return
         else:

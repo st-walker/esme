@@ -52,9 +52,9 @@ class LPSMainWindow(QMainWindow):
         self.setup_logger_tab()
 
         self.machine = build_simple_machine_from_config(DEFAULT_CONFIG_PATH)
-        # Share same machine instance
-        self.ui.special_bunch_panel.machine = self.machine
-        self.ui.tds_panel.machine = self.machine
+
+        self.location.connect(self.ui.special_bunch_panel.update_location)
+        self.location.connect(self.ui.tds_panel.update_location)
 
         self.connect_buttons()
         self.setup_indicators()
@@ -62,7 +62,7 @@ class LPSMainWindow(QMainWindow):
         self.image_plot = setup_screen_display_widget(self.ui.screen_display_widget)
         self.screen_worker, self.screen_thread = self.setup_screen_worker()
 
-        self.timer = self.build_main_timer(period=1000)
+        self.timer = self.build_main_timer(period=100)
 
     def setup_logger_tab(self):
         log_handler = QPlainTextEditLogger()
@@ -71,11 +71,15 @@ class LPSMainWindow(QMainWindow):
 
     def set_i1(self):
         LOG.debug("Setting location to I1")
-        self.machine.set_measurement_location(DiagnosticRegion("I1"))
+        location = DiagnosticRegion("I1")
+        self.machine.set_measurement_location(location)
+        self.location.emit(location)
 
     def set_b2(self):
         LOG.debug("Setting location to B2")
-        self.machine.set_measurement_location(DiagnosticRegion("B2"))
+        location = DiagnosticRegion("B2")
+        self.machine.set_measurement_location(location)
+        self.location.emit(location)
 
     def connect_buttons(self):
         # Location buttons
@@ -114,8 +118,6 @@ class LPSMainWindow(QMainWindow):
         items = self.image_plot.items
         assert len(items) == 1
         image_item = items[0]
-        LOG.debug("Posting beam image...")
-        # image = self.machine.screens.get_image(self.get_selected_screen_name())
         image_item.setImage(image)
 
     def closeEvent(self, event):
@@ -155,6 +157,7 @@ class ScreenWatcher(QObject):
                 self.image_signal.emit(image)
 
     def update_screen_name(self, screen_name):
+        LOG.info(f"Setting screen name for Screen Worker thread: {screen_name}")
         self.screen_name = screen_name
 
 def setup_screen_display_widget(widget):
