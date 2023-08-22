@@ -31,6 +31,16 @@
         <string>Main</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_8">
+        <item row="0" column="0">
+         <widget class="GraphicsLayoutWidget" name="screen_display_widget" native="true">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+         </widget>
+        </item>
         <item row="0" column="1">
          <widget class="QGroupBox" name="controls_group_box">
           <property name="maximumSize">
@@ -42,8 +52,8 @@
           <property name="title">
            <string>Controls</string>
           </property>
-          <layout class="QVBoxLayout" name="verticalLayout">
-           <item>
+          <layout class="QGridLayout" name="gridLayout_4">
+           <item row="0" column="0">
             <layout class="QHBoxLayout" name="horizontalLayout_2">
              <item>
               <widget class="QLabel" name="section_label">
@@ -71,249 +81,46 @@
              </item>
             </layout>
            </item>
-           <item>
+           <item row="4" column="0">
+            <widget class="IndicatorPanel" name="indicator_panel" native="true"/>
+           </item>
+           <item row="1" column="0">
             <widget class="QGroupBox" name="bunch_control_group_box">
              <property name="title">
               <string>Special Bunch Control</string>
              </property>
              <layout class="QGridLayout" name="gridLayout_3">
-              <item row="4" column="0">
-               <layout class="QHBoxLayout" name="horizontalLayout_9">
-                <item>
-                 <layout class="QVBoxLayout" name="verticalLayout_2">
-                  <item>
-                   <layout class="QHBoxLayout" name="horizontalLayout_7">
-                    <item>
-                     <widget class="QLabel" name="beam_region_label">
-                      <property name="text">
-                       <string>Beam Region</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QSpinBox" name="beamregion_spinbox">
-                      <property name="minimum">
-                       <number>1</number>
-                      </property>
-                     </widget>
-                    </item>
-                   </layout>
-                  </item>
-                  <item>
-                   <layout class="QHBoxLayout" name="horizontalLayout_8">
-                    <item>
-                     <widget class="QLabel" name="bunch_label">
-                      <property name="text">
-                       <string>Bunch</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QSpinBox" name="bunch_spinbox">
-                      <property name="minimum">
-                       <number>1</number>
-                      </property>
-                      <property name="maximum">
-                       <number>4000</number>
-                      </property>
-                     </widget>
-                    </item>
-                   </layout>
-                  </item>
-                 </layout>
-                </item>
-                <item>
-                 <layout class="QVBoxLayout" name="verticalLayout_3">
-                  <item>
-                   <widget class="QPushButton" name="go_to_last_laserpulse_pushbutton">
-                    <property name="enabled">
-                     <bool>false</bool>
-                    </property>
-                    <property name="text">
-                     <string>Go to Last Laser Pulse</string>
-                    </property>
-                    <property name="checked">
-                     <bool>false</bool>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QPushButton" name="go_to_last_bunch_in_br_pushbutton">
-                    <property name="enabled">
-                     <bool>false</bool>
-                    </property>
-                    <property name="text">
-                     <string>Go to Last Bunch in BR</string>
-                    </property>
-                    <property name="autoExclusive">
-                     <bool>false</bool>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-               </layout>
-              </item>
-              <item row="5" column="0">
-               <layout class="QHBoxLayout" name="horizontalLayout_3">
-                <item>
-                 <widget class="QPushButton" name="start_stop_button">
-                  <property name="toolTip">
-                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Start diagnostic bunch optionally with fast kickers and the TDS&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                  </property>
-                  <property name="text">
-                   <string>Start</string>
-                  </property>
-                  <property name="checkable">
-                   <bool>true</bool>
-                  </property>
-                  <property name="checked">
-                   <bool>false</bool>
-                  </property>
-                  <property name="autoRepeat">
-                   <bool>false</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <layout class="QHBoxLayout" name="horizontalLayout_5">
-                  <item>
-                   <widget class="QLabel" name="label">
-                    <property name="text">
-                     <string>Pulses</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QSpinBox" name="npulses_spinbox">
-                    <property name="maximum">
-                     <number>10000000</number>
-                    </property>
-                    <property name="value">
-                     <number>10000</number>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </item>
-               </layout>
-              </item>
-              <item row="3" column="0">
-               <layout class="QHBoxLayout" name="horizontalLayout">
-                <item>
-                 <widget class="QCheckBox" name="use_fast_kickers_checkbox">
-                  <property name="text">
-                   <string>Use Fast Kickers</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QCheckBox" name="checkBox">
-                  <property name="text">
-                   <string>Use TDS</string>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
-              </item>
-              <item row="2" column="0">
-               <layout class="QHBoxLayout" name="horizontalLayout_10">
-                <item>
-                 <widget class="QLabel" name="screen_label">
-                  <property name="text">
-                   <string>Screen</string>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QComboBox" name="select_screen_combobox">
-                  <property name="placeholderText">
-                   <string/>
-                  </property>
-                 </widget>
-                </item>
-               </layout>
+              <item row="0" column="0">
+               <widget class="SpecialBunchControl" name="special_bunch_panel" native="true"/>
               </item>
              </layout>
             </widget>
            </item>
-           <item>
+           <item row="3" column="0">
+            <widget class="QPushButton" name="laser_heater_pushbutton">
+             <property name="text">
+              <string>Laser Heater On</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="0">
             <widget class="QGroupBox" name="tds_group_box">
              <property name="title">
               <string>TDS</string>
              </property>
              <layout class="QGridLayout" name="gridLayout_2">
               <item row="0" column="0">
-               <widget class="TDSControl" name="widget" native="true"/>
+               <widget class="TDSControl" name="tds_panel" native="true"/>
               </item>
              </layout>
             </widget>
-           </item>
-           <item>
-            <widget class="QGroupBox" name="measurements_group_box">
-             <property name="title">
-              <string>Measurements</string>
-             </property>
-             <layout class="QVBoxLayout" name="verticalLayout_5">
-              <item>
-               <widget class="QPushButton" name="measure_bunch_length_button">
-                <property name="enabled">
-                 <bool>false</bool>
-                </property>
-                <property name="text">
-                 <string>Bunch Length...</string>
-                </property>
-               </widget>
-              </item>
-              <item>
-               <widget class="QPushButton" name="measure_lps_button">
-                <property name="enabled">
-                 <bool>false</bool>
-                </property>
-                <property name="text">
-                 <string>Longitudinal Phase Space...</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </widget>
-           </item>
-           <item>
-            <widget class="QGroupBox" name="groupBox">
-             <property name="title">
-              <string>Miscellaneous</string>
-             </property>
-             <layout class="QGridLayout" name="gridLayout_7">
-              <item row="0" column="0">
-               <widget class="QPushButton" name="laser_heater_pushbutton">
-                <property name="text">
-                 <string>Laser Heater On</string>
-                </property>
-               </widget>
-              </item>
-             </layout>
-            </widget>
-           </item>
-           <item>
-            <widget class="IndicatorPanel" name="indicator_panel" native="true"/>
            </item>
           </layout>
           <zorder>bunch_control_group_box</zorder>
           <zorder>tds_group_box</zorder>
-          <zorder>measurements_group_box</zorder>
           <zorder>indicator_panel</zorder>
-          <zorder>groupBox</zorder>
           <zorder></zorder>
-         </widget>
-        </item>
-        <item row="0" column="0">
-         <widget class="GraphicsLayoutWidget" name="screen_display_widget" native="true">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
+          <zorder>laser_heater_pushbutton</zorder>
          </widget>
         </item>
        </layout>
@@ -351,7 +158,16 @@
     <addaction name="actionPrint_to_Logbook"/>
     <addaction name="actionClose"/>
    </widget>
+   <widget class="QMenu" name="menuMeasurement">
+    <property name="title">
+     <string>Measurements</string>
+    </property>
+    <addaction name="actionBunch_Length"/>
+    <addaction name="actionLongitudinal_Phase_Space"/>
+    <addaction name="actionEmittance"/>
+   </widget>
    <addaction name="menuMenu"/>
+   <addaction name="menuMeasurement"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionClose">
@@ -368,6 +184,26 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+P</string>
+   </property>
+  </action>
+  <action name="actionBunch_Length">
+   <property name="text">
+    <string>Bunch Length...</string>
+   </property>
+  </action>
+  <action name="actionLongitudinal_Phase_Space">
+   <property name="text">
+    <string>Longitudinal Phase Space...</string>
+   </property>
+  </action>
+  <action name="actionEmittance">
+   <property name="text">
+    <string>Emittance...</string>
+   </property>
+  </action>
+  <action name="actionEmail_Maintainer">
+   <property name="text">
+    <string>Email Maintainer</string>
    </property>
   </action>
  </widget>
@@ -388,6 +224,12 @@
    <class>TDSControl</class>
    <extends>QWidget</extends>
    <header>esme.gui.tds</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>SpecialBunchControl</class>
+   <extends>QWidget</extends>
+   <header>esme.gui.sbunchpanel</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

@@ -1,6 +1,9 @@
 import numpy as np
 
-import pydoocs
+try:
+    import pydoocs
+except ImportError:
+    pass
 from dataclasses import dataclass
 
 from .mint import XFELMachineInterface

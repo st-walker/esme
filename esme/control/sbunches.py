@@ -81,9 +81,6 @@ class SpecialBunchesControl:
         LOG.info(f"Writing to CONTROL, {kicker_name=}, {kicker_number=}")
         self.mi.set_value(self.control_address(), clist)
 
-    # def set_use_fast_kickers(self):
-
-
     def set_dont_use_fast_kickers(self):
         clist = self.get_kicker_control_list()
         kmap = self.get_kicker_name_to_kicker_index_map()
