@@ -15,6 +15,11 @@ class Ui_tds_control_panel(object):
     def setupUi(self, tds_control_panel):
         tds_control_panel.setObjectName("tds_control_panel")
         tds_control_panel.resize(351, 138)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(tds_control_panel.sizePolicy().hasHeightForWidth())
+        tds_control_panel.setSizePolicy(sizePolicy)
         tds_control_panel.setMinimumSize(QtCore.QSize(0, 138))
         tds_control_panel.setMaximumSize(QtCore.QSize(351, 138))
         self.gridLayout = QtWidgets.QGridLayout(tds_control_panel)
