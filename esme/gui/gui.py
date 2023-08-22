@@ -102,6 +102,7 @@ class LPSMainWindow(QMainWindow):
     def setup_screen_worker(self):
         LOG.debug("Initialising screen worker thread")
         screen_worker = ScreenWatcher(self.machine)
+        self.ui.special_bunch_panel.screen_name_signal.connect(screen_worker.update_screen_name)
         screen_thread = QThread()
         screen_worker.moveToThread(screen_thread)
         screen_thread.started.connect(screen_worker.run)

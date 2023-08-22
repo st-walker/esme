@@ -16,6 +16,8 @@ DEFAULT_CONFIG_PATH = files("esme.gui") / "defaultconf.yml"
 
 
 class SpecialBunchControl(QtWidgets.QWidget):
+    screen_name_signal = pyqtSignal(str)
+
     def __init__(self, parent=None, machine=None):
         super().__init__(parent=parent)
 
@@ -51,7 +53,8 @@ class SpecialBunchControl(QtWidgets.QWidget):
         self.ui.npulses_spinbox.setEnabled(enabled)
 
     def connect_buttons(self):
-        self.ui.select_screen_combobox.currentIndexChanged.connect(self.configure_kickers)
+        self.ui.select_screen_combobox.currentTextChanged.connect(self.machine.set_kicker_for_screen)
+        self.ui.select_screen_combobox.currentTextChanged.connect(self.screen_name_signal)
         self.ui.use_fast_kickers_checkbox.stateChanged.connect(self.set_use_fast_kickers)
         self.ui.beamregion_spinbox.valueChanged.connect(lambda n: self.machine.sbunches.set_beam_region(n - 1))
         self.ui.bunch_spinbox.valueChanged.connect(self.machine.sbunches.set_bunch_number)
@@ -64,12 +67,6 @@ class SpecialBunchControl(QtWidgets.QWidget):
         self.ui.select_screen_combobox.clear()
         for screen_name in self.machine.screens.active_region_screen_names():
             self.ui.select_screen_combobox.addItem(screen_name)
-        
-    def configure_kickers(self):
-        # self.clear_image()
-        LOG.info(f"Configuring kickers for screen: {self.get_selected_screen_name()}")
-        self.machine.set_kicker_for_screen(self.get_selected_screen_name())
-        self.screen_worker.screen_name = self.get_selected_screen_name()
 
     def set_use_fast_kickers(self):
         if self.ui.use_fast_kickers_checkbox.isChecked():
