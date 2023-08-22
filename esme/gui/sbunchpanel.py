@@ -37,7 +37,7 @@ class SpecialBunchControl(QtWidgets.QWidget):
         self.timer = QTimer()
         self.timer.timeout.connect(lambda: None)
         self.timer.timeout.connect(self.update)
-        self.timer.start(500)
+        self.timer.start(100)
 
     def update_location(self, location):
         LOG.info(f"Setting location for SpecialBunchControl panel: {location=}")
@@ -50,6 +50,7 @@ class SpecialBunchControl(QtWidgets.QWidget):
         self.ui.beamregion_spinbox.setValue(self.machine.sbunches.get_beam_region() + 1)
         self.ui.bunch_spinbox.setValue(self.machine.sbunches.get_bunch_number())
         self.ui.npulses_spinbox.setValue(self.machine.sbunches.get_npulses())
+        self.update_start_button()
 
     def set_bunch_control_enabled(self, enabled):
         self.ui.beamregion_spinbox.setEnabled(enabled)
@@ -99,22 +100,6 @@ class SpecialBunchControl(QtWidgets.QWidget):
         else:
             self.machine.sbunches.dont_use_kickers()
 
-    # def set_use_tds(self):
-    #     sekf,
-    #     if self.ui.use_fast_kickers_checkbox.isChecked():
-    #         screen_name = self.get_selected_screen_name()
-    #         kicker_sps = self.machine.screens.get_fast_kicker_setpoints_for_screen(screen_name)
-    #         kicker_names = [k.name for k in kicker_sps]
-    #         LOG.info(f"Enabling fast kickers for {screen_name}: kickers: {kicker_names}")
-    #         # Just use first one and assume they are the same (they should be
-    #         # configured as such on the doocs server...)
-    #         self.machine.sbunches.set_kicker_name(kicker_names[0])
-    #         if not self.machine.sbunches.get_use_kicker():
-    #             self.power_on_kickers()
-    #     else:
-    #         self.machine.sbunches.set_use_tds(
-        
-
     def goto_last_bunch_in_machine(self):
         beam_regions = get_beam_regions(get_bunch_pattern())
         last_beam_region = beam_regions[-1]
@@ -142,16 +127,23 @@ class SpecialBunchControl(QtWidgets.QWidget):
         else:
             self.machine.sbunches.set_bunch_number(br.nbunches())
             
-    @pyqtSlot()
     def start_stop_special_bunches(self):
-        checked = self.ui.start_stop_button.isChecked()
-        self.set_bunch_control_enabled(not checked)
-        if checked:
-            self.machine.sbunches.start_diagnostic_bunch()
-            self.ui.start_stop_button.setText("Stop")
-        else:
+        is_firing = self.machine.sbunches.is_diag_bunch_firing()
+        if is_firing:
             self.machine.sbunches.stop_diagnostic_bunch()
-            self.ui.start_stop_button.setText("Start")
+        else:
+            self.machine.sbunches.start_diagnostic_bunch()
+
+    def update_start_button(self):
+        is_diag_bunch_firing = self.machine.sbunches.is_diag_bunch_firing()
+        if is_diag_bunch_firing:
+            self.set_bunch_control_enabled(False)
+            self.ui.start_stop_button.setText("Stop Diagnostic Bunch")
+            self.ui.start_stop_button.setDown(True)
+        else:
+            self.set_bunch_control_enabled(True)            
+            self.ui.start_stop_button.setText("Start Diagnostic Bunch")
+            self.ui.start_stop_button.setDown(False)
 
     def get_selected_screen_name(self):
         return self.ui.select_screen_combobox.currentText()
