@@ -99,7 +99,7 @@ def test_SpecialBunchesControl_set_kicker(mocked_sbc):
                                                                        "KAX.56.I1": 2}
         kicker_name = "KAX.56.I1"
         intended_kicker_number = 2
-        mocked_sbc.set_kicker(kicker_name)
+        mocked_sbc.set_kicker_name(kicker_name)
         intended_control_arg = [1, 1, intended_kicker_number, 3]
         mocked_sbc.mi.set_value.assert_called_once_with(mocked_sbc.control_address(),
                                                         intended_control_arg)
