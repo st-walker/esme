@@ -24,16 +24,8 @@ class BunchLengthMachine:
             self.kickerop.apply_fast_kicker_setpoint(setpoint)
         # self.sbunches.write_kicker
 
-    # def start_special_bunch(self):
-    #     pass
-
     def set_measurement_location(self, location: DiagnosticRegion):
         self.sbunches.location = location
         self.screens.location = location
         self.deflectors.location = location
-    
-    # def read_lh_on_state(self):
-    #     pass
 
-    # def toggle_lh(self):
-    #     pass

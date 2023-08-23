@@ -3,6 +3,8 @@
 
 ## Calibration ##
 
+[sinbad tds paper](https://iopscience.iop.org/article/10.1088/1742-6596/874/1/012078/pdf)
+
 [tds paper](https://cds.cern.ch/record/556141/files/wpah116.pdf)
 
 [espread measurement paper](https://journals.aps.org/prab/pdf/10.1103/PhysRevAccelBeams.24.064201)
@@ -25,3 +27,5 @@ $$
 
 
 And $\frac{\left < \Delta y \right >}{\Delta t}$ is given by Bolko's TDS calibrator.
+
+

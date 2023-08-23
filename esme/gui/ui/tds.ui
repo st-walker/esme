@@ -58,6 +58,9 @@
    </item>
    <item row="0" column="4">
     <widget class="QLineEdit" name="tds_phase_readback_line">
+     <property name="styleSheet">
+      <string notr="true">background-color: rgba(255, 255, 255, 0);</string>
+     </property>
      <property name="maxLength">
       <number>14</number>
      </property>
@@ -92,6 +95,9 @@
    </item>
    <item row="1" column="4">
     <widget class="QLineEdit" name="tds_amplitude_readback_line">
+     <property name="styleSheet">
+      <string notr="true">background-color: rgba(255, 255, 255, 0);</string>
+     </property>
      <property name="maxLength">
       <number>14</number>
      </property>

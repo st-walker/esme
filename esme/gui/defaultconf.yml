@@ -55,6 +55,7 @@ screens:
 
 - name: OTRC.64.I1D
   area: I1
+  # resolution: 28e-6
 
 - name: OTRD.64.I1D
   area: I1
