@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 from .mint import XFELMachineInterface
 
-from IPython import embed
+# from IPython import embed
 
 BR_TRANSITION = 1 << 24
 

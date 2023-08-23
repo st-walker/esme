@@ -18,6 +18,7 @@ class SpecialBunchesControl:
     STATUS_IS_OK_VALUE = 0
     DIAG_BUNCH_FIRE_VALUE = 1
     DIAG_BUNCH_STOP_VALUE = 0
+    DONT_USE_KICKERS_DUMMY_KICKER_NUMBER = -1
     def __init__(self, location: Optional[DiagnosticRegion] = None,
                  mi: Optional[XFELMachineInterface] = None) -> None:
         self.location = location if location else DiagnosticRegion.UNKNOWN
@@ -65,15 +66,10 @@ class SpecialBunchesControl:
 
     def set_use_tds(self, use_tds: bool) -> None:
         clist = self.get_kicker_control_list()
-        clist[1] = int(use_tds)
+        clist[1] = int(bool(use_tds))
         self.mi.set_value(self.control_address(), clist)
 
-    def set_use_kickers(self, use_kickers: bool) -> None:
-        clist = self.get_kicker_control_list()
-        clist[1] = int(use_tds)
-        self.mi.set_value(self.control_address(), clist)
-
-    def set_kicker(self, kicker_name) -> None:
+    def set_kicker_name(self, kicker_name) -> None:
         clist = self.get_kicker_control_list()
         kmap = self.get_kicker_name_to_kicker_index_map()
         kicker_number = kmap[kicker_name]
@@ -81,12 +77,34 @@ class SpecialBunchesControl:
         LOG.info(f"Writing to CONTROL, {kicker_name=}, {kicker_number=}")
         self.mi.set_value(self.control_address(), clist)
 
-    def set_dont_use_fast_kickers(self):
-        clist = self.get_kicker_control_list()
-        kmap = self.get_kicker_name_to_kicker_index_map()
+    def get_use_kicker(self):
+        for readout in self.mi.get_value(f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/*{self.location}/KICKER.ON"):
+            value, *_, loc = readout
+            _, location = loc.split(".")
+            if location == self.location:
+                break
+        ch = f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/{location}/KICKER.ON"
+        LOG.debug(f"Read {value} from {ch}")
+        return value
 
-        clist[2] = kicker_number
-        LOG.info(f"Writing to CONTROL, {kicker_name=}, {kicker_number=}")
+    def power_on_kickers(self, use_kickers: bool) -> None:
+        *_, loc = self.mi.get_value(f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/*{self.location}/KICKER.ON")
+        ch = f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/{loc}/KICKER.ON"
+        value = 0
+        LOG.debug(f"Setting value: {ch=} value={value}")
+        self.mi.set_value(ch, value)
+
+    def power_off_kickers(self, use_kickers: bool) -> None:
+        *_, loc = self.mi.get_value(f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/*{self.location}/KICKER.ON")
+        ch = f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/{loc}/KICKER.ON"
+        value = 1
+        LOG.debug(f"Setting value: {ch=} value={value}")
+        self.mi.set_value(ch, 1)
+
+    def dont_use_kickers(self):
+        clist = self.get_kicker_control_list()
+        clist[2] = self.DONT_USE_KICKERS_DUMMY_KICKER_NUMBER
+        LOG.info(f"Writing to CONTROL, {self.control_address()}, {clist}")
         self.mi.set_value(self.control_address(), clist)
 
     def control_address(self) -> str:
