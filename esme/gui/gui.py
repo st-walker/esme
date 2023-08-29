@@ -14,7 +14,7 @@ from esme.gui.ui import mainwindow
 from .calibrator import CalibrationMainWindow
 from esme.control.sbunches import DiagnosticRegion
 from esme.control.pattern import get_beam_regions, get_bunch_pattern
-from esme.gui.common import build_default_machine_interface
+from esme.gui.common import build_default_machine_interface, setup_screen_display_widget
 
 pg.setConfigOption("useNumba", True)
 pg.setConfigOption("imageAxisOrder", "row-major")
