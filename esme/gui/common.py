@@ -40,7 +40,7 @@ def build_default_lps_machine():
         with open(DEFAULT_VCONFIG_PATH, "r") as f:
             doocsdict = yaml.safe_load(f)
             mi = load_virtual_machine_interface(doocsdict)
-        machine = build_lps_machine_from_config(DEFAULT_CONFIG_PATH, mi=mi)
+    machine = build_lps_machine_from_config(DEFAULT_CONFIG_PATH, mi=mi)
     return machine
 
 def get_default_virtual_machine_interface():
