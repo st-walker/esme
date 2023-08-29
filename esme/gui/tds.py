@@ -8,9 +8,9 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QObject, QThread, QTimer, pyqtSignal, pyqtSlot
 
 from .ui.tds import Ui_tds_control_panel
-from esme.control.configs import build_simple_machine_from_config
+from esme.gui.common import build_default_machine_interface
 
-from .calibration import CalibrationMainWindow
+from .calibrator import CalibrationMainWindow
 
 DEFAULT_CONFIG_PATH = files("esme.gui") / "defaultconf.yml"
 
@@ -23,13 +23,15 @@ class TDSControl(QtWidgets.QWidget):
         super().__init__(parent=parent)
 
         if machine is None:
-            self.machine = build_simple_machine_from_config(DEFAULT_CONFIG_PATH)
+            self.machine = build_default_machine_interface()
         else:
             self.machine = machine
 
         self.ui = Ui_tds_control_panel()
         self.ui.setupUi(self)
 
+        self.calibration_window = CalibrationMainWindow(self)
+        
         self.connect_buttons()
 
         self.timer = QTimer()
@@ -51,8 +53,13 @@ class TDSControl(QtWidgets.QWidget):
         # TDS Buttons
         self.ui.tds_phase_spinbox.valueChanged.connect(self.machine.deflectors.set_phase)
         self.ui.tds_amplitude_spinbox.valueChanged.connect(self.machine.deflectors.set_amplitude)
-        self.ui.tds_calibration_pushbutton.clicked.connect(self.open_calibration_window)
+        self.ui.tds_calibration_pushbutton.clicked.connect(self.calibration_window.show)
 
-    def open_calibration_window(self):
-        self.calibration_window = CalibrationMainWindow(self)
-        self.calibration_window.show()
+    def apply_calibration(self, mapping):
+        self.mapping = mapping
+        self.tds_voltage_spinbox.setEnabled(True)
+        self.tds_voltage_spinbox.valueChanged.connect(self.update_voltage)
+
+    def update_volatge(self, voltage):
+        amplitude = self.mapping.get_amplitude(voltage)
+        self.ui.tds_amplitude_spinbox.setValue(amplitude)

@@ -8,30 +8,33 @@ from click import Option, UsageError, argument, echo, group, option
 
 import esme.analysis
 from esme.analysis import calculate_energy_spread_simple
-from esme.inout import (
-    find_scan_config,
-    get_config_sample_sizes,
-    i1_dscan_config_from_scan_config_file,
-    i1_tds_voltages_from_scan_config_file,
-    load_config,
-    make_dispersion_measurer,
-    make_measurement_runner,
-    rm_ims_from_pcl,
-    rm_pcl,
-)
-from esme.plot import (
-    compare_results,
-    dump_full_scan,
-    formatted_parameter_dfs,
-    plot_measured_central_widths,
-    plot_quad_strengths,
-    plot_scans,
-    plot_tds_calibration,
-    pretty_parameter_table,
-    write_pixel_widths,
-)
+# from esme.inout import (
+#     find_scan_config,
+#     get_config_sample_sizes,
+#     i1_dscan_config_from_scan_config_file,
+#     i1_tds_voltages_from_scan_config_file,
+#     load_config,
+#     make_dispersion_measurer,
+#     make_measurement_runner,
+#     rm_ims_from_pcl,
+#     rm_pcl,
+# )
+# from esme.plot import (
+#     compare_results,
+#     dump_full_scan,
+#     formatted_parameter_dfs,
+#     plot_measured_central_widths,
+#     plot_quad_strengths,
+#     plot_scans,
+#     plot_tds_calibration,
+#     pretty_parameter_table,
+#     write_pixel_widths,
+# )
 
-from . import inout
+
+# from . import inout
+
+from esme.gui.hires import start_hires_gui
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
@@ -349,13 +352,10 @@ def gui(ftoml, replay):
 
     start_gui(ftoml, debug_mode=True, replay=replay)
 
-
 @main.command()
-def tds():
-    from esme.gui import start_tds_gui
-
-    start_tds_gui()
-
+def hires():
+    start_hires_gui()
+    
 
 @main.command()
 def error(

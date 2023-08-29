@@ -2,9 +2,9 @@ import numpy as np
 from scipy.constants import e
 
 from esme.analysis import (
-    ParameterScan,
-    ScanMeasurement,
-    SliceEnergySpreadMeasurement,
+    # ParameterScan,
+    # ScanMeasurement,
+    # SliceEnergySpreadMeasurement,
     transform_pixel_widths,
 )
 from esme.calibration import TDS_WAVENUMBER, r34s_from_scan
@@ -12,7 +12,8 @@ from esme.image import crop_image
 from esme.maths import get_gaussian_fit
 
 
-def bunch_lengths_from_scan_measurement(measurement: ScanMeasurement, pixel_units="m"):
+def bunch_lengths_from_scan_measurement(measurement #: ScanMeasurement
+                                        , pixel_units="m"):
     lengths = []
     errors = []
     for i in range(measurement.nimages):
@@ -40,7 +41,8 @@ def bunch_lengths_from_scan_measurement(measurement: ScanMeasurement, pixel_unit
     return mean_length, mean_error
 
 
-def apparent_bunch_lengths(scan: ParameterScan):
+def apparent_bunch_lengths(scan #: ParameterScan
+                           ):
     average_lengths = []
     average_lengths_errors = []
     for measurement in scan:
@@ -50,7 +52,9 @@ def apparent_bunch_lengths(scan: ParameterScan):
     return np.array(average_lengths), np.array(average_lengths_errors)
 
 
-def true_bunch_lengths(scan: ParameterScan, voltages=None):
+def true_bunch_lengths(scan# : ParameterScan
+                       ,
+                       voltages=None):
     raw_bl, raw_bl_err = apparent_bunch_lengths(scan)
     r34s = abs(r34s_from_scan(scan))
     if voltages is None:
@@ -63,7 +67,8 @@ def true_bunch_lengths(scan: ParameterScan, voltages=None):
     return true_bl, true_bl_err
 
 
-def mean_bunch_length_from_time_calibration(esme: SliceEnergySpreadMeasurement):
+def mean_bunch_length_from_time_calibration(esme# : SliceEnergySpreadMeasurement
+                                            ):
     lengths = []
     uncertainties = []
 

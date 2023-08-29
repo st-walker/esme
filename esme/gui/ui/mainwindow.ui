@@ -53,6 +53,41 @@
            <string>Controls</string>
           </property>
           <layout class="QGridLayout" name="gridLayout_4">
+           <item row="8" column="0">
+            <widget class="QPushButton" name="lps_button">
+             <property name="text">
+              <string>Long. Phase Space...</string>
+             </property>
+            </widget>
+           </item>
+           <item row="3" column="0">
+            <widget class="Line" name="line">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="6" column="0">
+            <widget class="QPushButton" name="laser_heater_pushbutton">
+             <property name="text">
+              <string>Laser Heater On</string>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="0">
+            <widget class="Line" name="line_3">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="Line" name="line_2">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+            </widget>
+           </item>
            <item row="0" column="0">
             <layout class="QHBoxLayout" name="horizontalLayout_2">
              <item>
@@ -81,25 +116,8 @@
              </item>
             </layout>
            </item>
-           <item row="5" column="0">
-            <widget class="Line" name="line_3">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-            </widget>
-           </item>
-           <item row="8" column="0">
-            <widget class="IndicatorPanel" name="indicator_panel" native="true"/>
-           </item>
-           <item row="3" column="0">
-            <widget class="Line" name="line">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="0">
-            <widget class="SpecialBunchControl" name="special_bunch_panel" native="true">
+           <item row="4" column="0">
+            <widget class="TDSControl" name="tds_panel" native="true">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
                <horstretch>0</horstretch>
@@ -108,22 +126,18 @@
              </property>
             </widget>
            </item>
-           <item row="6" column="0">
-            <widget class="QPushButton" name="laser_heater_pushbutton">
+           <item row="9" column="0">
+            <widget class="QPushButton" name="bunch_length_button">
              <property name="text">
-              <string>Laser Heater On</string>
+              <string>Bunch Length...</string>
              </property>
             </widget>
            </item>
-           <item row="1" column="0">
-            <widget class="Line" name="line_2">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-            </widget>
+           <item row="10" column="0">
+            <widget class="IndicatorPanel" name="indicator_panel" native="true"/>
            </item>
-           <item row="4" column="0">
-            <widget class="TDSControl" name="tds_panel" native="true">
+           <item row="2" column="0">
+            <widget class="SpecialBunchControl" name="special_bunch_panel" native="true">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
                <horstretch>0</horstretch>
@@ -149,6 +163,8 @@
           <zorder>line_2</zorder>
           <zorder>line_3</zorder>
           <zorder>line_4</zorder>
+          <zorder>lps_button</zorder>
+          <zorder>bunch_length_button</zorder>
          </widget>
         </item>
        </layout>

@@ -57,7 +57,7 @@ def crop_image(im: RawImageT) -> RawImageT:
     return im[idx_row0:idx_row1, idx_col0:idx_col1]
 
 
-def process_image(im0: RawImageT, bg: RawImageT) -> RawImageT:
+def filter_image(im0: RawImageT, bg: RawImageT, crop=False) -> RawImageT:
     # Subtract bg from image.
     im = im0 - bg
 
@@ -81,6 +81,9 @@ def process_image(im0: RawImageT, bg: RawImageT) -> RawImageT:
     im0bg[mask | inds_hi] = 0
 
     im_no_outliers = remove_all_disconnected_pixels(im0bg)
+
+    if crop:
+        return crop_image(im_no_outliers)
 
     return im_no_outliers
 

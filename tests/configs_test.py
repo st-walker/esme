@@ -1,8 +1,10 @@
+import numpy as np
 import yaml
 import pytest
+import toml
 
 from esme.control.mint import XFELMachineInterface
-from esme.control.configs import build_simple_machine_from_config, load_kickers_from_config, load_screens_from_config, load_deflectors_from_config
+from esme.control.configs import build_simple_machine_from_config, load_kickers_from_config, load_screens_from_config, load_deflectors_from_config, load_calibration
 from esme.control.kickers import PolarityType, FastKicker, FastKickerSetpoint
 
 SIMPLE_LPS_CONFIG = """
@@ -44,6 +46,23 @@ deflectors:
 
 """
 
+BOLKO_CALIBRATION = """
+type = "bolko"
+amplitudes = [8,  24]
+slopes = [204, 670]
+slope_units = "um/ps"
+screen_name = "OTRC.64.I1D"
+r34 = -10e-3
+energy = 130e-3
+frequency = 3e9
+"""
+
+IGOR_CALIBRATION = """
+type = "igor"
+amplitudes = [8, 18]
+voltages = [0.38E6, 0.84E6]
+"""
+
 @pytest.fixture(scope="session")
 def tmpconf(tmp_path_factory):
     filename = tmp_path_factory.mktemp("data") / "testconfig.yml"
@@ -51,10 +70,35 @@ def tmpconf(tmp_path_factory):
         f.write(SIMPLE_LPS_CONFIG)
     return filename
 
+@pytest.fixture(scope="session")
+def tmpbcalib(tmp_path_factory):
+    filename = tmp_path_factory.mktemp("data") / "tmpicalib.toml"
+    with open(filename, "w") as f:
+        f.write(BOLKO_CALIBRATION)
+    return filename
+
+@pytest.fixture(scope="session")
+def tmpicalib(tmp_path_factory):
+    filename = tmp_path_factory.mktemp("data") / "tmpicalib.toml"
+    with open(filename, "w") as f:
+        f.write(IGOR_CALIBRATION)
+    return filename
+
 @pytest.fixture
 def loaded_conf(tmpconf) -> dict:
     with tmpconf.open("r") as f:
         return yaml.safe_load(f)
+
+@pytest.fixture
+def loaded_bolko_calib(tmpbcalib):
+    with tmpconf.open("r") as f:
+        return toml.load(tmpbcalib)
+
+@pytest.fixture
+def tmp_igor_calib(tmpicalib):
+    with tmpconf.open("r") as f:
+        return toml.load(tmpicalib)
+    
 
 def test_load_kickers_from_config(loaded_conf):
     kicker_controller = load_kickers_from_config(loaded_conf)
@@ -113,3 +157,16 @@ def test_load_deflectors_from_config(loaded_conf):
     assert ldeflectors[1].sp_fdl == "XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSB2/"
     assert ldeflectors[1].location == "B2"
 
+
+def test_load_calibration_loads_bolko_style_calibration(tmpbcalib):
+    calib = load_calibration(tmpbcalib)
+    assert len(calib.setpoints) == 2
+
+
+@pytest.mark.filterwarnings("ignore:Covariance of the parameters could not be estimated")
+def test_load_calibration_loads_igor_style_calibration(tmpicalib):
+    calib = load_calibration(tmpicalib)
+    assert np.isclose(calib.get_voltage(8), 0.38E6)
+    assert np.isclose(calib.get_amplitude(0.38E6), 8)    
+
+    

@@ -122,86 +122,86 @@ def dump_full_scan(esme: ana.SliceEnergySpreadMeasurement, root_outdir) -> None:
                 plt.show()
 
 
-def show_before_after_processing(
-    measurement: ana.ScanMeasurement, index: int
-) -> plt.Figure:
-    im = measurement.to_im(index, process=False)
-    imp = measurement.to_im(index, process=True)
+# def show_before_after_processing(
+#     measurement: ana.ScanMeasurement, index: int
+# ) -> plt.Figure:
+#     im = measurement.to_im(index, process=False)
+#     imp = measurement.to_im(index, process=True)
 
-    fig = plt.figure(figsize=(14, 8))
-    ax1 = fig.add_subplot(2, 2, 1)
-    ax2 = fig.add_subplot(2, 2, 2)
-    ax3 = fig.add_subplot(2, 2, 3, sharex=ax1, sharey=ax1)
-    ax4 = fig.add_subplot(2, 2, 4, sharex=ax2, sharey=ax2)
+#     fig = plt.figure(figsize=(14, 8))
+#     ax1 = fig.add_subplot(2, 2, 1)
+#     ax2 = fig.add_subplot(2, 2, 2)
+#     ax3 = fig.add_subplot(2, 2, 3, sharex=ax1, sharey=ax1)
+#     ax4 = fig.add_subplot(2, 2, 4, sharex=ax2, sharey=ax2)
 
-    ax1.imshow(im, aspect="auto")
-    ax3.imshow(imp, aspect="auto")
+#     ax1.imshow(im, aspect="auto")
+#     ax3.imshow(imp, aspect="auto")
 
-    y, slice_mus, _ = ana.get_slice_properties(imp)
-    idy_emax = y[
-        np.argmin(slice_mus)
-    ]  # Min not max because image index counts from top.
+#     y, slice_mus, _ = ana.get_slice_properties(imp)
+#     idy_emax = y[
+#         np.argmin(slice_mus)
+#     ]  # Min not max because image index counts from top.
 
-    ax1.axhline(idy_emax, alpha=0.25, color="white")
-    ax3.axhline(idy_emax, alpha=0.25, color="white")
+#     ax1.axhline(idy_emax, alpha=0.25, color="white")
+#     ax3.axhline(idy_emax, alpha=0.25, color="white")
 
-    padding = 10
-    central_slice_index = np.s_[idy_emax - padding : idy_emax + padding]
-    slc = im[central_slice_index].mean(axis=0)
-    slcp = imp[central_slice_index].mean(axis=0)
+#     padding = 10
+#     central_slice_index = np.s_[idy_emax - padding : idy_emax + padding]
+#     slc = im[central_slice_index].mean(axis=0)
+#     slcp = imp[central_slice_index].mean(axis=0)
 
-    bg = measurement.mean_bg_im()[central_slice_index].mean(axis=0)
+#     bg = measurement.mean_bg_im()[central_slice_index].mean(axis=0)
 
-    ax2.plot(slc, label="Raw")
-    ax4.plot(slcp, label="After processing")
-    ax2.plot(bg, label="Background")
-    ax2.plot((slc - bg).clip(min=0), label="Raw - background")
+#     ax2.plot(slc, label="Raw")
+#     ax4.plot(slcp, label="After processing")
+#     ax2.plot(bg, label="Background")
+#     ax2.plot((slc - bg).clip(min=0), label="Raw - background")
 
-    shift = np.argmax(slcp)
-    xcore, ycore = get_slice_core(slcp)
-    popt, perr = maths.get_gaussian_fit(xcore, ycore)
+#     shift = np.argmax(slcp)
+#     xcore, ycore = get_slice_core(slcp)
+#     popt, perr = maths.get_gaussian_fit(xcore, ycore)
 
-    popt[1] = shift  # Shift mean back to whatever it was.
-    vertical_index = np.linspace(popt[1] - 50, popt[1] + 50, 100)
-    y = maths.gauss(vertical_index, *popt)
-    ax4.plot(vertical_index, y, label="Fit")
+#     popt[1] = shift  # Shift mean back to whatever it was.
+#     vertical_index = np.linspace(popt[1] - 50, popt[1] + 50, 100)
+#     y = maths.gauss(vertical_index, *popt)
+#     ax4.plot(vertical_index, y, label="Fit")
 
-    ax4.set_xlim(min(vertical_index), max(vertical_index))
+#     ax4.set_xlim(min(vertical_index), max(vertical_index))
 
-    sigma = popt[-1]
-    sigma_sigma = perr[-1]
+#     sigma = popt[-1]
+#     sigma_sigma = perr[-1]
 
-    ax4.set_title(rf"Fitted $\sigma_M = {sigma:.3f}±{sigma_sigma:.3f}$ px")
+#     ax4.set_title(rf"Fitted $\sigma_M = {sigma:.3f}±{sigma_sigma:.3f}$ px")
 
-    # Left plots
-    ax1.set_title("Image before and after processing")
-    ax3.set_xlabel("Pixel Column index")
-    ax1.set_ylabel("Pixel Row index")
-    ax3.set_ylabel("Pixel Row index")
-    # Right plots
-    ax2.set_title("Highest energy column")
-    ax4.set_xlabel("Pixel Column Index")
-    ax2.set_ylabel("Pixel Brightness")
-    ax4.set_ylabel("Pixel Brightness")
-    m = measurement
-    fname = (
-        measurement.metadata["XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"]
-        .iloc[index]
-        .name
-    )
-    fig.suptitle(
-        fr"TDS Ampl. = {m.tds_percentage}%, $D_\mathrm{{OTR}}={m.dx}\,\mathrm{{m}}$, image {index}, before/after image processing: {fname}"
-    )
-    ax2.legend()
-    ax4.legend()
+#     # Left plots
+#     ax1.set_title("Image before and after processing")
+#     ax3.set_xlabel("Pixel Column index")
+#     ax1.set_ylabel("Pixel Row index")
+#     ax3.set_ylabel("Pixel Row index")
+#     # Right plots
+#     ax2.set_title("Highest energy column")
+#     ax4.set_xlabel("Pixel Column Index")
+#     ax2.set_ylabel("Pixel Brightness")
+#     ax4.set_ylabel("Pixel Brightness")
+#     m = measurement
+#     fname = (
+#         measurement.metadata["XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"]
+#         .iloc[index]
+#         .name
+#     )
+#     fig.suptitle(
+#         fr"TDS Ampl. = {m.tds_percentage}%, $D_\mathrm{{OTR}}={m.dx}\,\mathrm{{m}}$, image {index}, before/after image processing: {fname}"
+#     )
+#     ax2.legend()
+#     ax4.legend()
 
-    # ix1 is the "bottom" rather than the "top" because origin is in the top
-    # left hand corner when plotting images!
-    (ix0, ix1), (iy0, iy1) = image.get_cropping_bounds(imp)
-    ax1.set_ylim(ix1, ix0)
-    ax1.set_xlim(iy0, iy1)
+#     # ix1 is the "bottom" rather than the "top" because origin is in the top
+#     # left hand corner when plotting images!
+#     (ix0, ix1), (iy0, iy1) = image.get_cropping_bounds(imp)
+#     ax1.set_ylim(ix1, ix0)
+#     ax1.set_xlim(iy0, iy1)
 
-    return fig
+#     return fig
 
 
 def plot_dispersion_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> None:

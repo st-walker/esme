@@ -47,6 +47,7 @@ class Screen:
 
 class ScreenService:
     SCREEN_FDP_TEMPLATE = "XFEL.DIAG/CAMERA/{}/IMAGE_EXT"
+    SCREEN_RAW_FDP_TEMPLATE = "XFEL.DIAG/CAMERA/{}/IMAGE_EXT_ZMQ"    
     def __init__(self, screens: list[Screen], location: DiagnosticRegion = None, mi: Optional[XFELMachineInterface] = None) -> None:
         self.screens = screens
         self.location = location if location else DiagnosticRegion.UNKNOWN
@@ -65,8 +66,16 @@ class ScreenService:
         
     def get_image(self, screen_name: str) -> npt.ArrayLike:
         ch = self.SCREEN_FDP_TEMPLATE.format(screen_name)
-        LOG.info(f"Getting image from channel: {ch}")
+        LOG.debug(f"Getting image from channel: {ch}")
         return self.mi.get_value(ch)
+    
+    def get_image_raw(self, screen_name: str) -> npt.ArrayLike:
+        ch = self.get_image_raw_address(screen_name)
+        LOG.debug(f"Getting raw image from channel: {ch}")
+        return self.mi.get_value(ch)
+
+    def get_image_raw_address(self, screen_name: str) -> npt.ArrayLike:
+        return self.SCREEN_RAW_FDP_TEMPLATE.format(screen_name)
     
     def get_fast_kicker_setpoints_for_screen(self, screen_name: str) -> list[FastKickerSetpoint]:
         LOG.debug(f"Trying to get FastKickerSetpoint for screen: {screen_name}")

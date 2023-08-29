@@ -1,7 +1,6 @@
 import sys
 import logging
 import time
-from importlib_resources import files
 
 import pyqtgraph as pg
 from PyQt5 import QtCore, QtGui
@@ -12,19 +11,13 @@ import numpy as np
 
 
 from esme.gui.ui import mainwindow
-from .calibration import CalibrationMainWindow
-from esme.control.configs import build_simple_machine_from_config
+from .calibrator import CalibrationMainWindow
 from esme.control.sbunches import DiagnosticRegion
 from esme.control.pattern import get_beam_regions, get_bunch_pattern
+from esme.gui.common import build_default_machine_interface
 
 pg.setConfigOption("useNumba", True)
 pg.setConfigOption("imageAxisOrder", "row-major")
-
-
-DEFAULT_CONFIG_PATH = files("esme.gui") / "defaultconf.yml"
-
-# DEFAULT_CONFIG_PATH = "/Users/xfeloper/user/stwalker/esme/esme/gui/defaultconf.yml"
-# DEFAULT_CONFIG_PATH = "/Users/stuartwalker/repos/esme/esme/gui/defaultconf.yml"
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -32,7 +25,7 @@ LOG.setLevel(logging.DEBUG)
 
 def start_gui():
     # make pyqt threadsafe
-    QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
+    # QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
     # create the application
     app = QApplication(sys.argv)
 
@@ -51,7 +44,7 @@ class LPSMainWindow(QMainWindow):
 
         self.setup_logger_tab()
 
-        self.machine = build_simple_machine_from_config(DEFAULT_CONFIG_PATH)
+        self.machine = build_default_machine_interface()
 
         self.location.connect(self.ui.special_bunch_panel.update_location)
         self.location.connect(self.ui.tds_panel.update_location)
@@ -135,7 +128,8 @@ class QPlainTextEditLogger(QObject, logging.Handler):
         self.log_signal.emit(msg)
 
 class ScreenWatcher(QObject):
-    image_signal = pyqtSignal(np.ndarray)
+    # image_signal = pyqtSignal(np.ndarray)
+    image_signal = pyqtSignal(object)    
     def __init__(self, machine):
         super().__init__()
         self.machine = machine
@@ -154,29 +148,12 @@ class ScreenWatcher(QObject):
             if image is None:
                 continue
             else:
-                self.image_signal.emit(image)
+                self.image_signal.emit(np.array(image))
 
     def update_screen_name(self, screen_name):
         LOG.info(f"Setting screen name for Screen Worker thread: {screen_name}")
+
         self.screen_name = screen_name
-
-def setup_screen_display_widget(widget):
-    image_plot = widget.addPlot()
-    image_plot.clear()
-    image_plot.hideAxis("left")
-    image_plot.hideAxis("bottom")
-    image = pg.ImageItem(autoDownsample=True, border="k")
-
-    image_plot.addItem(image)
-
-    colormap = cm.get_cmap("viridis")
-    colormap._init()
-    lut = (colormap._lut * 255).view(np.ndarray)
-
-    image.setLookupTable(lut)
-    # print(lut.shape)
-
-    return image_plot
 
 
 if __name__ == "__main__":

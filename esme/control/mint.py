@@ -8,6 +8,7 @@ S.Tomin, 2017
 
 from __future__ import absolute_import, print_function
 
+import subprocess
 import base64
 import logging
 import os
@@ -56,8 +57,34 @@ class DOOCSAddress:
     def resolve(self):
         return f"{self.facility}/{self.device}/{self.location}/{self.prop}"
 
-    def filled(self, facility=None, device=None, location=None, prop=None):
-        pass
+    def filled(self, facility="", device="", location="", prop=""):
+        facility = facility if facility else self.facility
+        device = device if device else self.device
+        location = location if location else self.location
+        prop = prop if prop else self.prop
+        address = f"{facility}/{device}/{location}/{prop}"
+        return address
+
+    def with_location(self, location):
+        return f"{self.facility}/{self.device}/{location}/{self.prop}"        
+
+    def is_wildcard_address(self):
+        return "*" in self.resolve()
+
+    def get_wildcard_component(self):
+        if not self.is_wildcard_address():
+            raise ValueErro("Not a wildcard address")
+        if "*" in self.facility:
+            return self.facility
+        elif "*" in self.device:
+            return self.device
+        elif "*" in self.location:
+            return self.location
+        elif "*" in self.prop:
+            return self.prop
+
+    def __str__(self):
+        return self.resolve()
 
     def __repr__(self):
         return f'<{type(self).__name__} @ {hex(id(self))}: "{self.resolve()}">'
@@ -128,74 +155,6 @@ class XFELMachineInterface(XFELMachineInterfaceABC):
 
     def get_charge(self) -> float:
         return self.get_value("XFEL.DIAG/CHARGE.ML/TORA.25.I1/CHARGE.SA1")
-
-    def send_to_logbook(self, *args, **kwargs) -> bool:
-        """
-        Send information to the electronic logbook.
-
-        :param args:
-            Values sent to the method without keywork
-        :param kwargs:
-            Dictionary with key value pairs representing all the metadata
-            that is available for the entry.
-        :return: bool
-            True when the entry was successfully generated, False otherwise.
-        """
-        author = kwargs.get('author', '')
-        title = kwargs.get('title', '')
-        severity = kwargs.get('severity', '')
-        text = kwargs.get('text', '')
-        image = kwargs.get('image', None)
-        elog = self.logbook
-
-        # The DOOCS elog expects an XML string in a particular format. This string
-        # is beeing generated in the following as an initial list of strings.
-        succeded = True  # indicator for a completely successful job
-        # list beginning
-        elogXMLStringList = ['<?xml version="1.0" encoding="ISO-8859-1"?>', '<entry>']
-
-        # author information
-        elogXMLStringList.append('<author>')
-        elogXMLStringList.append(author)
-        elogXMLStringList.append('</author>')
-        # title information
-        elogXMLStringList.append('<title>')
-        elogXMLStringList.append(title)
-        elogXMLStringList.append('</title>')
-        # severity information
-        elogXMLStringList.append('<severity>')
-        elogXMLStringList.append(severity)
-        elogXMLStringList.append('</severity>')
-        # text information
-        elogXMLStringList.append('<text>')
-        elogXMLStringList.append(text)
-        elogXMLStringList.append('</text>')
-        # image information
-        if image:
-            try:
-                encodedImage = base64.b64encode(image)
-                elogXMLStringList.append('<image>')
-                elogXMLStringList.append(encodedImage.decode())
-                elogXMLStringList.append('</image>')
-            except:  # make elog entry anyway, but return error (succeded = False)
-                succeded = False
-        # list end
-        elogXMLStringList.append('</entry>')
-        # join list to the final string
-        elogXMLString = '\n'.join(elogXMLStringList)
-        # open printer process
-        try:
-            lpr = subprocess.Popen(
-                ['/usr/bin/lp', '-o', 'raw', '-d', elog],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-            )
-            # send printer job
-            lpr.communicate(elogXMLString.encode('utf-8'))
-        except:
-            succeded = False
-        return succeded
-
 
 class Snapshot:
     def __init__(self, sase_sections=None):
@@ -426,7 +385,6 @@ class Machine:
 
         df = pd.DataFrame(data_dict, columns=data_dict.keys())
         static_bits, image = self.get_static_snapshot()
-        # from IPython import embed; embed()
         return df.join(static_bits), image
         return pd.concat([df, static_bits]), image
 
@@ -459,19 +417,47 @@ class Machine:
         df = pd.DataFrame(data_dict, columns=data_dict.keys())
         return df, image
 
+def send_to_logbook(author="", title="", severity="", text="", image=None) -> None:
+    """
+    Send information to the electronic logbook.
 
-class DictionaryXFELMachineInterface(XFELMachineInterfaceABC):
-    def __init__(self, initial_state: Optional[dict] = None):
-        self._machine_state = {}
-        if initial_state is not None:
-            self._machine_state |= initial_state
+    """
 
-    def get_value(self, channel: str) -> Any:
-        return self._machine_state[channel]
+    # The DOOCS elog expects an XML string in a particular format. This string
+    # is beeing generated in the following as an initial list of strings.
+    elogXMLStringList = ['<?xml version="1.0" encoding="ISO-8859-1"?>', '<entry>']
 
-    def set_value(self, channel: str, val: Any) -> None:
-        self._machine_state[channel] = val
-
-    def get_charge(self) -> float:
-        return 250e-12  # ?
-    
+    # author information
+    elogXMLStringList.append('<author>')
+    elogXMLStringList.append(author)
+    elogXMLStringList.append('</author>')
+    # title information
+    elogXMLStringList.append('<title>')
+    elogXMLStringList.append(title)
+    elogXMLStringList.append('</title>')
+    # severity information
+    elogXMLStringList.append('<severity>')
+    elogXMLStringList.append(severity)
+    elogXMLStringList.append('</severity>')
+    # text information
+    elogXMLStringList.append('<text>')
+    elogXMLStringList.append(text)
+    elogXMLStringList.append('</text>')
+    # image information
+    if image is not None:
+        encodedImage = base64.b64encode(image)
+        elogXMLStringList.append('<image>')
+        elogXMLStringList.append(encodedImage.decode())
+        elogXMLStringList.append('</image>')
+    elogXMLStringList.append('</entry>')
+    # join list to the final string
+    elogXMLString = '\n'.join(elogXMLStringList)
+    # open printer process
+    elog = "xfellog"
+    lpr = subprocess.Popen(
+        ['/usr/bin/lp', '-o', 'raw', '-d', elog],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+    )
+    # send printer job
+    lpr.communicate(elogXMLString.encode('utf-8'))

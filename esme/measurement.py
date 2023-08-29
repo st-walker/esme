@@ -801,6 +801,10 @@ class ScanType(Enum):
     def ALT_NAME_MAP(cls):
         return {cls.DISPERSION: "dscan", cls.TDS: "tscan", cls.BETA: "bscan"}
 
+    def get_filename(self, d, v):
+        f"{}-{d=}-{v=}"
+
+
     def alt_name(self):
         return self.ALT_NAME_MAP[self]
 

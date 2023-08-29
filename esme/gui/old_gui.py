@@ -76,7 +76,7 @@ def is_in_controlroom():
 #         outdir = get_outdir() / "tds_calibration/"
 #         outdir.mkdir(parents=True, exist_ok=True)
 #     else:
-#         Path("./")
+#         Path("./"
 
 
 def start_gui(scantoml, debug_mode, replay):

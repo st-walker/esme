@@ -1,7 +1,6 @@
 # from PyQt5.QtCore import QPointF
 # from PyQt5.QtGui import QColor, QPainter, QBrush
 # from PyQt5.QtWidgets import QAbstractButton, QPushButton, QCheckBox,
-from importlib_resources import files
 import logging
 
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -9,12 +8,10 @@ from PyQt5.QtCore import QObject, QThread, QTimer, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QMessageBox
 
 from .ui.special_bunch_panel import Ui_special_bunch_panel
-from esme.control.configs import build_simple_machine_from_config
 from esme.control.pattern import get_beam_regions, get_bunch_pattern
+from esme.gui.common import build_default_machine_interface
 
 LOG = logging.getLogger(__name__)
-
-DEFAULT_CONFIG_PATH = files("esme.gui") / "defaultconf.yml"
 
 
 class SpecialBunchControl(QtWidgets.QWidget):
@@ -24,7 +21,7 @@ class SpecialBunchControl(QtWidgets.QWidget):
         super().__init__(parent=parent)
 
         if machine is None:
-            self.machine = build_simple_machine_from_config(DEFAULT_CONFIG_PATH)
+            self.machine = build_default_machine_interface()
         else:
             self.machine = machine
 
@@ -50,7 +47,7 @@ class SpecialBunchControl(QtWidgets.QWidget):
         self.ui.beamregion_spinbox.setValue(self.machine.sbunches.get_beam_region() + 1)
         self.ui.bunch_spinbox.setValue(self.machine.sbunches.get_bunch_number())
         self.ui.npulses_spinbox.setValue(self.machine.sbunches.get_npulses())
-        self.update_start_button()
+        self.update_panel_start_stop_state()
 
     def set_bunch_control_enabled(self, enabled):
         self.ui.beamregion_spinbox.setEnabled(enabled)
@@ -134,7 +131,7 @@ class SpecialBunchControl(QtWidgets.QWidget):
         else:
             self.machine.sbunches.start_diagnostic_bunch()
 
-    def update_start_button(self):
+    def update_panel_start_stop_state(self):
         is_diag_bunch_firing = self.machine.sbunches.is_diag_bunch_firing()
         if is_diag_bunch_firing:
             self.set_bunch_control_enabled(False)
