@@ -9,7 +9,7 @@ import pandas as pd
 from ocelot.cpbd.elements import Quadrupole, RBend, SBend
 from oxfel.accelerator import sections
 from oxfel.accelerator.sections import i1, i1d
-from oxfel.fel_track import Linac
+# from oxfel.fel_track import Linac
 
 # from esme.dispersion import QuadrupoleSetting
 
@@ -196,7 +196,8 @@ def injector_cell_from_snapshot(
     return cell
 
 
-def apply_quad_setting_to_lattice(lattice: Linac, qset# : QuadrupoleSetting
+def apply_quad_setting_to_lattice(lattice# : Linac
+                                  , qset# : QuadrupoleSetting
                                   ):
     LOG.debug(
         "Applying quadrupole strengths from QuadrupoleSetting instance to OCELOT SectionLattice."
