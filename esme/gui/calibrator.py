@@ -124,7 +124,7 @@ class CalibrationMainWindow(QMainWindow):
     def apply_calibration_button(self):
         if self.calibration is not None:
             self.calibration_signal.emit(self.calibration)
-        
+
 
 class CalibrationWorker(QObject):
     def __init__(self, machine, screen_name):
@@ -150,8 +150,8 @@ class CalibrationWorker(QObject):
     def update_screen_name(self, screen_name):
         LOG.info(f"Setting screen name for Screen Worker thread: {screen_name}")
         self.screen_name = screen_name
-    
-        
+
+
 
 def main():
     # create the application
@@ -163,4 +163,5 @@ def main():
     main_window.raise_()
     sys.exit(app.exec_())
 
-
+if __name__ == "__main__":
+    main()
