@@ -13,6 +13,8 @@ from PyQt5.QtCore import QObject, QThread, QTimer, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QApplication, QFileDialog, QFrame, QMainWindow, QMessageBox
 
 from esme.gui.ui.scanner import Ui_scanner_form
+from esme.gui.ui.scan_results import Ui_results_box_dialog
+from esme.gui.ui import scanner_config
 from esme.control.pattern import get_beam_regions, get_bunch_pattern
 from esme.gui.common import build_default_lps_machine, QPlainTextEditLogger
 from esme.maths import ValueWithErrorT, linear_fit
@@ -20,7 +22,11 @@ from esme.image import get_slice_properties, get_central_slice_width_from_slice_
 from esme.analysis import SliceWidthsFitter, FittedBeamParameters
 from esme.control.configs import load_calibration
 from esme.control.snapshot import SnapshotAccumulator, Snapshotter
+from esme.control.mint import send_to_logbook
+from esme.gui.common import is_in_controlroom
 # from esme.maths import ValueWithErrorT, linear_fit
+
+from esme.plot import pretty_parameter_table, formatted_parameter_dfs
 
 LOG = logging.getLogger(__name__)
 
@@ -52,11 +58,19 @@ class ScanSettings:
     tds_amplitude_wait: int = 0.05
     beam_on_wait: float = 1.0
     outdir: Path = Path("/Users/stuartwalker/repos/esme-data")
+    pixel_size: float = 13.7369e-6
 
+
+def make_default_scan_settings():
+    ss = ScanSettings()
+    if is_in_controlroom():
+        ss.outdir = "/Users/xfeloper/user/stwalker/esme-measurements"
+    return ss
 
 class ScannerControl(QtWidgets.QWidget):
     processed_image_signal = pyqtSignal(object)
     full_measurement_result_signal = pyqtSignal(FittedBeamParameters)
+    new_measurement_signal = pyqtSignal()
 
     def __init__(self, parent=None, machine=None):
         super().__init__(parent=parent)
@@ -77,7 +91,18 @@ class ScannerControl(QtWidgets.QWidget):
         self.measurement_thread = None
 
         self.timer = self.build_main_timer(100)
-        # scan_worker = ScanWorker(self.machine, scanconf)
+
+        self.result_dialog = ScannerResultsDialog(parent=self)
+        self.settings_dialog = ScannerConfDialog(initial_settings=make_default_scan_settings(),
+                                                 parent=self)
+        self.settings_dialog.scanner_config_signal.connect(self.update_settings)
+        self.ui.preferences_button.clicked.connect(self.open_settings)
+
+    def update_settings(self):
+        pass
+
+    def open_settings(self):
+        self.settings_dialog.show()
 
     def initial_read(self):
         voltages = np.array(self.machine.scanner.scan.tscan.voltages)
@@ -109,6 +134,7 @@ class ScannerControl(QtWidgets.QWidget):
         thread.started.connect(worker.run)
         worker.processed_image_signal.connect(self.processed_image_signal.emit)
         worker.full_measurement_result_signal.connect(self.full_measurement_result_signal.emit)
+        worker.full_measurement_result_signal.connect(self.display_final_result)
         thread.start()
         self.measurement_thread = thread
         self.measurement_worker = worker
@@ -121,6 +147,15 @@ class ScannerControl(QtWidgets.QWidget):
         self.measurement_thread.terminate()
         self.measurement_thread.wait()
         # self.screen_thread.exit()
+
+    def display_final_result(self, fitted_beam_parameters):
+        LOG.debug("Displaying Final Result")
+        fit_df, beam_df = formatted_parameter_dfs(fitted_beam_parameters)
+        text = pretty_parameter_table(fit_df, beam_df)
+        self.result_dialog.ui.result_text_browser.setText(text)
+        self.result_dialog.show()
+        self.measurement_thread.terminate()
+        self.measurement_thread.wait()
 
 
 class ScanWorker(QObject):
@@ -156,6 +191,7 @@ class ScanWorker(QObject):
         self.make_output_directory()
         dscan_widths = self.dispersion_scan()
         tscan_widths = self.tds_scan()
+
 
         fitter = SliceWidthsFitter(dscan_widths,
                                    tscan_widths,
@@ -241,6 +277,7 @@ class ScanWorker(QObject):
         return SnapshotAccumulator(shotter, outdir / filename)
 
 
+
 def make_snapshot_filename(*, scan_type, dispersion, voltage, **images):
     scan_string = scan_type.alt_name()
     voltage /= 1e6
@@ -259,6 +296,63 @@ def process_image(image, scan_type: ScanType, dispersion, voltage):
                           central_width_row=central_width_row,
                           dispersion=dispersion,
                           voltage=voltage)
+
+
+
+class ScannerConfDialog(QtWidgets.QDialog):
+    scanner_config_signal = pyqtSignal(ScanSettings)
+    def __init__(self, initial_settings=None, parent=None):
+        super().__init__()
+        self.ui = scanner_config.Ui_Dialog()
+        self.ui.setupUi(self)
+
+        self.update_settings(initial_settings)
+
+    def update_settings(self, initial_settings):
+        if not initial_settings:
+            return
+
+        self.ui.tds_amplitude_wait_spinbox.setValue(initial_settings.tds_amplitude_wait)
+        self.ui.quad_sleep_spinbox.setValue(initial_settings.quad_wait)
+        self.ui.output_directory_lineedit.setText(str(initial_settings.outdir))
+        self.ui.pixel_size_spinbox.setValue(initial_settings.pixel_size)
+        self.ui.beam_on_wait_spinbox.setValue(initial_settings.beam_on_wait)
+
+    def get_scan_settings(self):
+        return ScanSettings(quad_wait=self.ui.tds_amplitude_wait_spinbox.value(),
+                            tds_amplitude_wait=self.ui.tds_amplitude_wait_spinbox.value(),
+                            beam_on_wait=self.ui.beam_on_wait_spinbox.value(),
+                            outdir=self.ui.output_directory_lineedit.text())
+
+
+class ScannerResultsDialog(QtWidgets.QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        self.ui = Ui_results_box_dialog()
+        self.ui.setupUi(self)
+
+        self.ui.send_to_logbook_button.clicked.connect(self.send_to_logbook)
+
+    def post_result(self, fitted_beam_parameters):
+        pass
+
+    def send_to_logbook(self):
+        #?????????? I don't know how to get this to work...
+        # pixmap = self.parent().parent().parent().grab()
+        # size = pixmap.size()
+        # h = size.width()
+        # w = size.height()
+
+        # image = pixmap.toImage()
+        # byte_str = image.bits().tobytes()
+        # img = np.frombuffer(byte_str, dtype=np.uint8).reshape((w,h,4))
+
+        text = self.ui.result_text_browser.text()
+        send_to_logbook(title="Slice Energy Spread Measurement",
+                        author="WAL",
+                        text=text)
+
+
 
 
 # class ResultDisplayBox:
