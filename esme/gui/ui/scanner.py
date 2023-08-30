@@ -100,9 +100,9 @@ class Ui_scanner_form(object):
         self.dispersion_setpoint_combo_box = QtWidgets.QComboBox(scanner_form)
         self.dispersion_setpoint_combo_box.setObjectName("dispersion_setpoint_combo_box")
         self.horizontalLayout_2.addWidget(self.dispersion_setpoint_combo_box)
-        self.pushButton = QtWidgets.QPushButton(scanner_form)
-        self.pushButton.setObjectName("pushButton")
-        self.horizontalLayout_2.addWidget(self.pushButton)
+        self.apply_optics_button = QtWidgets.QPushButton(scanner_form)
+        self.apply_optics_button.setObjectName("apply_optics_button")
+        self.horizontalLayout_2.addWidget(self.apply_optics_button)
         self.gridLayout.addLayout(self.horizontalLayout_2, 2, 0, 1, 1)
         self.preferences_button = QtWidgets.QPushButton(scanner_form)
         self.preferences_button.setObjectName("preferences_button")
@@ -121,7 +121,7 @@ class Ui_scanner_form(object):
         self.start_measurement_button.setText(_translate("scanner_form", "Start Measurement"))
         self.label_3.setText(_translate("scanner_form", "<html><head/><body><p>TDS Scan <span style=\" font-style:italic;\">D</span><span style=\" font-style:italic; vertical-align:sub;\">x/y</span> / m</p></body></html>"))
         self.measurement_name_label.setText(_translate("scanner_form", "Measurement Slug"))
-        self.pushButton.setText(_translate("scanner_form", "Apply Optics"))
+        self.apply_optics_button.setText(_translate("scanner_form", "Apply Optics"))
         self.preferences_button.setText(_translate("scanner_form", "Config..."))
 
 

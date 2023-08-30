@@ -84,7 +84,6 @@ class ScannerControl(QtWidgets.QWidget):
             self.machine = machine
 
         self.initial_read()
-
         self.connect_buttons()
 
         self.measurement_worker = None
@@ -98,6 +97,21 @@ class ScannerControl(QtWidgets.QWidget):
         self.settings_dialog.scanner_config_signal.connect(self.update_settings)
         self.ui.preferences_button.clicked.connect(self.open_settings)
 
+        self.ui.apply_optics_button.clicked.connect(self.apply_current_optics)
+
+    def apply_current_optics(self):
+        selected_dispersion = float(self.ui.dispersion_setpoint_combo_box.currentText())
+        setpoint = self.machine.scanner.get_setpoint(selected_dispersion)
+        self.machine.scanner.set_scan_setpoint_quads(setpoint)
+
+    def fill_combo_boxes(self):
+        self.ui.dispersion_setpoint_combo_box.clear()
+        scan = self.machine.scanner.scan
+        name = scan.name
+        dispersions = [str(s.dispersion) for s in scan.qscan.setpoints]
+        self.ui.dispersion_setpoint_combo_box.addItems(dispersions)
+        
+
     def update_settings(self):
         pass
 
@@ -105,6 +119,7 @@ class ScannerControl(QtWidgets.QWidget):
         self.settings_dialog.show()
 
     def initial_read(self):
+        self.fill_combo_boxes()
         voltages = np.array(self.machine.scanner.scan.tscan.voltages)
         voltages /= 1e6
         vstring = ", ".join([str(x) for x in voltages])
