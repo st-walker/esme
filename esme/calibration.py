@@ -102,6 +102,11 @@ class TDSCalibration:
         return popt, pcov
     
 
+class StuartCalibration(TDSCalibration):
+    def __init__(self, amplitudes, voltages):
+        self.amplitudes = amplitudes
+        self.voltages = voltages
+
 class BolkoCalibrationSetPoint:
     def __init__(self, amplitude, slope, r34, energy, frequency):
         self.amplitude = amplitude

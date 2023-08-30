@@ -125,6 +125,9 @@ class ScannerControl(QtWidgets.QWidget):
         vstring = ", ".join([str(x) for x in voltages])
         self.ui.tds_voltages.setText(vstring)
 
+        voltages = np.array(self.machine.scanner.scan.qscan.voltages)        
+        self.ui.dispersion_scan_tds_voltage_spinbox.setValue(
+
     def get_voltages(self):
         vstring = self.ui.tds_voltages.text()
         numbers = vstring.split(",")
