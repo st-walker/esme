@@ -14,7 +14,7 @@ import scipy.ndimage as ndi
 from scipy.optimize import curve_fit
 
 from esme.gui.ui import calibration
-from esme.gui.common import build_default_machine_interface, get_i1_calibration_config_dir, setup_screen_display_widget
+from esme.gui.common import build_default_machine_interface, get_i1_calibration_config_dir, setup_screen_display_widget, build_default_lps_machine
 from esme.calibration import TDSCalibrator
 from esme.control.configs import load_calibration
 from esme.image import filter_image
@@ -22,6 +22,7 @@ import logging
 import oxfel
 from ocelot.cpbd.elements import Quadrupole
 from ocelot.cpbd.magnetic_lattice import MagneticLattice
+from esme.calibration import calculate_voltage
 
 LOG = logging.getLogger(__name__)
 
@@ -41,12 +42,17 @@ class PhaseScanSetpoint:
     centre_of_mass: float
     zero_crossing: bool = False
 
+# @dataclass
+# class AmplitudeCalibrationSetpoint:
+#     r34: float
+#     phase_subsample: list[float]
+#     com_subsample: list[float]
+#     amplitude: float
+
 @dataclass
 class AmplitudeCalibrationSetpoint:
-    r34: float
-    phase_subsample: list[float]
-    com_subsample: list[float]
     amplitude: float
+    voltage: float
 
 @dataclass
 class HumanReadableCalibrationData:
@@ -64,7 +70,8 @@ class CalibrationMainWindow(QMainWindow):
         self.ui = calibration.Ui_MainWindow()
         self.ui.setupUi(self)
 
-        self.machine = build_default_machine_interface()
+        self.machine = build_default_lps_machine()
+        # self.machine = build_default_machine_interface()
 
         self.ui.start_calib_button.clicked.connect(self.do_calibration)
         self.ui.load_calib_button.clicked.connect(self.load_calibration_file)
@@ -81,6 +88,8 @@ class CalibrationMainWindow(QMainWindow):
 
 
         self.calibration = None
+        self.voltages = []
+        self.amplitudes = []
 
         self.setup_plots()
 
@@ -92,17 +101,21 @@ class CalibrationMainWindow(QMainWindow):
         self.thread = QThread()
         self.worker.moveToThread(self.thread)
         self.thread.started.connect(self.worker.run)
-        self.worker.image_signal.connect(self.post_beam_image)
+        self.worker.processed_image_signal.connect(self.post_phase_scan_increment)
+        self.worker.hrcd_signal.connect(self.post_human_readable_calibration_data)
+        self.worker.amplitude_setpoint_signal.connect(self.post_calib_setpoint_result)
         self.thread.start()
 
 
     def post_phase_scan_increment(self, phase_scan_increment: PhaseScanSetpoint):
-        image = phase_scan_increment.phase_scan_increment
+        image = phase_scan_increment.processed_image
         phase = phase_scan_increment.phase
         amplitude = phase_scan_increment.amplitude
         centre_of_mass = phase_scan_increment.centre_of_mass
         is_zero_crossing = phase_scan_increment.zero_crossing
 
+        # from IPython import embed; embed()phase
+        
         self.com_scatter.addPoints([phase], [centre_of_mass])
 
         if is_zero_crossing:
@@ -136,20 +149,34 @@ class CalibrationMainWindow(QMainWindow):
         ycoms = hrcd.ycoms
         amplitude = hrcd.amplitude
 
+        # from IPython import embed; embed()
         ax = self.ui.zero_crossing_extraction_plot.axes
         # com_label(ax)
         # phase_label(ax)
 
         ax.plot(phis, ycoms, label=f"Amplitude = {amplitude}%", alpha=0.5)
-        ax.plot(**first_zero_crossing)
-        ax.plot(**second_zero_crossing)
+        ax.plot(*first_zero_crossing, color="black")
+        ax.plot(*second_zero_crossing, color="black")
         ax.legend()
         self.ui.zero_crossing_extraction_plot.draw()
         # ax3.set_ylabel("Streak $\mathrm{\mu{}m\,/\,ps}$")
 
+    def post_calib_setpoint_result(self, calib_sp):
+        amplitude = calib_sp.amplitude
+        voltage = calib_sp.voltage
+        ax = self.ui.final_calibration_plot.axes
+        ax.scatter(amplitude, voltage)
+
+        self.voltages.append(voltage)
+        self.amplitudes.append(amplitude)
+
+        self.ui.final_calibration_plot.draw()
+        ax.set_xlabel("Amplitude / %")
+        ax.set_ylabel("Voltage / V")
+
     def parse_amplitude_input_box(self):
-        text = self.ui.amplitude_line_edit.text()
-        return np.array([float(y) for y in x.split(",")])
+        text = self.ui.amplitudes_line_edit.text()
+        return np.array([float(y) for y in text.split(",")])
 
     def update_calibration_plots(self):
         voltages = self.calibration.get_voltages()
@@ -211,8 +238,10 @@ class CalibrationWorker(QObject):
         super().__init__()
         self.machine = machine
         self.screen_name = screen_name
+        self.screen_name = "OTRC.64.I1D"
         self.amplitudes = amplitudes
         self.cut = cut
+        self.cut = 10000000
         self.kill = False
 
     def get_image(self):
@@ -222,10 +251,9 @@ class CalibrationWorker(QObject):
 
     def calibrate(self):
         self.machine.deflectors.active_tds().set_amplitude(0.0)
-<<<<<<< HEAD
         time.sleep(1.0)
         image = self.machine.screens.get_image_raw(self.screen_name)
-        image = image[:self.CUT]
+        image = image[:self.cut]
         com = ndi.center_of_mass(image)
         ycom = com[1]
         yzero_crossing = ycom
@@ -233,7 +261,7 @@ class CalibrationWorker(QObject):
         slopes = []
         for amplitude in self.amplitudes:
             self.machine.deflectors.active_tds().set_amplitude(amplitude)
-            m1, m2 = self.calibrate_once(yzero_crossing)
+            m1, m2 = self.calibrate_once(yzero_crossing, amplitude)
             slopes.append((np.mean(abs(m1[0])), np.mean(abs(m2[0]))))
 
     def get_r34_to_screen(self):
@@ -257,7 +285,8 @@ class CalibrationWorker(QObject):
         return r34
 
     def calibrate_once(self, zero_crossing, amplitude):
-        phis = np.linspace(-190, 190, num=191)
+        phis = np.linspace(-180, 200, num=191)
+        # phis = np.linspace(-180, 200, num=15)        
         ycoms = []
         tds = self.machine.deflectors.active_tds()
         tds.set_phase(phis[0])
@@ -274,7 +303,7 @@ class CalibrationWorker(QObject):
             sp = PhaseScanSetpoint(processed_image=image,
                                    phase=phi,
                                    amplitude=amplitude,
-                                   centre_of_mass=com,
+                                   centre_of_mass=ycom,
                                    zero_crossing=False)
 
             self.processed_image_signal.emit(sp)
@@ -290,18 +319,29 @@ class CalibrationWorker(QObject):
 
         self.hrcd_signal.emit(hrcd)
 
-        # acsp1 = AmplitudeCalibrationSetpoint(r34=self.get_r34_to_screen(),
-        #                                     amplitude=amplitude,
-        #                                     slope=m1)
+        m = np.mean([abs(m1[0]), abs(m2[0])])
 
+        m_m_per_s = m  * (360 * 3e9) / 13.7369*1e-6
+        phase0, pxcom0 = first_zero_crossing
+        phase1, pxcom1 = second_zero_crossing
 
-        # acsp2 = AmplitudeCalibrationSetpoint(r34=self.get_r34_to_screen(),
-        #                                     amplitude=amplitude,
-        #                                     slope=m2)
+        time0 = phase0 / (360 * 3e9 * 1e-12) # ps
+        time1 = phase1 / (360 * 3e9 * 1e-12) # ps
+        mcom0 = pxcom0 * 13.7369*1e-6
+        mcom1 = pxcom1 * 13.7369*1e-6
 
-        self.amplitude_setpoint_signal.emit(acsp1)
+        r34 = self.get_r34_to_screen()
+        m = abs(np.gradient(mcom0, time0)[5] * 1e12)  # from per ps to s
 
-        from IPython import embed; embed()
+        
+        voltage_v = calculate_voltage(slope=m, r34=r34, energy=130, frequency=3e9)
+
+        print(amplitude, voltage_v)
+        calib_sp = AmplitudeCalibrationSetpoint(amplitude, voltage_v)
+        self.amplitude_setpoint_signal.emit(calib_sp)
+
+        # from IPython import embed; embed()
+
         # time_s = phi / (3e9 * 360)
         # ycoms_m = np.array(ycoms) * 13.7369 * 1e-6
 
@@ -314,7 +354,7 @@ class CalibrationWorker(QObject):
         # ycoms_m = np.array(ycoms) * 13.7369 * 1e-6
 
         m1, m2 = get_zero_crossing_slopes(phis, ycoms, zero_crossing=zero_crossing)
-        return m1, m1 #XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX JUST USING M1 HERE!!!...
+        return m1, m2 #XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX JUST USING M1 HERE!!!...
             
     def run(self):
         slopes = self.calibrate()
@@ -412,7 +452,7 @@ def get_zero_crossings(phase, com, zero_crossing=None):
     i1 = np.argmin(np.abs(second_longest[1] - zero_crossing))
 
     first_zero_crossing = longest[0][i0-5:i0+5], longest[1][i0-5:i0+5]
-    second_zero_crossing = second_longest[0][i1-5:i1+5], second_longest[1][i0-5:i0+5]
+    second_zero_crossing = second_longest[0][i1-5:i1+5], second_longest[1][i1-5:i1+5]
 
     return first_zero_crossing, second_zero_crossing
 
