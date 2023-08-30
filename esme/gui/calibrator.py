@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import QApplication, QFileDialog, QFrame, QMainWindow, QMes
 from matplotlib import cm
 import numpy as np
 import scipy.ndimage as ndi
+from ocelot.cpbd.elements import Quadrupole, SBend
 
 from esme.gui.ui import calibration
 from esme.gui.common import build_default_machine_interface, get_i1_calibration_config_dir
@@ -169,7 +170,25 @@ class CalibrationWorker(QObject):
         LOG.info(f"Setting screen name for Screen Worker thread: {screen_name}")
         self.screen_name = screen_name
 
+    def get_r34_to_screen(self):
+        import oxfel
+        seq = oxfel.cat_to_i1d()
+        subseq = seq.get_sequence(start="TDSA.52.I1", stop="OTRC.55.I1")
+        quads = [element for element in subseq if isinstance(element, Quadrupole)]
+        sbends = [element for element in subseq if isinstance(element, SBend)]
 
+        subseq[0].l /= 2
+
+        for quad in quads:
+            k1l_mrad = self.machine.scanner.get_quad_strength(quad.id)
+            k1l_rad = k1l_mrad * 1e-3
+            quad.k1l = k1l_rad
+
+        mlat = MagneticLattice(subseq)
+        _, rmat, _ = lat.transfer_maps(130e3) # in MeV
+        r34 = rmat[2, 3]
+
+        return r34
 
 
 def smooth(phase, com, window):

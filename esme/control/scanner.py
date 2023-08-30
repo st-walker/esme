@@ -68,6 +68,11 @@ class Scanner:
         LOG.debug(f"Setting quad strength: {ch} = {kmrad}")
         self.mi.set_value(ch, kmrad)
 
+    def get_quad_strength(self, quad_name: str, kmrad: float) -> None:
+        ch = self.FDP_QUAD_KICK_SP_ADDRESS.format(quad_name)
+        LOG.debug(f"Getting quad strength")
+        self.mi.get_value(ch)
+
     def get_quad_strength(self, quad_name: str) -> float:
         ch = self.FDP_QUAD_KICK_SP_ADDRESS.format(quad_name)
         return self.mi.get_value(ch)
