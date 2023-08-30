@@ -52,6 +52,9 @@
             </property>
            </widget>
           </item>
+          <item>
+           <widget class="QComboBox" name="screen_selection_box"/>
+          </item>
          </layout>
         </item>
         <item>

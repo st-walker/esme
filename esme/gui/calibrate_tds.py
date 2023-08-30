@@ -1,3 +1,4 @@
+import pickle
 import sys
 from pathlib import Path
 
@@ -115,69 +116,52 @@ def get_truncated_longest_sections(phase, com, com_window_size):
     return ((phi1[mask1], com1[mask1]), (phi2[mask2], com2[mask2]))
 
 
-def plot_truncated_longest_sections(phase, com, ax=None, com_window_size=None):
+def plot_truncated_longest_sections(phase, com, zero_crossing=None, ax=None, com_window_size=None):
     # phasef, comf = get_longest_falling_interval(phase, com)
     longest, second_longest = get_longest_two_monotonic_intervals(phase, com)
 
     if ax is None:
         fig, ax = plt.subplots()
 
-    ((phi1, com1), (phi2, com2)) = get_truncated_longest_sections(
-        phase, com, com_window_size=com_window_size
-    )
 
-    ax.plot(phi1, com1)
-    ax.plot(phi2, com2)
+    i0 = np.argmin(np.abs(longest[1] - zero_crossing))
+    i1 = np.argmin(np.abs(second_longest[1] - zero_crossing))
 
 
-def main(dname):
-    npzdir = Path(dname)
 
-    # from IPython import embed; embed()
+    first_zero_crossing = longest[0][i0-5:i0+5], longest[1][i0-5:i0+5]
+    second_zero_crossing = second_longest[0][i1-5:i1+5], second_longest[1][i0-5:i0+5]
 
-    amplitude = float(dname.split("=")[1])
+    return first_zero_crossing, second_zero_crossing
 
-    phases = []
-    ycoms = []
-    images = []
 
-    for f in npzdir.glob("*.npz"):
-        ph = int(f.stem)
-        if ph < -180:
-            continue
-        if ph >= 180:
-            continue
-        phases.append(ph)
+def main():
 
-    phases.sort()
+    with open("/Users/stuartwalker/Downloads/ycoms.pkl", "rb") as f:
+        ycoms = pickle.load(f)
 
-    for phase in phases:
-        fname = dname / Path(f"{phase}.npz")
-        image = np.load(fname)["arr_0"]
-        images.append(image)
 
-    for image in images:
-        ycoms.append(ndi.center_of_mass(image)[1])
+    phases = np.arange(-200, 200)
 
     w = 5
     phases_smoothed, ycoms_smoothed = smooth(phases, ycoms, w)
 
-    plot_monotonic_sections(phases_smoothed, ycoms_smoothed)
+    # plot_monotonic_sections(phases_smoothed, ycoms_smoothed)
 
-    fig, ax = plt.subplots()
-    ax.plot(phases, ycoms, label="Raw Data")
-    ax.plot(phases_smoothed, ycoms_smoothed, label="Smoothed")
-    ax.set_ylabel(r"$y_\mathrm{com}$")
-    ax.set_xlabel(r"$\phi$ / deg")
-    ax.legend()
+    # fig, ax = plt.subplots()
+    # ax.plot(phases, ycoms, label="Raw Data")
+    # ax.plot(phases_smoothed, ycoms_smoothed, label="Smoothed")
+    # ax.set_ylabel(r"$y_\mathrm{com}$")
+    # ax.set_xlabel(r"$\phi$ / deg")
+    # ax.legend()
 
-    fig, ax = plt.subplots()
+    # fig, ax = plt.subplots()
 
-    ax.plot(phases, ycoms, label="Raw Data", linestyle="--", alpha=0.75)
-    ax.set_ylabel(r"$y_\mathrm{com}$")
-    ax.set_xlabel(r"$\phi$ / deg")
-    plot_longest_sections(phases_smoothed, ycoms_smoothed, ax=ax)
-    ax.legend()
+    # ax.plot(phases, ycoms, label="Raw Data", linestyle="--", alpha=0.75)
+    # ax.set_ylabel(r"$y_\mathrm{com}$")
+    # ax.set_xlabel(r"$\phi$ / deg")
+    # plot_longest_sections(phases_smoothed, ycoms_smoothed, ax=ax)
+    # ax.legend()
 
     fig, ax = plt.subplots()
 
@@ -186,12 +170,21 @@ def main(dname):
     ax.plot(phases, ycoms, label="Raw Data", linestyle="--", alpha=0.2)
     ax.set_ylabel(r"$y_\mathrm{com}$")
     ax.set_xlabel(r"$\phi$ / deg")
-    plot_truncated_longest_sections(
-        phases_smoothed, ycoms_smoothed, ax=ax, com_window_size=com_window_size
+    first_crossing, second_crossing = plot_truncated_longest_sections(
+        phases_smoothed,
+        ycoms_smoothed,
+        zero_crossing=1027,
+        ax=ax,
+        com_window_size=com_window_size
     )
+    ax.plot(*first_crossing)
+    ax.plot(*second_crossing)
+    ax.axhline(1027)
     ax.legend()
 
     frequency = 3e9
+
+    # from IPython import embed; embed()
 
     # plt.show()
 
@@ -202,4 +195,5 @@ def main(dname):
 
 
 if __name__ == '__main__':
-    main(sys.argv[1])
+    main()
+    # main(sys.argv[1])

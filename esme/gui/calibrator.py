@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 import logging
+import time
 
 import pyqtgraph as pg
 from PyQt5 import QtCore, QtGui
@@ -8,6 +9,7 @@ from PyQt5.QtCore import QObject, QThread, QTimer, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QApplication, QFileDialog, QFrame, QMainWindow, QMessageBox
 from matplotlib import cm
 import numpy as np
+import scipy.ndimage as ndi
 
 from esme.gui.ui import calibration
 from esme.gui.common import build_default_machine_interface, get_i1_calibration_config_dir
@@ -64,6 +66,19 @@ class CalibrationMainWindow(QMainWindow):
 
     # def do_one_setpoint(self, phi0, phi1, amplitude):
     #     phis = np.linspace(phi0, phi1, num=10)
+
+    def calibrate(self):
+        for phi0, phi1, amplitude in self.parse_input_box():
+            self.calibrate_one_amplitude()
+
+    def calibrate_one_setpoint(self, phi0, phi1, amplitude):
+        phis = np.linspace(phi0, phi1, num=10)
+        coms = []
+        for phi in phis:
+            self.deflectors.active_tds().set_phase(phi)
+            image = self.machine.screens.get_image_raw(self.screen)
+            time.sleep(0.1)
+            # image = filter_image(image, crop=False)
 
     def parse_input_box(self):
         phi0 = [-30, -20, 10, 5]
@@ -152,6 +167,137 @@ class CalibrationWorker(QObject):
         self.screen_name = screen_name
 
 
+
+
+def smooth(phase, com, window):
+    w = window
+    ycoms_smoothed = np.convolve(com, np.ones(w), "valid") / w
+    phases_smoothed = np.convolve(phase, np.ones(w), "valid") / w
+    return phases_smoothed, ycoms_smoothed
+
+
+def get_monotonic_intervals(phases, coms):
+    # We want to find where the centres of mass are consistently rising and falling.
+    deriv = np.diff(coms)
+
+    rising_mask = deriv > 0
+    falling_mask = deriv <= 0
+
+    (indices,) = np.where(np.diff(rising_mask))
+    indices += 1  # off by one otherwise.
+
+    phase_turning_points = phases[indices]
+
+    piecewise_monotonic_coms = np.split(coms, indices)
+    piecewise_monotonic_com_phases = np.split(phases, indices)
+
+    yield from zip(piecewise_monotonic_com_phases, piecewise_monotonic_coms)
+
+
+def line(x, a0, a1):
+    return a0 + a1 * x
+
+
+def linear_fit(indep_var, dep_var, dep_var_err=None):
+    popt, pcov = curve_fit(line, indep_var, dep_var)
+    # popt, pcov = curve_fit(line, indep_var, dep_var, sigma=dep_var_err, absolute_sigma=True)
+    perr = np.sqrt(np.diag(pcov))
+
+    # Present as tuples
+    a0 = popt[0], perr[0]  # y-intercept with error
+    a1 = popt[1], perr[1]  # gradient with error
+
+    return a0, a1
+
+
+def get_longest_two_monotonic_intervals(phase, com):
+    intervals = list(get_monotonic_intervals(phase, com))
+    lengths = [len(x[0]) for x in intervals]
+
+    *_, isecond, ifirst = np.argpartition(lengths, kth=len(lengths) - 1)
+
+    # # Get first and second longest intervals
+    # first, = np.where(np.argsort(lengths) == 0)
+    # second, = np.where(np.argsort(lengths) == 1)
+
+    return intervals[ifirst], intervals[isecond]
+
+
+def get_truncated_longest_sections(phase, com, com_window_size):
+    longest, second_longest = get_longest_two_monotonic_intervals(phase, com)
+    phi1, com1 = longest
+    phi2, com2 = second_longest
+
+    com1_mid = com1.mean()
+    com2_mid = com2.mean()
+
+    com1_mid = 2330 / 2
+    com2_mid = 2330 / 2
+
+    mask1 = (com1 > (com1_mid - com_window_size)) & (
+        com1 < (com1_mid + com_window_size)
+    )
+    mask2 = (com2 > (com2_mid - com_window_size)) & (
+        com2 < (com2_mid + com_window_size)
+    )
+
+    return ((phi1[mask1], com1[mask1]), (phi2[mask2], com2[mask2]))
+
+
+def plot_truncated_longest_sections(phase, com, zero_crossing=None, ax=None, com_window_size=None):
+    # phasef, comf = get_longest_falling_interval(phase, com)
+    longest, second_longest = get_longest_two_monotonic_intervals(phase, com)
+
+    # if ax is None:
+    #     fig, ax = plt.subplots()
+
+    i0 = np.argmin(np.abs(longest[1] - zero_crossing))
+    i1 = np.argmin(np.abs(second_longest[1] - zero_crossing))
+
+    first_zero_crossing = longest[0][i0-5:i0+5], longest[1][i0-5:i0+5]
+    second_zero_crossing = second_longest[0][i1-5:i1+5], second_longest[1][i0-5:i0+5]    
+
+    return first_zero_crossing, second_zero_crossing
+
+
+def get_zero_crossings(phase, com, zero_crossing=None):
+    # phasef, comf = get_longest_falling_interval(phase, com)
+    longest, second_longest = get_longest_two_monotonic_intervals(phase, com)
+
+    # if ax is None:
+    #     fig, ax = plt.subplots()
+
+    i0 = np.argmin(np.abs(longest[1] - zero_crossing))
+    i1 = np.argmin(np.abs(second_longest[1] - zero_crossing))
+
+    first_zero_crossing = longest[0][i0-5:i0+5], longest[1][i0-5:i0+5]
+    second_zero_crossing = second_longest[0][i1-5:i1+5], second_longest[1][i0-5:i0+5]    
+
+    return first_zero_crossing, second_zero_crossing
+
+
+def get_zero_crossing_slopes(phase, com, zero_crossing=None):
+    w = 5
+    phases_smoothed, ycoms_smoothed = smooth(phase, com, window=w)
+
+    first_crossing, second_crossing = get_zero_crossings(
+        phases_smoothed,
+        ycoms_smoothed,
+        zero_crossing=1027,
+    )
+
+    phase0, pxcom0 = first_crossing
+    phase1, pxcom1 = second_crossing
+
+    time0 = phase0 / (360 * 3e9 * 1e-12) # ps
+    time1 = phase1 / (360 * 3e9 * 1e-12) # ps
+    mcom0 = pxcom0 * 13.7369*1e-6
+    mcom1 = pxcom1 * 13.7369*1e-6    
+    
+    _, m1 = linear_fit(time0, mcom0)
+    _, m2 = linear_fit(time1, mcom1)    
+    return m1, m2
+        
 
 def main():
     # create the application
