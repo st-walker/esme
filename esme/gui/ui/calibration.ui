@@ -15,59 +15,117 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="0" column="0" rowspan="2" colspan="2">
-     <layout class="QHBoxLayout" name="horizontalLayout_2">
+    <item row="0" column="0">
+     <layout class="QVBoxLayout" name="verticalLayout_3">
       <item>
-       <widget class="MatplotlibCanvas" name="amp_voltage_plot_widget" native="true"/>
+       <widget class="GraphicsLayoutWidget" name="centre_of_mass_with_phase_plot" native="true">
+        <property name="minimumSize">
+         <size>
+          <width>289</width>
+          <height>169</height>
+         </size>
+        </property>
+       </widget>
       </item>
       <item>
-       <widget class="MatplotlibCanvas" name="phase_com_plot_widget" native="true"/>
+       <widget class="GraphicsLayoutWidget" name="processed_image_plot" native="true">
+        <property name="minimumSize">
+         <size>
+          <width>289</width>
+          <height>170</height>
+         </size>
+        </property>
+       </widget>
       </item>
      </layout>
     </item>
-    <item row="1" column="1">
-     <layout class="QVBoxLayout" name="verticalLayout">
+    <item row="0" column="1">
+     <layout class="QVBoxLayout" name="verticalLayout_4">
       <item>
-       <widget class="QPushButton" name="start_calib_button">
-        <property name="text">
-         <string>Start</string>
+       <widget class="MatplotlibCanvas" name="final_calibration_plot" native="true">
+        <property name="minimumSize">
+         <size>
+          <width>289</width>
+          <height>170</height>
+         </size>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="load_calib_button">
-        <property name="text">
-         <string>Load...</string>
+       <widget class="MatplotlibCanvas" name="zero_crossing_extraction_plot" native="true">
+        <property name="minimumSize">
+         <size>
+          <width>289</width>
+          <height>170</height>
+         </size>
         </property>
        </widget>
       </item>
       <item>
-       <widget class="QPushButton" name="apply_calib_button">
-        <property name="text">
-         <string>Apply</string>
-        </property>
-       </widget>
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <item>
+         <widget class="QLabel" name="label">
+          <property name="text">
+           <string>Amplitudes / %</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="amplitudes_line_edit">
+          <property name="text">
+           <string>5, 10, 15, 20</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
       <item>
-       <widget class="QComboBox" name="screen_selection_box"/>
+       <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <item>
+         <widget class="QLabel" name="label_2">
+          <property name="text">
+           <string>Cut Index</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QSpinBox" name="cut_index_spinbox"/>
+        </item>
+       </layout>
       </item>
-     </layout>
-    </item>
-    <item row="1" column="2">
-     <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
-       <widget class="QLabel" name="label">
-        <property name="text">
-         <string>Amplitudes / %</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLineEdit" name="amplitudes_line_edit">
-        <property name="text">
-         <string>5, 10, 15, 20</string>
-        </property>
-       </widget>
+       <layout class="QVBoxLayout" name="verticalLayout">
+        <item>
+         <widget class="QLineEdit" name="screen_name_line_edit"/>
+        </item>
+        <item>
+         <widget class="QPushButton" name="start_calib_button">
+          <property name="maximumSize">
+           <size>
+            <width>220</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>Start</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="load_calib_button">
+          <property name="text">
+           <string>Load...</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="apply_calib_button">
+          <property name="text">
+           <string>Apply</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
      </layout>
     </item>
@@ -110,6 +168,12 @@
   </action>
  </widget>
  <customwidgets>
+  <customwidget>
+   <class>GraphicsLayoutWidget</class>
+   <extends>QWidget</extends>
+   <header>pyqtgraph</header>
+   <container>1</container>
+  </customwidget>
   <customwidget>
    <class>MatplotlibCanvas</class>
    <extends>QWidget</extends>

@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import sys
 from pathlib import Path
 import logging
@@ -13,10 +14,16 @@ import scipy.ndimage as ndi
 from scipy.optimize import curve_fit
 
 from esme.gui.ui import calibration
-from esme.gui.common import build_default_machine_interface, get_i1_calibration_config_dir
+from esme.gui.common import build_default_machine_interface, get_i1_calibration_config_dir, setup_screen_display_widget
 from esme.calibration import TDSCalibrator
 from esme.control.configs import load_calibration
 from esme.image import filter_image
+import logging
+import oxfel
+from ocelot.cpbd.elements import Quadrupole
+from ocelot.cpbd.magnetic_lattice import MagneticLattice
+
+LOG = logging.getLogger(__name__)
 
 def com_label(ax):
     ax.set_ylabel(r"$y_\mathrm{com}$")
@@ -25,6 +32,29 @@ def com_label(ax):
 def phase_label(ax):
     ax.set_xlabel(r"$\phi$ / deg")
 
+
+@dataclass
+class PhaseScanSetpoint:
+    processed_image: np.ndarray
+    phase: float
+    amplitude: float
+    centre_of_mass: float
+    zero_crossing: bool = False
+
+@dataclass
+class AmplitudeCalibrationSetpoint:
+    r34: float
+    phase_subsample: list[float]
+    com_subsample: list[float]
+    amplitude: float
+
+@dataclass
+class HumanReadableCalibrationData:
+    first_zero_crossing: tuple[list, list]
+    second_zero_crossing: tuple[list, list]
+    phis: list[float]
+    ycoms: list[float]
+    amplitude: float
 
 class CalibrationMainWindow(QMainWindow):
     calibration_signal = pyqtSignal(object)
@@ -36,40 +66,97 @@ class CalibrationMainWindow(QMainWindow):
 
         self.machine = build_default_machine_interface()
 
+        self.ui.start_calib_button.clicked.connect(self.do_calibration)
         self.ui.load_calib_button.clicked.connect(self.load_calibration_file)
         self.ui.apply_calib_button.clicked.connect(self.apply_calibration_button)
+
+        self.image_plot = setup_screen_display_widget(self.ui.processed_image_plot)
+
+        self.com_scatter = make_pixel_widths_scatter(self.ui.centre_of_mass_with_phase_plot,
+                                                     title="Centre of Mass vs Phase",
+                                                     xlabel="Phi",
+                                                     xunits="Degrees",
+                                                     ylabel="Centre of Mass",
+                                                     yunits="m")
+
 
         self.calibration = None
 
         self.setup_plots()
+
+    def do_calibration(self):
+        self.worker = CalibrationWorker(self.machine,
+                                        screen_name=self.ui.screen_name_line_edit.text(),
+                                        amplitudes=self.parse_amplitude_input_box(),
+                                        cut=self.ui.cut_index_spinbox.value())
+        self.thread = QThread()
+        self.worker.moveToThread(self.thread)
+        self.thread.started.connect(self.worker.run)
+        self.worker.image_signal.connect(self.post_beam_image)
+        self.thread.start()
+
+
+    def post_phase_scan_increment(self, phase_scan_increment: PhaseScanSetpoint):
+        image = phase_scan_increment.phase_scan_increment
+        phase = phase_scan_increment.phase
+        amplitude = phase_scan_increment.amplitude
+        centre_of_mass = phase_scan_increment.centre_of_mass
+        is_zero_crossing = phase_scan_increment.zero_crossing
+
+        self.com_scatter.addPoints([phase], [centre_of_mass])
+
+        if is_zero_crossing:
+            return
+
+        items = self.image_plot.items
+        image_item = items[0]
+        image_item.setImage(image)
 
     @property
     def tds(self):
         return self.machine.deflectors.active_tds()
 
     def setup_plots(self):
-        ax1 = self.ui.phase_com_plot_widget.axes
-        ax2 = self.ui.amp_voltage_plot_widget.axes
+        ax1 = self.ui.zero_crossing_extraction_plot.axes
+
+        # ax1 = self.ui.phase_com_plot_widget.axes
+        # ax2 = self.ui.amp_voltage_plot_widget.axes
         com_label(ax1)
         phase_label(ax1)
         ax1.set_title("Center of Mass against TDS Phase")
 
-        ax2.set_xlabel("Amplitude / %")
-        ax2.set_ylabel("Voltage / MV")
-        ax2.set_title("TDS Calibration")
+        # ax2.set_xlabel("Amplitude / %")
+        # ax2.set_ylabel("Voltage / MV")
+        # ax2.set_title("TDS Calibration")
 
+    def post_human_readable_calibration_data(self, hrcd):
+        first_zero_crossing = hrcd.first_zero_crossing
+        second_zero_crossing = hrcd.second_zero_crossing
+        phis = hrcd.phis
+        ycoms = hrcd.ycoms
+        amplitude = hrcd.amplitude
+
+        ax = self.ui.zero_crossing_extraction_plot.axes
+        # com_label(ax)
+        # phase_label(ax)
+
+        ax.plot(phis, ycoms, label=f"Amplitude = {amplitude}%", alpha=0.5)
+        ax.plot(**first_zero_crossing)
+        ax.plot(**second_zero_crossing)
+        ax.legend()
+        self.ui.zero_crossing_extraction_plot.draw()
         # ax3.set_ylabel("Streak $\mathrm{\mu{}m\,/\,ps}$")
 
-
     def parse_amplitude_input_box(self):
-        return [5, 10, 15, 20]
+        text = self.ui.amplitude_line_edit.text()
+        return np.array([float(y) for y in x.split(",")])
 
     def update_calibration_plots(self):
         voltages = self.calibration.get_voltages()
         amplitudes = self.calibration.get_amplitudes()
         ax = self.ui.amp_voltage_plot_widget.axes
         ax.clear()
-        self.setup_plots()
+        # self.setup_plots()
         ax.scatter(amplitudes, voltages * 1e-6)
 
         # mapping = self.calibration.get_calibration_mapping()
@@ -81,14 +168,14 @@ class CalibrationMainWindow(QMainWindow):
         # ax.legend()
         self.draw()
 
-    def get_plot_widgets(self):
-        return [self.ui.amp_voltage_plot_widget,
-                self.ui.phase_com_plot_widget,
-                self.ui.phase_com_plot_widget]
+    # def get_plot_widgets(self):
+    #     return [self.ui.amp_voltage_plot_widget,
+    #             self.ui.phase_com_plot_widget,
+    #             self.ui.phase_com_plot_widget]
 
-    def draw(self):
-        for wi in self.get_plot_widgets():
-            wi.draw()
+    # def draw(self):
+    #     for wi in self.get_plot_widgets():
+    #         wi.draw()
 
     def load_calibration_file(self):
         options = QFileDialog.Options()
@@ -116,12 +203,16 @@ class CalibrationMainWindow(QMainWindow):
 
 
 class CalibrationWorker(QObject):
-    CUT = 275
-    def __init__(self, machine, screen_name, amplitudes):
+    processed_image_signal = pyqtSignal(PhaseScanSetpoint)
+    amplitude_setpoint_signal = pyqtSignal(AmplitudeCalibrationSetpoint)
+    hrcd_signal = pyqtSignal(HumanReadableCalibrationData)
+
+    def __init__(self, machine, screen_name, amplitudes, cut):
         super().__init__()
         self.machine = machine
         self.screen_name = screen_name
         self.amplitudes = amplitudes
+        self.cut = cut
         self.kill = False
 
     def get_image(self):
@@ -131,6 +222,7 @@ class CalibrationWorker(QObject):
 
     def calibrate(self):
         self.machine.deflectors.active_tds().set_amplitude(0.0)
+<<<<<<< HEAD
         time.sleep(1.0)
         image = self.machine.screens.get_image_raw(self.screen_name)
         image = image[:self.CUT]
@@ -144,7 +236,27 @@ class CalibrationWorker(QObject):
             m1, m2 = self.calibrate_once(yzero_crossing)
             slopes.append((np.mean(abs(m1[0])), np.mean(abs(m2[0]))))
 
-    def calibrate_once(self, zero_crossing):
+    def get_r34_to_screen(self):
+        lat = oxfel.cat_to_i1d()
+        screen_name = self.screen_name
+        subseq = lat.get_sequence(start="TDSA.52.I1",
+                                  stop=screen_name)
+        subseq[0].l /= 2
+        quads = [ele for ele in subseq if isinstance(ele, Quadrupole)]
+        for quad in quads:
+            k1l_mrad = self.machine.scanner.get_quad_strength(quad.id)
+            k1l_rad = k1l_mrad * 1e-3
+            quad.k1l = k1l_rad
+
+        lat = MagneticLattice(subseq)
+        energy_mev = 130
+        _, rmat, _ = lat.transfer_maps(energy_mev)
+        r34 = rmat[2, 3]
+
+        print(f"R34 = {r34}")
+        return r34
+
+    def calibrate_once(self, zero_crossing, amplitude):
         phis = np.linspace(-190, 190, num=191)
         ycoms = []
         tds = self.machine.deflectors.active_tds()
@@ -154,11 +266,48 @@ class CalibrationWorker(QObject):
             time.sleep(0.1)
             tds.set_phase(phi)
             image = self.machine.screens.get_image_raw(self.screen_name)
-            image = image[:275]
+            image = image[:self.cut]
             image = filter_image(image, 0)
             com = ndi.center_of_mass(image)
             ycom = com[1]
             ycoms.append(ycom)
+            sp = PhaseScanSetpoint(processed_image=image,
+                                   phase=phi,
+                                   amplitude=amplitude,
+                                   centre_of_mass=com,
+                                   zero_crossing=False)
+
+            self.processed_image_signal.emit(sp)
+
+        first_zero_crossing, second_zero_crossing = get_zero_crossings(phis, ycoms, zero_crossing=zero_crossing)
+
+        m1, m2 = get_zero_crossing_slopes(phis, ycoms, zero_crossing=zero_crossing)
+
+        hrcd = HumanReadableCalibrationData(first_zero_crossing, second_zero_crossing,
+                                            phis,
+                                            ycoms,
+                                            amplitude=amplitude)
+
+        self.hrcd_signal.emit(hrcd)
+
+        # acsp1 = AmplitudeCalibrationSetpoint(r34=self.get_r34_to_screen(),
+        #                                     amplitude=amplitude,
+        #                                     slope=m1)
+
+
+        # acsp2 = AmplitudeCalibrationSetpoint(r34=self.get_r34_to_screen(),
+        #                                     amplitude=amplitude,
+        #                                     slope=m2)
+
+        self.amplitude_setpoint_signal.emit(acsp1)
+
+        from IPython import embed; embed()
+        # time_s = phi / (3e9 * 360)
+        # ycoms_m = np.array(ycoms) * 13.7369 * 1e-6
+
+
+
+        return m1, m1 #XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX JUST USING M1 HERE!!!...
 
         from IPython import embed; embed()
         # time_s = phi / (3e9 * 360)
@@ -169,7 +318,6 @@ class CalibrationWorker(QObject):
             
     def run(self):
         slopes = self.calibrate()
-        from IPython import embed; embed()
 
     def update_screen_name(self, screen_name):
         LOG.info(f"Setting screen name for Screen Worker thread: {screen_name}")
@@ -253,22 +401,6 @@ def get_truncated_longest_sections(phase, com, com_window_size):
     return ((phi1[mask1], com1[mask1]), (phi2[mask2], com2[mask2]))
 
 
-def plot_truncated_longest_sections(phase, com, zero_crossing=None, ax=None, com_window_size=None):
-    # phasef, comf = get_longest_falling_interval(phase, com)
-    longest, second_longest = get_longest_two_monotonic_intervals(phase, com)
-
-    # if ax is None:
-    #     fig, ax = plt.subplots()
-
-    i0 = np.argmin(np.abs(longest[1] - zero_crossing))
-    i1 = np.argmin(np.abs(second_longest[1] - zero_crossing))
-
-    first_zero_crossing = longest[0][i0-5:i0+5], longest[1][i0-5:i0+5]
-    second_zero_crossing = second_longest[0][i1-5:i1+5], second_longest[1][i0-5:i0+5]    
-
-    return first_zero_crossing, second_zero_crossing
-
-
 def get_zero_crossings(phase, com, zero_crossing=None):
     # phasef, comf = get_longest_falling_interval(phase, com)
     longest, second_longest = get_longest_two_monotonic_intervals(phase, com)
@@ -280,7 +412,7 @@ def get_zero_crossings(phase, com, zero_crossing=None):
     i1 = np.argmin(np.abs(second_longest[1] - zero_crossing))
 
     first_zero_crossing = longest[0][i0-5:i0+5], longest[1][i0-5:i0+5]
-    second_zero_crossing = second_longest[0][i1-5:i1+5], second_longest[1][i0-5:i0+5]    
+    second_zero_crossing = second_longest[0][i1-5:i1+5], second_longest[1][i0-5:i0+5]
 
     return first_zero_crossing, second_zero_crossing
 
@@ -301,12 +433,26 @@ def get_zero_crossing_slopes(phase, com, zero_crossing=None):
     time0 = phase0 / (360 * 3e9 * 1e-12) # ps
     time1 = phase1 / (360 * 3e9 * 1e-12) # ps
     mcom0 = pxcom0 * 13.7369*1e-6
-    mcom1 = pxcom1 * 13.7369*1e-6    
-    
+    mcom1 = pxcom1 * 13.7369*1e-6
+
     _, m1 = linear_fit(time0, mcom0)
-    _, m2 = linear_fit(time1, mcom1)    
+    _, m2 = linear_fit(time1, mcom1)
     return m1, m2
-        
+
+
+
+
+def make_pixel_widths_scatter(widget, title, xlabel, xunits, ylabel, yunits):
+    plot = widget.addPlot(title=title)
+
+    plot.setLabel('bottom', xlabel, units=xunits)
+    plot.setLabel('left', ylabel, units=yunits)
+
+    scatter = pg.ScatterPlotItem()
+    plot.addItem(scatter)
+
+    return scatter
+
 
 def main():
     # create the application

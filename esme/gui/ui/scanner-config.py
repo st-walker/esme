@@ -18,8 +18,15 @@ class Ui_Dialog(object):
         self.buttonBox = QtWidgets.QDialogButtonBox(Dialog)
         self.buttonBox.setGeometry(QtCore.QRect(10, 600, 461, 32))
         self.buttonBox.setOrientation(QtCore.Qt.Horizontal)
-        self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Cancel|QtWidgets.QDialogButtonBox.Ok)
+        self.buttonBox.setStandardButtons(QtWidgets.QDialogButtonBox.Apply|QtWidgets.QDialogButtonBox.Cancel)
+        self.buttonBox.setCenterButtons(False)
         self.buttonBox.setObjectName("buttonBox")
+        self.formLayoutWidget = QtWidgets.QWidget(Dialog)
+        self.formLayoutWidget.setGeometry(QtCore.QRect(20, 20, 441, 561))
+        self.formLayoutWidget.setObjectName("formLayoutWidget")
+        self.formLayout = QtWidgets.QFormLayout(self.formLayoutWidget)
+        self.formLayout.setContentsMargins(0, 0, 0, 0)
+        self.formLayout.setObjectName("formLayout")
 
         self.retranslateUi(Dialog)
         self.buttonBox.accepted.connect(Dialog.accept) # type: ignore

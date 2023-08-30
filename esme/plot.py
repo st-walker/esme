@@ -477,13 +477,13 @@ def _coefficients_df(params):
     pass
 
 
-def formatted_parameter_dfs(esme: ana.SliceEnergySpreadMeasurement, latex=False) -> str:
-    params = esme.all_fit_parameters()
+def formatted_parameter_dfs(params, latex=False) -> str:
+    # params = esme.all_fit_parameters()
 
     fit_params = params.fit_parameters_to_df()
-    fit_params.loc["sigma_z"] = beam.mean_bunch_length_from_time_calibration(esme)
-    fit_params.loc["sigma_z"] *= 1e3  # to mm
-    fit_params.loc["sigma_t"] = fit_params.loc["sigma_z"] * 1e-3 * 1e12 / c  # to ps
+    # fit_params.loc["sigma_z"] = beam.mean_bunch_length_from_time_calibration(esme)
+    # fit_params.loc["sigma_z"] *= 1e3  # to mm
+    # fit_params.loc["sigma_t"] = fit_params.loc["sigma_z"] * 1e-3 * 1e12 / c  # to ps
     fit_params.loc[["V_0", "E_0"]] *= 1e-6  # To MV / MeV
 
     beam_params = params.beam_parameters_to_df()
@@ -502,8 +502,8 @@ def formatted_parameter_dfs(esme: ana.SliceEnergySpreadMeasurement, latex=False)
         'B_D': '',
         'A_beta': 'm2',
         'B_beta': 'm',
-        "sigma_z": "mm",
-        "sigma_t": "ps",
+        # "sigma_z": "mm",
+        # "sigma_t": "ps",
         'sigma_e': 'keV',
         'sigma_e_from_tds': 'keV',
         'sigma_i': 'um',
@@ -522,8 +522,8 @@ def formatted_parameter_dfs(esme: ana.SliceEnergySpreadMeasurement, latex=False)
         'B_D': '$B_D$',
         'A_beta': '$A_\\beta$',
         'B_beta': '$B_\\beta$',
-        "sigma_z": r"$\sigma_z$",
-        "sigma_t": r"$\sigma_t$",
+        # "sigma_z": r"$\sigma_z$",
+        # "sigma_t": r"$\sigma_t$",
         'sigma_e': '$\\sigma_E$',
         'sigma_i': '$\\sigma_I$',
         'sigma_e_from_tds': '$\\sigma_E^{\mathrm{TDS}}$',
@@ -547,9 +547,6 @@ def formatted_parameter_dfs(esme: ana.SliceEnergySpreadMeasurement, latex=False)
     }
 
     varnames = None
-    from IPython import embed
-
-    embed()
 
     if latex:
         varnames = latex_variables

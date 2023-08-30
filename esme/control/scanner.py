@@ -24,6 +24,12 @@ class QuadScan:
     setpoints: list[QuadScanSetpoint]
     voltage: float
 
+    @property
+    def dispersions(self) -> list[float]:
+        return [setpoint.dispersion for setpoint in self.setpoints]
+    
+    
+
 @dataclass
 class TDSScan:
     voltages: list[float]
@@ -73,7 +79,10 @@ class Scanner:
         return self.mi.get_value(ch)
 
     def get_setpoint(self, dispersion: float) -> None:
-        return self.scan.setpoints[self.scan.dispersions.index(dispersion)]
+        dispersions = self.scan.qscan.dispersions
+        index = dispersions.index(dispersion)
+        return self.scan.qscan.setpoints[index]
+        # return self.qscan.setpoints[self.scan.dispersions.index(dispersion)]
 
     def set_scan_setpoint_quads(self, setpoint: QuadScanSetpoint) -> None:
         LOG.info(f"Setting setpoint for dispersion: {setpoint.dispersion}")
