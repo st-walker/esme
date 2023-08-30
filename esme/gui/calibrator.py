@@ -10,11 +10,13 @@ from PyQt5.QtWidgets import QApplication, QFileDialog, QFrame, QMainWindow, QMes
 from matplotlib import cm
 import numpy as np
 import scipy.ndimage as ndi
+from scipy.optimize import curve_fit
 
 from esme.gui.ui import calibration
 from esme.gui.common import build_default_machine_interface, get_i1_calibration_config_dir
 from esme.calibration import TDSCalibrator
 from esme.control.configs import load_calibration
+from esme.image import filter_image
 
 def com_label(ax):
     ax.set_ylabel(r"$y_\mathrm{com}$")
@@ -118,7 +120,8 @@ class CalibrationWorker(QObject):
     def __init__(self, machine, screen_name, amplitudes):
         super().__init__()
         self.machine = machine
-        self.screen_name = "OTRC.59.I1"
+        self.screen_name = screen_name
+        self.amplitudes = amplitudes
         self.kill = False
 
     def get_image(self):
@@ -128,42 +131,45 @@ class CalibrationWorker(QObject):
 
     def calibrate(self):
         self.machine.deflectors.active_tds().set_amplitude(0.0)
-        time.sleep(0.5)
-        image = self.machine.screens.get_image_raw(self.screen)
+        time.sleep(1.0)
+        image = self.machine.screens.get_image_raw(self.screen_name)
         image = image[:self.CUT]
         com = ndi.center_of_mass(image)
         ycom = com[1]
         yzero_crossing = ycom
-        
-        for amplitude in self.parse_amplitude_input_box():
-            self.machine.active_tds().set_amplitude(amplitude)
-            self.calibrate_once(zero_crossing)
+
+        slopes = []
+        for amplitude in self.amplitudes:
+            self.machine.deflectors.active_tds().set_amplitude(amplitude)
+            m1, m2 = self.calibrate_once(yzero_crossing)
+            slopes.append((np.mean(abs(m1[0])), np.mean(abs(m2[0]))))
 
     def calibrate_once(self, zero_crossing):
-        phis = np.linspace(-190, 190, num=381)
+        phis = np.linspace(-190, 190, num=191)
         ycoms = []
+        tds = self.machine.deflectors.active_tds()
+        tds.set_phase(phis[0])
+        time.sleep(4)
         for phi in phis:
             time.sleep(0.1)
-            self.deflectors.active_tds().set_phase(phi)
-            image = self.machine.screens.get_image_raw(self.screen)
+            tds.set_phase(phi)
+            image = self.machine.screens.get_image_raw(self.screen_name)
             image = image[:275]
             image = filter_image(image, 0)
             com = ndi.center_of_mass(image)
             ycom = com[1]
             ycoms.append(ycom)
 
-        return m1, m2
+        from IPython import embed; embed()
+        # time_s = phi / (3e9 * 360)
+        # ycoms_m = np.array(ycoms) * 13.7369 * 1e-6
+
+        m1, m2 = get_zero_crossing_slopes(phis, ycoms, zero_crossing=zero_crossing)
+        return m1, m1 #XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX JUST USING M1 HERE!!!...
             
     def run(self):
-        self.calibrate()
-        
-        # while not self.kill:
-        #     time.sleep(0.1)
-        #     image = self.get_image()
-        #     if image is None:
-        #         continue
-        #     else:
-        #         self.image_signal.emit(image)
+        slopes = self.calibrate()
+        from IPython import embed; embed()
 
     def update_screen_name(self, screen_name):
         LOG.info(f"Setting screen name for Screen Worker thread: {screen_name}")
