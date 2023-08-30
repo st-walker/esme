@@ -16,7 +16,7 @@ from esme.control.scanner import QuadScanSetpoint, ScanConfig, Scanner, QuadScan
 from esme.control.snapshot import SnapshotRequest
 
 from esme.analysis import OpticsFixedPoints
-from esme.calibration import BolkoCalibrationSetPoint, TDSCalibration, IgorCalibration, DiscreteCalibration
+from esme.calibration import BolkoCalibrationSetPoint, TDSCalibration, IgorCalibration, DiscreteCalibration, BolkoCalibration
 
 
 def load_kickers_from_config(dconf: dict[str, Any]) -> FastKickerController:
@@ -137,7 +137,7 @@ def _load_minimal_bolko_calibration(cconf):
                                        energy=energy,
                                        frequency=frequency))
 
-    return TDSCalibration(calibs)
+    return BolkoCalibration(calibs)
 
 def _load_igor_calibration(dcalib):
     amplitudes = dcalib["amplitudes"]

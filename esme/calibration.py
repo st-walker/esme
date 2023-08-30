@@ -124,6 +124,16 @@ class BolkoCalibrationSetPoint:
                                  energy=self.energy,
                                  frequency=self.frequency)
 
+class BolkoCalibration(TDSCalibration):
+    def __init__(self, bolko_setpoints):
+        self.setpoints = bolko_setpoints
+
+    def get_amplitudes(self):
+        return np.array([setpoint.amplitude for setpoint in self.setpoints])
+
+    def get_voltages(self):
+        return np.array([setpoint.get_voltage() for setpoint in self.setpoints])
+
 
 class IgorCalibration:
     def __init__(self, amplitudes, voltages):

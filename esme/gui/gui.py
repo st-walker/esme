@@ -57,6 +57,9 @@ class LPSMainWindow(QMainWindow):
 
         self.timer = self.build_main_timer(period=100)
 
+    # def r34_from_tds_to_screen(self):
+    #     lattice = ..
+
     def setup_logger_tab(self):
         log_handler = QPlainTextEditLogger()
         logging.getLogger().addHandler(log_handler)

@@ -58,37 +58,9 @@ class CalibrationMainWindow(QMainWindow):
 
         # ax3.set_ylabel("Streak $\mathrm{\mu{}m\,/\,ps}$")
 
-    # def main_loop(self):
-    #     for phi0, phi1, amp in zip(self.parse_input_box()):
-    #         self.tds.set_amplitude(amp)
 
-    #         self.tds.set_phase_sp(phi0)
-
-    # def do_one_setpoint(self, phi0, phi1, amplitude):
-    #     phis = np.linspace(phi0, phi1, num=10)
-
-    def calibrate(self):
-        for phi0, phi1, amplitude in self.parse_input_box():
-            self.calibrate_one_amplitude()
-
-    def calibrate_one_setpoint(self, phi0, phi1, amplitude):
-        phis = np.linspace(phi0, phi1, num=10)
-        coms = []
-        for phi in phis:
-            self.deflectors.active_tds().set_phase(phi)
-            image = self.machine.screens.get_image_raw(self.screen)
-            time.sleep(0.1)
-            # image = filter_image(image, crop=False)
-
-    def parse_input_box(self):
-        phi0 = [-30, -20, 10, 5]
-        phi1 = [10, 20, 30, 50]
-        amps = [5, 10, 15, 20]
-
-        assert len(phi0) == len(phi1)
-        assert len(amps) == len(phi1)
-
-        return phi0, phi1, amps
+    def parse_amplitude_input_box(self):
+        return [5, 10, 15, 20]
 
     def update_calibration_plots(self):
         voltages = self.calibration.get_voltages()
@@ -98,12 +70,12 @@ class CalibrationMainWindow(QMainWindow):
         self.setup_plots()
         ax.scatter(amplitudes, voltages * 1e-6)
 
-        mapping = self.calibration.get_calibration_mapping()
-        sample_ampls, fit_voltages = mapping.get_voltage_fit_line()
-        m, c = mapping.get_voltage_fit_parameters()
+        # mapping = self.calibration.get_calibration_mapping()
+        # sample_ampls, fit_voltages = mapping.get_voltage_fit_line()
+        # m, c = mapping.get_voltage_fit_parameters()
 
         # label = fr"Fit: $m={abs(m)*1e-6:.3f}\mathrm{{MV}}\,/\,\%$, $c={c*1e-6:.2f}\,\mathrm{{MV}}$"
-        ax.plot(sample_ampls, fit_voltages*1e-6)
+        # ax.plot(sample_ampls, fit_voltages*1e-6)
         # ax.legend()
         self.draw()
 
@@ -142,10 +114,11 @@ class CalibrationMainWindow(QMainWindow):
 
 
 class CalibrationWorker(QObject):
-    def __init__(self, machine, screen_name):
+    CUT = 275
+    def __init__(self, machine, screen_name, amplitudes):
         super().__init__()
         self.machine = machine
-        self.screen_name = "OTRC.55.I1"
+        self.screen_name = "OTRC.59.I1"
         self.kill = False
 
     def get_image(self):
@@ -153,14 +126,44 @@ class CalibrationWorker(QObject):
         LOG.info("Reading image from: %s", self.screen_name)
         return image # .astype(np.float32)
 
-    def run(self):
-        while not self.kill:
+    def calibrate(self):
+        self.machine.deflectors.active_tds().set_amplitude(0.0)
+        time.sleep(0.5)
+        image = self.machine.screens.get_image_raw(self.screen)
+        image = image[:self.CUT]
+        com = ndi.center_of_mass(image)
+        ycom = com[1]
+        yzero_crossing = ycom
+        
+        for amplitude in self.parse_amplitude_input_box():
+            self.machine.active_tds().set_amplitude(amplitude)
+            self.calibrate_once(zero_crossing)
+
+    def calibrate_once(self, zero_crossing):
+        phis = np.linspace(-190, 190, num=381)
+        ycoms = []
+        for phi in phis:
             time.sleep(0.1)
-            image = self.get_image()
-            if image is None:
-                continue
-            else:
-                self.image_signal.emit(image)
+            self.deflectors.active_tds().set_phase(phi)
+            image = self.machine.screens.get_image_raw(self.screen)
+            image = image[:275]
+            image = filter_image(image, 0)
+            com = ndi.center_of_mass(image)
+            ycom = com[1]
+            ycoms.append(ycom)
+
+        return m1, m2
+            
+    def run(self):
+        self.calibrate()
+        
+        # while not self.kill:
+        #     time.sleep(0.1)
+        #     image = self.get_image()
+        #     if image is None:
+        #         continue
+        #     else:
+        #         self.image_signal.emit(image)
 
     def update_screen_name(self, screen_name):
         LOG.info(f"Setting screen name for Screen Worker thread: {screen_name}")

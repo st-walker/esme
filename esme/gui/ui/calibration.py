@@ -47,10 +47,12 @@ class Ui_MainWindow(object):
         self.screen_selection_box.setObjectName("screen_selection_box")
         self.verticalLayout.addWidget(self.screen_selection_box)
         self.horizontalLayout.addLayout(self.verticalLayout)
-        self.calib_textedit = QtWidgets.QTextEdit(self.centralwidget)
-        self.calib_textedit.setMaximumSize(QtCore.QSize(246, 69))
-        self.calib_textedit.setObjectName("calib_textedit")
-        self.horizontalLayout.addWidget(self.calib_textedit)
+        self.label = QtWidgets.QLabel(self.centralwidget)
+        self.label.setObjectName("label")
+        self.horizontalLayout.addWidget(self.label)
+        self.amplitudes_line_edit = QtWidgets.QLineEdit(self.centralwidget)
+        self.amplitudes_line_edit.setObjectName("amplitudes_line_edit")
+        self.horizontalLayout.addWidget(self.amplitudes_line_edit)
         self.verticalLayout_2.addLayout(self.horizontalLayout)
         self.gridLayout.addLayout(self.verticalLayout_2, 0, 0, 1, 1)
         MainWindow.setCentralWidget(self.centralwidget)
@@ -82,16 +84,8 @@ class Ui_MainWindow(object):
         self.start_calib_button.setText(_translate("MainWindow", "Start"))
         self.load_calib_button.setText(_translate("MainWindow", "Load..."))
         self.apply_calib_button.setText(_translate("MainWindow", "Apply"))
-        self.calib_textedit.setHtml(_translate("MainWindow", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
-"<html><head><meta name=\"qrichtext\" content=\"1\" /><meta charset=\"utf-8\" /><style type=\"text/css\">\n"
-"p, li { white-space: pre-wrap; }\n"
-"hr { height: 1px; border-width: 0; }\n"
-"li.unchecked::marker { content: \"\\2610\"; }\n"
-"li.checked::marker { content: \"\\2612\"; }\n"
-"</style></head><body style=\" font-family:\'.AppleSystemUIFont\'; font-size:13pt; font-weight:400; font-style:normal;\">\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">phi0 = [-30, -20, 10, 5]</p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">phi1 = [10, 20, 30, 50]</p>\n"
-"<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">amps = [5, 10, 15, 20]</p></body></html>"))
+        self.label.setText(_translate("MainWindow", "Amplitudes / %"))
+        self.amplitudes_line_edit.setText(_translate("MainWindow", "5, 10, 15, 20"))
         self.menuMenu.setTitle(_translate("MainWindow", "Menu"))
         self.action_Print_to_Logbook.setText(_translate("MainWindow", "&Print to Logbook"))
         self.action_Quit.setText(_translate("MainWindow", "&Quit"))
