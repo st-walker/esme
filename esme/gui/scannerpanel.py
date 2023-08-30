@@ -124,6 +124,9 @@ class ScannerControl(QtWidgets.QWidget):
         voltages /= 1e6
         vstring = ", ".join([str(x) for x in voltages])
         self.ui.tds_voltages.setText(vstring)
+        # filling ths stuff
+        dscan_tds_voltage = self.machine.scanner.scan.qscan.voltage
+        self.ui.dispersion_scan_tds_voltage_spinbox.setValue(dscan_tds_voltage)
 
     def get_voltages(self):
         vstring = self.ui.tds_voltages.text()
@@ -140,7 +143,7 @@ class ScannerControl(QtWidgets.QWidget):
         return timer
 
     def do_the_measurement(self):
-        fname = "/Users/stuartwalker/repos/esme/tests/integration/discrete-conf.toml"
+        fname = "/System/Volumes/Data/home/xfeloper/user/stwalker/stuart-conf.toml"
         calibration = load_calibration(fname)
         thread = QThread()
         worker = ScanWorker(self.machine, calibration, self.get_voltages(),
@@ -224,8 +227,10 @@ class ScanWorker(QObject):
 
     def dispersion_scan(self) -> dict[float, float]:
         voltage = self.machine.scanner.scan.qscan.voltage
+        voltage = 5e6
         self.set_tds_voltage(voltage)
-
+        print("Doing dispersion scan at voltage", voltage)
+        print("Doing dispersion scan at amplitude", amplitude)        
         widths = defaultdict(list)
         for setpoint in self.machine.scanner.scan.qscan.setpoints:
             self.set_quads(setpoint)
@@ -240,6 +245,7 @@ class ScanWorker(QObject):
 
     def tds_scan(self) -> dict[float, float]:
         setpoint = self.machine.scanner.scan.tscan.setpoint
+        print("Doing tds scan at dispersion", setpoint.dispersion)
         self.set_quads(setpoint)
         widths = defaultdict(list)
         for voltage in self.voltages:
