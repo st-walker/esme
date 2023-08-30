@@ -116,10 +116,17 @@ def load_calibration(fname):
     elif ctype == "igor":
         return _load_igor_calibration(kvps)
     elif ctype == "discrete":
-        return _load_discrete_calibration(kvps)        
+        return _load_discrete_calibration(kvps)
+    elif ctype == "stuart":
+        return _load_stuart_calibration(kvps)
 
     raise ValueError("malformed calibration...")
 
+
+def _load_stuart_calibration(cconf):
+    amplitudes = cconf["amplitudes"]
+    voltages = cconf["voltages"]
+    return StuartCalibration(amplitudes, voltages)
 
 def _load_minimal_bolko_calibration(cconf):
     amplitudes = cconf["amplitudes"]
