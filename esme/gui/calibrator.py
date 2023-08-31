@@ -292,7 +292,7 @@ class CalibrationWorker(QObject):
         tds.set_phase(phis[0])
         time.sleep(4)
         for phi in phis:
-            time.sleep(0.1)
+            time.sleep(0.25)
             tds.set_phase(phi)
             image = self.machine.screens.get_image_raw(self.screen_name)
             image = image[:self.cut]
@@ -362,8 +362,6 @@ class CalibrationWorker(QObject):
     def update_screen_name(self, screen_name):
         LOG.info(f"Setting screen name for Screen Worker thread: {screen_name}")
         self.screen_name = screen_name
-
-
 
 
 def smooth(phase, com, window):
