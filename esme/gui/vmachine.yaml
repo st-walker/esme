@@ -32,6 +32,7 @@ readbacks:
 images:
 - address: XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ
   snapshots_db: /Users/stuartwalker/repos/esme/esme/control/snapshots2021.pcl
+  # snapshots_db: /Users/stuartwalker/repos/esme/esme/control/snapshots2021-with-beta-scan.pcl
   images_dir: /Users/stuartwalker/from-igor/pyBigBro_ES_03b
   filters:
 

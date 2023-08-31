@@ -15,7 +15,7 @@ from scipy.optimize import curve_fit
 
 from esme.gui.ui import calibration
 from esme.gui.common import build_default_machine_interface, get_i1_calibration_config_dir, setup_screen_display_widget, build_default_lps_machine
-from esme.calibration import TDSCalibrator
+from esme.calibration import TDSCalibration
 from esme.control.configs import load_calibration
 from esme.image import filter_image
 import logging

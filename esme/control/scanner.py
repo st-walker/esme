@@ -15,6 +15,7 @@ LOG = logging.getLogger(__name__)
 class QuadScanSetpoint:
     k1ls: dict[str, float]
     dispersion: float
+    beta: float
 
     def quad_names(self) -> list[str]:
         return list(self.k1ls.keys())
@@ -27,8 +28,10 @@ class QuadScan:
     @property
     def dispersions(self) -> list[float]:
         return [setpoint.dispersion for setpoint in self.setpoints]
-    
-    
+
+    @property
+    def betas(self) -> list[float]:
+        return [setpoint.beta for setpoint in self.setpoints]
 
 @dataclass
 class TDSScan:
@@ -41,6 +44,7 @@ class ScanConfig:
     name: str
     qscan: QuadScan
     tscan: TDSScan
+    bscan: QuadScan
     area: DiagnosticRegion
     request: SnapshotRequest
     optics_fixed_points: OpticsFixedPoints
@@ -48,13 +52,13 @@ class ScanConfig:
     screen: str = "OTRC.64.I1D"
     
 
-    @property
-    def dispersions(self) -> list[float]:
-        return [setpoint.dispersion for setpoint in self.setpoints]
+    # @property
+    # def dispersions(self) -> list[float]:
+    #     return [setpoint.dispersion for setpoint in self.qscan.setpoints]
 
-    @property
-    def voltages(self) -> list[float]:
-        return [voltage for setpoint in self.setpoints]
+    # @property
+    # def voltages(self) -> list[float]:
+    #     return return  self.tscan.voltages]
     
 
 class ScanSetpointError(EuXFELMachineError):
@@ -78,11 +82,10 @@ class Scanner:
         ch = self.FDP_QUAD_KICK_SP_ADDRESS.format(quad_name)
         return self.mi.get_value(ch)
 
-    def get_setpoint(self, dispersion: float) -> None:
+    def get_setpoint(self, dispersion: float, beta=None) -> None:
         dispersions = self.scan.qscan.dispersions
         index = dispersions.index(dispersion)
         return self.scan.qscan.setpoints[index]
-        # return self.qscan.setpoints[self.scan.dispersions.index(dispersion)]
 
     def set_scan_setpoint_quads(self, setpoint: QuadScanSetpoint) -> None:
         LOG.info(f"Setting setpoint for dispersion: {setpoint.dispersion}")

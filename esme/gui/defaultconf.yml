@@ -120,70 +120,101 @@ deflectors:
     rb_fdl: XFEL.RF/LLRF.CONTROLLER/VS.LLTDSB2/
 
 
-scans:
-  - name: High Resolution I1D
-    screen: OTRC.64.I1D
-    area: I1
-    # Yaml requires signs for exponents ...
-    tds_scan_voltages: [0.56e+6, 0.61e+6, 0.65e+6, 0.75e+6, 0.85e+6]
-    tds_scan_dispersion: 1.2
-    dispersion_scan_tds_voltage: 0.61e+6
-    beta_screen: 0.6
-    beta_tds: 4.3
-    alpha_tds: 1.9
-    setpoints:
-      - dispersion: 1.2
-        k1ls: {'QI.52.I1': -0.0837203e+3, 'QI.53.I1': 0.500308e+3, 'QI.54.I1': 0.18882e+3, 'QI.55.I1': -0.71248e+3, 'QI.57.I1': 0.71248e+3, 'QI.59.I1': -0.71248e+3, 'QI.60.I1': -0.509559e+3, 'QI.61.I1': 0.83263e+3, 'QI.63.I1D': -0.249585e+3, 'QI.64.I1D': 0.83195e+3}
+    
+scanner:
+  gui_defaults:
+    nbeam: 10
+    nbg: 5
+    quad_wait: 5
+    tds_amplitude_wait: 1.5
+    beam_on_wait: 1.0
+    outdir: ./esme-measurements
+    outdir_bkr: /Users/xfeloper/user/stwalker/esme-measurements
+  
+  scans:
+    - name: High Resolution I1D
+      screen: OTRC.64.I1D
+      area: I1
+      screen_resolution: 28e-6
+      # Yaml requires signs for exponents ...
+      tds_scan_voltages: [0.56e+6, 0.61e+6, 0.65e+6, 0.75e+6, 0.85e+6]
+      tds_scan_dispersion: 1.2
+      dispersion_scan_tds_voltage: 0.61e+6
+      beta_screen: 0.6
+      beta_tds: 4.3
+      alpha_tds: 1.9
+      dispersion_scan_setpoints:
+        - dispersion: 1.2
+          beta: 0.6
+          k1ls: {'QI.52.I1': -0.0837203e+3, 'QI.53.I1': 0.500308e+3, 'QI.54.I1': 0.18882e+3, 'QI.55.I1': -0.71248e+3, 'QI.57.I1': 0.71248e+3, 'QI.59.I1': -0.71248e+3, 'QI.60.I1': -0.509559e+3, 'QI.61.I1': 0.83263e+3, 'QI.63.I1D': -0.249585e+3, 'QI.64.I1D': 0.83195e+3}
 
-      - dispersion: 1.0
-        k1ls: {'QI.52.I1': -0.0837203e+3, 'QI.53.I1': 0.500308e+3, 'QI.54.I1': 0.18882e+3, 'QI.55.I1': -0.71248e+3, 'QI.57.I1': 0.71248e+3, 'QI.59.I1': -0.71248e+3, 'QI.60.I1': -0.5090345e+3, 'QI.61.I1': 0.832175e+3, 'QI.63.I1D': 0.106965e+3, 'QI.64.I1D': 0.4754e+3}
+        - dispersion: 1.0
+          beta: 0.6
+          k1ls: {'QI.52.I1': -0.0837203e+3, 'QI.53.I1': 0.500308e+3, 'QI.54.I1': 0.18882e+3, 'QI.55.I1': -0.71248e+3, 'QI.57.I1': 0.71248e+3, 'QI.59.I1': -0.71248e+3, 'QI.60.I1': -0.5090345e+3, 'QI.61.I1': 0.832175e+3, 'QI.63.I1D': 0.106965e+3, 'QI.64.I1D': 0.4754e+3}
 
-      - dispersion: 0.8
-        k1ls: {'QI.52.I1': -0.0837203e+3, 'QI.53.I1': 0.500308e+3, 'QI.54.I1': 0.18882e+3, 'QI.55.I1': -0.71248e+3, 'QI.57.I1': 0.71248e+3, 'QI.59.I1': -0.71248e+3, 'QI.60.I1': -0.508965e+3, 'QI.61.I1': 0.8202076e+3, 'QI.63.I1D': 0.582365e+3, 'QI.64.I1D': 0.0}
+        - dispersion: 0.8
+          beta: 0.6
+          k1ls: {'QI.52.I1': -0.0837203e+3, 'QI.53.I1': 0.500308e+3, 'QI.54.I1': 0.18882e+3, 'QI.55.I1': -0.71248e+3, 'QI.57.I1': 0.71248e+3, 'QI.59.I1': -0.71248e+3, 'QI.60.I1': -0.508965e+3, 'QI.61.I1': 0.8202076e+3, 'QI.63.I1D': 0.582365e+3, 'QI.64.I1D': 0.0}
 
-      - dispersion: 0.6
-        k1ls: {'QI.52.I1': -0.0837203e+3, 'QI.53.I1': 0.500308e+3, 'QI.54.I1': 0.18882e+3, 'QI.55.I1': -0.71248e+3, 'QI.57.I1': 0.71248e+3, 'QI.59.I1': -0.71248e+3, 'QI.60.I1': -0.508749e+3, 'QI.61.I1': 0.789625e+3, 'QI.63.I1D': 1.046306e+3, 'QI.64.I1D': -0.4754e+3}
+        - dispersion: 0.6
+          beta: 0.6
+          k1ls: {'QI.52.I1': -0.0837203e+3, 'QI.53.I1': 0.500308e+3, 'QI.54.I1': 0.18882e+3, 'QI.55.I1': -0.71248e+3, 'QI.57.I1': 0.71248e+3, 'QI.59.I1': -0.71248e+3, 'QI.60.I1': -0.508749e+3, 'QI.61.I1': 0.789625e+3, 'QI.63.I1D': 1.046306e+3, 'QI.64.I1D': -0.4754e+3}
 
-    channels:
-      image: XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ
-      addresses:
-        - XFEL.MAGNETS/MAGNET.ML/SOLB.23.I1/CURRENT.SP
-        - XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED
-        - XFEL.MAGNETS/MAGNET.ML/SOLB.23.I1/CURRENT.SP
-        - XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/PHASE.SAMPLE
-        - XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/AMPL.SAMPLE
-        - XFEL.RF/LLRF.CONTROLLER/CTRL.A1.I1/SP.PHASE
-        - XFEL.RF/LLRF.CONTROLLER/CTRL.A1.I1/SP.AMPL
-        - XFEL.RF/LLRF.CONTROLLER/VS.GUN.I1/PHASE.SAMPLE
-        - XFEL.RF/LLRF.CONTROLLER/CTRL.GUN.I1/SP.PHASE
-        - XFEL.RF/LLRF.CONTROLLER/CTRL.GUN.I1/SP.AMPL
-        - XFEL.RF/LLRF.CONTROLLER/VS.GUN.I1/AMPL.SAMPLE
-        - XFEL.RF/LLRF.CONTROLLER/VS.AH1.I1/PHASE.SAMPLE
-        - XFEL.RF/LLRF.CONTROLLER/VS.AH1.I1/AMPL.SAMPLE
-        - XFEL.RF/LLRF.CONTROLLER/CTRL.AH1.I1/SP.PHASE
-        - XFEL.RF/LLRF.CONTROLLER/CTRL.AH1.I1/SP.AMPL
-        - XFEL.FEEDBACK/FT1.LONGITUDINAL/MONITOR1/TARGET
-        - XFEL.DIAG/CHARGE.ML/TORA.25.I1/CHARGE.ALL
-        - XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/LH/ENERGY.ALL
-        - XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/I1D/ENERGY.ALL
-        - XFEL.MAGNETS/CHICANE/LH/ANGLE
-        - XFEL.MAGNETS/CHICANE/BC0/ANGLE
-        - XFEL.MAGNETS/CHICANE/BC1/ANGLE
-        - XFEL.MAGNETS/CHICANE/BC2/ANGLE
-        - XFEL.UTIL/LASERHEATER.MOTOR/P1X.LHOS0/FPOS
-        - XFEL.UTIL/LASERHEATER.MOTOR/P1Z.LHOS0/FPOS
-        - XFEL.UTIL/LASERHEATER.MOTOR/LAMBDA2.LHOS0/POS
-        - XFEL.UTIL/LASERHEATER.MOTOR/DL.LHLVL5/FPOS
-        - XFEL.UTIL/LASERINT/GUN/SH3_OPEN
-        - XFEL.UTIL/LASERINT/GUN/SH4_OPEN
-        - XFEL.RF/LLRF.CONTROLLER/VS.LLTDSI1/AMPL.SAMPLE
-        - XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/SP.AMPL
-        - XFEL.DIAG/TIMER.CENTRAL/MASTER/EVENT10
-        - XFEL.SDIAG/SPECIAL_BUNCHES.ML/TDSA.52.I1/BUNCH_ONE
-      wildcards:
-        - XFEL.DIAG/ORBIT/*.I1/X.ALL
-        - XFEL.DIAG/ORBIT/*.I1D/X.ALL
-        - XFEL.DIAG/ORBIT/*.I1/Y.ALL
-        - XFEL.DIAG/ORBIT/*.I1D/Y.ALL
-        - XFEL.MAGNETS/MAGNET.ML/*.I1/KICK_MRAD.SP
-        - XFEL.MAGNETS/MAGNET.ML/*.I1D/KICK_MRAD.SP
+      beta_scan_setpoints:
+        - dispersion: 1.2
+          beta: 0.6
+          k1ls: {'QI.52.I1': -0.0837203e+3, 'QI.53.I1': 0.500308e+3, 'QI.54.I1': 0.18882e+3, 'QI.55.I1': -0.71248e+3, 'QI.57.I1': 0.71248e+3, 'QI.59.I1': -0.71248e+3, 'QI.60.I1': -0.509559e+3, 'QI.61.I1': 0.83263e+3, 'QI.63.I1D': -0.249585e+3, 'QI.64.I1D': 0.83263+3}
+        - dispersion: 1.2
+          beta: 5.4
+          k1ls: {'QI.52.I1': -0.0837203e+3, 'QI.53.I1': 0.500308e+3, 'QI.54.I1': 0.18882e+3, 'QI.55.I1': -0.71248e+3, 'QI.57.I1': 0.71248e+3, 'QI.59.I1': -0.71248e+3, 'QI.60.I1': -0.509559e+3, 'QI.61.I1': 0.83263e+3, 'QI.63.I1D': -0.249585e+3, 'QI.64.I1D': 0.96486e+3}
+        - dispersion: 1.2
+          beta: 9.6
+          k1ls: {'QI.52.I1': -0.0837203e+3, 'QI.53.I1': 0.500308e+3, 'QI.54.I1': 0.18882e+3, 'QI.55.I1': -0.71248e+3, 'QI.57.I1': 0.71248e+3, 'QI.59.I1': -0.71248e+3, 'QI.60.I1': -0.509559e+3, 'QI.61.I1': 0.83263e+3, 'QI.63.I1D': -0.249585e+3, 'QI.64.I1D': 1.02123+3}
+        - dispersion: 1.2
+          beta: 15.0
+          k1ls: {'QI.52.I1': -0.0837203e+3, 'QI.53.I1': 0.500308e+3, 'QI.54.I1': 0.18882e+3, 'QI.55.I1': -0.71248e+3, 'QI.57.I1': 0.71248e+3, 'QI.59.I1': -0.71248e+3, 'QI.60.I1': -0.509559e+3, 'QI.61.I1': 0.83263e+3, 'QI.63.I1D': -0.249585e+3, 'QI.64.I1D': 1.07703e+3}
+
+
+      channels:
+        image: XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ
+        addresses:
+          - XFEL.MAGNETS/MAGNET.ML/SOLB.23.I1/CURRENT.SP
+          - XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED
+          - XFEL.MAGNETS/MAGNET.ML/SOLB.23.I1/CURRENT.SP
+          - XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/PHASE.SAMPLE
+          - XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/AMPL.SAMPLE
+          - XFEL.RF/LLRF.CONTROLLER/CTRL.A1.I1/SP.PHASE
+          - XFEL.RF/LLRF.CONTROLLER/CTRL.A1.I1/SP.AMPL
+          - XFEL.RF/LLRF.CONTROLLER/VS.GUN.I1/PHASE.SAMPLE
+          - XFEL.RF/LLRF.CONTROLLER/CTRL.GUN.I1/SP.PHASE
+          - XFEL.RF/LLRF.CONTROLLER/CTRL.GUN.I1/SP.AMPL
+          - XFEL.RF/LLRF.CONTROLLER/VS.GUN.I1/AMPL.SAMPLE
+          - XFEL.RF/LLRF.CONTROLLER/VS.AH1.I1/PHASE.SAMPLE
+          - XFEL.RF/LLRF.CONTROLLER/VS.AH1.I1/AMPL.SAMPLE
+          - XFEL.RF/LLRF.CONTROLLER/CTRL.AH1.I1/SP.PHASE
+          - XFEL.RF/LLRF.CONTROLLER/CTRL.AH1.I1/SP.AMPL
+          - XFEL.FEEDBACK/FT1.LONGITUDINAL/MONITOR1/TARGET
+          - XFEL.DIAG/CHARGE.ML/TORA.25.I1/CHARGE.ALL
+          - XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/LH/ENERGY.ALL
+          - XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/I1D/ENERGY.ALL
+          - XFEL.MAGNETS/CHICANE/LH/ANGLE
+          - XFEL.MAGNETS/CHICANE/BC0/ANGLE
+          - XFEL.MAGNETS/CHICANE/BC1/ANGLE
+          - XFEL.MAGNETS/CHICANE/BC2/ANGLE
+          - XFEL.UTIL/LASERHEATER.MOTOR/P1X.LHOS0/FPOS
+          - XFEL.UTIL/LASERHEATER.MOTOR/P1Z.LHOS0/FPOS
+          - XFEL.UTIL/LASERHEATER.MOTOR/LAMBDA2.LHOS0/POS
+          - XFEL.UTIL/LASERHEATER.MOTOR/DL.LHLVL5/FPOS
+          - XFEL.UTIL/LASERINT/GUN/SH3_OPEN
+          - XFEL.UTIL/LASERINT/GUN/SH4_OPEN
+          - XFEL.RF/LLRF.CONTROLLER/VS.LLTDSI1/AMPL.SAMPLE
+          - XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/SP.AMPL
+          - XFEL.DIAG/TIMER.CENTRAL/MASTER/EVENT10
+          - XFEL.SDIAG/SPECIAL_BUNCHES.ML/TDSA.52.I1/BUNCH_ONE
+        wildcards:
+          - XFEL.DIAG/ORBIT/*.I1/X.ALL
+          - XFEL.DIAG/ORBIT/*.I1D/X.ALL
+          - XFEL.DIAG/ORBIT/*.I1/Y.ALL
+          - XFEL.DIAG/ORBIT/*.I1D/Y.ALL
+          - XFEL.MAGNETS/MAGNET.ML/*.I1/KICK_MRAD.SP
+          - XFEL.MAGNETS/MAGNET.ML/*.I1D/KICK_MRAD.SP

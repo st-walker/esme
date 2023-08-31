@@ -429,12 +429,11 @@ class SliceWidthsFitter:
         self,
             dscan_widths,
             tscan_widths,
-            # scan_config,
-        # optical_config: OpticalConfig,
+            bscan_widths=None
     ):
         self.dscan_widths = dscan_widths
         self.tscan_widths = tscan_widths
-        # self.scan_config = scan_config
+        self.bscan_widths = bscan_widths
 
     def dispersion_scan_fit(self) -> ValueWithErrorT:
         widths_with_errors = list(self.dscan_widths.values())
@@ -462,6 +461,30 @@ class SliceWidthsFitter:
         a_v, b_v = linear_fit(voltages2, widths2_m2, errors2_m2)
         return a_v, b_v
 
+    def tds_scan_fit(self) -> tuple[ValueWithErrorT, ValueWithErrorT]:
+        widths_with_errors = list(self.tscan_widths.values())
+        widths = [x.n for x in widths_with_errors]
+        errors = [x.s for x in widths_with_errors]
+        voltages = np.array(list(self.tscan_widths.keys()))
+        voltages2 = voltages**2
+        widths2_m2, errors2_m2 = transform_pixel_widths(
+            widths, errors, pixel_units="m", to_variances=True
+        )
+        a_v, b_v = linear_fit(voltages2, widths2_m2, errors2_m2)
+        return a_beta, b_beta
+
+    def tds_scan_fit(self) -> tuple[ValueWithErrorT, ValueWithErrorT]:
+        widths_with_errors = list(self.tscan_widths.values())
+        widths = [x.n for x in widths_with_errors]
+        errors = [x.s for x in widths_with_errors]
+        beta = np.array(list(self.dscan_widths.keys()))
+        beta2 = beta**2
+        widths2_m2, errors2_m2 = transform_pixel_widths(
+            widths, errors, pixel_units="m", to_variances=True
+        )
+        a_beta, b_beta = linear_fit(beta, widths2_m2, errors2_m2)
+        return a_beta, b_beta
+    
     # def beta_scan_fit(self) -> tuple[ValueWithErrorT, ValueWithErrorT]:
     #     if not self.bscan:
     #         raise TypeError("Missing optional BetaScan instance.")
@@ -483,10 +506,10 @@ class SliceWidthsFitter:
         dispersion = tscan_dispersion, 0.0
         voltage = dscan_voltage, 0.0
 
-        # try:
-        #     a_beta, b_beta = self.beta_scan_fit()
-        # except TypeError:
-        a_beta = b_beta = None
+        try:
+            a_beta, b_beta = self.beta_scan_fit()
+        except TypeError:
+            a_beta = b_beta = None
 
         return FittedBeamParameters(
             a_v=a_v,
@@ -520,6 +543,7 @@ class FittedBeamParameters:
     oconfig: OpticalConfig
     a_beta: ValueWithErrorT = None
     b_beta: ValueWithErrorT = None
+    known_sigma_r: Optional[float] = None
 
     @property
     def sigma_e(self) -> ValueWithErrorT:
@@ -585,6 +609,8 @@ class FittedBeamParameters:
 
     @property
     def sigma_r(self) -> ValueWithErrorT:
+        if self.known_sigma_r:
+            return self.known_sigma_r, 0
         ad = ufloat(*self.a_d)
         sigma_b = ufloat(*self.sigma_b)
         result = usqrt(ad - sigma_b**2)
@@ -615,6 +641,8 @@ class FittedBeamParameters:
 
     @property
     def sigma_r_alt(self) -> ValueWithErrorT:
+        if self.known_sigma_r:
+            return self.known_sigma_r, 0
         ab = ufloat(*self.a_beta)
         bd = ufloat(*self.b_d)
         d0 = ufloat(*self.reference_dispersion)

@@ -28,36 +28,36 @@ def sqrt(x, a0, a1) -> Any:
     return a0 + a1 * np.sqrt(x)
 
 
-class TDSCalibrator:
-    def __init__(
-        self,
-        percentages: Sequence[float],
-        tds_slopes: Sequence[float],
-        dispersion_setpoint: float,
-        tds_slope_units: Optional[str] = None,
-    ):
-        self.percentages = np.array(percentages)
-        self.tds_slopes = np.array(tds_slopes)
-        self.dispersion_setpoint = dispersion_setpoint
-        if tds_slope_units == "um/ps":
-            self.tds_slopes = self.tds_slopes * 1e6
-        elif tds_slope_units is not None:
-            raise TypeError(f"Wrong tds_slope_units: {tds_slope_units}")
+# class TDSCalibrator:
+#     def __init__(
+#         self,
+#         percentages: Sequence[float],
+#         tds_slopes: Sequence[float],
+#         dispersion_setpoint: float,
+#         tds_slope_units: Optional[str] = None,
+#     ):
+#         self.percentages = np.array(percentages)
+#         self.tds_slopes = np.array(tds_slopes)
+#         self.dispersion_setpoint = dispersion_setpoint
+#         if tds_slope_units == "um/ps":
+#             self.tds_slopes = self.tds_slopes * 1e6
+#         elif tds_slope_units is not None:
+#             raise TypeError(f"Wrong tds_slope_units: {tds_slope_units}")
 
-    def get_tds_slope(self, percentage: float) -> float:
-        popt, _ = self.fit()
-        return line(percentage, *popt)
+#     def get_tds_slope(self, percentage: float) -> float:
+#         popt, _ = self.fit()
+#         return line(percentage, *popt)
 
-    def get_voltage(
-        self, percentage: Union[float, Sequence[float]], snapshot: pd.Series
-    ) -> Union[float, Sequence[float]]:
-        tds_slope = self.get_tds_slope(percentage)
-        return get_tds_voltage(tds_slope, snapshot)
+#     def get_voltage(
+#         self, percentage: Union[float, Sequence[float]], snapshot: pd.Series
+#     ) -> Union[float, Sequence[float]]:
+#         tds_slope = self.get_tds_slope(percentage)
+#         return get_tds_voltage(tds_slope, snapshot)
 
-    def __repr__(self) -> str:
-        cname = type(self).__name__
-        dx0 = self.dispersion_setpoint
-        return f"<{cname}: {dx0=}, %={repr(self.percentages)}, grds={self.tds_slopes}>"
+#     def __repr__(self) -> str:
+#         cname = type(self).__name__
+#         dx0 = self.dispersion_setpoint
+#         return f"<{cname}: {dx0=}, %={repr(self.percentages)}, grds={self.tds_slopes}>"
 
 # class CalibrationMapping:
 #     def __init__(self, amplitudes, voltages):

@@ -161,13 +161,22 @@ def _load_discrete_calibration(dcalib):
 def load_scanner_from_config(dconf, mi=None):
     scans = []
     scanners = []
-    for scan in dconf["scans"]:
+    for scan in dconf["scanner"]["scans"]:
         quad_setpoints = []
-        for dsetpoint in scan["setpoints"]:
+        for dsetpoint in scan["dispersion_scan_setpoints"]:
             dispersion = dsetpoint["dispersion"]
+            beta = dsetpoint["beta"]
             k1ls = dsetpoint["k1ls"]
-            setpoint = QuadScanSetpoint(k1ls, dispersion)
+            setpoint = QuadScanSetpoint(k1ls, dispersion=dispersion, beta=beta)
             quad_setpoints.append(setpoint)
+
+        beta_scan_setpoints = []
+        for bsetpoint in scan["beta_scan_setpoints"]:
+            dispersion = bsetpoint["dispersion"]
+            beta = bsetpoint["beta"]
+            k1ls = bsetpoint["k1ls"]
+            setpoint = QuadScanSetpoint(k1ls, dispersion=dispersion, beta=beta)
+            beta_scan_setpoints.append(setpoint)
 
         channels = scan["channels"]
         for channel in channels:
@@ -180,20 +189,22 @@ def load_scanner_from_config(dconf, mi=None):
 
         tds_scan = TDSScan(scan["tds_scan_voltages"], tds_scan_setpoint)
         quad_scan = QuadScan(quad_setpoints, scan["dispersion_scan_tds_voltage"])
+        beta_scan = QuadScan(beta_scan_setpoints, scan["dispersion_scan_tds_voltage"])
 
         ofp = OpticsFixedPoints(scan["beta_screen"],
                                 scan["beta_tds"],
                                 scan["alpha_tds"])
 
         scanconf = ScanConfig(scan["name"],
-                              quad_scan,
-                              tds_scan,
-                              DiagnosticRegion(scan["area"]),
+                              qscan=quad_scan,
+                              tscan=tds_scan,
+                              bscan=beta_scan,
+                              area=DiagnosticRegion(scan["area"]),
                               optics_fixed_points=ofp,
                               screen=scan["screen"],
                               request=snapshot_request
                               )
-                   
+
         scans.append(scanconf)
 
     return Scanner(scans[0], mi=mi)
@@ -208,10 +219,10 @@ def load_virtual_machine_interface(dconf):
 
     for readback in readbacks:
         state[readback["address"]] = ReadBackAddress(readback["rb"], readback["noise"])
-        
+
     for readback in readbacks:
         state[readback["address"]] = ReadBackAddress(readback["rb"], readback["noise"])
-        
+
     images = dconf["images"]
     for image in images:
         address = image["address"]

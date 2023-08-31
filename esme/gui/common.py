@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import yaml
 import re
 import socket
@@ -47,7 +48,7 @@ def get_default_virtual_machine_interface():
     with open(DEFAULT_VCONFIG_PATH, "r") as f:
         doocsdict = yaml.safe_load(f)
         return load_virtual_machine_interface(doocsdict)
-    
+
 def get_config_path():
     return Path.home() / ".config" / "diagnostics-utility/"
 
@@ -79,5 +80,23 @@ def setup_screen_display_widget(widget):
     # print(lut.shape)
 
     return image_plot
-        
 
+
+
+def load_scanner_panel_ui_defaults():
+    with open(DEFAULT_CONFIG_PATH, "r") as f:
+        dconf = yaml.safe_load(f)
+        uiconf = dconf["scanner"]["gui_defaults"]
+
+        return uiconf
+
+        # if is_in_controlroom():
+        #     outdir = Path(uiconf["outdir_bkr"])
+        # else:
+        #     outdir = Path("./measurements")
+
+        # return ScanSettings(quad_wait=quad_wait,
+        #                     tds_amplitude_wait=tds_amplitude_wait,
+        #                     beam_on_wait=beam_on_wait,
+        #                     outdir=outdir
+        

@@ -50,6 +50,12 @@ class HighResolutionEnergySpreadMainWindow(QMainWindow):
                                                                 xlabel="Voltage", xunits="V",
                                                                 ylabel="Widths", yunits="px")
 
+        self.beta_widths_scatter = make_pixel_widths_scatter(self.ui.beta_pixel_size_plot,
+                                                             title="Beta Scan Peak Energy Slice Widths",
+                                                             xlabel="Beta", xunits="m",
+                                                             ylabel="Widths", yunits="px")
+
+        
         self.scannerp.processed_image_signal.connect(self.post_processed_image)
         self.scannerp.background_image_signal.connect(self.post_background_image)
         self.scannerp.full_measurement_result_signal.connect(self.post_final_result)
@@ -97,6 +103,9 @@ class HighResolutionEnergySpreadMainWindow(QMainWindow):
         elif processed_image.scan_type is ScanType.TDS:
             scatter_data = [processed_image.voltage], [processed_image.central_width.n]
             self.voltage_widths_scatter.addPoints(*scatter_data)
+        elif processed_image.scan_type is ScanType.BETA:
+            scatter_data = [processed_image.voltage], [processed_image.central_width.n]
+            self.beta_widths_scatter.addPoints(*scatter_data)
             
         image_item = items[0]
         image_item.setImage(image)

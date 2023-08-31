@@ -23,7 +23,9 @@ from esme.analysis import SliceWidthsFitter, FittedBeamParameters
 from esme.control.configs import load_calibration
 from esme.control.snapshot import SnapshotAccumulator, Snapshotter
 from esme.control.mint import send_to_logbook
-from esme.gui.common import is_in_controlroom
+from esme.gui.common import is_in_controlroom, load_scanner_panel_ui_defaults
+from esme.calibration import TDSCalibration
+
 # from esme.maths import ValueWithErrorT, linear_fit
 
 from esme.plot import pretty_parameter_table, formatted_parameter_dfs
@@ -51,21 +53,15 @@ class ScanType(Enum):
     def alt_name(self):
         return self.ALT_NAME_MAP[self]
 
+
 @dataclass
 class ScanSettings:
     quad_wait: float = 5
-    nbeam: int = 20
     tds_amplitude_wait: int = 1.5
     beam_on_wait: float = 1.0
-    outdir: Path = Path("/Users/xfeloper/user/stwalker/esme-measurements")
+    outdir: Path = Path("./esme-measurements")
     pixel_size: float = 13.7369e-6
 
-
-def make_default_scan_settings():
-    ss = ScanSettings()
-    if is_in_controlroom():
-        ss.outdir = "/Users/xfeloper/user/stwalker/esme-measurements"
-    return ss
 
 class ScannerControl(QtWidgets.QWidget):
     processed_image_signal = pyqtSignal(object)
@@ -79,31 +75,29 @@ class ScannerControl(QtWidgets.QWidget):
         self.ui = Ui_scanner_form()
         self.ui.setupUi(self)
 
-        self.scan_settings = make_default_scan_settings()
-
         if machine is None:
             self.machine = build_default_lps_machine()
         else:
             self.machine = machine
 
-        self.initial_read()
+        dic = load_scanner_panel_ui_defaults()
+        self.initial_read(dic)
+        self.settings_dialog = ScannerConfDialog(defaults=dic, parent=self)
         self.connect_buttons()
 
+        self.result_dialog = ScannerResultsDialog(parent=self)
         self.measurement_worker = None
         self.measurement_thread = None
 
         self.timer = self.build_main_timer(100)
 
-        self.result_dialog = ScannerResultsDialog(parent=self)
-        self.settings_dialog = ScannerConfDialog(initial_settings=make_default_scan_settings(),
-                                                 parent=self)
-        self.settings_dialog.scanner_config_signal.connect(self.update_settings)
-        self.ui.preferences_button.clicked.connect(self.open_settings)
-
-        self.ui.apply_optics_button.clicked.connect(self.apply_current_optics)
+    def load_ui_initial_values(self, dic):
+        self.ui.beam_shots_spinner.setValue(dic["nbeam"])
+        self.ui.bg_shots_spinner.setValue(dic["nbg"])
 
     def apply_current_optics(self):
-        selected_dispersion = float(self.ui.dispersion_setpoint_combo_box.currentText())
+        selected_dispersion = self.get_chosen_dispersion()
+        selected_beta = self.get_chosen_beta()
         setpoint = self.machine.scanner.get_setpoint(selected_dispersion)
         self.machine.scanner.set_scan_setpoint_quads(setpoint)
 
@@ -113,27 +107,48 @@ class ScannerControl(QtWidgets.QWidget):
         name = scan.name
         dispersions = [str(s.dispersion) for s in scan.qscan.setpoints]
         self.ui.dispersion_setpoint_combo_box.addItems(dispersions)
-        
 
-    def update_settings(self):
-        pass
+        chosen_dispersion = float(self.get_chosen_dispersion())
+        chosen_dispersion_setpoint = self.machine.scanner.get_setpoint(chosen_dispersion)
+
+        beta_scan_dispersions = list(set(scan.bscan.dispersions))
+        assert len(beta_scan_dispersions) == 1
+        beta_scan_dispersion = beta_scan_dispersions[0]
+        if beta_scan_dispersion == chosen_dispersion:
+            betas = [str(b) for b in scan.bscan.betas]
+        else:
+            betas = [chosen_dispersion_setpoint.beta]
+
+        self.ui.beta_setpoint_combo_box.addItems(betas)
+
+    # def pick_dispersion(self):
+    #     self.ui.beta_setpoint_combo_box.clear()
+    #     beta_scan_dispersions = list(set(scan.bscan.dispersions))
+
+    #     chosen_dispersion = float(self.get_chosen_dispersion())
+    #     chosen_dispersion_setpoint = self.machine.scanner.get_setpoint(chosen_dispersion)
+
+    def get_chosen_dispersion(self):
+        return float(self.ui.dispersion_setpoint_combo_box.currentText())
+
+    # def get_chosen_beta(self):
+    #     return float(self.ui.betas_setpoint_combo_box.currentText())
 
     def open_settings(self):
         self.settings_dialog.show()
 
-    def initial_read(self):
+    def initial_read(self, dic):
+
+        self.load_ui_initial_values(dic)
         self.fill_combo_boxes()
         voltages = np.array(self.machine.scanner.scan.tscan.voltages)
         voltages /= 1e6
         vstring = ", ".join([str(x) for x in voltages])
         self.ui.tds_voltages.setText(vstring)
         # filling ths stuff
-        dscan_tds_voltage = self.machine.scanner.scan.qscan.voltage
-        self.ui.dispersion_scan_tds_voltage_spinbox.setValue(dscan_tds_voltage)
-        self.ui.beam_shots_spinner.setValue(self.scan_settings.nbeam)
-
-        # voltages = np.array(self.machine.scanner.scan.qscan.voltages)        
-        # self.ui.dispersion_scan_tds_voltage_spinbox.setValue(
+        dscan_tds_voltage_v = self.machine.scanner.scan.qscan.voltage
+        dscan_tds_voltage_mv = dscan_tds_voltage_v / 1e6
+        self.ui.dispersion_scan_tds_voltage_spinbox.setValue(dscan_tds_voltage_mv)
 
     def get_voltages(self):
         vstring = self.ui.tds_voltages.text()
@@ -150,15 +165,14 @@ class ScannerControl(QtWidgets.QWidget):
         return timer
 
     def do_the_measurement(self):
-        fname = "/System/Volumes/Data/home/xfeloper/user/stwalker/stuart-conf.toml"
-        calibration = load_calibration(fname)
         thread = QThread()
-        worker = ScanWorker(self.machine, calibration, self.get_voltages(),
-                            slug=self.ui.slug_line_edit.text())
+        scan_request = self.build_scan_request_from_ui()
+        worker = ScanWorker(self.machine, scan_request)
+
         worker.moveToThread(thread)
         thread.started.connect(worker.run)
         worker.processed_image_signal.connect(self.processed_image_signal.emit)
-        worker.background_image_signal.connect(self.background_image_signal.emit)        
+        worker.background_image_signal.connect(self.background_image_signal.emit)
         worker.full_measurement_result_signal.connect(self.full_measurement_result_signal.emit)
         worker.full_measurement_result_signal.connect(self.display_final_result)
         thread.start()
@@ -166,6 +180,8 @@ class ScannerControl(QtWidgets.QWidget):
         self.measurement_worker = worker
 
     def connect_buttons(self):
+        self.ui.preferences_button.clicked.connect(self.open_settings)
+        self.ui.apply_optics_button.clicked.connect(self.apply_current_optics)
         self.ui.start_measurement_button.clicked.connect(self.do_the_measurement)
 
     def closeEvent(self, event):
@@ -183,6 +199,48 @@ class ScannerControl(QtWidgets.QWidget):
         self.measurement_thread.terminate()
         self.measurement_thread.wait()
 
+    def build_scan_request_from_ui(self):
+        fname = "/Users/stuartwalker/.config/diagnostics-utility/i1-tds-calibrations/stuart-conf.toml"
+        # fname = "/System/Volumes/Data/home/xfeloper/user/stwalker/stuart-conf.toml"
+        calibration = load_calibration(fname)
+        do_beta_scan = self.ui.do_beta_scan_checkbox.isChecked(),
+        voltages = self.get_voltages()
+        slug = self.ui.slug_line_edit.text()
+        dscan_tds_voltage_mv = self.ui.dispersion_scan_tds_voltage_spinbox.value()
+        dscan_tds_voltage_v = dscan_tds_voltage_mv * 1e6
+        images_per_setpoint = self.ui.beam_shots_spinner.value()
+        total_background_images = self.ui.bg_shots_spinner.value()
+        screen_name = self.machine.scanner.scan.screen
+
+        use_known_resolution = self.ui.use_known_resolution_checkbox.isChecked()
+
+        settings = self.settings_dialog.get_scan_settings()
+        # settings = make_default_scan_settings()
+
+        return ScanRequest(calibration=calibration,
+                           voltages=voltages,
+                           do_beta_scan=do_beta_scan,
+                           dscan_tds_voltage=dscan_tds_voltage_mv,
+                           screen_name=screen_name,
+                           slug=slug,
+                           use_known_resolution=use_known_resolution,
+                           images_per_setpoint=images_per_setpoint,
+                           total_background_images=total_background_images,
+                           settings=settings)
+
+
+@dataclass
+class ScanRequest:
+    calibration: TDSCalibration
+    voltages: list[float]
+    do_beta_scan: bool
+    dscan_tds_voltage: float
+    screen_name: str
+    slug: str
+    images_per_setpoint: int
+    total_background_images: int
+    use_known_resolution: bool
+    settings: ScanSettings = None
 
 class ScanWorker(QObject):
     dispersion_sp_signal = pyqtSignal(float)
@@ -190,14 +248,10 @@ class ScanWorker(QObject):
     background_image_signal = pyqtSignal(object)
     full_measurement_result_signal = pyqtSignal(FittedBeamParameters)
 
-    def __init__(self, machine, calibration, voltages, slug=None):
+    def __init__(self, machine, scan_request):
         super().__init__()
         self.machine = machine
-        self.scan_settings = ScanSettings()
-        self.calibration = calibration
-        self.voltages = voltages
-        self.screen_name = "OTRC.64.I1D"
-        self.slug = slug
+        self.scan_request = scan_request
         self.kill = False
         self.output_directory = None
 
@@ -205,19 +259,19 @@ class ScanWorker(QObject):
         return self.machine.screens.get_image_raw_address(self.screen_name)
 
     def make_output_directory(self):
-        basedir = self.scan_settings.outdir
+        basedir = self.scan_request.settings.outdir
         measurement_dir = datetime.utcnow().strftime("%Y-%m-%d-%H:%M:%SUTC")
-        if self.slug:
+        if self.scan_request.slug:
             measurement_dir = f"{self.slug}" + measurement_dir
         directory = basedir / measurement_dir
         LOG.debug(f"Making output directory: {directory}")
-        directory.mkdir(exist_ok=True, parents=False)
+        directory.mkdir(exist_ok=True, parents=True)
         self.output_directory = directory
 
     def run(self):
         self.make_output_directory()
 
-        background = self.take_background()
+        background = self.take_background(self.scan_request.total_background_images)
 
         self.machine.beam_on()
         time.sleep(2)
@@ -225,7 +279,9 @@ class ScanWorker(QObject):
         dscan_widths = self.dispersion_scan(background)
         time.sleep(5)
         tscan_widths = self.tds_scan(background)
-
+        time.sleep(5)
+        if self.scan_request.do_beta_scan:
+            bcan_widths = self.beta_scan(background)
 
         fitter = SliceWidthsFitter(dscan_widths,
                                    tscan_widths,
@@ -233,74 +289,99 @@ class ScanWorker(QObject):
                                    )
         ofp = self.machine.scanner.scan.optics_fixed_points
 
+        print("ASSUMING 130MeV BEAM!!!")
         # TODO: beam energy needs to be dynamic!
         # SO DOES VOLTAGE!!!!!!!!!!!!!!
-        dscan_voltage = self.machine.scanner.scan.qscan.voltage
+        dscan_voltage = self.scan_request.dscan_tds_voltage
         tscan_dispersion = self.machine.scanner.scan.tscan.setpoint.dispersion
         measurement_result = fitter.all_fit_parameters(beam_energy=130e6,
                                                        dscan_voltage=dscan_voltage,
                                                        tscan_dispersion=tscan_dispersion,
                                                        optics_fixed_points=ofp)
+        if self.scan_request.use_known_resolution:
+            fitter.known_sigma_r = 28e-6 # MAKE THIS DYNAMIC!!!
+
         self.full_measurement_result_signal.emit(measurement_result)
         return measurement_result
 
-    def take_background(self):
+    def take_background(self, n):
+        LOG.info(f"Taking {n} background shots...")
         self.machine.beam_off()
         time.sleep(2)
         bgs = []
+        screen_name = self.scan_request.screen_name
         for _ in range(5):
             time.sleep(0.2)
-            raw_image = self.machine.screens.get_image_raw(self.screen_name)
+            raw_image = self.machine.screens.get_image_raw(screen_name)
             bgs.append(raw_image.T)
             self.background_image_signal.emit(raw_image)
 
         mean_bg = np.mean(bgs, axis=0)
-        print(mean_bg)
-        print(mean_bg.shape)
         return mean_bg
 
     def dispersion_scan(self, bg) -> dict[float, float]:
         voltage = self.machine.scanner.scan.qscan.voltage
         voltage = 0.61e6
-        # voltage = 
+        # voltage =
         self.set_tds_voltage(voltage)
         print("Doing dispersion scan at voltage", voltage)
-        # print("Doing dispersion scan at amplitude", amplitude)        
+        # print("Doing dispersion scan at amplitude", amplitude)
         widths = defaultdict(list)
         for setpoint in self.machine.scanner.scan.qscan.setpoints:
             self.set_quads(setpoint)
-            time.sleep(self.scan_settings.quad_wait)
+            time.sleep(self.scan_request.settings.quad_wait)
             sp_widths = self.do_one_scan_setpoint(ScanType.DISPERSION,
-                                               setpoint.dispersion,
-                                                  voltage,
+                                                  dispersion=setpoint.dispersion,
+                                                  voltage=voltage,
+                                                  beta=setpoint.beta,
                                                   bg=bg)
             widths[setpoint.dispersion].extend(sp_widths)
         # Get the average...
         widths = {dx: np.mean(widths) for dx, widths in widths.items()}
         return widths
-
+    
     def tds_scan(self, bg) -> dict[float, float]:
         setpoint = self.machine.scanner.scan.tscan.setpoint
         print("Doing tds scan at dispersion", setpoint.dispersion)
         self.set_quads(setpoint)
         time.sleep(3)
         widths = defaultdict(list)
-        for i, voltage in enumerate(self.voltages):
+        for i, voltage in enumerate(self.scan_request.voltages):
             self.set_tds_voltage(voltage)
             # time.sleep(self.scan_settings.tds_amplitude_wait)
             if i == 0:
                 time.sleep(3)
             time.sleep(5)
             sp_widths = self.do_one_scan_setpoint(ScanType.TDS,
-                                                  setpoint.dispersion,
-                                                  voltage,
+                                                  dispersion=setpoint.dispersion,
+                                                  voltage=voltage,
+                                                  beta=setpoint.beta,
                                                   bg=bg)
             widths[voltage].extend(sp_widths)
 
         widths = {voltage: np.mean(widths) for voltage, widths in widths.items()}
         return widths
 
-    def do_one_scan_setpoint(self, scan_type: ScanType, dispersion: float, voltage: float, bg=0.0):
+    def beta_scan(self, bg) -> dict[float, float]:
+        voltage = self.machine.scanner.scan.bscan.voltage
+        voltage = 0.61e6
+        self.set_tds_voltage(voltage)
+        print("Doing beta scan at voltage", voltage)
+        widths = defaultdict(list)
+        for setpoint in self.machine.scanner.scan.bscan.setpoints:
+            self.set_quads(setpoint)
+            time.sleep(self.scan_request.settings.quad_wait)
+            sp_widths = self.do_one_scan_setpoint(ScanType.BETA,
+                                                  setpoint.dispersion,
+                                                  voltage=voltage,
+                                                  beta=setpoint.beta,
+                                                  bg=bg)
+            widths[setpoint.beta].extend(sp_widths)
+        # Get the average...
+        widths = {dx: np.mean(widths) for dx, widths in widths.items()}
+        return widths
+
+    def do_one_scan_setpoint(self, scan_type: ScanType, dispersion: float, voltage: float, beta: float, bg=0.0):
         widths = [] # Result
         # Output pandas dataframe of snapshots
 
@@ -309,10 +390,12 @@ class ScanWorker(QObject):
                 processed_image = process_image(raw_image, scan_type,
                                                 dispersion=dispersion,
                                                 voltage=voltage,
+                                                beta=beta,
                                                 bg=bg)
                 accumulator.take_snapshot(raw_image,
                                           dispersion=dispersion,
                                           voltage=voltage,
+                                          beta=beta,
                                           scan_type=str(scan_type))
                 widths.append(processed_image.central_width)
                 self.processed_image_signal.emit(processed_image)
@@ -324,13 +407,14 @@ class ScanWorker(QObject):
 
     def set_tds_voltage(self, voltage):
         LOG.info(f"Setting TDS voltage: {voltage / 1e6} MV")
-        amplitude = self.calibration.get_amplitude(voltage)
+        amplitude = self.scan_request.calibration.get_amplitude(voltage)
         self.machine.deflectors.active_tds().set_amplitude(amplitude)
 
     def take_beam_data(self, nbeam):
+        screen_name = self.scan_request.screen_name
         for _ in range(nbeam):
             time.sleep(0.2)
-            raw_image = self.machine.screens.get_image_raw(self.screen_name)
+            raw_image = self.machine.screens.get_image_raw(screen_name)
             yield raw_image
 
     def snapshot_accumulator(self, scan_type, dispersion, voltage):
@@ -347,7 +431,7 @@ def make_snapshot_filename(*, scan_type, dispersion, voltage, **images):
     voltage /= 1e6
     return f"{scan_string}-V={voltage=}MV_{dispersion=}m.npz"
 
-def process_image(image, scan_type: ScanType, dispersion, voltage, bg=0):
+def process_image(image, scan_type: ScanType, dispersion, voltage, beta, bg=0):
     image = image.T # Flip to match control room..?  TODO
     image = filter_image(image, bg=bg, crop=True)
     _, means, sigmas = get_slice_properties(image)
@@ -359,35 +443,53 @@ def process_image(image, scan_type: ScanType, dispersion, voltage, bg=0):
                           central_width=sigma,
                           central_width_row=central_width_row,
                           dispersion=dispersion,
-                          voltage=voltage)
+                          voltage=voltage,
+                          beta=beta)
 
 
 
 class ScannerConfDialog(QtWidgets.QDialog):
     scanner_config_signal = pyqtSignal(ScanSettings)
-    def __init__(self, initial_settings=None, parent=None):
+    def __init__(self, defaults, parent=None):
         super().__init__()
         self.ui = scanner_config.Ui_Dialog()
         self.ui.setupUi(self)
+        self.defaults = defaults
+        self.restore_ui_initial_values()
 
-        self.update_settings(initial_settings)
+    def restore_ui_initial_values(self):
+        uiconf = self.defaults
+        quad_wait = uiconf["quad_wait"]
+        # nbg = uiconf["nbackground_per_scan"]
+        # nbeam = uiconf["nbeam_per_setpoint"]
+        quad_wait = uiconf["quad_wait"]
+        tds_amplitude_wait = uiconf["tds_amplitude_wait"]
+        beam_on_wait = uiconf["beam_on_wait"]
+        self.ui.tds_amplitude_wait_spinbox.setValue(tds_amplitude_wait)
+        self.ui.quad_sleep_spinbox.setValue(quad_wait)
+        self.ui.beam_on_wait_spinbox.setValue(beam_on_wait)
 
-    def update_settings(self, initial_settings):
-        if not initial_settings:
-            return
+        if is_in_controlroom():
+            outdir = Path(uiconf["outdir_bkr"])
+        else:
+            outdir = Path("./measurements")
 
-        self.ui.tds_amplitude_wait_spinbox.setValue(initial_settings.tds_amplitude_wait)
-        self.ui.quad_sleep_spinbox.setValue(initial_settings.quad_wait)
-        self.ui.output_directory_lineedit.setText(str(initial_settings.outdir))
-        self.ui.pixel_size_spinbox.setValue(initial_settings.pixel_size)
-        self.ui.beam_on_wait_spinbox.setValue(initial_settings.beam_on_wait)
+        outdir = str(Path(outdir.resolve()))
+
+        self.ui.output_directory_lineedit.setText(outdir)
 
     def get_scan_settings(self):
-        return ScanSettings(quad_wait=self.ui.tds_amplitude_wait_spinbox.value(),
+        return ScanSettings(quad_wait=self.ui.quad_sleep_spinbox.value(),
                             tds_amplitude_wait=self.ui.tds_amplitude_wait_spinbox.value(),
                             beam_on_wait=self.ui.beam_on_wait_spinbox.value(),
                             outdir=self.ui.output_directory_lineedit.text())
 
+
+@dataclass
+class NewSetpointSignal:
+    voltage: float
+    dispersion: float
+    beta: float
 
 class ScannerResultsDialog(QtWidgets.QDialog):
     def __init__(self, parent=None):
@@ -429,6 +531,7 @@ class ProcessedImage:
     central_width_row: int
     dispersion: float
     voltage: float
+    beta: float
 
 
 
