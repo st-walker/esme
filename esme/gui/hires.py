@@ -112,7 +112,7 @@ class HighResolutionEnergySpreadMainWindow(QMainWindow):
             scatter_data = [processed_image.voltage], [processed_image.central_width.n]
             self.voltage_widths_scatter.addPoints(*scatter_data)
         elif processed_image.scan_type is ScanType.BETA:
-            scatter_data = [processed_image.voltage], [processed_image.central_width.n]
+            scatter_data = [processed_image.beta], [processed_image.central_width.n]
             self.beta_widths_scatter.addPoints(*scatter_data)
             
         image_item = items[0]

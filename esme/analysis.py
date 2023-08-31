@@ -461,24 +461,11 @@ class SliceWidthsFitter:
         a_v, b_v = linear_fit(voltages2, widths2_m2, errors2_m2)
         return a_v, b_v
 
-    def tds_scan_fit(self) -> tuple[ValueWithErrorT, ValueWithErrorT]:
-        widths_with_errors = list(self.tscan_widths.values())
+    def beta_scan_fit(self) -> tuple[ValueWithErrorT, ValueWithErrorT]:
+        widths_with_errors = list(self.bscan_widths.values())
         widths = [x.n for x in widths_with_errors]
         errors = [x.s for x in widths_with_errors]
-        voltages = np.array(list(self.tscan_widths.keys()))
-        voltages2 = voltages**2
-        widths2_m2, errors2_m2 = transform_pixel_widths(
-            widths, errors, pixel_units="m", to_variances=True
-        )
-        a_v, b_v = linear_fit(voltages2, widths2_m2, errors2_m2)
-        return a_beta, b_beta
-
-    def tds_scan_fit(self) -> tuple[ValueWithErrorT, ValueWithErrorT]:
-        widths_with_errors = list(self.tscan_widths.values())
-        widths = [x.n for x in widths_with_errors]
-        errors = [x.s for x in widths_with_errors]
-        beta = np.array(list(self.dscan_widths.keys()))
-        beta2 = beta**2
+        beta = np.array(list(self.bscan_widths.keys()))
         widths2_m2, errors2_m2 = transform_pixel_widths(
             widths, errors, pixel_units="m", to_variances=True
         )

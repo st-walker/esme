@@ -31,6 +31,7 @@ from esme.calibration import TDSCalibration
 from esme.plot import pretty_parameter_table, formatted_parameter_dfs
 
 LOG = logging.getLogger(__name__)
+LOG.setLevel(logging.DEBUG)
 
 # A Coursera course on algorithms & data structures and another one on machine learning will be useful
 
@@ -97,7 +98,7 @@ class ScannerControl(QtWidgets.QWidget):
 
     def apply_current_optics(self):
         selected_dispersion = self.get_chosen_dispersion()
-        selected_beta = self.get_chosen_beta()
+        # selected_beta = self.get_chosen_beta()
         setpoint = self.machine.scanner.get_setpoint(selected_dispersion)
         self.machine.scanner.set_scan_setpoint_quads(setpoint)
 
@@ -192,18 +193,29 @@ class ScannerControl(QtWidgets.QWidget):
 
     def display_final_result(self, fitted_beam_parameters):
         LOG.debug("Displaying Final Result")
-        fit_df, beam_df = formatted_parameter_dfs(fitted_beam_parameters)
-        text = pretty_parameter_table(fit_df, beam_df)
-        self.result_dialog.ui.result_text_browser.setText(text)
-        self.result_dialog.show()
+        try:
+            fit_df, beam_df = formatted_parameter_dfs(fitted_beam_parameters)
+        except ValueError:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Critical)
+            msg.setText("Error")
+            msg.setInformativeText("Unable to extract beam parameters from scan(s).")
+            msg.setWindowTitle("Error")
+            msg.exec_()
+        else:
+            text = pretty_parameter_table(fit_df, beam_df)
+            self.result_dialog.ui.result_text_browser.setText(text)
+            self.result_dialog.show()
+            
         self.measurement_thread.terminate()
         self.measurement_thread.wait()
 
     def build_scan_request_from_ui(self):
-        fname = "/Users/stuartwalker/.config/diagnostics-utility/i1-tds-calibrations/stuart-conf.toml"
-        # fname = "/System/Volumes/Data/home/xfeloper/user/stwalker/stuart-conf.toml"
+        # XXX: THIS NEEDS TO BE DYNAMIC
+        # fname = "/Users/stuartwalker/.config/diagnostics-utility/i1-tds-calibrations/stuart-conf.toml"
+        fname = "/System/Volumes/Data/home/xfeloper/user/stwalker/stuart-conf.toml"
         calibration = load_calibration(fname)
-        do_beta_scan = self.ui.do_beta_scan_checkbox.isChecked(),
+        do_beta_scan = self.ui.do_beta_scan_checkbox.isChecked()
         voltages = self.get_voltages()
         slug = self.ui.slug_line_edit.text()
         dscan_tds_voltage_mv = self.ui.dispersion_scan_tds_voltage_spinbox.value()
@@ -217,16 +229,18 @@ class ScannerControl(QtWidgets.QWidget):
         settings = self.settings_dialog.get_scan_settings()
         # settings = make_default_scan_settings()
 
-        return ScanRequest(calibration=calibration,
+        scan_request = ScanRequest(calibration=calibration,
                            voltages=voltages,
                            do_beta_scan=do_beta_scan,
-                           dscan_tds_voltage=dscan_tds_voltage_mv,
+                           dscan_tds_voltage=dscan_tds_voltage_v,
                            screen_name=screen_name,
                            slug=slug,
                            use_known_resolution=use_known_resolution,
                            images_per_setpoint=images_per_setpoint,
                            total_background_images=total_background_images,
                            settings=settings)
+        LOG.info(f"Preparing scan request payload: {scan_request}")
+        return scan_request
 
 
 @dataclass
@@ -256,14 +270,14 @@ class ScanWorker(QObject):
         self.output_directory = None
 
     def get_image_raw_address(self):
-        return self.machine.screens.get_image_raw_address(self.screen_name)
+        return self.machine.screens.get_image_raw_address(self.scan_request.screen_name)
 
     def make_output_directory(self):
         basedir = self.scan_request.settings.outdir
         measurement_dir = datetime.utcnow().strftime("%Y-%m-%d-%H:%M:%SUTC")
         if self.scan_request.slug:
-            measurement_dir = f"{self.slug}" + measurement_dir
-        directory = basedir / measurement_dir
+            measurement_dir = f"{self.scan_request.slug}" + measurement_dir
+        directory = Path(basedir) / measurement_dir
         LOG.debug(f"Making output directory: {directory}")
         directory.mkdir(exist_ok=True, parents=True)
         self.output_directory = directory
@@ -276,19 +290,21 @@ class ScanWorker(QObject):
         self.machine.beam_on()
         time.sleep(2)
 
+        bscan_widths = None
+        if self.scan_request.do_beta_scan:
+            time.sleep(5)
+            bscan_widths = self.beta_scan(background)
+        time.sleep(5)
         dscan_widths = self.dispersion_scan(background)
         time.sleep(5)
         tscan_widths = self.tds_scan(background)
-        time.sleep(5)
-        if self.scan_request.do_beta_scan:
-            bcan_widths = self.beta_scan(background)
 
-        fitter = SliceWidthsFitter(dscan_widths,
-                                   tscan_widths,
-                                   # self.machine.scanner.scan
-                                   )
+
+        fitter = SliceWidthsFitter(dscan_widths=dscan_widths,
+                                   tscan_widths=tscan_widths,
+                                   bscan_widths=bscan_widths)
         ofp = self.machine.scanner.scan.optics_fixed_points
-
+        print(ofp)
         print("ASSUMING 130MeV BEAM!!!")
         # TODO: beam energy needs to be dynamic!
         # SO DOES VOLTAGE!!!!!!!!!!!!!!
@@ -299,7 +315,9 @@ class ScanWorker(QObject):
                                                        tscan_dispersion=tscan_dispersion,
                                                        optics_fixed_points=ofp)
         if self.scan_request.use_known_resolution:
-            fitter.known_sigma_r = 28e-6 # MAKE THIS DYNAMIC!!!
+            known_sigma_r = 28e-6
+            LOG.info(f"Using known resolution: {known_sigma_r} for calculation")
+            fitter.known_sigma_r = known_sigma_r # XXX: MAKE THIS DYNAMIC!!!
 
         self.full_measurement_result_signal.emit(measurement_result)
         return measurement_result
@@ -320,8 +338,7 @@ class ScanWorker(QObject):
         return mean_bg
 
     def dispersion_scan(self, bg) -> dict[float, float]:
-        voltage = self.machine.scanner.scan.qscan.voltage
-        voltage = 0.61e6
+        voltage = self.scan_request.dscan_tds_voltage
         # voltage =
         self.set_tds_voltage(voltage)
         print("Doing dispersion scan at voltage", voltage)
@@ -363,12 +380,13 @@ class ScanWorker(QObject):
         return widths
 
     def beta_scan(self, bg) -> dict[float, float]:
-        voltage = self.machine.scanner.scan.bscan.voltage
-        voltage = 0.61e6
+        voltage = self.scan_request.dscan_tds_voltage
         self.set_tds_voltage(voltage)
         print("Doing beta scan at voltage", voltage)
         widths = defaultdict(list)
+
         for setpoint in self.machine.scanner.scan.bscan.setpoints:
+            print(f"Starting beta scan setpoint={setpoint.beta}.")
             self.set_quads(setpoint)
             time.sleep(self.scan_request.settings.quad_wait)
             sp_widths = self.do_one_scan_setpoint(ScanType.BETA,
@@ -386,7 +404,7 @@ class ScanWorker(QObject):
         # Output pandas dataframe of snapshots
 
         with self.snapshot_accumulator(scan_type, dispersion, voltage) as accumulator:
-            for raw_image in self.take_beam_data(self.scan_settings.nbeam):
+            for raw_image in self.take_beam_data(self.scan_request.images_per_setpoint):
                 processed_image = process_image(raw_image, scan_type,
                                                 dispersion=dispersion,
                                                 voltage=voltage,
@@ -503,17 +521,7 @@ class ScannerResultsDialog(QtWidgets.QDialog):
         pass
 
     def send_to_logbook(self):
-        #?????????? I don't know how to get this to work...
-        # pixmap = self.parent().parent().parent().grab()
-        # size = pixmap.size()
-        # h = size.width()
-        # w = size.height()
-
-        # image = pixmap.toImage()
-        # byte_str = image.bits().tobytes()
-        # img = np.frombuffer(byte_str, dtype=np.uint8).reshape((w,h,4))
-
-        text = self.ui.result_text_browser.text()
+        text = self.ui.result_text_browser.toPlainText()
         send_to_logbook(title="Slice Energy Spread Measurement",
                         author="WAL",
                         text=text)

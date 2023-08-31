@@ -12,7 +12,6 @@ import numpy as np
 from PyQt5.QtCore import QObject, pyqtSignal, QByteArray, QBuffer, QIODevice
 from PyQt5.QtWidgets import QWidget
 
-
 from esme.control.configs import build_simple_machine_from_config, load_virtual_machine_interface, build_lps_machine_from_config
 
 from esme.control.vmint import DictionaryXFELMachineInterface
