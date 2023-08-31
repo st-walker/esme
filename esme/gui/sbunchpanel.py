@@ -55,7 +55,7 @@ class SpecialBunchControl(QtWidgets.QWidget):
         self.ui.go_to_last_bunch_in_br_pushbutton.setEnabled(enabled)
         self.ui.go_to_last_laserpulse_pushbutton.setEnabled(enabled)
         self.ui.use_fast_kickers_checkbox.setEnabled(enabled)
-        self.ui.use_tds_checkbox.setEnabled(enabled)        
+        self.ui.use_tds_checkbox.setEnabled(enabled)
         self.ui.select_screen_combobox.setEnabled(enabled)
         self.ui.npulses_spinbox.setEnabled(enabled)
 
@@ -68,7 +68,8 @@ class SpecialBunchControl(QtWidgets.QWidget):
         self.ui.npulses_spinbox.valueChanged.connect(self.machine.sbunches.set_npulses)
         self.ui.go_to_last_laserpulse_pushbutton.clicked.connect(self.goto_last_bunch_in_machine)
         self.ui.go_to_last_bunch_in_br_pushbutton.clicked.connect(self.goto_last_bunch_in_br)
-        self.ui.start_stop_button.clicked.connect(self.start_stop_special_bunches)
+        self.ui.start_button.clicked.connect(self.machine.sbunches.start_diagnostic_bunch)
+        self.ui.stop_button.clicked.connect(self.machine.sbunches.stop_diagnostic_bunch)
 
     def set_kickers_for_picked_screen(self, index):
         screen_name = self.ui.select_screen_combobox.itemText(index)
@@ -78,7 +79,7 @@ class SpecialBunchControl(QtWidgets.QWidget):
 
     def emit_current_screen_name(self):
         self.screen_name_signal.emit(self.get_selected_screen_name())
-        
+
     def update_screen_combo_box(self):
         self.ui.select_screen_combobox.clear()
         self.ui.select_screen_combobox.addItems(self.machine.screens.active_region_screen_names())
@@ -117,31 +118,23 @@ class SpecialBunchControl(QtWidgets.QWidget):
             br = beam_regions[selected_beam_region]
         except IndexError:
             LOG.info(f"User tried to select last bunch of nonexistent beam region: {selected_beam_region}.")
-            box = QMessageBox(self) #, "Invalid Beam Region", 
+            box = QMessageBox(self) #, "Invalid Beam Region",
             box.setText(f"Beam Region {selected_beam_region+1} does not exist.")
             box.exec()
             return
         else:
             self.machine.sbunches.set_bunch_number(br.nbunches())
-            
-    def start_stop_special_bunches(self):
-        is_firing = self.machine.sbunches.is_diag_bunch_firing()
-        if is_firing:
-            self.machine.sbunches.stop_diagnostic_bunch()
-        else:
-            self.machine.sbunches.start_diagnostic_bunch()
 
     def update_panel_start_stop_state(self):
         is_diag_bunch_firing = self.machine.sbunches.is_diag_bunch_firing()
         if is_diag_bunch_firing:
             self.set_bunch_control_enabled(False)
-            self.ui.start_stop_button.setText("Stop Diagnostic Bunch")
-            self.ui.start_stop_button.setDown(True)
+            self.ui.start_button.setEnabled(False)
+            self.ui.stop_button.setEnabled(True)
         else:
-            self.set_bunch_control_enabled(True)            
-            self.ui.start_stop_button.setText("Start Diagnostic Bunch")
-            self.ui.start_stop_button.setDown(False)
+            self.set_bunch_control_enabled(True)
+            self.ui.stop_button.setEnabled(True)
+            self.ui.stop_button.setEnabled(False)
 
     def get_selected_screen_name(self):
         return self.ui.select_screen_combobox.currentText()
-            

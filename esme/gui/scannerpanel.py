@@ -527,8 +527,6 @@ class ScannerResultsDialog(QtWidgets.QDialog):
                         text=text)
 
 
-
-
 # class ResultDisplayBox:
 
 @dataclass
