@@ -106,6 +106,7 @@ class Ui_TDSCalibrationWindow(object):
         TDSCalibrationWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(TDSCalibrationWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 800, 22))
+        self.menubar.setNativeMenuBar(False)
         self.menubar.setObjectName("menubar")
         self.menuMenu = QtWidgets.QMenu(self.menubar)
         self.menuMenu.setObjectName("menuMenu")
