@@ -34,7 +34,14 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="pushButton_2">
+      <widget class="QPushButton" name="recalculate_button">
+       <property name="text">
+        <string>Recalculate</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="close_buton">
        <property name="text">
         <string>Close</string>
        </property>

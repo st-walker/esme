@@ -63,18 +63,26 @@ class Ui_hires_mainwindow(object):
         self.menubar = QtWidgets.QMenuBar(hires_mainwindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 800, 22))
         self.menubar.setObjectName("menubar")
+        self.menuMenu = QtWidgets.QMenu(self.menubar)
+        self.menuMenu.setObjectName("menuMenu")
         hires_mainwindow.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(hires_mainwindow)
         self.statusbar.setObjectName("statusbar")
         hires_mainwindow.setStatusBar(self.statusbar)
+        self.action_Print_to_Logbook = QtWidgets.QAction(hires_mainwindow)
+        self.action_Print_to_Logbook.setObjectName("action_Print_to_Logbook")
+        self.menuMenu.addAction(self.action_Print_to_Logbook)
+        self.menubar.addAction(self.menuMenu.menuAction())
 
         self.retranslateUi(hires_mainwindow)
         QtCore.QMetaObject.connectSlotsByName(hires_mainwindow)
 
     def retranslateUi(self, hires_mainwindow):
         _translate = QtCore.QCoreApplication.translate
-        hires_mainwindow.setWindowTitle(_translate("hires_mainwindow", "MainWindow"))
+        hires_mainwindow.setWindowTitle(_translate("hires_mainwindow", "High Resolution Slice Energy Spread Measurer"))
         self.groupBox.setTitle(_translate("hires_mainwindow", "Controls"))
+        self.menuMenu.setTitle(_translate("hires_mainwindow", "Menu"))
+        self.action_Print_to_Logbook.setText(_translate("hires_mainwindow", "&Print to Logbook"))
 from esme.gui.scannerpanel import ScannerControl
 from esme.gui.tds import TDSControl
 from pyqtgraph import GraphicsLayoutWidget

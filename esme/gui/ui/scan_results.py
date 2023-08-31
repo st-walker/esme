@@ -27,9 +27,12 @@ class Ui_results_box_dialog(object):
         self.send_to_logbook_button = QtWidgets.QPushButton(results_box_dialog)
         self.send_to_logbook_button.setObjectName("send_to_logbook_button")
         self.horizontalLayout.addWidget(self.send_to_logbook_button)
-        self.pushButton_2 = QtWidgets.QPushButton(results_box_dialog)
-        self.pushButton_2.setObjectName("pushButton_2")
-        self.horizontalLayout.addWidget(self.pushButton_2)
+        self.recalculate_button = QtWidgets.QPushButton(results_box_dialog)
+        self.recalculate_button.setObjectName("recalculate_button")
+        self.horizontalLayout.addWidget(self.recalculate_button)
+        self.close_buton = QtWidgets.QPushButton(results_box_dialog)
+        self.close_buton.setObjectName("close_buton")
+        self.horizontalLayout.addWidget(self.close_buton)
         self.gridLayout.addLayout(self.horizontalLayout, 1, 0, 1, 1)
 
         self.retranslateUi(results_box_dialog)
@@ -39,7 +42,8 @@ class Ui_results_box_dialog(object):
         _translate = QtCore.QCoreApplication.translate
         results_box_dialog.setWindowTitle(_translate("results_box_dialog", "Dialog"))
         self.send_to_logbook_button.setText(_translate("results_box_dialog", "Send To Logbook"))
-        self.pushButton_2.setText(_translate("results_box_dialog", "Close"))
+        self.recalculate_button.setText(_translate("results_box_dialog", "Recalculate"))
+        self.close_buton.setText(_translate("results_box_dialog", "Close"))
 
 
 if __name__ == "__main__":
