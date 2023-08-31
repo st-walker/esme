@@ -51,11 +51,22 @@ class HighResolutionEnergySpreadMainWindow(QMainWindow):
                                                                 ylabel="Widths", yunits="px")
 
         self.scannerp.processed_image_signal.connect(self.post_processed_image)
+        self.scannerp.background_image_signal.connect(self.post_background_image)
         self.scannerp.full_measurement_result_signal.connect(self.post_final_result)
 
         self.timer = self.build_main_timer(100)
+        self.finished = False
+
+    def post_background_image(self, image):
+        items = self.image_plot.items
+        assert len(items) == 1
+            
+        image_item = items[0]
+        image_item.setImage(image)
+        
 
     def post_final_result(self, final_result):
+        self.finished = True
         print(final_result)
 
     def build_main_timer(self, period):
@@ -66,11 +77,19 @@ class HighResolutionEnergySpreadMainWindow(QMainWindow):
         return timer
 
     def post_processed_image(self, processed_image: ProcessedImage):
+        if self.finished:
+            self.dispersion_widths_scatter.setData([], [])
+            self.voltage_widths_scatter.setData([], [])
+            self.finished = False
+
         image = processed_image.image
         peak_energy_row = processed_image.central_width_row
-        image[peak_energy_row] *= 0
+        # image[peak_energy_row] *= 0
         items = self.image_plot.items
         assert len(items) == 1
+        # view = self.image_plot.items[0].getView()
+        # infinite_line = pg.InfiniteLine(pos=peak_energy_row, angle=0)
+        # view.addItem(infinite_line)
 
         if processed_image.scan_type is ScanType.DISPERSION:
             scatter_data = [processed_image.dispersion], [processed_image.central_width.n]
@@ -78,7 +97,7 @@ class HighResolutionEnergySpreadMainWindow(QMainWindow):
         elif processed_image.scan_type is ScanType.TDS:
             scatter_data = [processed_image.voltage], [processed_image.central_width.n]
             self.voltage_widths_scatter.addPoints(*scatter_data)
-
+            
         image_item = items[0]
         image_item.setImage(image)
 
@@ -108,7 +127,7 @@ def make_pixel_widths_scatter(widget, title, xlabel, xunits, ylabel, yunits):
     plot.setLabel('bottom', xlabel, units=xunits)
     plot.setLabel('left', ylabel, units=yunits)
     
-    scatter = pg.ScatterPlotItem()
+    scatter = pg.ScatterPlotItem(size=10, pen=pg.mkPen(None), brush=pg.mkBrush(255, 0, 0, 100))
     plot.addItem(scatter)
 
     return scatter

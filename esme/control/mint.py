@@ -152,6 +152,9 @@ class XFELMachineInterface(XFELMachineInterfaceABC):
             pydoocs.write(channel, val)
         except pydoocs.DoocsException as e:
             raise pydoocs.DoocsException(f"Failed writing {val} to {channel}") from e
+        except:
+            from ipdb import set_trace; set_trace()
+            from IPython import embed; embed()
 
     def get_charge(self) -> float:
         return self.get_value("XFEL.DIAG/CHARGE.ML/TORA.25.I1/CHARGE.SA1")

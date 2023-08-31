@@ -15,8 +15,9 @@ from esme.control.vmint import ReadBackAddress, ScanMachineInterface, QualifiedI
 from esme.control.scanner import QuadScanSetpoint, ScanConfig, Scanner, QuadScan, TDSScan
 from esme.control.snapshot import SnapshotRequest
 
+
 from esme.analysis import OpticsFixedPoints
-from esme.calibration import BolkoCalibrationSetPoint, TDSCalibration, IgorCalibration, DiscreteCalibration, BolkoCalibration
+from esme.calibration import BolkoCalibrationSetPoint, TDSCalibration, IgorCalibration, DiscreteCalibration, BolkoCalibration, StuartCalibration
 
 
 def load_kickers_from_config(dconf: dict[str, Any]) -> FastKickerController:

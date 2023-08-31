@@ -39,12 +39,18 @@ class LPSMachine:
                  # initial_location=None,
                  mi=None) -> None:
         # initial_location = initial_location if initial_location else DiagnosticRegion("I1")
-        mi = mi if mi else XFELMachineInterface()
+        self.mi = mi if mi else XFELMachineInterface()
         self.scanner = scanner
         self.screens = sservice
         self.deflectors = deflectors
         self.sbunches = SpecialBunchesControl(mi=mi)
         # self.set_measurement_location(initial_location)
+
+    def beam_off(self):
+        self.mi.set_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED", 0)
+
+    def beam_on(self):
+        self.mi.set_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED", 1)
 
         
     # def set_kicker_for_screen(self, screen_name: str) -> None:

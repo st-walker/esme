@@ -88,10 +88,12 @@ class TDSCalibrator:
 
 class TDSCalibration:
     def get_voltage(self, amplitude):
-        return line(amplitude, *self.fit_to_voltage())
+        popt, _ = self.fit_to_voltage()
+        return line(amplitude, *popt)
 
     def get_amplitude(self, voltage):
-        return line(voltage, *self.fit_to_amplitude())
+        popt, _ = self.fit_to_amplitude()
+        return line(voltage, *popt)
 
     def fit_to_voltage(self):
         popt, pcov = curve_fit(line, self.get_amplitudes(), self.get_amplitudes())
@@ -106,6 +108,12 @@ class StuartCalibration(TDSCalibration):
     def __init__(self, amplitudes, voltages):
         self.amplitudes = amplitudes
         self.voltages = voltages
+
+    def get_voltages(self):
+        return self.voltages
+
+    def get_amplitudes(self):
+        return self.amplitudes
 
 class BolkoCalibrationSetPoint:
     def __init__(self, amplitude, slope, r34, energy, frequency):

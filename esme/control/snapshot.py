@@ -70,7 +70,7 @@ class Snapshotter:
             assert wildcard.is_wildcard_address()
             # Now read...
             reads = self.mi.get_value(str(wildcard))
-            addresses_parts = reads[:, 4]
+            addresses_parts = np.array(reads)[:, 4]
 
             full_addresses = [wildcard.with_location(loc) for loc in addresses_parts]
             subaddress_full_address_map.update(dict(zip(addresses_parts, full_addresses)))
@@ -105,7 +105,7 @@ class Snapshotter:
     def read_wildcards(self) -> dict:
         result = {}
         for wildcard in self.request.wildcards:
-            reads = self.mi.get_value(wildcard)
+            reads = np.array(self.mi.get_value(wildcard))
             addresses = reads[:, 4]
             values = reads[:, 1]
 
