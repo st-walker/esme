@@ -9,7 +9,9 @@ import pyqtgraph as pg
 from matplotlib import cm
 import numpy as np
 
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal, QByteArray, QBuffer, QIODevice
+from PyQt5.QtWidgets import QWidget
+
 
 from esme.control.configs import build_simple_machine_from_config, load_virtual_machine_interface, build_lps_machine_from_config
 
@@ -99,4 +101,12 @@ def load_scanner_panel_ui_defaults():
         #                     tds_amplitude_wait=tds_amplitude_wait,
         #                     beam_on_wait=beam_on_wait,
         #                     outdir=outdir
-        
+
+
+def get_screenshot(window_widget):
+   screenshot_tmp = QByteArray()
+   screeshot_buffer = QBuffer(screenshot_tmp)
+   screeshot_buffer.open(QIODevice.WriteOnly)
+   widget = QWidget.grab(window_widget)
+   widget.save(screeshot_buffer, "png")
+   return screenshot_tmp.toBase64().data().decode()

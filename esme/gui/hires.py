@@ -9,10 +9,11 @@ from PyQt5.QtWidgets import QApplication, QFileDialog, QFrame, QMainWindow, QMes
 import numpy as np
 
 
+from esme.mint import send_to_logbook
 from esme.gui.ui import lps
 from esme.control.sbunches import DiagnosticRegion
 from esme.control.pattern import get_beam_regions, get_bunch_pattern
-from esme.gui.common import build_default_machine_interface, QPlainTextEditLogger, setup_screen_display_widget
+from esme.gui.common import build_default_machine_interface, QPlainTextEditLogger, setup_screen_display_widget, get_screenshot
 from esme.gui.scannerpanel import ProcessedImage, ScanType
 from esme.plot import pretty_parameter_table
 
@@ -56,12 +57,19 @@ class HighResolutionEnergySpreadMainWindow(QMainWindow):
                                                              ylabel="Widths", yunits="px")
 
         
-        self.scannerp.processed_image_signal.connect(self.post_processed_image)
+        self.scannerp.processed_image_signal.connect(send_to_logbook)
         self.scannerp.background_image_signal.connect(self.post_background_image)
         self.scannerp.full_measurement_result_signal.connect(self.post_final_result)
 
+        self.ui.action_print_to_logbook.triggered.connect(self.send_to_logbook)
+
         self.timer = self.build_main_timer(100)
         self.finished = False
+
+    def send_to_logbook(self):
+        image = get_screenshot(self)
+        send_to_logbook(author="High Res. Energy Spread Measurement",
+                        image=image)
 
     def post_background_image(self, image):
         items = self.image_plot.items
