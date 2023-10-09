@@ -14,7 +14,7 @@ from esme.gui.ui import mainwindow
 from .calibrator import CalibrationMainWindow
 from esme.control.sbunches import DiagnosticRegion
 from esme.control.pattern import get_beam_regions, get_bunch_pattern
-from esme.gui.common import build_default_machine_interface, setup_screen_display_widget
+from esme.gui.common import build_default_machine_interface, setup_screen_display_widget, send_to_logbook
 
 pg.setConfigOption("useNumba", True)
 pg.setConfigOption("imageAxisOrder", "row-major")
@@ -52,13 +52,16 @@ class LPSMainWindow(QMainWindow):
         self.connect_buttons()
         self.setup_indicators()
 
+        self.ui.action_print_to_logbook.triggered.connect(self.send_to_logbook)
+        self.ui.action_close.triggered.connect(self.close)
+
         self.image_plot = setup_screen_display_widget(self.ui.screen_display_widget)
         self.screen_worker, self.screen_thread = self.setup_screen_worker()
 
         self.timer = self.build_main_timer(period=100)
 
-    # def r34_from_tds_to_screen(self):
-    #     lattice = ..
+    def send_to_logbook(self):
+        send_widget_to_log(self, author="Longitudinal Diagnostics Utility")
 
     def setup_logger_tab(self):
         log_handler = QPlainTextEditLogger()
@@ -132,7 +135,7 @@ class QPlainTextEditLogger(QObject, logging.Handler):
 
 class ScreenWatcher(QObject):
     # image_signal = pyqtSignal(np.ndarray)
-    image_signal = pyqtSignal(object)    
+    image_signal = pyqtSignal(object)
     def __init__(self, machine):
         super().__init__()
         self.machine = machine

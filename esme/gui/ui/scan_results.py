@@ -14,26 +14,46 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_results_box_dialog(object):
     def setupUi(self, results_box_dialog):
         results_box_dialog.setObjectName("results_box_dialog")
-        results_box_dialog.resize(480, 457)
+        results_box_dialog.resize(733, 559)
         self.gridLayout = QtWidgets.QGridLayout(results_box_dialog)
         self.gridLayout.setObjectName("gridLayout")
+        self.horizontalLayout_6 = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_6.setObjectName("horizontalLayout_6")
+        self.label_3 = QtWidgets.QLabel(results_box_dialog)
+        self.label_3.setObjectName("label_3")
+        self.horizontalLayout_6.addWidget(self.label_3)
+        self.title_line_edit = QtWidgets.QLineEdit(results_box_dialog)
+        self.title_line_edit.setText("")
+        self.title_line_edit.setObjectName("title_line_edit")
+        self.horizontalLayout_6.addWidget(self.title_line_edit)
+        self.gridLayout.addLayout(self.horizontalLayout_6, 0, 0, 1, 1)
+        self.comments_browser = QtWidgets.QPlainTextEdit(results_box_dialog)
+        self.comments_browser.setTabChangesFocus(True)
+        self.comments_browser.setReadOnly(False)
+        self.comments_browser.setPlainText("")
+        self.comments_browser.setOverwriteMode(False)
+        self.comments_browser.setBackgroundVisible(False)
+        self.comments_browser.setCenterOnScroll(False)
+        self.comments_browser.setObjectName("comments_browser")
+        self.gridLayout.addWidget(self.comments_browser, 1, 0, 1, 1)
+        self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_2.setObjectName("horizontalLayout_2")
         self.result_text_browser = QtWidgets.QTextBrowser(results_box_dialog)
-        self.result_text_browser.setReadOnly(False)
-        self.result_text_browser.setAcceptRichText(False)
         self.result_text_browser.setObjectName("result_text_browser")
-        self.gridLayout.addWidget(self.result_text_browser, 0, 0, 1, 1)
+        self.horizontalLayout_2.addWidget(self.result_text_browser)
+        self.fit_text_browser = QtWidgets.QTextBrowser(results_box_dialog)
+        self.fit_text_browser.setObjectName("fit_text_browser")
+        self.horizontalLayout_2.addWidget(self.fit_text_browser)
+        self.gridLayout.addLayout(self.horizontalLayout_2, 2, 0, 1, 1)
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.send_to_logbook_button = QtWidgets.QPushButton(results_box_dialog)
         self.send_to_logbook_button.setObjectName("send_to_logbook_button")
         self.horizontalLayout.addWidget(self.send_to_logbook_button)
-        self.recalculate_button = QtWidgets.QPushButton(results_box_dialog)
-        self.recalculate_button.setObjectName("recalculate_button")
-        self.horizontalLayout.addWidget(self.recalculate_button)
-        self.close_buton = QtWidgets.QPushButton(results_box_dialog)
-        self.close_buton.setObjectName("close_buton")
-        self.horizontalLayout.addWidget(self.close_buton)
-        self.gridLayout.addLayout(self.horizontalLayout, 1, 0, 1, 1)
+        self.close_button = QtWidgets.QPushButton(results_box_dialog)
+        self.close_button.setObjectName("close_button")
+        self.horizontalLayout.addWidget(self.close_button)
+        self.gridLayout.addLayout(self.horizontalLayout, 3, 0, 1, 1)
 
         self.retranslateUi(results_box_dialog)
         QtCore.QMetaObject.connectSlotsByName(results_box_dialog)
@@ -41,9 +61,26 @@ class Ui_results_box_dialog(object):
     def retranslateUi(self, results_box_dialog):
         _translate = QtCore.QCoreApplication.translate
         results_box_dialog.setWindowTitle(_translate("results_box_dialog", "Dialog"))
+        self.label_3.setText(_translate("results_box_dialog", "Title"))
+        self.comments_browser.setPlaceholderText(_translate("results_box_dialog", "Comments & Notes...", "asdasd"))
+        self.result_text_browser.setHtml(_translate("results_box_dialog", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
+"<html><head><meta name=\"qrichtext\" content=\"1\" /><meta charset=\"utf-8\" /><style type=\"text/css\">\n"
+"p, li { white-space: pre-wrap; }\n"
+"hr { height: 1px; border-width: 0; }\n"
+"li.unchecked::marker { content: \"\\2610\"; }\n"
+"li.checked::marker { content: \"\\2612\"; }\n"
+"</style></head><body style=\" font-family:\'.AppleSystemUIFont\'; font-size:13pt; font-weight:400; font-style:normal;\">\n"
+"<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p></body></html>"))
+        self.fit_text_browser.setHtml(_translate("results_box_dialog", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
+"<html><head><meta name=\"qrichtext\" content=\"1\" /><meta charset=\"utf-8\" /><style type=\"text/css\">\n"
+"p, li { white-space: pre-wrap; }\n"
+"hr { height: 1px; border-width: 0; }\n"
+"li.unchecked::marker { content: \"\\2610\"; }\n"
+"li.checked::marker { content: \"\\2612\"; }\n"
+"</style></head><body style=\" font-family:\'.AppleSystemUIFont\'; font-size:13pt; font-weight:400; font-style:normal;\">\n"
+"<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p></body></html>"))
         self.send_to_logbook_button.setText(_translate("results_box_dialog", "Send To Logbook"))
-        self.recalculate_button.setText(_translate("results_box_dialog", "Recalculate"))
-        self.close_buton.setText(_translate("results_box_dialog", "Close"))
+        self.close_button.setText(_translate("results_box_dialog", "Close"))
 
 
 if __name__ == "__main__":

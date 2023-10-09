@@ -8,6 +8,7 @@ import logging
 import pyqtgraph as pg
 from matplotlib import cm
 import numpy as np
+import subprocess
 
 from PyQt5.QtCore import QObject, pyqtSignal, QByteArray, QBuffer, QIODevice
 from PyQt5.QtWidgets import QWidget
@@ -88,24 +89,69 @@ def load_scanner_panel_ui_defaults():
     with open(DEFAULT_CONFIG_PATH, "r") as f:
         dconf = yaml.safe_load(f)
         uiconf = dconf["scanner"]["gui_defaults"]
-
         return uiconf
 
-        # if is_in_controlroom():
-        #     outdir = Path(uiconf["outdir_bkr"])
-        # else:
-        #     outdir = Path("./measurements")
-
-        # return ScanSettings(quad_wait=quad_wait,
-        #                     tds_amplitude_wait=tds_amplitude_wait,
-        #                     beam_on_wait=beam_on_wait,
-        #                     outdir=outdir
-
-
 def get_screenshot(window_widget):
-   screenshot_tmp = QByteArray()
-   screeshot_buffer = QBuffer(screenshot_tmp)
-   screeshot_buffer.open(QIODevice.WriteOnly)
-   widget = QWidget.grab(window_widget)
-   widget.save(screeshot_buffer, "png")
-   return screenshot_tmp.toBase64().data().decode()
+    screenshot_tmp = QByteArray()
+    screeshot_buffer = QBuffer(screenshot_tmp)
+    screeshot_buffer.open(QIODevice.WriteOnly)
+    widget = QWidget.grab(window_widget)
+    widget.save(screeshot_buffert, "png")
+    return screenshot_tmp.toBase64().data().decode()
+
+
+def send_to_logbook(author="", title="", severity="", text="", image=None) -> None:
+    """
+    Send information to the electronic logbook.
+
+    """
+
+    # The DOOCS elog expects an XML string in a particular format. This string
+    # is beeing generated in the following as an initial list of strings.
+    elogXMLStringList = ['<?xml version="1.0" encoding="ISO-8859-1"?>', '<entry>']
+
+    # author information
+    elogXMLStringList.append('<author>')
+    elogXMLStringList.append(author)
+    elogXMLStringList.append('</author>')
+    # title information
+    elogXMLStringList.append('<title>')
+    elogXMLStringList.append(title)
+    elogXMLStringList.append('</title>')
+    # severity information
+    elogXMLStringList.append('<severity>')
+    elogXMLStringList.append(severity)
+    elogXMLStringList.append('</severity>')
+    # text information
+    elogXMLStringList.append('<text>')
+    elogXMLStringList.append(text)
+    elogXMLStringList.append('</text>')
+    # image information
+    if image is not None:
+        encodedImage = base64.b64encode(image)
+        elogXMLStringList.append('<image>')
+        elogXMLStringList.append(encodedImage.decode())
+        elogXMLStringList.append('</image>')
+    elogXMLStringList.append('</entry>')
+    # join list to the final string
+    elogXMLString = '\n'.join(elogXMLStringList)
+    # open printer process
+    elog = "xfellog"
+    lpr = subprocess.Popen(
+        ['/usr/bin/lp', '-o', 'raw', '-d', elog],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+    )
+    # send printer job
+    lpr.communicate(elogXMLString.encode('utf-8'))
+
+def send_widget_to_log(widget, author="", title="", severity="", text=""):
+    image = get_screenshot(widget)
+    send_to_logbook(author="", title="", severity="", text="", image=image)
+
+
+def df_to_logbook_table(df):
+    table_string = df.to_csv(sep="|", lineterminator="\n|")
+    table_string = table_string[:-1]
+    return table_string
+    

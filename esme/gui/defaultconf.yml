@@ -137,7 +137,8 @@ scanner:
       area: I1
       screen_resolution: 28e-6
       # Yaml requires signs for exponents ...
-      tds_scan_voltages: [0.56e+6, 0.61e+6, 0.65e+6, 0.75e+6, 0.85e+6]
+      # tds_scan_voltages: [0.56e+6, 0.61e+6, 0.65e+6, 0.75e+6, 0.85e+6]
+      tds_scan_voltages: [0.38e+6, 0.47e+6, 0.56e+6, 0.65e+6, 0.75e+6]
       tds_scan_dispersion: 1.2
       dispersion_scan_tds_voltage: 0.61e+6
       beta_screen: 0.6
@@ -177,6 +178,7 @@ scanner:
 
       channels:
         image: XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ
+        energy_at_screen: XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/I1D/ENERGY.ALL
         addresses:
           - XFEL.MAGNETS/MAGNET.ML/SOLB.23.I1/CURRENT.SP
           - XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED

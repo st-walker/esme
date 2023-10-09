@@ -82,7 +82,7 @@ doc = [
 esme = 'esme.cli:main'
 lpsgui = 'esme.gui.gui:start_gui'
 tdsc = 'esme.gui.calibrator:main'
-hires = 'esme.gui.lps:main'
+hires = 'esme.gui.hires:start_hires_gui'
 
 [tool.black]
 line-length = 88

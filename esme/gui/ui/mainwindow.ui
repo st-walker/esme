@@ -129,7 +129,7 @@
            <item row="9" column="0">
             <widget class="QPushButton" name="bunch_length_button">
              <property name="text">
-              <string>Bunch Length...</string>
+              <string>Measure Bunch Length...</string>
              </property>
             </widget>
            </item>
@@ -199,8 +199,8 @@
     <property name="title">
      <string>Menu</string>
     </property>
-    <addaction name="actionPrint_to_Logbook"/>
-    <addaction name="actionClose"/>
+    <addaction name="action_print_to_logbook"/>
+    <addaction name="action_close"/>
    </widget>
    <widget class="QMenu" name="menuMeasurement">
     <property name="title">
@@ -214,7 +214,7 @@
    <addaction name="menuMeasurement"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <action name="actionClose">
+  <action name="action_close">
    <property name="text">
     <string>Close</string>
    </property>
@@ -222,7 +222,7 @@
     <string>Ctrl+Q</string>
    </property>
   </action>
-  <action name="actionPrint_to_Logbook">
+  <action name="action_print_to_logbook">
    <property name="text">
     <string>Print to Logbook</string>
    </property>

@@ -3,6 +3,7 @@ from typing import Optional
 from contextlib import contextmanager
 from pathlib import Path
 from dataclasses import dataclass
+import pytz
 
 import numpy as np
 import pandas as pd
@@ -31,7 +32,7 @@ class SnapshotAccumulator:
 
     @property
     def outdir(self):
-        return Path(self.filename).parent        
+        return Path(self.filename).parent
 
     @property
     def image_outdir(self):
@@ -50,7 +51,7 @@ class SnapshotAccumulator:
         fname = self.filename.with_suffix(".pkl")
         LOG.debug(f"Writing DataFrame to {fname}")
         df.to_pickle(fname)
-        
+
     def take_snapshot(self, image: Optional[list] = None, **kvps):
         result = self.snapshotter.snapshot(image_dir=self.image_outdir,
                                            image=image, **kvps)
@@ -59,7 +60,7 @@ class SnapshotAccumulator:
 
 
 class Snapshotter:
-    def __init__(self, request, mi: Optional[XFELMachineInterface] = None):
+    def __init__(self, request: SnapshotRequest, mi: Optional[XFELMachineInterface] = None):
         self.request = request
         self.mi = mi if mi else XFELMachineInterface()
 
@@ -113,5 +114,9 @@ class Snapshotter:
         return result
 
 def make_image_filename(imagedir):
-    filename = datetime.utcnow().strftime(f"%Y-%m-%d-%H:%M:%S:%fUTC.npz")
+    # this is the local time.
+    tz = pytz.timezone("Europe/Berlin")
+    local_hamburg_time = tz.localize(datetime.now())
+    filename = local_hamburg_time.strftime(f"%Y-%m-%d-%H:%M:%S:%f.npz")
     return Path(imagedir) / filename
+

@@ -43,7 +43,15 @@ class Screen:
 
     def is_screen_ok(self):
         return (self.is_in() or self.is_off_axis()) and self.is_on()
-    
+
+    def get_pixel_xsize(self) -> float:
+        addy = f"XFEL.DIAG/CAMERA/{self.name}/X.POLY_SCALE" # mm
+        return self.get_value(addy)[2] * 1e-3 # mm to m
+
+    def get_pixel_ysize(self) -> float:
+        addy = f"XFEL.DIAG/CAMERA/{self.name}/Y.POLY_SCALE" # mm
+        return self.get_value(addy)[2] * 1e-3 # mm to m
+        
 
 class ScreenService:
     SCREEN_FDP_TEMPLATE = "XFEL.DIAG/CAMERA/{}/IMAGE_EXT"
@@ -85,3 +93,4 @@ class ScreenService:
             raise EuXFELUserError("Screen has no fast kicker setpoint information")
         LOG.debug(f"Got FastKickerSetpoint for screen {screen_name}: {fast_kicker_setpoints}")
         return fast_kicker_setpoints
+

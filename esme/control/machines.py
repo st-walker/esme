@@ -19,7 +19,7 @@ class BunchLengthMachine:
         self.sbunches = SpecialBunchesControl(mi=mi)
         self.set_measurement_location(initial_location)
 
-        
+
     def set_kicker_for_screen(self, screen_name: str) -> None:
         kicker_setpoints = self.screens.get_fast_kicker_setpoints_for_screen(screen_name)
         for setpoint in kicker_setpoints:
@@ -51,17 +51,3 @@ class LPSMachine:
 
     def beam_on(self):
         self.mi.set_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED", 1)
-
-        
-    # def set_kicker_for_screen(self, screen_name: str) -> None:
-    #     kicker_setpoints = self.screens.get_fast_kicker_setpoints_for_screen(screen_name)
-    #     for setpoint in kicker_setpoints:
-    #         self.kickerop.apply_fast_kicker_setpoint(setpoint)
-    #     # self.sbunches.write_kicker
-
-    # def set_measurement_location(self, location: DiagnosticRegion):
-    #     self.sbunches.location = location
-    #     self.screens.location = location
-    #     self.deflectors.location = location
-
-        

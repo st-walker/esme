@@ -12,7 +12,6 @@ with warnings.catch_warnings():
     warnings.simplefilter("ignore")
     from ocelot.cpbd.magnetic_lattice import MagneticLattice
 
-from esme.lattice import injector_cell_from_snapshot
 from esme.maths import line
 
 I1D_ENERGY_ADDRESS = "XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/I1D/ENERGY.ALL"
@@ -153,6 +152,8 @@ class IgorCalibration:
         self.amplitudes = amplitudes
         self.voltages = voltages
 
+    def get_amplitude(self, voltage):
+        return dict(zip(self.voltages, self.amplitudes))[voltage]
 
 
 class DiscreteCalibration(TDSCalibration):
@@ -240,26 +241,6 @@ class TDSVoltageCalibration:
     def get_voltage(self, amplitude: float) -> float:
         popt, _ = self.fit_voltages()
         return line(amplitude, *popt)
-
-
-def lat_from_tds_to_screen(snapshot: pd.Series):
-    cell = injector_cell_from_snapshot(snapshot)
-    screen_marker = next(ele for ele in cell if ele.id == "OTRC.64.I1D")
-    tds_marker = next(ele for ele in cell if ele.id == "TDS2")
-
-    lat = MagneticLattice(cell, start=tds_marker, stop=screen_marker)
-
-    return lat
-
-
-def r34_from_tds_to_screen(snapshot: pd.Series) -> float:
-    lat = lat_from_tds_to_screen(snapshot)
-    energy = snapshot[I1D_ENERGY_ADDRESS].mean()
-
-    # Convert energy to GeV from MeV
-    _, rmat, _ = lat.transfer_maps(energy * 1e-3)
-    r34 = rmat[2, 3]
-    return r34
 
 
 def get_tds_voltage(

@@ -10,8 +10,6 @@ from .mint import XFELMachineInterface
 
 # from IPython import embed
 
-BR_TRANSITION = 1 << 24
-
 
 def get_bunch_pattern():
     return pydoocs.read("XFEL.DIAG/TIMER/DI1914TL/BUNCH_PATTERN")["data"]
@@ -86,7 +84,6 @@ def get_beam_regions(bp):
 
     return result
 
-
 def get_transition_regions(bp):
     pairs = get_transition_region_start_stop_indices(bp)
     result = []
@@ -124,8 +121,10 @@ class BeamRegion(Section):
     def __init__(self, subpattern: np.ndarray, istart: int, idn: int):
         self.subpattern = subpattern
         self.istart = istart
-        self.idn = idn
+        self.idn = idn # Beam Region Number
 
+    def get_rep_rate_bunch_mask(self):
+        pass
 
 class TransitionRegion(Section):
     def __init__(self, subpattern: np.ndarray, istart: int):

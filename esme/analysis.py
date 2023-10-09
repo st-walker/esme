@@ -36,16 +36,16 @@ from uncertainties import ufloat
 from uncertainties.umath import sqrt as usqrt  # pylint: disable=no-name-in-module
 
 from esme.calibration import TDS_LENGTH, TDS_WAVENUMBER, TrivialTDSCalibrator
-# from esme.channels import (
-#     BEAM_ALLOWED_ADDRESS,
-#     BEAM_ENERGY_ADDRESS,
-#     DUMP_SCREEN_ADDRESS,
-#     EVENT10_CHANNEL,
-#     TDS_I1_ON_BEAM_EVENT10,
-# )
 from esme.exceptions import EnergySpreadCalculationError, TDSCalibrationError
-# from esme.image import get_slice_properties, process_image
+from esme.image import get_slice_properties, get_central_slice_width_from_slice_properties, filter_image
 from esme.maths import ValueWithErrorT, linear_fit
+import numpy as np
+from scipy.constants import e
+from esme.optics import calculate_i1d_r34_from_tds_centre
+
+from esme.calibration import TDS_WAVENUMBER
+from esme.maths import get_gaussian_fit
+
 
 PIXEL_SCALE_X_UM: float = 13.7369
 PIXEL_SCALE_Y_UM: float = 11.1756
@@ -60,295 +60,109 @@ ELECTRON_MASS_EV: float = m_e * c**2 / e
 
 RawImageT = npt.NDArray
 
-MULTIPROCESSING = True
 
 
-class TDSScreenImage:
-    def __init__(self, metadata: pd.Series):
-        self.metadata = metadata
-        self._image = None
+class MeasurementDataFrames:
+    def __init__(self, fnames, *, image_dir, image_address, energy_address):
+        imd = image_dir
+        ia = image_address
+        ea = energy_address
+        self.tscans = []
+        self.dscans = []
+        self.bscans = []
+        for f in fnames:
+            if "tscan" in str(f):
+                self.tscans.append(SetpointDataFrame(f,
+                                                     images_dir=imd,
+                                                     image_address=ia,
+                                                     energy_address=ea))
+            elif "dscan" in str(f):
+                self.dscans.append(SetpointDataFrame(f,
+                                                     images_dir=imd,
+                                                     image_address=ia,
+                                                     energy_address=ea))
+            elif "bscan" in str(f):
+                self.bscans.append(SetpointDataFrame(f,
+                                                     images_dir=imd,
+                                                     image_address=ia,
+                                                     energy_address=ea))
+            else:
+                raise ValueError(f"Unrecognised file: {f}")
 
-    @property
-    def filename(self) -> str:
-        return self.metadata[DUMP_SCREEN_ADDRESS]
+    def max_voltage_df(self):
+        imax = np.argmax([df.voltage for df in self.tscans])
+        return self.tscans[imax]
 
-    def to_im(self, process=True) -> RawImageT:
-        # path to png is in the df, but actually we want path to the adjacent
-        # pcl file.  the pngs are just for debugging.
-        fname = Path(self.filename).with_suffix(".pcl")
-        with open(fname, "rb") as f:
-            im = pickle.load(f)
-        # Flip to match what we see in the control room.  not sure if
-        # I need an additional flip here or not, but shouldn't matter too much.
-        return im.T
+    def max_dispersion_sp(self):
+        imax = np.argmax([df.dispersion for df in self.tscans])
+        return self.dscans[imax]
+    
+    def dscan_voltage(self):
+        dscan_voltages = [dscan.voltage for dscan in self.dscans]
+        assert len(set(dscan_voltages)) == 1
+        return dscan_voltages[0]
 
-    def show(self, raw=False) -> None:
-        im = self.to_im(process=not raw)
-        fig, ax = plt.subplots()
-        ax.imshow(im)
-        plt.show()
+    def tscan_dispersion(self):
+        tscan_dispersions = [tscan.dispersion for tscan in self.tscans]
+        assert len(set(tscan_dispersions)) == 1
+        return tscan_dispersions[0]
 
-    @property
-    def is_bg(self) -> bool:
-        return not bool(self.metadata[BEAM_ALLOWED_ADDRESS])
-
-    @property
-    def beam_energy(self) -> float:
-        eV = 1e6  # Energy is given in MeV which we convert to eV for consistency.
-        return self.metadata[BEAM_ENERGY_ADDRESS] * eV
-
-    @property
-    def is_bad(self) -> bool:
-        # If the beam was nominally on
-        beam_on = not self.is_bg
-        # But the TDS was apparently off beam
-        tds_off = not self.tds_was_on
-        # or the TDS was on but all the BPMs give nonsense readings (all NaNs)
-        no_bpm_data = self.is_no_bpm_data
-        # Then this image should not be used
-        return beam_on and (tds_off or no_bpm_data)
-
-    @property
-    def tds_was_on(self) -> bool:
-        # print("ASSUMING TDS WAS ALWAYS ON!!!!!!!!!!!!")
-        # return True
-        on = self.metadata[EVENT10_CHANNEL][2] == TDS_I1_ON_BEAM_EVENT10[2]
-        LOG.debug(f"TDS 'on' state: {on}")
-        return on
-
-    @property
-    def is_no_bpm_data(self) -> bool:
-        series = self.metadata
-        columns = list(series.keys()[series.keys().str.startswith("BPM")])
-        bpm_data = series[columns]
-        return bpm_data.isnull().all()
+    def energy(self):
+        energies = []
+        energies.extend([t.energy for t in self.tscans])
+        energies.extend([b.energy for b in self.bscans])
+        energies.extend([d.energy for d in self.dscans])
+        return np.mean(energies)
 
 
-class ScanMeasurement:
-    DF_DX_SCREEN_KEY = "MY_SCREEN_DX"
-    DF_BETA_SCREEN_KEY = "MY_SCREEN_BETA"
-
-    def __init__(self, setpoint: SetpointSnapshots):
-        self.setpoint = setpoint
-
-        try:
-            self.dx = self.setpoint.measured_dispersion[0]
-        except TypeError:
-            self.dx = self.setpoint.measured_dispersion
-
-        self.tds_percentage = self.setpoint.tds_amplitude_setpoint
-
-        if self.setpoint.beta:
-            self.beta = self.setpoint.beta
-
-        self.images = []
-        self.bg = []
-        self._mean_bg_im: Optional[RawImageT] = None  # For caching.
-
-        df = self.setpoint.snapshots
-        for i, path in enumerate(df[DUMP_SCREEN_ADDRESS]):
-            LOG.debug(f"Loading image index {i} @ {path}")
-
-            # In the df the png paths relative to the pickled dataframe, but
-            # I want to be able to call it from anywhere, so resolve them to
-            # absolute paths.
-            metadata = df[df[DUMP_SCREEN_ADDRESS] == path].squeeze()
-            image = TDSScreenImage(metadata)
-
-            if image.is_bad:
-                LOG.info(f"Skipping bad image: {i}")
-                continue
-
-            if image.is_bg:
-                LOG.debug(f"Image {i} is bg")
-                self.bg.append(image)
-            elif not image.is_bg:
-                self.images.append(image)
+class SetpointDataFrame:
+    def __init__(self, path, *, images_dir, image_address, energy_address):
+        self.df = pd.read_pickle(path)
+        self.images_dir = Path(images_dir)
+        self.image_address = image_address
+        self.energy_address = energy_address
 
     @property
-    def metadata(self) -> pd.Dataframe:
-        df = pd.DataFrame([image.metadata for image in self.images])
-        df = df.sort_values("timestamp")
-        return df
-
-    def to_im(self, index: int, process: bool = True) -> RawImageT:
-        image = self[index].to_im()
-        mean_bg = self.mean_bg_im()
-        if process:
-            image = process_image(image, mean_bg)
-        return image
-
-    def mean_bg_im(self) -> RawImageT:
-        if self._mean_bg_im is not None:
-            return self._mean_bg_im
-        bgs = [tdsdata.to_im() for tdsdata in self.bg]
-        self._mean_bg_im = np.mean(bgs, axis=0)
-        return self._mean_bg_im
-
-    def show(self, index: int) -> None:
-        im = self.to_im(index)
-        fig, ax = plt.subplots()
-        ax.imshow(im)
-        x, means, _ = get_slice_properties(im)
-        means = [m.n for m in means]
-        ax.plot(x, means, label="Slice positions")
-        ax.axvline(x[np.argmin(means)], color="white", alpha=0.25)
-        plt.show()
-
-    def mean_central_slice_width_with_error(self, padding: int = 10) -> ValueWithErrorT:
-        image_fitted_sigmas = []
-        for i in range(self.nimages):
-            image = self.to_im(i)
-            # Get slice properties for this image
-            _, means, sigmas = get_slice_properties(image)
-            # Find highest energy slice (min because 0 is at the top in the image)
-            sigma = image.get_central_slice_width_from_slice_properties(
-                means, sigmas, padding=padding
-            )
-            image_fitted_sigmas.append(sigma)
-
-        width_with_error = np.mean(image_fitted_sigmas)
-
-        LOG.debug(f"Calculated average slice width: {width_with_error}")
-
-        return width_with_error.n, width_with_error.s  # To tuple
-
-    def __getitem__(self, key: int) -> TDSScreenImage:
-        return self.images[key]
+    def image_full_paths(self):
+        paths = Path(self.images_dir) / self.df[self.image_address]
+        return [p.resolve() for p in paths]
 
     @property
-    def nimages(self) -> int:
-        return len(self.images)
+    def scan_type(self):
+        return _get_constant_column_from_df(self.df, "scan_type")
 
     @property
-    def beam_energy(self) -> float:
-        return np.mean([im.beam_energy for im in self.images])
-
-    def flatten(self, include_bg: bool = True) -> Generator[TDSScreenImage, None, None]:
-        if include_bg:
-            yield from self.bg
-        yield from self.images
-
-    def __repr__(self) -> str:
-        tname = type(self).__name__
-        nimages = len(self.images)
-        nbg = len(self.bg)
-        return f"<{tname}: Dx={self.dx} nimages = {nimages}, nbg={nbg}>"
-
-
-def _f(measurement):
-    return measurement.mean_central_slice_width_with_error(padding=10)
-
-
-class ParameterScan:
-    def __init__(self, setpoints: Iterable[SetpointSnapshots], calibrator=None):
-        LOG.debug(f"Instantiating {type(self).__name__}")
-        self.calibrator = calibrator
-        self.measurements = [ScanMeasurement(sp) for sp in setpoints]
+    def dispersion(self):
+        return _get_constant_column_from_df(self.df, "dispersion")
 
     @property
-    def dx(self) -> np.ndarray:
-        return np.array([s.dx for s in self.measurements])
+    def beta(self):
+        return _get_constant_column_from_df(self.df, "beta")
 
     @property
-    def tds_percentage(self) -> np.ndarray:
-        return np.array([s.tds_percentage for s in self.measurements])
+    def voltage(self):
+        return _get_constant_column_from_df(self.df, "voltage")
 
     @property
-    def metadata(self) -> list[pd.Dataframe]:
-        return [m.metadata for m in self.measurements]
-
-    def max_energy_slice_widths_and_errors(
-        self, padding: int = 20, do_mp: bool = True
-    ) -> tuple[npt.NDArray, npt.NDArray]:
-        global MULTIPROCESSING
-        if MULTIPROCESSING and do_mp:
-            with mp.Pool(mp.cpu_count()) as pool:
-                widths_with_errors = np.array(pool.map(_f, self.measurements))
-        else:
-            widths_with_errors = np.array([_f(m) for m in self.measurements])
-
-        widths = widths_with_errors[..., 0]
-        errors = widths_with_errors[..., 1]
-        return widths, errors
-
-    def __getitem__(self, key: int) -> ScanMeasurement:
-        return self.measurements[key]
-
-    def beam_energy(self) -> float:
-        return np.mean([m.beam_energy for m in self])
-
-    def flatten(
-        self, include_bg: bool = False
-    ) -> Generator[TDSScreenImage, None, None]:
-        for measurement in self.measurements():
-            yield from measurement.flatten(include_bg)
-
-    def __iter__(self):
-        return iter(self.measurements)
-
-
-class DispersionScan(ParameterScan):
-    @property
-    def voltage(self) -> np.ndarray:
-        return _get_constant_voltage_for_scan(self)
-
-
-class TDSScan(ParameterScan):
-    @property
-    def tds_slope(self) -> np.ndarray:
-        return np.array([s.tds_slope for s in self.measurements])
+    def energy(self):
+        """energy at the screen"""
+        return np.mean(self.df[self.energy_address])
 
     @property
-    def voltage(self) -> np.ndarray:
-        scan_dx = self.dx
+    def screen_name(self):
+        return self.image_address.split("/")[2]
 
-        # OK so the point here is that we need a snapshot to go alongside the TDS calibration (which maps amplitudes to slopes).
-        # If we have a "trivial" tds calibrator then there is no need for such a thing
-        # However if we have a normal calibrator then we need a corresponding snapshot to get the R34 matrix element.
-        # BOLKO tool does not give these matrix elements, so we have to calculate them ourselves by recalling what dispersion setpoint at the screen the calibration was done at.
-        # We then have to fetch a snapshot from one of the snapshots here.  They really must be done at the same dispersion (both the calibration) and the scan to get the correct calibration.
-        # NOTE: This is NOT saying that the calibration impacts the voltage!  Of course it does not.
+    def __repr__(self):
+        v = self.voltage / 1e6
+        d = self.dispersion
+        return f"<{type(self).__name__}, {self.scan_type}, V={v}MV, D={d}m, β={self.beta}m>"
 
-        try:
-            calibrator_dx = self.calibrator.dispersion_setpoint
-        except AttributeError:
-            return np.array(
-                [self.calibrator.get_voltage(ampl) for ampl in self.tds_percentage]
-            )
-
-        if not (scan_dx[0] == scan_dx).all():
-            raise EnergySpreadCalculationError(
-                f"TDS Scan dispersions should all be equal: {scan_dx}"
-            )
-
-        # If we have to use a setpoint where the measured dispersion is different, we should be tolerant of that a bit...
-        if np.abs(((scan_dx[0] - calibrator_dx) / calibrator_dx)) > 0.1:
-            scan_dx = np.array2string(scan_dx, separator=", ")
-            raise TDSCalibrationError(
-                "Optics setpoint used differs"
-                " too much from the scan setpoint used to calculate R34:"
-                f" {calibrator_dx=} & {scan_dx=}"
-            )
-
-        # Get metadata associated with first (non-bg) image of each measurement,
-        # and reasonably assume it's the same for every image of the scan.
-        scan_metadata = [m.images[0].metadata for m in self.measurements]
-        voltages = []
-        for percentage, metadata in zip(self.tds_percentage, scan_metadata):
-            voltages.append(self.calibrator.get_voltage(percentage, metadata))
-
-        return np.array(voltages)
-
-
-class BetaScan(ParameterScan):
-    @property
-    def beta(self) -> np.ndarray:
-        return np.array([s.beta for s in self.measurements])
-
-    @property
-    def voltage(self) -> np.ndarray:
-        return _get_constant_voltage_for_scan(self)
+def _get_constant_column_from_df(df, name):
+    col = df[name]
+    unique_values = set(col)
+    if len(unique_values) != 1:
+        raise ValueError(f"Column {name} is not constant in dataframe")
+    return unique_values.pop()
 
 
 def transform_pixel_widths(
@@ -394,10 +208,10 @@ def transform_pixel_widths(
     return np.array(widths), np.array(errors)
 
 
-def calculate_energy_spread_simple(scan: DispersionScan) -> ValueWithErrorT:
+def calculate_energy_spread_simple(widths) -> ValueWithErrorT:
     # Get measurement instance with highest dispresion for this scan
     dx, measurement = max((measurement.dx, measurement) for measurement in scan)
-    energy = measurement.beam_energy  # in eV
+    energy = measurement.energy * 1e6 # in eV
 
     width_pixels = measurement.mean_central_slice_width_with_error(padding=10)
     # Calculate with uncertainties automatically.
@@ -411,6 +225,23 @@ def calculate_energy_spread_simple(scan: DispersionScan) -> ValueWithErrorT:
 
     return value, error  # in eV
 
+
+def pixel_widths_from_setpoint(setpoint: SetpointDataFrame):
+    image_full_paths = setpoint.image_full_paths
+    central_sigmas = []
+    for path in image_full_paths:
+        image = np.load(path)["image"]
+        image = image.T # Flip to match control room..?  TODO
+        # XXX: I do not use any bg here...
+        image = filter_image(image, bg=0.0, crop=False)
+        _, means, bunch_sigmas = get_slice_properties(image)
+        sigma = get_central_slice_width_from_slice_properties(
+            means, bunch_sigmas, padding=10
+        )
+        central_width_row = np.argmin(means)
+        central_sigmas.append(sigma)
+
+    return np.mean(central_sigmas)
 
 
 @dataclass
@@ -429,13 +260,13 @@ class SliceWidthsFitter:
         self,
             dscan_widths,
             tscan_widths,
-            bscan_widths=None
+            bscan_widths=None,
     ):
         self.dscan_widths = dscan_widths
         self.tscan_widths = tscan_widths
         self.bscan_widths = bscan_widths
 
-    def dispersion_scan_fit(self) -> ValueWithErrorT:
+    def dispersion_scan_fit(self, sigma_r=None, emittance=None) -> ValueWithErrorT:
         widths_with_errors = list(self.dscan_widths.values())
         widths = [x.n for x in widths_with_errors]
         errors = [x.s for x in widths_with_errors]
@@ -471,19 +302,8 @@ class SliceWidthsFitter:
         )
         a_beta, b_beta = linear_fit(beta, widths2_m2, errors2_m2)
         return a_beta, b_beta
-    
-    # def beta_scan_fit(self) -> tuple[ValueWithErrorT, ValueWithErrorT]:
-    #     if not self.bscan:
-    #         raise TypeError("Missing optional BetaScan instance.")
-    #     widths, errors = self.bscan.max_energy_slice_widths_and_errors(padding=10)
-    #     beta = self.bscan.beta
-    #     widths2_m2, errors2_m2 = transform_pixel_widths(
-    #         widths, errors, pixel_units="m", to_variances=True
-    #     )
-    #     a_beta, b_beta = linear_fit(beta, widths2_m2, errors2_m2)
-    #     return a_beta, b_beta
 
-    def all_fit_parameters(self, beam_energy, tscan_dispersion, dscan_voltage, optics_fixed_points) -> FittedBeamParameters:
+    def all_fit_parameters(self, beam_energy, tscan_dispersion, dscan_voltage, optics_fixed_points, sigma_r=None, emit=None) -> FittedBeamParameters:
         a_v, b_v = self.tds_scan_fit()
         a_d, b_d = self.dispersion_scan_fit()
 
@@ -495,7 +315,7 @@ class SliceWidthsFitter:
 
         try:
             a_beta, b_beta = self.beta_scan_fit()
-        except TypeError:
+        except (TypeError, AttributeError):
             a_beta = b_beta = None
 
         return FittedBeamParameters(
@@ -511,9 +331,15 @@ class SliceWidthsFitter:
             b_beta=b_beta,
         )
 
-# Redo this class to use SliceWidthsFitter...
-class SliceEnergySpreadMeasurement:
-    pass
+
+# @dataclass
+# class ScanSetpoint:
+#     dispersion: float
+
+
+# @dataclass
+# class ReducedFittedParameters:
+
 
 @dataclass
 class FittedBeamParameters:
@@ -530,7 +356,20 @@ class FittedBeamParameters:
     oconfig: OpticalConfig
     a_beta: ValueWithErrorT = None
     b_beta: ValueWithErrorT = None
-    known_sigma_r: Optional[float] = None
+
+    def a_d_derived(self, sigma_r, emittance=None):
+        if emittance is None:
+            emittance = self.emitx
+        return np.sqrt(sigma_r**2 + (emittance * self.oconfig.beta_screen)**2)
+
+    def set_a_d_to_known_value(self, sigma_r, emittance=None):
+        new_ad = self.a_d_derived(sigma_r, emittance=emittance)
+        self.a_d = new_ad
+
+    def set_a_v_to_known_value(self, sigma_r, emittance=None):
+        new_ad = self.a_d_derived(sigma_r, emittance=emittance)
+        self.a_d = new_ad
+
 
     @property
     def sigma_e(self) -> ValueWithErrorT:
@@ -580,7 +419,10 @@ class FittedBeamParameters:
         v0 = abs(ufloat(*self.reference_voltage))
         e0j = ufloat(*self.reference_energy) * e  # Convert to joules
         k = TDS_WAVENUMBER
-        result = (e0j / (dx0 * e * k * v0)) * usqrt(ad - av + dx0**2 * bd)
+        try:
+            result = (e0j / (dx0 * e * k * v0)) * usqrt(ad - av + dx0**2 * bd)
+        except ValueError:
+            return np.nan, np.nan
         return result.n, result.s
 
     @property
@@ -596,8 +438,8 @@ class FittedBeamParameters:
 
     @property
     def sigma_r(self) -> ValueWithErrorT:
-        if self.known_sigma_r:
-            return self.known_sigma_r, 0
+        # if self.known_sigma_r:
+        #     return self.known_sigma_r, 0
         ad = ufloat(*self.a_d)
         sigma_b = ufloat(*self.sigma_b)
         result = usqrt(ad - sigma_b**2)
@@ -628,8 +470,8 @@ class FittedBeamParameters:
 
     @property
     def sigma_r_alt(self) -> ValueWithErrorT:
-        if self.known_sigma_r:
-            return self.known_sigma_r, 0
+        # if self.known_sigma_r:
+        #     return self.known_sigma_r, 0
         ab = ufloat(*self.a_beta)
         bd = ufloat(*self.b_d)
         d0 = ufloat(*self.reference_dispersion)
@@ -717,7 +559,69 @@ class FittedBeamParameters:
             {"alt_values": values, "alt_errors": errors}, index=pdict.keys()
         )
 
-    def beam_parameters_to_df(self) -> pd.DataFrame:
+    def beam_parameters_to_df(self, sigma_z=None) -> pd.DataFrame:
+        # sigma_t in picosecondsm
         params = self._beam_parameters_to_df()
         alt_params = self._alt_beam_parameters_to_df()
+        if sigma_z is not None:
+            sigma_t = sigma_z / c
+            params.loc["sigma_z"] = {"values": sigma_z.n, "errors": sigma_z.s}
+            params.loc["sigma_t"] = {"values": sigma_t.n, "errors": sigma_t.s}
+
         return pd.concat([params, alt_params], axis=1)
+
+
+def true_bunch_length_from_df(setpoint):
+    image_full_paths = setpoint.image_full_paths
+
+    apparent_bunch_lengths = []
+    for path in image_full_paths:
+        image = np.load(path)["image"]
+        image = image.T # Flip to match control room..?  TODO
+        # XXX: I do not use any bg here...
+        image = filter_image(image, bg=0.0, crop=False)
+        length, error = apparent_bunch_length_from_processed_image(image)
+        apparent_bunch_lengths.append(ufloat(length, error))
+
+    mean_apparent_bunch_length = np.mean(apparent_bunch_lengths)
+
+    r34 = abs(calculate_i1d_r34_from_tds_centre(setpoint))
+    energy = setpoint.energy * 1e6 * e # to Joules
+    voltage = setpoint.voltage
+    bunch_length = (energy / (e * voltage * TDS_WAVENUMBER)) * mean_apparent_bunch_length / r34
+
+    return bunch_length
+
+
+def apparent_bunch_length_from_processed_image(image):
+    pixel_indices = np.arange(image.shape[0])  # Assumes streaking is in image Y
+    projection = image.sum(axis=1)
+    popt, perr = get_gaussian_fit(pixel_indices, projection)
+    sigma = popt[2]
+    sigma_error = perr[2]
+
+    # Transform units from px to whatever was chosen
+    mean_length, mean_error = transform_pixel_widths(
+        [sigma],
+        [sigma_error],
+        to_variances=False,
+        pixel_units="m",
+        dimension="y",
+    )
+
+    return mean_length, mean_error
+
+def true_bunch_length_from_processed_image(image, *, voltage, r34, beam_energy):
+    raw_bl, raw_bl_err = apparent_bunch_length_from_processed_image(image)
+    true_bl = (energy / (e * voltages * TDS_WAVENUMBER)) * raw_bl / r34s
+    true_bl_err = (energy / (e * voltages * TDS_WAVENUMBER)) * raw_bl_err / r34s
+    return true_bl, true_bl_err
+
+
+def _mean_with_uncertainties(values, stdevs):
+    # Calculate mean of n values each with 1 uncertainty.
+    assert len(values) == len(stdevs)
+    mean = np.mean(values)
+    variances = np.power(stdevs, 2)
+    mean_stdev = np.sqrt(np.sum(variances) / (len(values) ** 2))
+    return mean, mean_stdev

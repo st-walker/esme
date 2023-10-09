@@ -1,15 +1,18 @@
 # #!/usr/bin/env python3
 
 # import logging
-# import os
+import os
 # import pickle
 from pathlib import Path
 # from typing import Optional, Union
+import yaml
 
 # import numpy as np
 # import pandas as pd
-# import toml
+import toml
 # from oxfel.longlist import make_default_longlist
+
+from esme.control.scanner import QuadScan, QuadScanSetpoint
 
 # # from esme.analysis import (
 # #     # BetaScan,
@@ -487,9 +490,11 @@ def find_scan_config(fconfig: Path, default_name):
 #     return result
 
 
-# def i1_dscan_config_from_scan_config_file(config_path: os.PathLike):
-#     conf = toml.load(config_path)
-#     return _dscan_config_from_scan_config(conf, "i1")
+def i1_dscan_config_from_scan_config_file(config_path: os.PathLike):
+    with open(config_path, "r") as f:
+        conf = yaml.full_load(f)
+    # conf = toml.load(config_path)
+    return _dscan_config_from_scan_config(conf, "I1")
 
 
 # def i1_tds_voltages_from_scan_config_file(config_path: os.PathLike):
@@ -507,45 +512,24 @@ def find_scan_config(fconfig: Path, default_name):
 #     return conf["b2"]["tds"]["scan_voltages"]
 
 
-# def b2_dscan_config_from_scan_config_file(config_path: os.PathLike):
-#     conf = toml.load(config_path)
-#     return _dscan_config_from_scan_config(conf, "b2")
+def b2_dscan_config_from_scan_config_file(config_path: os.PathLike):
+    conf = toml.load(config_path)
+    return _dscan_config_from_scan_config(conf, "b2")
 
 
-# def _dscan_config_from_scan_config(
-#     scan_config: dict, section
-# ) -> DispersionScanConfiguration:
-#     dscan = scan_config[section]["dscan"]
+def _dscan_config_from_scan_config(
+    dconf: dict, section
+) -> QuadScan:
 
-#     ref = dscan["reference_optics"]
+    i1_scan = next(d for d in dconf["scanner"]["scans"] if d["area"] == section)
 
-#     try:
-#         ref_k1s = ref["k1s"]
-#     except KeyError:
-#         ref_k1ls = ref["k1ls"]
-#     else:
-#         ref_k1ls = named_k1s_to_k1ls(ref["names"], ref_k1s)
+    setpoints = []
+    for dsetpoint in i1_scan["dispersion_scan_setpoints"]:
+        setpoints.append(QuadScanSetpoint(k1ls=dsetpoint["k1ls"],
+                                          dispersion=dsetpoint["dispersion"],
+                                          beta=dsetpoint["beta"]))
 
-#     reference_setting = QuadrupoleSetting(ref["names"], ref_k1ls, ref["dispersion"])
-
-#     quads = dscan["quads"]
-#     dscan_quad_names = quads["names"]
-
-#     try:
-#         quad_k1s = quads["k1s"]
-#     except KeyError:
-#         quad_k1ls = quads["k1ls"]
-#     else:
-#         quad_k1ls = named_k1s_to_k1ls(dscan_quad_names, quad_k1s)
-
-#     scan_settings = []
-#     for dispersion, scan_k1ls in zip(quads["dispersions"], quad_k1ls):
-#         scan_settings.append(QuadrupoleSetting(dscan_quad_names, scan_k1ls, dispersion))
-
-#     # from IPython import embed; embed()
-
-#     tds_voltage = dscan["tds_voltage"]
-#     return DispersionScanConfiguration(reference_setting, scan_settings, tds_voltage)
+    return QuadScan(setpoints, voltage=i1_scan["dispersion_scan_tds_voltage"])
 
 
 # def _tscan_config_from_scan_config_file(
@@ -570,8 +554,8 @@ def find_scan_config(fconfig: Path, default_name):
 #     #     scan_dispersion=tds["scan_dispersion"])
 
 
-# def i1_tscan_config_from_scan_config_file(config_path: os.PathLike):
-#     return _tscan_config_from_scan_config_file("i1", config_path)
+def i1_tscan_config_from_scan_config_file(config_path: os.PathLike):
+    return _tscan_config_from_scan_config_file("i1", config_path)
 
 
 # def b2_tscan_config_from_scan_config_file(config_path: os.PathLike):

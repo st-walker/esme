@@ -1,3 +1,27 @@
+"""Module for controlling the Special Bunch Midlayer (SBM) for diagnostic bunches
+
+It is responsible for firing the kickers in tandem with the TDS so
+that indiividual bunches along a bunch train can be extracted and
+observed on off-axis screens.  This module is designed to be an easy
+way to set the SBM for the desired use:
+
+1. Select a beam region and bunch number to be kicked, streaked, both or neither.
+2. Select a kicker or kickers to fire (or not, if e.g. for an on-axis screen).
+3. Select whether to use the TDS in that area (or not if you don't want the beam streaked).
+
+The SBM is generally screen-agnostic and doesn't know much about
+screens (although there is some duplication here---see
+`SpecialBunchControl.is_screen_ok`).  It assumes that the kicker
+voltages and timings are configured correctly if you have a specific
+screen in mind.
+
+The SBM is specific to the two diagnostic regions as well, either in
+I1 or B2.  It is meaningless to mix these two, e.g. firing the TDS in
+the injector alongside kickers in B2.
+
+"""
+
+
 from typing import Optional, Union
 from enum import Enum, auto
 import logging
@@ -18,10 +42,11 @@ class SpecialBunchesControl:
     STATUS_IS_OK_VALUE = 0
     DIAG_BUNCH_FIRE_VALUE = 1
     DIAG_BUNCH_STOP_VALUE = 0
-    DONT_USE_KICKERS_DUMMY_KICKER_NUMBER = -1
+    DONT_USE_KICKERS_DUMMY_KICKER_NUMBER = 666
+
     def __init__(self, location: Optional[DiagnosticRegion] = None,
                  mi: Optional[XFELMachineInterface] = None) -> None:
-        self.location = location if location else DiagnosticRegion.UNKNOWN
+        self.location = location if location else DiagnosticRegion.I1
         self.mi = mi if mi else XFELMachineInterface()
 
     def set_beam_region(self, br: int) -> None:
@@ -87,19 +112,20 @@ class SpecialBunchesControl:
         LOG.debug(f"Read {value} from {ch}")
         return value
 
-    def power_on_kickers(self, use_kickers: bool) -> None:
+    def power_on_kickers(self) -> None:
+        # Why is this *?
         *_, loc = self.mi.get_value(f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/*{self.location}/KICKER.ON")
         ch = f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/{loc}/KICKER.ON"
         value = 0
         LOG.debug(f"Setting value: {ch=} value={value}")
         self.mi.set_value(ch, value)
 
-    def power_off_kickers(self, use_kickers: bool) -> None:
+    def power_off_kickers(self) -> None:
         *_, loc = self.mi.get_value(f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/*{self.location}/KICKER.ON")
         ch = f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/{loc}/KICKER.ON"
         value = 1
         LOG.debug(f"Setting value: {ch=} value={value}")
-        self.mi.set_value(ch, 1)
+        self.mi.set_value(ch, value)
 
     def dont_use_kickers(self):
         clist = self.get_kicker_control_list()

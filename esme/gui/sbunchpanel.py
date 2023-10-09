@@ -28,6 +28,8 @@ class SpecialBunchControl(QtWidgets.QWidget):
         self.ui = Ui_special_bunch_panel()
         self.ui.setupUi(self)
 
+        self.jddd_camera_window_process = None
+
         self.connect_buttons()
 
         self.update_screen_combo_box()
@@ -70,6 +72,7 @@ class SpecialBunchControl(QtWidgets.QWidget):
         self.ui.go_to_last_bunch_in_br_pushbutton.clicked.connect(self.goto_last_bunch_in_br)
         self.ui.start_button.clicked.connect(self.machine.sbunches.start_diagnostic_bunch)
         self.ui.stop_button.clicked.connect(self.machine.sbunches.stop_diagnostic_bunch)
+        self.ui.jddd_screen_window_button.connect(self.open_jddd_screen_window)
 
     def set_kickers_for_picked_screen(self, index):
         screen_name = self.ui.select_screen_combobox.itemText(index)
@@ -138,3 +141,16 @@ class SpecialBunchControl(QtWidgets.QWidget):
 
     def get_selected_screen_name(self):
         return self.ui.select_screen_combobox.currentText()
+
+    def open_jddd_screen_window(self):
+        self.jddd_camera_window_process = QtCore.QProcess()
+        screen = self.get_selected_screen_name()
+        command = f"jddd-run -file commonAll_In_One_Camera_Expert.xml -address XFEL.DIAG/CAMERA/{screen}/"
+        self.jddd_camera_window_process.start(command)
+        self.jddd_camera_window_process.waitForStarted()
+        self.jddd_camera_window_process.finished.connect(self.close_jddd_screen_window)
+
+    def close_jddd_screen_window(self):
+        self.jddd_camera_window_process.close()
+        self.jddd_camera_window_process = None
+

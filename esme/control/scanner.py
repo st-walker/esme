@@ -84,6 +84,7 @@ class Scanner:
 
     def get_setpoint(self, dispersion: float, beta=None) -> None:
         dispersions = self.scan.qscan.dispersions
+        # from IPython import embed; embed()
         index = dispersions.index(dispersion)
         return self.scan.qscan.setpoints[index]
 

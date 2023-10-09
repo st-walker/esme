@@ -19,7 +19,6 @@ simple:
   XFEL.MAGNETS/MAGNET.ML/QI.63.I1D/KICK_MRAD.SP: 0.0
   XFEL.MAGNETS/MAGNET.ML/QI.64.I1D/KICK_MRAD.SP: 0.0
 
-
 readbacks:
 - address: XFEL.RF/LLRF.CONTROLLER/VS.LLTDSI1/AMPL.SAMPLE
   rb: XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/SP.AMPL
@@ -31,13 +30,13 @@ readbacks:
 
 images:
 - address: XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ
-  snapshots_db: /Users/stuartwalker/repos/esme/esme/control/snapshots2021.pcl
+  snapshots_db: /Users/stuartwalker/physics/esme-measurements/2021-02-26/snapshots2021.pcl
   # snapshots_db: /Users/stuartwalker/repos/esme/esme/control/snapshots2021-with-beta-scan.pcl
-  images_dir: /Users/stuartwalker/from-igor/pyBigBro_ES_03b
+  images_dir: /Users/stuartwalker/physics/esme-measurements/2021-02-26/
   filters:
 
   - XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/SP.AMPL
-  - XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED
+  # - XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED
 
   - XFEL.MAGNETS/MAGNET.ML/QI.52.I1/KICK_MRAD.SP
   - XFEL.MAGNETS/MAGNET.ML/QI.53.I1/KICK_MRAD.SP

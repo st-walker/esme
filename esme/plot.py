@@ -13,11 +13,10 @@ import tabulate
 from scipy.constants import c, e
 from uncertainties import ufloat
 
-import esme.analysis as ana
 import esme.beam as beam
 import esme.calibration as cal
 import esme.image as image
-import esme.lattice as lat
+# import esme.lattice as lat
 import esme.maths as maths
 from esme.exceptions import TDSCalibrationError
 
@@ -32,7 +31,7 @@ TDS_CALIBRATION_LABEL = r"Gradient / $\mathrm{\mu{}mps^{-1}}$"
 TDS_AMPLITUDE_LABEL = r"TDS Amplitude / %"
 
 
-def dump_full_scan(esme: ana.SliceEnergySpreadMeasurement, root_outdir) -> None:
+def dump_full_scan(esme, root_outdir) -> None:
     dispersion_scan = esme.dscan
     tds_scan = esme.tscan
 
@@ -204,7 +203,7 @@ def dump_full_scan(esme: ana.SliceEnergySpreadMeasurement, root_outdir) -> None:
 #     return fig
 
 
-def plot_dispersion_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> None:
+def plot_dispersion_scan(esme, ax=None) -> None:
     scan = esme.dscan
     widths, errors = scan.max_energy_slice_widths_and_errors(padding=10)
     dx2 = scan.dx**2
@@ -275,7 +274,7 @@ def write_pixel_widths(esme, outdir):
     tds_data.to_csv(outdir / "tscan_central_slices.csv")
 
 
-def plot_tds_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> None:
+def plot_tds_scan(esme, ax=None) -> None:
     widths, errors = esme.tscan.max_energy_slice_widths_and_errors(padding=10)
     voltages_mv = _get_tds_tscan_abs_voltage_in_mv_from_scans(esme)
 
@@ -310,7 +309,7 @@ def plot_tds_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> None:
     add_info_box(ax, "V", "MV", a0, a1)
 
 
-def plot_beta_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> None:
+def plot_beta_scan(esme, ax=None) -> None:
     widths, errors = esme.bscan.max_energy_slice_widths_and_errors(padding=10)
 
     beta = esme.bscan.beta
@@ -341,7 +340,7 @@ def plot_beta_scan(esme: ana.SliceEnergySpreadMeasurement, ax=None) -> None:
     add_info_box(ax, r"\beta", "m", a0, a1)
 
 
-def plot_scans(esme: ana.SliceEnergySpreadMeasurement, root_outdir=None) -> None:
+def plot_scans(esme, root_outdir=None) -> None:
     if esme.bscan:
         fig, (ax1, ax2, ax3) = plt.subplots(ncols=3, figsize=(14, 8))
         plot_beta_scan(esme, ax3)
@@ -388,7 +387,7 @@ def add_info_box(ax, symbol, xunits, c, m) -> None:
 
 
 def plot_measured_central_widths(
-    esme: ana.SliceEnergySpreadMeasurement,
+    esme,
     root_outdir=None,
     show=True,
     write_widths=True,
@@ -452,7 +451,7 @@ def plot_measured_central_widths(
         fig.savefig(root_outdir / "measured-central-widths.png")
 
 
-def plot_scan_central_widths(scan: ana.DispersionScan, x, ax1, ax2):
+def plot_scan_central_widths(scan, x, ax1, ax2):
     widths, errors = scan.max_energy_slice_widths_and_errors(padding=10)
     widths_um, errors_um = ana.transform_pixel_widths(
         widths, errors, pixel_units="um", to_variances=False
@@ -477,16 +476,20 @@ def _coefficients_df(params):
     pass
 
 
-def formatted_parameter_dfs(params, latex=False) -> str:
+def formatted_parameter_dfs(params, sigma_z=None, latex=False) -> str:
     # params = esme.all_fit_parameters()
 
     fit_params = params.fit_parameters_to_df()
-    # fit_params.loc["sigma_z"] = beam.mean_bunch_length_from_time_calibration(esme)
-    # fit_params.loc["sigma_z"] *= 1e3  # to mm
-    # fit_params.loc["sigma_t"] = fit_params.loc["sigma_z"] * 1e-3 * 1e12 / c  # to ps
+
     fit_params.loc[["V_0", "E_0"]] *= 1e-6  # To MV / MeV
 
     beam_params = params.beam_parameters_to_df()
+    
+    if sigma_z is not None:
+        beam_params.loc["sigma_z"] = {"values": sigma_z.n, "errors": sigma_z.s}
+        beam_params.loc["sigma_z"] *= 1e3  # to mm
+        beam_params.loc["sigma_t"] = beam_params.loc["sigma_z"] * 1e-3 * 1e12 / c  # to ps
+
     beam_params.loc[
         ["emitx", "sigma_i", "sigma_b", "sigma_r"]
     ] *= 1e6  # to mm.mrad & um
@@ -502,8 +505,8 @@ def formatted_parameter_dfs(params, latex=False) -> str:
         'B_D': '',
         'A_beta': 'm2',
         'B_beta': 'm',
-        # "sigma_z": "mm",
-        # "sigma_t": "ps",
+        "sigma_z": "mm",
+        "sigma_t": "ps",
         'sigma_e': 'keV',
         'sigma_e_from_tds': 'keV',
         'sigma_i': 'um',
@@ -522,8 +525,8 @@ def formatted_parameter_dfs(params, latex=False) -> str:
         'B_D': '$B_D$',
         'A_beta': '$A_\\beta$',
         'B_beta': '$B_\\beta$',
-        # "sigma_z": r"$\sigma_z$",
-        # "sigma_t": r"$\sigma_t$",
+        "sigma_z": r"$\sigma_z$",
+        "sigma_t": r"$\sigma_t$",
         'sigma_e': '$\\sigma_E$',
         'sigma_i': '$\\sigma_I$',
         'sigma_e_from_tds': '$\\sigma_E^{\mathrm{TDS}}$',
@@ -583,6 +586,10 @@ def pretty_parameter_table(fit, beam, latex=False):
     )
 
     return f"{beam_table}\n\n\n{fit_table}"
+
+# def control_room_table(fit, beam):
+
+
 
 
 def _format_df_for_printing(
@@ -680,95 +687,12 @@ def fexp(number):
 
 
 def plot_quad_strengths(
-    esme: ana.SliceEnergySpreadMeasurement, root_outdir=None
+    esme, root_outdir=None
 ) -> plt.Figure:
     _plot_quad_strengths_dscan(esme, root_outdir=root_outdir)
     _plot_quad_strengths_tds(esme, root_outdir=root_outdir)
     if root_outdir is None:
         plt.show()
-
-
-def _plot_quad_strengths_dscan(
-    esme: ana.SliceEnergySpreadMeasurement, root_outdir=None
-) -> plt.Figure:
-    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(14, 8))
-    ((ax1, ax2), (ax3, ax4)) = axes
-    axes = axes.flatten()
-
-    dscan_all_images_dfs = esme.dscan.metadata
-    scan_quads = [lat.mean_quad_strengths(df) for df in dscan_all_images_dfs]
-
-    design_dispersions, design_quads = lat.design_quad_strengths()
-
-    for dx_actual, dx_design, df_actual, df_design, ax in zip(
-        design_dispersions, esme.dscan.dx, design_quads, scan_quads, axes
-    ):
-        ax.set_title(rf"Dispersion scan optics for $D_x={dx_actual}\,\mathrm{{m}}$")
-        ax.errorbar(
-            df_actual.s,
-            df_actual.kick_mean,
-            yerr=df_actual.kick_std,
-            label="Readback",
-            linestyle="",
-            marker="x",
-        )
-        ax.plot(
-            df_design.s, df_design.kick_mean, linestyle="", label="Intended", marker="."
-        )
-        # ax.bar(df_design.s, df_design.kick_mean, alpha=0.25)
-
-    ylabel = r"$K_1 L\,/\,\mathrm{mrad\cdot{}m^{-1}}$"
-    ax1.set_ylabel(ylabel)
-    ax3.set_ylabel(ylabel)
-    ax3.set_xticks(list(df_design.s), list(df_design.index), rotation=60, fontsize=8)
-    ax4.set_xticks(list(df_design.s), list(df_design.index), rotation=60, fontsize=8)
-    ax3.set_xlabel("Quadrupole name")
-    ax4.set_xlabel("Quadrupole name")
-
-    axes[0].legend()
-    fig.suptitle("Dispersion scan quadrupole strengths, 2021 TDS Calibration")
-
-    if root_outdir is not None:
-        fig.savefig(root_outdir / "dscan-quads.png")
-
-
-def _plot_quad_strengths_tds(esme: ana.SliceEnergySpreadMeasurement, root_outdir=None):
-    # fig, ax = plt.subplots()
-    import latdraw  # pylint: disable=import-error
-
-    cell = lat.cell_to_injector_dump()
-    fig, (axm, ax) = latdraw.subplots_with_lattices(
-        [latdraw.interfaces.lattice_from_ocelot(cell), None], figsize=(14, 8)
-    )
-
-    tscan_all_images_dfs = esme.tscan.metadata
-    tscan_dx = esme.tscan.dx[0]
-    assert (tscan_dx == esme.tscan.dx).all()
-
-    tds_scan_quads = [lat.mean_quad_strengths(df) for df in tscan_all_images_dfs]
-    voltages = _get_tds_tscan_abs_voltage_in_mv_from_scans(esme)
-    for voltage, df_actual in zip(voltages, tds_scan_quads):
-        ax.errorbar(
-            df_actual.s,
-            df_actual.kick_mean,
-            yerr=df_actual.kick_std,
-            label=f"V={voltage:.3g} MV",
-            linestyle="",
-            marker="x",
-        )
-
-    design_dispersions, design_quads = lat.design_quad_strengths()
-    index = np.abs(np.array(design_dispersions) - tscan_dx).argmin()
-    df = design_quads[index]
-    ax.plot(df.s, df.kick_mean, linestyle="", label="Intended", marker=".")
-    ax.legend()
-    axm.set_title("TDS Scan quadrupole strengths, 2021 TDS Calibration")
-
-    ax.set_xticks(list(df.s), list(df.index), rotation=60, fontsize=8)
-    ax.set_ylabel(r"$K_1 L\,/\,\mathrm{mrad\cdot{}m^{-1}}$")
-
-    if root_outdir is not None:
-        fig.savefig(root_outdir / "tscan-quads.png")
 
 
 def _plot_quad_strengths(dfs, scan_var, scan_var_name, ax) -> plt.Figure:
@@ -920,7 +844,7 @@ def plot_calibrated_tds(sesme):
     return fig, dikt
 
 
-def _streaks_from_scan(scan: ana.ParameterScan, scan_voltages=None):
+def _streaks_from_scan(scan, scan_voltages=None):
     if scan_voltages is None:
         scan_voltages = scan.voltage
     energy = scan.beam_energy() * e  # in eV and convert to joules

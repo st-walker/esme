@@ -209,9 +209,6 @@ def load_scanner_from_config(dconf, mi=None):
 
     return Scanner(scans[0], mi=mi)
 
-    # return scans
-
-
 def load_virtual_machine_interface(dconf):
     state = dconf["simple"]
 
@@ -239,3 +236,11 @@ def load_virtual_machine_interface(dconf):
         state[wildcard] = WildcardAddress(wildcard, snapshots_db)
 
     return ScanMachineInterface(state)
+
+def get_scan_config_for_area(dconf: dict, area: str):
+    scans = dconf["scanner"]["scans"]
+    for scan in scans:
+        if scan["area"] == area:
+            return scan
+
+    raise ValueError(f"Unable to find scan information for area: {area}")
