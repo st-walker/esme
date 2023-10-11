@@ -130,6 +130,8 @@ scanner:
     beam_on_wait: 1.0
     outdir: ./esme-measurements
     outdir_bkr: /Users/xfeloper/user/stwalker/esme-measurements
+    emittance: 0.4
+
   
   scans:
     - name: High Resolution I1D
@@ -208,7 +210,7 @@ scanner:
           - XFEL.UTIL/LASERHEATER.MOTOR/LAMBDA2.LHOS0/POS
           - XFEL.UTIL/LASERHEATER.MOTOR/DL.LHLVL5/FPOS
           - XFEL.UTIL/LASERINT/GUN/SH3_OPEN
-          - XFEL.UTIL/LASERINT/GUN/SH4_OPEN
+          - XFEL.UTIL/LASERIMNT/GUN/SH4_OPEN
           - XFEL.RF/LLRF.CONTROLLER/VS.LLTDSI1/AMPL.SAMPLE
           - XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/SP.AMPL
           - XFEL.DIAG/TIMER.CENTRAL/MASTER/EVENT10

@@ -75,10 +75,8 @@ class HighResolutionEnergySpreadMainWindow(QMainWindow):
         image_item = items[0]
         image_item.setImage(image)
         
-
     def post_final_result(self, final_result):
         self.finished = True
-        print(final_result)
 
     def build_main_timer(self, period):
         timer = QTimer()

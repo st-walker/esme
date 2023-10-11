@@ -34,14 +34,15 @@ import pandas as pd
 from scipy.constants import c, e, m_e
 from uncertainties import ufloat
 from uncertainties.umath import sqrt as usqrt  # pylint: disable=no-name-in-module
+from scipy.constants import e
 
 from esme.calibration import TDS_LENGTH, TDS_WAVENUMBER, TrivialTDSCalibrator
 from esme.exceptions import EnergySpreadCalculationError, TDSCalibrationError
 from esme.image import get_slice_properties, get_central_slice_width_from_slice_properties, filter_image
 from esme.maths import ValueWithErrorT, linear_fit
 import numpy as np
-from scipy.constants import e
 from esme.optics import calculate_i1d_r34_from_tds_centre
+
 
 from esme.calibration import TDS_WAVENUMBER
 from esme.maths import get_gaussian_fit
@@ -63,31 +64,39 @@ RawImageT = npt.NDArray
 
 
 class MeasurementDataFrames:
-    def __init__(self, fnames, *, image_dir, image_address, energy_address):
+    def __init__(self, *, dscans, tscans, bscans):
+        self.dscans = dscans
+        self.tscans = tscans
+        self.bscans = bscans
+
+    @classmethod
+    def from_filenames(cls, fnames, image_dir, image_address, energy_address):
         imd = image_dir
         ia = image_address
         ea = energy_address
-        self.tscans = []
-        self.dscans = []
-        self.bscans = []
+        dscans = []
+        tscans = []
+        bscans = []
         for f in fnames:
             if "tscan" in str(f):
-                self.tscans.append(SetpointDataFrame(f,
-                                                     images_dir=imd,
-                                                     image_address=ia,
-                                                     energy_address=ea))
+                tscans.append(SetpointDataFrame(pd.read_pickle(f),
+                                                images_dir=imd,
+                                                image_address=ia,
+                                                energy_address=ea))
             elif "dscan" in str(f):
-                self.dscans.append(SetpointDataFrame(f,
-                                                     images_dir=imd,
-                                                     image_address=ia,
-                                                     energy_address=ea))
+                dscans.append(SetpointDataFrame(pd.read_pickle(f),
+                                                images_dir=imd,
+                                                image_address=ia,
+                                                energy_address=ea))
             elif "bscan" in str(f):
-                self.bscans.append(SetpointDataFrame(f,
-                                                     images_dir=imd,
-                                                     image_address=ia,
-                                                     energy_address=ea))
+                bscans.append(SetpointDataFrame(pd.read_pickle(f),
+                                                images_dir=imd,
+                                                image_address=ia,
+                                                energy_address=ea))
             else:
                 raise ValueError(f"Unrecognised file: {f}")
+        return cls(dscans=dscans, bscans=bscans, tscans=tscans)
+        
 
     def max_voltage_df(self):
         imax = np.argmax([df.voltage for df in self.tscans])
@@ -116,8 +125,8 @@ class MeasurementDataFrames:
 
 
 class SetpointDataFrame:
-    def __init__(self, path, *, images_dir, image_address, energy_address):
-        self.df = pd.read_pickle(path)
+    def __init__(self, df, *, images_dir, image_address, energy_address):
+        self.df = df
         self.images_dir = Path(images_dir)
         self.image_address = image_address
         self.energy_address = energy_address
@@ -582,10 +591,10 @@ def true_bunch_length_from_df(setpoint):
         image = filter_image(image, bg=0.0, crop=False)
         length, error = apparent_bunch_length_from_processed_image(image)
         apparent_bunch_lengths.append(ufloat(length, error))
-
+        
     mean_apparent_bunch_length = np.mean(apparent_bunch_lengths)
 
-    r34 = abs(calculate_i1d_r34_from_tds_centre(setpoint))
+    r34 = abs(calculate_i1d_r34_from_tds_centre(setpoint.df, setpoint.screen_name, setpoint.energy))
     energy = setpoint.energy * 1e6 * e # to Joules
     voltage = setpoint.voltage
     bunch_length = (energy / (e * voltage * TDS_WAVENUMBER)) * mean_apparent_bunch_length / r34
@@ -609,13 +618,13 @@ def apparent_bunch_length_from_processed_image(image):
         dimension="y",
     )
 
-    return mean_length, mean_error
+    return np.squeeze(mean_length), np.squeeze(mean_error)
 
-def true_bunch_length_from_processed_image(image, *, voltage, r34, beam_energy):
+def true_bunch_length_from_processed_image(image, *, voltage, r34, energy) -> ufloat:
     raw_bl, raw_bl_err = apparent_bunch_length_from_processed_image(image)
-    true_bl = (energy / (e * voltages * TDS_WAVENUMBER)) * raw_bl / r34s
-    true_bl_err = (energy / (e * voltages * TDS_WAVENUMBER)) * raw_bl_err / r34s
-    return true_bl, true_bl_err
+    raw_bl = ufloat(raw_bl, raw_bl_err)
+    true_bl = (energy / (e * voltage * TDS_WAVENUMBER)) * raw_bl / abs(r34)
+    return true_bl
 
 
 def _mean_with_uncertainties(values, stdevs):

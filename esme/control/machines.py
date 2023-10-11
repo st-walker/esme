@@ -4,6 +4,7 @@ from .screens import ScreenService
 from .tds import TransverseDeflectors
 from .sbunches import SpecialBunchesControl, DiagnosticRegion
 from .scanner import Scanner
+from .optics import I1toI1DSequenceOptics
 
 class BunchLengthMachine:
     def __init__(self, kickerop: FastKickerController,
@@ -44,6 +45,7 @@ class LPSMachine:
         self.screens = sservice
         self.deflectors = deflectors
         self.sbunches = SpecialBunchesControl(mi=mi)
+        self.optics = I1toI1DSequenceOptics(mi=mi)
         # self.set_measurement_location(initial_location)
 
     def beam_off(self):
@@ -51,3 +53,6 @@ class LPSMachine:
 
     def beam_on(self):
         self.mi.set_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED", 1)
+
+    def is_beam_on(self):
+        return bool(self.mi.get_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED"))

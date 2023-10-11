@@ -99,10 +99,10 @@ def process(dirname, with_sigr, with_en, derr, simple):
                                 alpha_tds=scan_conf["alpha_tds"])
 
     # Calculate bunch length for maximum streaking case.
-    measurement = MeasurementDataFrames(list(dirname.glob("*m.pkl")),
-                                        image_dir=dirname,
-                                        image_address=image_address,
-                                        energy_address=energy_address)
+    measurement = MeasurementDataFrames.from_filenames(list(dirname.glob("*m.pkl")),
+                                                       image_dir=dirname,
+                                                       image_address=image_address,
+                                                       energy_address=energy_address)
 
     
     

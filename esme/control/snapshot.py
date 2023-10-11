@@ -21,7 +21,7 @@ LOG.setLevel(logging.DEBUG)
 class SnapshotRequest:
     addresses: list[str]
     wildcards: list[str]
-    image: str
+    image: Optional[str]
 
 
 class SnapshotAccumulator:
@@ -79,11 +79,11 @@ class Snapshotter:
         return subaddress_full_address_map
 
     def snapshot(self, image_dir=None, image=None, **kvps):
-        print("Taking snapshot")
         result = {}
         result.update(self.read_addresses())
         result.update(self.read_wildcards())
-        result.update(self.read_image(image_dir=image_dir, image=image))
+        if self.request.image:
+            result.update(self.read_image(image_dir=image_dir, image=image))
         result.update(kvps)
         return result
 

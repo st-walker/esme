@@ -12,9 +12,7 @@ from ocelot.cpbd.beam import Twiss
 import matplotlib.pyplot as plt
 import latdraw.plot as plot
 
-
 def i1d_conf_from_measurement_df(df):
-
     quad_names = df.keys()[df.keys().str.match("^Q")]
     dipole_names = df.keys()[df.keys().str.match("^B[LB]\.")]
 
@@ -108,17 +106,32 @@ def optics_from_measurement_df(df):
 
     return full_twiss, lat.get_sequence()
 
-def calculate_i1d_r34_from_tds_centre(setpoint):
+# def calculate_i1d_r34_from_tds_centre(setpoint):
+#     fel = cat_to_i1d(model_type="real")
+#     conf = i1d_conf_from_measurement_df(setpoint.df)
+
+#     sequence = fel.get_sequence(start="TDSA.52.I1",
+#                                 stop=setpoint.screen_name,
+#                                 felconfig=conf)
+#     # Halve the TDS length so we are starting half way through it.
+#     sequence[0].l /= 2.0
+#     mlat = MagneticLattice(sequence)
+#     _, rmat, _ = mlat.transfer_maps(setpoint.energy * 1e-3) # MeV to GeV
+#     r34 = rmat[2, 3]
+#     return r34
+
+
+def calculate_i1d_r34_from_tds_centre(df, screen_name, energy_mev):
     fel = cat_to_i1d(model_type="real")
-    conf = i1d_conf_from_measurement_df(setpoint.df)
+    conf = i1d_conf_from_measurement_df(df)
 
     sequence = fel.get_sequence(start="TDSA.52.I1",
-                                stop=setpoint.screen_name,
+                                stop=screen_name,
                                 felconfig=conf)
     # Halve the TDS length so we are starting half way through it.
     sequence[0].l /= 2.0
     mlat = MagneticLattice(sequence)
-    _, rmat, _ = mlat.transfer_maps(setpoint.energy * 1e-3) # MeV to GeV
+    _, rmat, _ = mlat.transfer_maps(energy_mev * 1e-3) # MeV to GeV
     r34 = rmat[2, 3]
     return r34
 

@@ -14,14 +14,76 @@
    <string>Form</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="0">
-    <widget class="QPushButton" name="preferences_button">
-     <property name="text">
-      <string>Configure...</string>
-     </property>
-    </widget>
+   <item row="6" column="0">
+    <layout class="QHBoxLayout" name="horizontalLayout_12">
+     <item>
+      <widget class="QCheckBox" name="do_beta_scan_checkbox">
+       <property name="text">
+        <string>Do Beta Scan</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="remeasure_dispersoin_checkbox">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>Remeasure Dispersion</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout_9">
+       <item>
+        <widget class="QLabel" name="label_3">
+         <property name="text">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-style:italic;&quot;&gt;ε&lt;/span&gt;&lt;span style=&quot; vertical-align:sub;&quot;&gt;n &lt;/span&gt;/ mm·mrad&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="textFormat">
+          <enum>Qt::RichText</enum>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QDoubleSpinBox" name="measured_emittance_spinbox">
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="stepType">
+          <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+    </layout>
    </item>
-   <item row="10" column="0">
+   <item row="4" column="0">
+    <layout class="QHBoxLayout" name="horizontalLayout_8">
+     <item>
+      <widget class="QLabel" name="label">
+       <property name="text">
+        <string>Dispersion Scan TDS Voltage / MV</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QDoubleSpinBox" name="dispersion_scan_tds_voltage_spinbox">
+       <property name="maximum">
+        <double>5.000000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>0.100000000000000</double>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item row="8" column="0">
     <layout class="QHBoxLayout" name="horizontalLayout_3">
      <item>
       <widget class="QPushButton" name="start_measurement_button">
@@ -51,25 +113,7 @@
      </item>
     </layout>
    </item>
-   <item row="3" column="0">
-    <layout class="QHBoxLayout" name="horizontalLayout">
-     <item>
-      <widget class="QLabel" name="label_2">
-       <property name="text">
-        <string>TDS Scan Voltages / MV</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLineEdit" name="tds_voltages">
-       <property name="text">
-        <string/>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item row="9" column="0">
+   <item row="7" column="0">
     <layout class="QHBoxLayout" name="horizontalLayout_6">
      <item>
       <widget class="QLabel" name="measurement_name_label">
@@ -90,12 +134,23 @@
      </item>
     </layout>
    </item>
-   <item row="7" column="0">
-    <widget class="QPushButton" name="open_jddd_screen_gui_button">
-     <property name="text">
-      <string>JDDD Camera Panel...</string>
-     </property>
-    </widget>
+   <item row="3" column="0">
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QLabel" name="label_2">
+       <property name="text">
+        <string>TDS Scan Voltages / MV</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="tds_voltages">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
    <item row="1" column="0">
     <layout class="QHBoxLayout" name="horizontalLayout_7">
@@ -134,37 +189,6 @@
         </widget>
        </item>
       </layout>
-     </item>
-    </layout>
-   </item>
-   <item row="6" column="0">
-    <widget class="QPushButton" name="cycle_quads_button">
-     <property name="enabled">
-      <bool>false</bool>
-     </property>
-     <property name="text">
-      <string>Cycle Quadrupoles</string>
-     </property>
-    </widget>
-   </item>
-   <item row="4" column="0">
-    <layout class="QHBoxLayout" name="horizontalLayout_8">
-     <item>
-      <widget class="QLabel" name="label">
-       <property name="text">
-        <string>Dispersion Scan TDS Voltage / MV</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QDoubleSpinBox" name="dispersion_scan_tds_voltage_spinbox">
-       <property name="maximum">
-        <double>5.000000000000000</double>
-       </property>
-       <property name="singleStep">
-        <double>0.100000000000000</double>
-       </property>
-      </widget>
      </item>
     </layout>
    </item>
@@ -208,31 +232,35 @@
      <item>
       <widget class="QPushButton" name="apply_optics_button">
        <property name="text">
-        <string>Apply Optics</string>
+        <string>Apply</string>
        </property>
       </widget>
      </item>
     </layout>
    </item>
-   <item row="8" column="0">
-    <layout class="QHBoxLayout" name="horizontalLayout_12">
+   <item row="5" column="0">
+    <layout class="QHBoxLayout" name="horizontalLayout_13">
      <item>
-      <widget class="QCheckBox" name="do_beta_scan_checkbox">
-       <property name="text">
-        <string>Do Beta Scan</string>
-       </property>
-       <property name="checked">
+      <widget class="QPushButton" name="cycle_quads_button">
+       <property name="enabled">
         <bool>true</bool>
+       </property>
+       <property name="text">
+        <string>Cycle Quadrupoles</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QCheckBox" name="remeasure_dispersoin_checkbox">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
+      <widget class="QPushButton" name="open_jddd_screen_gui_button">
        <property name="text">
-        <string>Remeasure Dispersion</string>
+        <string>Open Camera Control...</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="preferences_button">
+       <property name="text">
+        <string>Configure...</string>
        </property>
       </widget>
      </item>

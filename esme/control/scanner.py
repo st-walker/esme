@@ -114,6 +114,18 @@ class Scanner:
 
     def get_snapshotter(self):
         return Snapshotter(self.scan.request, mi=self.mi)
+
+    def cycle_scan_quads(self) -> None:
+        quad_names = set()
+        for setpoint in self.scan.qscan.setpoints:
+            quad_names |= set(setpoint.k1ls)
+        for setpoint in self.scan.bscan.setpoints:
+            quad_names |= set(setpoint.k1ls)
+        quad_names |= set(self.scan.tscan.setpoint.k1ls)
+
+        for quad_name in quad_names:
+            LOG.info(f"Cycling quadrupole: {quad_name}")
+            self.mi.set_value(f"XFEL.MAGNETS/MAGNET.ML/{quad_name}/CYCLE", 1)
         
 
 class ScannerConfigWidget:

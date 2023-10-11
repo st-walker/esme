@@ -134,6 +134,7 @@ class XFELMachineInterface(XFELMachineInterfaceABC):
         """
         LOG.debug("get_value: channel", channel)
         try:
+            import ipdb; ipdb.set_trace()
             val = pydoocs.read(channel)
         except pydoocs.DoocsException as e:
             raise pydoocs.DoocsException(f"Failed get_value with channel: {channel}") from e
@@ -420,3 +421,11 @@ class Machine:
         df = pd.DataFrame(data_dict, columns=data_dict.keys())
         return df, image
 
+    def get_wildcard(self, wildcard_string):
+        # don't use arrays here so that we keep the original dataypes,
+        # otherwise everything gets coerced to strings because the
+        # last column is always a string (the address part).
+        result = pydoocs.read(wildcard_string)["data"]
+        names = [l[-1] for l in result]
+        values = [[l[1]] for l in result]
+        return dict(zip(names, values))
