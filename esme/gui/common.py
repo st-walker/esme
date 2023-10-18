@@ -12,6 +12,7 @@ import subprocess
 
 from PyQt5.QtCore import QObject, pyqtSignal, QByteArray, QBuffer, QIODevice
 from PyQt5.QtWidgets import QWidget
+from PyQt5.QtWidgets import QMessageBox
 
 from esme.control.configs import build_simple_machine_from_config, load_virtual_machine_interface, build_lps_machine_from_config
 
@@ -20,7 +21,6 @@ from esme.control.vmint import DictionaryXFELMachineInterface
 
 DEFAULT_CONFIG_PATH = files("esme.gui") / "defaultconf.yml"
 DEFAULT_VCONFIG_PATH = files("esme.gui") / "vmachine.yaml"
-
 
 def is_in_controlroom():
     name = socket.gethostname()
@@ -52,10 +52,10 @@ def get_default_virtual_machine_interface():
         return load_virtual_machine_interface(doocsdict)
 
 def get_config_path():
-    return Path.home() / ".config" / "diagnostics-utility/"
+    return Path.home() / ".config" / "lps/"
 
 def get_i1_calibration_config_dir():
-    return get_config_path() / "i1-tds-calibrations"
+    return get_config_path() / "tds/i1"
 
 class QPlainTextEditLogger(QObject, logging.Handler):
     log_signal = pyqtSignal(str)
@@ -155,3 +155,26 @@ def df_to_logbook_table(df):
     table_string = table_string[:-1]
     return table_string
     
+
+def raise_message_box(text, *, informative_text, title, icon=None):
+    """icon: one of {None, "NoIcon", "Question", "Information", "Warning", "Critical"}
+    text: something simple like "Error", "Missing config"
+    informative_text: the actual detailed message that you read
+    title: the window title
+
+    """
+
+    msg = QMessageBox()
+
+    icon = {None: QMessageBox.NoIcon,
+            "NoIcon": QMessageBox.NoIcon,
+            "Question": QMessageBox.Question,
+            "Information": QMessageBox.Information,
+            "Warning": QMessageBox.Warning,
+            "Critical": QMessageBox.Critical}[icon]
+
+    msg.setIcon(icon)
+    msg.setText(text)
+    msg.setInformativeText(informative_text)
+    msg.setWindowTitle(title)
+    msg.exec_()

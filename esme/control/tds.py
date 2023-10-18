@@ -2,16 +2,20 @@ from .mint import XFELMachineInterface, DOOCSAddress
 
 from .sbunches import DiagnosticRegion
 
+class UncalibratedTDSError(RuntimeError):
+    pass
+
 class TransverseDeflector:
     PHASE_RB_PROP = "PHASE.SAMPLE"
     AMPLITUDE_RB_PROP = "AMPL.SAMPLE"
     PHASE_SP_PROP = "SP.PHASE"
     AMPLITUDE_SP_PROP = "SP.AMPL"
 
-    def __init__(self, location: DiagnosticRegion, sp_fdl: str, rb_fdl: str, mi=None) -> None:
+    def __init__(self, location: DiagnosticRegion, sp_fdl: str, rb_fdl: str, calibration=None, mi=None) -> None:
         self.location = location
         self.sp_fdl = sp_fdl
         self.rb_fdl = rb_fdl
+        self.calibration = None
         self.mi = mi if mi else XFELMachineInterface()
 
     def get_phase_rb(self) -> float:
@@ -37,6 +41,15 @@ class TransverseDeflector:
     def set_amplitude(self, value: float) -> None:
         ch = self.sp_fdl + f"{self.AMPLITUDE_SP_PROP}"
         self.mi.set_value(ch, value)
+
+    def set_voltage(self, voltage: float) -> None:
+        try:
+            amplitude = self.calibration.get_amplitude(voltage)
+        except AttributeError as e:
+            raise UncalibratedTDSError("Missing TDS Calibration") from e
+
+        self.set_amplitude(amplitude)
+        
 
 
 # class TransverseDeflectors:

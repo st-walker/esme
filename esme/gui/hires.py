@@ -40,6 +40,8 @@ class HighResolutionEnergySpreadMainWindow(QMainWindow):
 
         self.scannerp = self.ui.scanner_panel
 
+        self.ui.tds_panel.calibration_signal.connect(self.ui.scanner_panel.update_tds_calibration)
+
         self.image_plot = setup_screen_display_widget(self.ui.image_plot)
         self.dispersion_widths_scatter = make_pixel_widths_scatter(self.ui.dispersion_pixel_size_plot_widget,
                                                                    title="Dispersion Scan Peak Energy Slice Widths",

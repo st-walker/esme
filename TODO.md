@@ -1,18 +1,19 @@
 
 
-## TDS Control and Calibration
+## TDS Calibration
 
-1. [ ] Save Points (centres of mass) of TDS calibration phase scan.
-2. [ ] Algorithm for moving from point to point.
+1. [ ] Algorithm for moving from point to point.
+2. [ ] Use the special bunch mid layer to do this stuff.
+2. [ ] Save Points (centres of mass) of TDS calibration phase scan.
 3. [ ] Algorithm for shifting to edges.
-4. [ ] Use the special bunch mid layer to do this stuff.
-5. [ ] Let calibrator pause between setpoints.
+4. [ ] write the calibration to file at the end.
+
 
 ## HIREIS high resolution energy spread measurement
 
 ### High priority:
 
-1. [ ] Dynamically load the TDS calibration.
+1. [x] Dynamically load the TDS calibration.
 2. [ ] Get naive implementation based on assumed emittance and screen resolution
 3. [ ] Add dispersion measurement.
 4. [x] make use of special bunch midlayer optional (but the default)

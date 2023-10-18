@@ -26,7 +26,7 @@ from esme.image import get_slice_properties, get_central_slice_width_from_slice_
 from esme.analysis import SliceWidthsFitter, DerivedBeamParameters, true_bunch_length_from_processed_image
 from esme.control.configs import load_calibration
 from esme.control.snapshot import SnapshotAccumulator, Snapshotter
-from esme.gui.common import is_in_controlroom, load_scanner_panel_ui_defaults, df_to_logbook_table
+from esme.gui.common import is_in_controlroom, load_scanner_panel_ui_defaults, df_to_logbook_table, raise_message_box
 from esme.calibration import TDSCalibration
 
 # from esme.maths import ValueWithErrorT, linear_fit
@@ -173,12 +173,19 @@ class ScannerControl(QtWidgets.QWidget):
     def start_measurement(self):
         thread = QThread()
 
-        scan_request = self.build_scan_request_from_ui()
+        try:
+            scan_request = self.build_scan_request_from_ui()
+        except MisconfiguredMeasurementException as e:
+            raise_message_box(text="Error in preparing measurement",
+                              informative_text=f"{e}.  The measurement cannot proceed.",
+                              title="Measurement Preparation Error",
+                              icon="Critical")
+            return
+
+
         worker = ScanWorker(self.machine, scan_request)
 
-
         self.set_buttons_ready_for_measurement(can_measure=False)
-
 
         worker.moveToThread(thread)
         thread.started.connect(worker.run)
@@ -264,8 +271,11 @@ class ScannerControl(QtWidgets.QWidget):
         # XXX: THIS NEEDS TO BE DYNAMIC
         # fname = "/Users/stuartwalker/.config/diagnostics-utility/i1-tds-calibrations/stuart-conf.toml"
         # fname = "/System/Volumes/Data/home/xfeloper/user/stwalker/stuart-conf.toml"
-        fname = "/Users/stuartwalker/.config/diagnostics-utility/i1-tds-calibrations/igor-conf.toml"
-        calibration = load_calibration(fname)
+        # fname = "/Users/stuartwalker/.config/diagnostics-utility/i1-tds-calibrations/igor-conf.toml"
+        calibration = self.machine.deflectors.active_tds().calibration
+        if calibration is None:
+            raise MisconfiguredMeasurementException("Missing TDS Calibration")
+
         do_beta_scan = self.ui.do_beta_scan_checkbox.isChecked()
         voltages = self.get_voltages()
         slug = self.ui.slug_line_edit.text()
@@ -288,6 +298,12 @@ class ScannerControl(QtWidgets.QWidget):
                            settings=settings)
         LOG.info(f"Preparing scan request payload: {scan_request}")
         return scan_request
+
+    def update_tds_calibration(self, calibration):
+        # XXX: what if I receive a TDS calibration from I1 but I am
+        # applying it here to B2?  This would obviously be wrong...
+        # Need to be careful here and think about this in the future.
+        self.machine.deflectors.active_tds().calibration = calibration
 
     def open_jddd_screen_window(self):
         self.jddd_camera_window_process = QtCore.QProcess()
@@ -461,7 +477,6 @@ class ScanWorker(QObject):
 
     def dispersion_scan(self, bg) -> dict[float, UFloat]:
         voltage = self.scan_request.dscan_tds_voltage
-        # voltage =
         self.set_tds_voltage(voltage)
         print("Doing dispersion scan at voltage", voltage)
         # print("Doing dispersion scan at amplitude", amplitude)
@@ -557,8 +572,9 @@ class ScanWorker(QObject):
 
     def set_tds_voltage(self, voltage):
         LOG.info(f"Setting TDS voltage: {voltage / 1e6} MV")
-        amplitude = self.scan_request.calibration.get_amplitude(voltage)
-        self.machine.deflectors.active_tds().set_amplitude(amplitude)
+        # amplitude = self.scan_request.calibration.get_amplitude(voltage)
+        # self.machine.deflectors.active_tds().set_amplitude(amplitude)
+        self.machine.deflectors.active_tds().set_voltage(voltage)
 
     def take_screen_data(self, nbeam, expect_beam=True):
         screen_name = self.scan_request.screen_name
@@ -611,7 +627,11 @@ class ScanWorker(QObject):
                               beta=beta)
 
 
-class InterruptedMeasurementException(RuntimeError):
+class MeasurementError(RuntimeError):
+    pass
+
+
+class InterruptedMeasurementException(MeasurementError):
     pass
 
 
@@ -622,6 +642,9 @@ class UserCancelledMeasurementException(InterruptedMeasurementException):
 class MachineCancelledMeasurementException(InterruptedMeasurementException):
     pass
 
+
+class MisconfiguredMeasurementException(MeasurementError):
+    pass
 
 
 def make_snapshot_filename(*, scan_type, dispersion, voltage, beta, **images):
