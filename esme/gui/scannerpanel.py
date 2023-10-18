@@ -7,20 +7,23 @@ import logging
 from collections import defaultdict
 from enum import Enum, auto
 from textwrap import dedent
+import shutil
+from copy import deepcopy
 
 import numpy as np
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QObject, QThread, QTimer, pyqtSignal, pyqtSlot
-from PyQt5.QtWidgets import QApplication, QFileDialog, QFrame, QMainWindow, QMessageBox
+from PyQt5.QtWidgets import QApplication, QFileDialog, QFrame, QMainWindow, QMessageBox, QTableWidgetItem, QLabel
 from scipy.constants import e
+from uncertainties import UFloat
 
 
 from esme.gui.ui import Ui_scanner_form, Ui_results_box_dialog, Ui_Dialog
 from esme.control.pattern import get_beam_regions, get_bunch_pattern
-from esme.gui.common import build_default_lps_machine, QPlainTextEditLogger, send_to_logbook
+from esme.gui.common import build_default_lps_machine, QPlainTextEditLogger, send_to_logbook, DEFAULT_CONFIG_PATH
 from esme.maths import ValueWithErrorT, linear_fit
 from esme.image import get_slice_properties, get_central_slice_width_from_slice_properties, filter_image
-from esme.analysis import SliceWidthsFitter, FittedBeamParameters, true_bunch_length_from_processed_image
+from esme.analysis import SliceWidthsFitter, DerivedBeamParameters, true_bunch_length_from_processed_image
 from esme.control.configs import load_calibration
 from esme.control.snapshot import SnapshotAccumulator, Snapshotter
 from esme.gui.common import is_in_controlroom, load_scanner_panel_ui_defaults, df_to_logbook_table
@@ -54,12 +57,17 @@ class ScanSettings:
     tds_amplitude_wait: int = 1.5
     beam_on_wait: float = 1.0
     outdir: Path = Path("./esme-measurements")
-    pixel_size: float = 13.7369e-6
+
+
+@dataclass
+class OnlineMeasurementResult:
+    measurement_parameters: DerivedBeamParameters
+    output_directory: Path
 
 
 class ScannerControl(QtWidgets.QWidget):
     processed_image_signal = pyqtSignal(object)
-    full_measurement_result_signal = pyqtSignal(FittedBeamParameters)
+    full_measurement_result_signal = pyqtSignal(DerivedBeamParameters)
     background_image_signal = pyqtSignal(object)
     new_measurement_signal = pyqtSignal()
 
@@ -74,9 +82,10 @@ class ScannerControl(QtWidgets.QWidget):
         else:
             self.machine = machine
 
-        dic = load_scanner_panel_ui_defaults()
-        self.initial_read(dic)
-        self.settings_dialog = ScannerConfDialog(defaults=dic, parent=self)
+        ui_defaults = load_scanner_panel_ui_defaults()
+        self.initial_read(ui_defaults["ScannerControl"])
+        self.settings_dialog = ScannerConfDialog(defaults=ui_defaults["ScannerConfDialog"],
+                                                 parent=self)
         self.connect_buttons()
 
         self.result_dialog = ScannerResultsDialog(parent=self)
@@ -87,9 +96,9 @@ class ScannerControl(QtWidgets.QWidget):
         self.timer = self.build_main_timer(100)
 
     def set_ui_initial_values(self, dic):
-        self.ui.beam_shots_spinner.setValue(dic["nbeam"])
-        self.ui.bg_shots_spinner.setValue(dic["nbg"])
-        self.ui.measured_emittance_spinbox.setValue(dic["emittance"])
+        self.ui.beam_shots_spinner.setValue(dic["beam_shots_spinner"])
+        self.ui.bg_shots_spinner.setValue(dic["bg_shots_spinner"])
+        self.ui.measured_emittance_spinbox.setValue(dic["measured_emittance_spinbox"])
 
     def apply_current_optics(self):
         selected_dispersion = self.get_chosen_dispersion()
@@ -163,10 +172,13 @@ class ScannerControl(QtWidgets.QWidget):
 
     def start_measurement(self):
         thread = QThread()
+
         scan_request = self.build_scan_request_from_ui()
         worker = ScanWorker(self.machine, scan_request)
 
+
         self.set_buttons_ready_for_measurement(can_measure=False)
+
 
         worker.moveToThread(thread)
         thread.started.connect(worker.run)
@@ -201,7 +213,16 @@ class ScannerControl(QtWidgets.QWidget):
         self.ui.beam_shots_spinner.setEnabled(can_measure)
         self.ui.cycle_quads_button.setEnabled(can_measure)
         self.ui.slug_line_edit.setEnabled(can_measure)
-
+        self.ui.measured_emittance_spinbox.setEnabled(can_measure)
+        self.ui.background_shots_label.setEnabled(can_measure)
+        self.ui.beam_shots_label.setEnabled(can_measure)
+        self.ui.beta_label.setEnabled(can_measure)
+        self.ui.dispersion_label.setEnabled(can_measure)
+        self.ui.tds_voltages_label.setEnabled(can_measure)
+        self.ui.dscan_voltage_label.setEnabled(can_measure)
+        self.ui.emittance_label.setEnabled(can_measure)
+        self.ui.measurement_name_label.setEnabled(can_measure)
+        self.ui.preferences_button.setEnabled(can_measure)
 
     def connect_buttons(self):
         """Connect the buttons of the UI to the relevant methods"""
@@ -220,21 +241,19 @@ class ScannerControl(QtWidgets.QWidget):
         """
         self.kill_measurement_thread()
 
-    def display_final_result(self, fitted_beam_parameters):
+    def display_final_result(self, result: OnlineMeasurementResult):
         LOG.debug("Displaying Final Result")
 
         try:
-            self.result_dialog.post_beam_parameters(fitted_beam_parameters)
+            self.result_dialog.post_measurement_result(result)
         except ValueError:
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Critical)
             msg.setText("Error")
-            msg.setInformativeText("Unable to extract beam parameters from scan(s).")
+            msg.setInformativeText("Unable to extract beam patrameters from scan(s).")
             msg.setWindowTitle("Error")
             msg.exec_()
         else:
-            # self.result_dialog.set_title("!"# self.scan_request.slug
-                                         # )
             self.result_dialog.show()
 
         self.measurement_thread.terminate()
@@ -257,7 +276,6 @@ class ScannerControl(QtWidgets.QWidget):
         screen_name = self.machine.scanner.scan.screen
 
         settings = self.settings_dialog.get_scan_settings()
-        # settings = make_default_scan_settings()
 
         scan_request = ScanRequest(calibration=calibration,
                            voltages=voltages,
@@ -303,7 +321,7 @@ class ScannerControl(QtWidgets.QWidget):
         self.measurement_thread.terminate()
         self.measurement_thread.wait()
 
-        
+
 @dataclass
 class ScanRequest:
     calibration: TDSCalibration
@@ -321,7 +339,7 @@ class ScanWorker(QObject):
     dispersion_sp_signal = pyqtSignal(float)
     processed_image_signal = pyqtSignal(object)
     background_image_signal = pyqtSignal(object)
-    full_measurement_result_signal = pyqtSignal(FittedBeamParameters)
+    full_measurement_result_signal = pyqtSignal(OnlineMeasurementResult)
     measurement_interrupted_signal = pyqtSignal(Exception)
 
     def __init__(self, machine, scan_request):
@@ -373,12 +391,13 @@ class ScanWorker(QObject):
         # Setup the special bunch midlayer, we benefit a lot from
         # using this over directly affecting the TDS timing because we
         # don't have to worry about the blms complaining.
-        # self.setup_special_bunch_midlayer()
+        if is_in_controlroom():
+            self.setup_special_bunch_midlayer()
 
         # Turn the beam on and put the TDS on beam and wait.
         self.machine.beam_on()
         self.start_tds_firing()
-        time.sleep(2)
+        time.sleep(self.scan_request.settings.beam_on_wait)
 
         try:
             bscan_widths = None
@@ -393,7 +412,9 @@ class ScanWorker(QObject):
             self.measurement_interrupted_signal.emit(e)
             return
 
+        # bunch_length = np.mean(tscan_bunch_lengths[max(tscan_bunch_lengths)])
         bunch_length = np.mean(list(tscan_bunch_lengths.values()))
+
 
         fitter = SliceWidthsFitter(dscan_widths=dscan_widths,
                                    tscan_widths=tscan_widths,
@@ -401,16 +422,18 @@ class ScanWorker(QObject):
         ofp = self.machine.scanner.scan.optics_fixed_points
         beam_energy = self.machine.optics.get_dumpline_beam_energy() * 1e6
         dscan_voltage = self.scan_request.dscan_tds_voltage
-        from IPython import embed; embed()
 
         tscan_dispersion = self.machine.scanner.scan.tscan.setpoint.dispersion
-        measurement_result = fitter.all_fit_parameters(beam_energy=130e6,
-                                                       dscan_voltage=dscan_voltage,
-                                                       tscan_dispersion=tscan_dispersion,
-                                                       optics_fixed_points=ofp)
+        derived_beam_parameters = fitter.all_fit_parameters(beam_energy=beam_energy,
+                                                            dscan_voltage=dscan_voltage,
+                                                            tscan_dispersion=tscan_dispersion,
+                                                            optics_fixed_points=ofp,
+                                                            sigma_z=(bunch_length.n, bunch_length.s))
 
-        self.full_measurement_result_signal.emit(measurement_result)
-        return measurement_result
+        result = OnlineMeasurementResult(measurement_parameters=derived_beam_parameters,
+                                         output_directory=self.output_directory)
+        self.full_measurement_result_signal.emit(result)
+        return derived_beam_parameters
 
     def take_background(self, n):
         if self.kill:
@@ -436,7 +459,7 @@ class ScanWorker(QObject):
         mean_bg = np.mean(bgs, axis=0)
         return mean_bg
 
-    def dispersion_scan(self, bg) -> dict[float, float]:
+    def dispersion_scan(self, bg) -> dict[float, UFloat]:
         voltage = self.scan_request.dscan_tds_voltage
         # voltage =
         self.set_tds_voltage(voltage)
@@ -446,19 +469,18 @@ class ScanWorker(QObject):
         for setpoint in self.machine.scanner.scan.qscan.setpoints:
             self.set_quads(setpoint)
             time.sleep(self.scan_request.settings.quad_wait)
-            sp_widths = self.do_one_scan_setpoint(ScanType.DISPERSION,
-                                                  dispersion=setpoint.dispersion,
-                                                  voltage=voltage,
-                                                  beta=setpoint.beta,
-                                                  bg=bg)
+            sp_widths, _ = self.do_one_scan_setpoint(ScanType.DISPERSION,
+                                                     dispersion=setpoint.dispersion,
+                                                     voltage=voltage,
+                                                     beta=setpoint.beta,
+                                                     bg=bg)
             widths[setpoint.dispersion].extend(sp_widths)
-        # Get the average...
+            # Get the average...
         widths = {dx: np.mean(widths) for dx, widths in widths.items()}
         return widths
 
-    def tds_scan(self, bg) -> dict[float, float]:
+    def tds_scan(self, bg) -> tuple[dict[float, UFloat], dict[float, UFloat]]:
         setpoint = self.machine.scanner.scan.tscan.setpoint
-        print("Doing tds scan at dispersion", setpoint.dispersion)
         self.set_quads(setpoint)
         time.sleep(3)
         widths = defaultdict(list)
@@ -467,12 +489,9 @@ class ScanWorker(QObject):
         # We also calculate the bunch length at the maximum streak of the TDS Scan
         max_voltage = max(self.scan_request.voltages)
 
-        for i, voltage in enumerate(self.scan_request.voltages):
+        for voltage in self.scan_request.voltages:
             self.set_tds_voltage(voltage)
-            # time.sleep(self.scan_settings.tds_amplitude_wait)
-            if i == 0:
-                time.sleep(3)
-            time.sleep(5)
+            time.sleep(self.scan_request.settings.tds_amplitude_wait)
             sp_widths, sp_lengths = self.do_one_scan_setpoint(ScanType.TDS,
                                                               dispersion=setpoint.dispersion,
                                                               voltage=voltage,
@@ -485,7 +504,7 @@ class ScanWorker(QObject):
         lengths = {voltage: np.mean(lengths) for voltage, lengths in lengths.items()}
         return widths, lengths
 
-    def beta_scan(self, bg) -> dict[float, float]:
+    def beta_scan(self, bg) -> dict[float, UFloat]:
         voltage = self.scan_request.dscan_tds_voltage
         self.set_tds_voltage(voltage)
         print("Doing beta scan at voltage", voltage)
@@ -526,7 +545,7 @@ class ScanWorker(QObject):
                                           beta=beta,
                                           scan_type=str(scan_type))
                 self.processed_image_signal.emit(processed_image)
-                
+
                 widths.append(processed_image.central_width)
                 bunch_lengths.append(processed_image.sigma_z)
 
@@ -590,7 +609,7 @@ class ScanWorker(QObject):
                               dispersion=dispersion,
                               voltage=voltage,
                               beta=beta)
-    
+
 
 class InterruptedMeasurementException(RuntimeError):
     pass
@@ -613,40 +632,102 @@ def make_snapshot_filename(*, scan_type, dispersion, voltage, beta, **images):
 
 
 class ScannerConfDialog(QtWidgets.QDialog):
-    scanner_config_signal = pyqtSignal(ScanSettings)
     def __init__(self, defaults, parent=None):
-        super().__init__()
+        super().__init__(parent=parent)
         self.ui = Ui_Dialog()
         self.ui.setupUi(self)
         self.defaults = defaults
+
+        if not is_in_controlroom():
+            self.defaults["output_directory_lineedit"] = "./esme-measurements"
+
+        self.state = {}
+        self.provisional_state = {}
+        self.is_dirty = False
         self.restore_ui_initial_values()
+        self.connect_buttons()
+
 
     def restore_ui_initial_values(self):
         uiconf = self.defaults
-        quad_wait = uiconf["quad_wait"]
-        # nbg = uiconf["nbackground_per_scan"]
-        # nbeam = uiconf["nbeam_per_setpoint"]
-        quad_wait = uiconf["quad_wait"]
-        tds_amplitude_wait = uiconf["tds_amplitude_wait"]
-        beam_on_wait = uiconf["beam_on_wait"]
+        quad_wait = uiconf["quad_sleep_spinbox"]
+        tds_amplitude_wait = uiconf["tds_amplitude_wait_spinbox"]
+        beam_on_wait = uiconf["beam_on_wait_spinbox"]
         self.ui.tds_amplitude_wait_spinbox.setValue(tds_amplitude_wait)
         self.ui.quad_sleep_spinbox.setValue(quad_wait)
         self.ui.beam_on_wait_spinbox.setValue(beam_on_wait)
 
-        if is_in_controlroom():
-            outdir = Path(uiconf["outdir_bkr"])
-        else:
-            outdir = Path("./measurements")
-
+        outdir = Path(uiconf["output_directory_lineedit"])
         outdir = str(Path(outdir.resolve()))
 
         self.ui.output_directory_lineedit.setText(outdir)
+        self.state = deepcopy(self.defaults)
+        self.provisional_state = deepcopy(self.defaults)
+
+    def connect_buttons(self):
+        sps = self._set_provisional_state
+
+        self.ui.tds_amplitude_wait_spinbox.valueChanged.connect(lambda v: sps("tds_amplitude_wait_spinbox", v))
+        self.ui.quad_sleep_spinbox.valueChanged.connect(lambda v: sps("quad_sleep_spinbox", v))
+        self.ui.beam_on_wait_spinbox.valueChanged.connect(lambda v: sps("beam_on_wait_spinbox", v))
+        self.ui.output_directory_lineedit.textEdited.connect(lambda v: sps("output_directory_lineedit", v))
+
+        self.accepted.connect(self.okay_pressed)
+        self.rejected.connect(self.cancel_pressed)
 
     def get_scan_settings(self):
-        return ScanSettings(quad_wait=self.ui.quad_sleep_spinbox.value(),
-                            tds_amplitude_wait=self.ui.tds_amplitude_wait_spinbox.value(),
-                            beam_on_wait=self.ui.beam_on_wait_spinbox.value(),
-                            outdir=self.ui.output_directory_lineedit.text())
+        self.force_decision()
+
+        s = self.state
+        settings =  ScanSettings(quad_wait=s["quad_sleep_spinbox"],
+                                 tds_amplitude_wait=s["tds_amplitude_wait_spinbox"],
+                                 beam_on_wait=s["beam_on_wait_spinbox"],
+                                 outdir=s["output_directory_lineedit"])
+        LOG.debug("Getting settings: %s", settings)
+        return settings
+
+    def okay_pressed(self, close_window=False):
+        LOG.debug("Settings Config OK pressed")
+        self.is_dirty = False
+        self.state = self.provisional_state
+        if close_window:
+            self.close()
+
+    def cancel_pressed(self, close_window=False):
+        LOG.debug("Settings Config Cancel pressed")
+        self.is_dirty = False
+        self.provisional_state = self.state
+        if close_window:
+            self.close()
+
+    def force_decision(self):
+        """If window is open then force the user to decide whether or
+        not to accept the currently stored config values..."""
+        if not self.isVisible():
+            return
+        if not self.is_dirty:
+            self.close()
+            return
+
+
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Question)
+        msg.setText("Unconfirmed Config Changes")
+        msg.setInformativeText("Apply or discard changes to settings before starting measurement.")
+        msg.setWindowTitle("Error")
+        accept_changes_button = msg.addButton("Accept", QMessageBox.AcceptRole)
+        reject_changes_button = msg.addButton("Discard", QMessageBox.RejectRole)
+
+        accept_changes_button.clicked.connect(lambda: self.okay_pressed(close_window=True))
+        reject_changes_button.clicked.connect(lambda: self.cancel_pressed(close_window=True))
+        msg.exec_()
+
+
+
+    def _set_provisional_state(self, widget_name, value):
+        LOG.debug("Setting config box state %s = %s", widget_name, value)
+        self.provisional_state[widget_name] = value
+        self.is_dirty = True
 
 
 @dataclass
@@ -654,7 +735,7 @@ class NewSetpointSignal:
     voltage: float
     dispersion: float
     beta: float
-    
+
 
 # def find_window(cls)
 #     # Global function to find the (open) QMainWindow in application
@@ -666,7 +747,8 @@ class NewSetpointSignal:
 
 
 class ScannerResultsDialog(QtWidgets.QDialog):
-    # XXX: This needs finishing!
+    DEFAULT_AUTHOR = "High Resolution Slice Energy Measurer"
+    DEFAULT_TITLE = "Slice Energy Spread @ OTRC.64.I1D"
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self.ui = Ui_results_box_dialog()
@@ -674,61 +756,170 @@ class ScannerResultsDialog(QtWidgets.QDialog):
 
         self.ui.send_to_logbook_button.clicked.connect(self.send_to_logbook)
         self.ui.close_button.clicked.connect(self.close)
-        self.fitted_beam_parameters = None
-        self.data_outdir = None
-
-    def set_title(self, string: str) -> None:
-        self.ui.title_line_edit.setText(string)
-
-    def set_body_text(self, string: str) -> None:
-        self.result_dialog.ui.result_text_browser.setText(text)
+        self.online_measurement_result = None
 
     def send_to_logbook(self):
         # TODO: maybe also send screenshot of parent panel?  if it exists...s
-        text = self.ui.result_text_browser.toPlainText()
+        text = self.ui.comments_browser.toPlainText()
 
-        fit_df, beam_df = formatted_parameter_dfs(self.fitted_beam_parameters)
-        fit_string = df_to_logbook_table(fit_df)
+        fitted_beam_parameters = self.online_measurement_result.measurement_parameters
+        fit_df, beam_df = formatted_parameter_dfs(fitted_beam_parameters)
+        fit_string = df_to_logbook_table(fit_df, beam_df)
         beam_string = df_to_logbook_table(beam_df)
 
         text = dedent(f"""\
-        Derived Beam Parameters
+        {text}
+
+        !!Derived Beam Parameters
         {beam_string}
-        Other Beam Parameters
+
+        !!Fit Parameters
         {fit_string}
         """)
 
-        send_to_logbook(title=self.ui.title_line_edit.text(),
-                        author="Slice Energy Spread Measurement",
+        with (Path(self.online_measurement_result) / "notes.txt").open("w") as f:
+            f.write(text)
+
+        shutil.copy(DEFAULT_CONFIG_PATH, self.online_measurement_result)
+
+        send_to_logbook(title=self.DEFAULT_TITLE,
+                        author=self.DEFAULT_AUTHOR,
                         severity="MEASURE",
                         text=text)
 
-    def post_beam_parameters(self, fitted_beam_parameters=None):
-        if fitted_beam_parameters is None:
-            fitted_beam_parameters = self.fitted_beam_parameters
-        else:
-            self.fitted_beam_parameters = fitted_beam_parameters
-
-        fit_df, beam_df = formatted_parameter_dfs(fitted_beam_parameters)
-
-        fit_html = fit_df.to_html()
-        beam_html = beam_df.to_html()
-
-        beam_html = dedent(f"""\
-        <b> Beam Parameters</b>
-        {beam_html}
-        """)
-        fit_html = dedent(f"""\
-        <b> Fit Parameters</b>
-        {fit_html}
-        """)
-        self.ui.result_text_browser.setHtml(beam_html)
-        self.ui.fit_text_browser.setHtml(fit_html)
 
 
+    def post_measurement_result(self, online_measurement_result: OnlineMeasurementResult):
+        message = f"Written files to {online_measurement_result.output_directory}\n\n"
+        self.ui.comments_browser.setPlainText(message)
+        self.ui.title_line_edit.setText(self.DEFAULT_TITLE)
+
+        self.online_measurement_result = online_measurement_result
+        measurement_parameters = self.online_measurement_result.measurement_parameters
+
+        fit_df, beam_df = formatted_parameter_dfs(measurement_parameters)
+
+        self.fill_beam_table(beam_df, fit_df)
+        self.ui.comments_browser.setFocus()
+
+    def fill_beam_table(self, df, df2):
+        # Space either side of units is a hardcoded hack so that the
+        # mm.mrad units are visible in the column...
+        # Yes this method is hideous.
+        header = ["Variable", "Values", "Alt. Values", "     Units     "]
+
+        row_labels = ["<i>σ</i><sub>E</sub>",
+                      "<i>σ</i><sub>I</sub>",
+                      "<i>σ</i><sub>E</sub><sup>TDS</sup>",
+                      "<i>σ</i><sub>B</sub>",
+                      "<i>σ</i><sub>R</sub>",
+                      "<i>ε</i><sub><i>x</i></sub>",
+                      "<i>σ</i><sub><i>z</i></sub>",
+                      "<i>σ</i><sub><i>t</i></sub>",
+                      ]
+
+        row_units = ["keV", "μm", "keV", "μm", "μm", "mm·mrad", "mm", "ps"]
+
+        bt = self.ui.beam_parameters_table
+        bt.setColumnCount(len(header))
+        bt.setRowCount(len(row_labels) + len(df2))
+
+        for i, tup in enumerate(df.itertuples()):
+            label = row_labels[i]
+            value = tup.values
+            alt_value = tup.alt_values
+            units = row_units[i]
+
+            set_richtext_widget(bt, i, 3, units)
+
+            widget = QtWidgets.QWidget()
+            widgetText =  QtWidgets.QLabel(label)
+            widgetText.setWordWrap(True)
+            widgetLayout = QtWidgets.QHBoxLayout()
+            widgetLayout.addWidget(widgetText)
+            widgetLayout.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
+
+            widget.setLayout(widgetLayout)
+
+            bt.setCellWidget(i, 0, widget)
+            if "nan" not in value:
+                value_item = QTableWidgetItem(value)
+                bt.setItem(i, 1, value_item)
+            if "nan" not in alt_value:
+                alt_value_item = QTableWidgetItem(alt_value)
+                bt.setItem(i, 2, alt_value_item)
+
+            # units_item = QTableWidgetItem(units)
+            # bt.setItem(i, 3, units_item)
+
+        labels2 = {"V_0": "<i>V</i><sub>0</sub>",
+                   "D_0": "<i>D</i><sub>0</sub>",
+                   "E_0": "<i>E</i><sub>0</sub>",
+                   "A_V": "<i>A</i><sub><i>V</i></sub>",
+                   "B_V": "<i>B</i><sub><i>V</i></sub>",
+                   "A_D": "<i>A</i><sub><i>D</i></sub>",
+                   "B_D": "<i>B</i><sub><i>D</i></sub>",
+                   "A_beta": "<i>A</i><sub><i>β</i></sub>",
+                   "B_beta": "<i>B</i><sub><i>β</i></sub>"}
+
+        units2 = {"V_0": "MV",
+                  "D_0": "m",
+                  "E_0": "MeV",
+                  "A_V": "m<sup>2</sup>",
+                  "B_V": "m<sup>2</sup>V<sup>-2</sup>",
+                  "A_D": "m<sup>2</sup>",
+                  "B_D": "",
+                  "A_beta": "m<sup>2</sup>",
+                  "B_beta": "m"}
+
+        for i, tup in enumerate(df2.itertuples(), start=i + 1):
+            label = labels2[tup.Index]
+
+            value = tup.values
+            units = units2[tup.Index]
+
+            set_richtext_widget(bt, i, 0, label)
+
+            value_item = QTableWidgetItem(value)
+            bt.setItem(i, 1, value_item)
+            set_richtext_widget(bt, i, 3, units)
 
 
-# class ResultDisplayBox:
+        bt.setSizeAdjustPolicy(
+            QtWidgets.QAbstractScrollArea.AdjustToContents)
+
+        bt.setHorizontalHeaderLabels(header)
+        bt.resizeRowsToContents()
+        bt.resizeColumnsToContents()
+
+
+def set_richtext_widget(table, row, column, text):
+    widget = QtWidgets.QWidget()
+    widgetText =  QtWidgets.QLabel(text)
+    widgetText.setWordWrap(True)
+    widgetLayout = QtWidgets.QHBoxLayout()
+    widgetLayout.addWidget(widgetText)
+    widgetLayout.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
+    widget.setLayout(widgetLayout)
+
+    table.setCellWidget(row, column, widget)
+
+
+
+def display(pcl):
+    import pickle
+    with open(pcl, "rb") as f:
+        import pickle
+        p = pickle.load(f)
+
+    app = QApplication(sys.argv)
+    main_window = ScannerResultsDialog()
+
+    main_window.post_measurement_result(p)
+
+    main_window.show()
+    main_window.raise_()
+    sys.exit(app.exec_())
 
 @dataclass
 class ProcessedImage:

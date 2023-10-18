@@ -19,6 +19,7 @@ LOG.setLevel(logging.DEBUG)
 
 
 class TDSControl(QtWidgets.QWidget):
+    calibration_signal = pyqtSignal(object)
     def __init__(self, parent=None, machine=None):
         super().__init__(parent=parent)
 
@@ -31,7 +32,9 @@ class TDSControl(QtWidgets.QWidget):
         self.ui.setupUi(self)
 
         self.calibration_window = CalibrationMainWindow(self)
-        
+
+        self.calibration_window.calibration_signal.connect(self.apply_calibration)
+
         self.connect_buttons()
 
         self.timer = QTimer()
@@ -59,6 +62,7 @@ class TDSControl(QtWidgets.QWidget):
         self.mapping = mapping
         self.tds_voltage_spinbox.setEnabled(True)
         self.tds_voltage_spinbox.valueChanged.connect(self.update_voltage)
+        self.calibration_signal.emit(mapping)
 
     def update_volatge(self, voltage):
         amplitude = self.mapping.get_amplitude(voltage)

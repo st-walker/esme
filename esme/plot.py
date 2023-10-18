@@ -476,7 +476,7 @@ def _coefficients_df(params):
     pass
 
 
-def formatted_parameter_dfs(params, sigma_z=None, latex=False) -> str:
+def formatted_parameter_dfs(params, latex=False) -> str:
     # params = esme.all_fit_parameters()
 
     fit_params = params.fit_parameters_to_df()
@@ -484,11 +484,15 @@ def formatted_parameter_dfs(params, sigma_z=None, latex=False) -> str:
     fit_params.loc[["V_0", "E_0"]] *= 1e-6  # To MV / MeV
 
     beam_params = params.beam_parameters_to_df()
-    
-    if sigma_z is not None:
-        beam_params.loc["sigma_z"] = {"values": sigma_z.n, "errors": sigma_z.s}
+
+    # from IPython import embed; embed()
+
+    if params.sigma_z is not None:
+        beam_params.loc["sigma_z"] = {"values": params.sigma_z[0], "errors": params.sigma_z[1]}
         beam_params.loc["sigma_z"] *= 1e3  # to mm
-        beam_params.loc["sigma_t"] = beam_params.loc["sigma_z"] * 1e-3 * 1e12 / c  # to ps
+        # To picseconds:
+        beam_params.loc["sigma_t"] = {"values": params.sigma_t[0]*1e12,
+                                      "errors": params.sigma_t[1]*1e12}
 
     beam_params.loc[
         ["emitx", "sigma_i", "sigma_b", "sigma_r"]

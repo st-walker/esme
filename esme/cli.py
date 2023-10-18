@@ -119,17 +119,17 @@ def process(dirname, with_sigr, with_en, derr, simple):
         bscan_widths[dscan_setpoint.beta] = ana.pixel_widths_from_setpoint(bscan_setpoint)
 
 
+    # in metres
+    bunch_length = calculate_bunch_length(measurement.max_voltage_df())
+
     fitter = ana.SliceWidthsFitter(dscan_widths, tscan_widths)
     params = fitter.all_fit_parameters(measurement.energy() * 1e6, # to eV
                                        dscan_voltage=measurement.dscan_voltage(),
                                        tscan_dispersion=measurement.tscan_dispersion(),
-                                       optics_fixed_points=ofp)
-    # from IPython import embed; embed()
+                                       optics_fixed_points=ofp,
+                                       sigma_z=(bunch_length.n, bunch_length.s))
 
-    # in metres
-    bunch_length = calculate_bunch_length(measurement.max_voltage_df())
-
-    beam_df = params.beam_parameters_to_df(sigma_z=bunch_length)
+    beam_df = params.beam_parameters_to_df()
     fit_df = params.fit_parameters_to_df()
 
     # If failed to reconstruct values...
@@ -143,8 +143,9 @@ def process(dirname, with_sigr, with_en, derr, simple):
     beam_df.to_pickle(f"{dirname}-beam.pkl")
     fit_df.to_pickle(f"{dirname}-fit.pkl")
 
+    # from IPython import embed; embed()
 
-    fit_df, beam_df = formatted_parameter_dfs(params, sigma_z=bunch_length)
+    fit_df, beam_df = formatted_parameter_dfs(params)
 
     print(pretty_parameter_table(fit_df, beam_df))
 
@@ -174,6 +175,16 @@ def _simple_calc(setpoint, sigma_r=28e-6):
     print(sigma_e)
     return sigma_e
 
+
+@main.command()
+@argument("pcl", nargs=1)
+def display(pcl):
+
+    from esme.gui.scannerpanel import display
+
+    display(pcl)
+    
+    # from IPython import embed; embed()
 
 
 @main.command(no_args_is_help=True)

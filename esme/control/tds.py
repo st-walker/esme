@@ -38,6 +38,11 @@ class TransverseDeflector:
         ch = self.sp_fdl + f"{self.AMPLITUDE_SP_PROP}"
         self.mi.set_value(ch, value)
 
+
+# class TransverseDeflectors:
+#     def __init__(self, deflectors: dict[str, TransverseDeflector]):
+#         self.deflectors = deflectorss
+
 class TransverseDeflectors:
     def __init__(self, deflectors: list[TransverseDeflector]):
         self.area = DiagnosticRegion("I1")

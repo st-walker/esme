@@ -123,16 +123,17 @@ deflectors:
     
 scanner:
   gui_defaults:
-    nbeam: 10
-    nbg: 5
-    quad_wait: 5
-    tds_amplitude_wait: 1.5
-    beam_on_wait: 1.0
-    outdir: ./esme-measurements
-    outdir_bkr: /Users/xfeloper/user/stwalker/esme-measurements
-    emittance: 0.4
+    ScannerControl:
+      beam_shots_spinner: 10
+      bg_shots_spinner: 5
+      measured_emittance_spinbox: 0.4
 
-  
+    ScannerConfDialog:
+      quad_sleep_spinbox: 5
+      tds_amplitude_wait_spinbox: 5.0
+      beam_on_wait_spinbox: 2.0
+      output_directory_lineedit: /Users/xfeloper/user/stwalker/esme-measurements
+
   scans:
     - name: High Resolution I1D
       screen: OTRC.64.I1D

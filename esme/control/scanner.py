@@ -112,7 +112,7 @@ class Scanner:
 
         raise ScanSetpointError("Could not determine the current scan setpoint in the machine")
 
-    def get_snapshotter(self):
+    def get_snapshotter(self) -> Snapshotter:
         return Snapshotter(self.scan.request, mi=self.mi)
 
     def cycle_scan_quads(self) -> None:

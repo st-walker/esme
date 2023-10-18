@@ -96,7 +96,7 @@ class MeasurementDataFrames:
             else:
                 raise ValueError(f"Unrecognised file: {f}")
         return cls(dscans=dscans, bscans=bscans, tscans=tscans)
-        
+
 
     def max_voltage_df(self):
         imax = np.argmax([df.voltage for df in self.tscans])
@@ -105,7 +105,7 @@ class MeasurementDataFrames:
     def max_dispersion_sp(self):
         imax = np.argmax([df.dispersion for df in self.tscans])
         return self.dscans[imax]
-    
+
     def dscan_voltage(self):
         dscan_voltages = [dscan.voltage for dscan in self.dscans]
         assert len(set(dscan_voltages)) == 1
@@ -312,7 +312,7 @@ class SliceWidthsFitter:
         a_beta, b_beta = linear_fit(beta, widths2_m2, errors2_m2)
         return a_beta, b_beta
 
-    def all_fit_parameters(self, beam_energy, tscan_dispersion, dscan_voltage, optics_fixed_points, sigma_r=None, emit=None) -> FittedBeamParameters:
+    def all_fit_parameters(self, beam_energy, tscan_dispersion, dscan_voltage, optics_fixed_points, sigma_z=None) -> FittedBeamParameters:
         a_v, b_v = self.tds_scan_fit()
         a_d, b_d = self.dispersion_scan_fit()
 
@@ -327,7 +327,7 @@ class SliceWidthsFitter:
         except (TypeError, AttributeError):
             a_beta = b_beta = None
 
-        return FittedBeamParameters(
+        return DerivedBeamParameters(
             a_v=a_v,
             b_v=b_v,
             a_d=a_d,
@@ -338,6 +338,7 @@ class SliceWidthsFitter:
             oconfig=optics_fixed_points,
             a_beta=a_beta,
             b_beta=b_beta,
+            sigma_z=sigma_z
         )
 
 
@@ -351,7 +352,7 @@ class SliceWidthsFitter:
 
 
 @dataclass
-class FittedBeamParameters:
+class DerivedBeamParameters:
     """Table 2 from the paper"""
 
     # Stored as tuples, nominal value with error.
@@ -365,6 +366,7 @@ class FittedBeamParameters:
     oconfig: OpticalConfig
     a_beta: ValueWithErrorT = None
     b_beta: ValueWithErrorT = None
+    sigma_z: ValueWithErrorT = None
 
     def a_d_derived(self, sigma_r, emittance=None):
         if emittance is None:
@@ -568,16 +570,22 @@ class FittedBeamParameters:
             {"alt_values": values, "alt_errors": errors}, index=pdict.keys()
         )
 
-    def beam_parameters_to_df(self, sigma_z=None) -> pd.DataFrame:
+    def beam_parameters_to_df(self) -> pd.DataFrame:
         # sigma_t in picosecondsm
         params = self._beam_parameters_to_df()
         alt_params = self._alt_beam_parameters_to_df()
-        if sigma_z is not None:
-            sigma_t = sigma_z / c
-            params.loc["sigma_z"] = {"values": sigma_z.n, "errors": sigma_z.s}
-            params.loc["sigma_t"] = {"values": sigma_t.n, "errors": sigma_t.s}
+        if self.sigma_z is not None:
+            sigma_t = self.sigma_t
+            params.loc["sigma_z"] = {"values": self.sigma_z[0], "errors": self.sigma_z[1]}
+            params.loc["sigma_t"] = {"values": self.sigma_t[0], "errors": self.sigma_t[1]}
 
         return pd.concat([params, alt_params], axis=1)
+
+    @property
+    def sigma_t(self):
+        stn = self.sigma_z[0] / c
+        ste = self.sigma_z[1] / c
+        return stn, ste
 
 
 def true_bunch_length_from_df(setpoint):
@@ -591,7 +599,7 @@ def true_bunch_length_from_df(setpoint):
         image = filter_image(image, bg=0.0, crop=False)
         length, error = apparent_bunch_length_from_processed_image(image)
         apparent_bunch_lengths.append(ufloat(length, error))
-        
+
     mean_apparent_bunch_length = np.mean(apparent_bunch_lengths)
 
     r34 = abs(calculate_i1d_r34_from_tds_centre(setpoint.df, setpoint.screen_name, setpoint.energy))

@@ -27,6 +27,8 @@ class Ui_results_box_dialog(object):
         self.title_line_edit.setObjectName("title_line_edit")
         self.horizontalLayout_6.addWidget(self.title_line_edit)
         self.gridLayout.addLayout(self.horizontalLayout_6, 0, 0, 1, 1)
+        self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_2.setObjectName("horizontalLayout_2")
         self.comments_browser = QtWidgets.QPlainTextEdit(results_box_dialog)
         self.comments_browser.setTabChangesFocus(True)
         self.comments_browser.setReadOnly(False)
@@ -35,16 +37,27 @@ class Ui_results_box_dialog(object):
         self.comments_browser.setBackgroundVisible(False)
         self.comments_browser.setCenterOnScroll(False)
         self.comments_browser.setObjectName("comments_browser")
-        self.gridLayout.addWidget(self.comments_browser, 1, 0, 1, 1)
-        self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
-        self.horizontalLayout_2.setObjectName("horizontalLayout_2")
-        self.result_text_browser = QtWidgets.QTextBrowser(results_box_dialog)
-        self.result_text_browser.setObjectName("result_text_browser")
-        self.horizontalLayout_2.addWidget(self.result_text_browser)
-        self.fit_text_browser = QtWidgets.QTextBrowser(results_box_dialog)
-        self.fit_text_browser.setObjectName("fit_text_browser")
-        self.horizontalLayout_2.addWidget(self.fit_text_browser)
-        self.gridLayout.addLayout(self.horizontalLayout_2, 2, 0, 1, 1)
+        self.horizontalLayout_2.addWidget(self.comments_browser)
+        self.beam_parameters_table = QtWidgets.QTableWidget(results_box_dialog)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.beam_parameters_table.sizePolicy().hasHeightForWidth())
+        self.beam_parameters_table.setSizePolicy(sizePolicy)
+        self.beam_parameters_table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        self.beam_parameters_table.setAlternatingRowColors(False)
+        self.beam_parameters_table.setSelectionMode(QtWidgets.QAbstractItemView.NoSelection)
+        self.beam_parameters_table.setTextElideMode(QtCore.Qt.ElideNone)
+        self.beam_parameters_table.setGridStyle(QtCore.Qt.NoPen)
+        self.beam_parameters_table.setCornerButtonEnabled(False)
+        self.beam_parameters_table.setObjectName("beam_parameters_table")
+        self.beam_parameters_table.setColumnCount(0)
+        self.beam_parameters_table.setRowCount(0)
+        self.beam_parameters_table.horizontalHeader().setStretchLastSection(False)
+        self.beam_parameters_table.verticalHeader().setVisible(False)
+        self.beam_parameters_table.verticalHeader().setStretchLastSection(False)
+        self.horizontalLayout_2.addWidget(self.beam_parameters_table)
+        self.gridLayout.addLayout(self.horizontalLayout_2, 1, 0, 1, 1)
         self.horizontalLayout = QtWidgets.QHBoxLayout()
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.send_to_logbook_button = QtWidgets.QPushButton(results_box_dialog)
@@ -53,7 +66,7 @@ class Ui_results_box_dialog(object):
         self.close_button = QtWidgets.QPushButton(results_box_dialog)
         self.close_button.setObjectName("close_button")
         self.horizontalLayout.addWidget(self.close_button)
-        self.gridLayout.addLayout(self.horizontalLayout, 3, 0, 1, 1)
+        self.gridLayout.addLayout(self.horizontalLayout, 2, 0, 1, 1)
 
         self.retranslateUi(results_box_dialog)
         QtCore.QMetaObject.connectSlotsByName(results_box_dialog)
@@ -63,22 +76,6 @@ class Ui_results_box_dialog(object):
         results_box_dialog.setWindowTitle(_translate("results_box_dialog", "Dialog"))
         self.label_3.setText(_translate("results_box_dialog", "Title"))
         self.comments_browser.setPlaceholderText(_translate("results_box_dialog", "Comments & Notes...", "asdasd"))
-        self.result_text_browser.setHtml(_translate("results_box_dialog", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
-"<html><head><meta name=\"qrichtext\" content=\"1\" /><meta charset=\"utf-8\" /><style type=\"text/css\">\n"
-"p, li { white-space: pre-wrap; }\n"
-"hr { height: 1px; border-width: 0; }\n"
-"li.unchecked::marker { content: \"\\2610\"; }\n"
-"li.checked::marker { content: \"\\2612\"; }\n"
-"</style></head><body style=\" font-family:\'.AppleSystemUIFont\'; font-size:13pt; font-weight:400; font-style:normal;\">\n"
-"<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p></body></html>"))
-        self.fit_text_browser.setHtml(_translate("results_box_dialog", "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n"
-"<html><head><meta name=\"qrichtext\" content=\"1\" /><meta charset=\"utf-8\" /><style type=\"text/css\">\n"
-"p, li { white-space: pre-wrap; }\n"
-"hr { height: 1px; border-width: 0; }\n"
-"li.unchecked::marker { content: \"\\2610\"; }\n"
-"li.checked::marker { content: \"\\2612\"; }\n"
-"</style></head><body style=\" font-family:\'.AppleSystemUIFont\'; font-size:13pt; font-weight:400; font-style:normal;\">\n"
-"<p style=\"-qt-paragraph-type:empty; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\"><br /></p></body></html>"))
         self.send_to_logbook_button.setText(_translate("results_box_dialog", "Send To Logbook"))
         self.close_button.setText(_translate("results_box_dialog", "Close"))
 
