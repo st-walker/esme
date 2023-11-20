@@ -70,6 +70,7 @@ screens:
       voltage: 11_500
       delay: 29
 
+# Good for longitudinal measurements
 - name: OTRB.454.B2
   area: B2
   kickers:
@@ -80,6 +81,7 @@ screens:
       voltage: 11_000
       delay: 29
 
+# Also good for long. measurements.
 - name: OTRB.457.B2
   area: B2
   kickers:
@@ -108,14 +110,13 @@ screens:
 
 
 deflectors:
-  - name: TDSI1
-    area: I1
+  - area: I1
+    streak: vertical
     sp_fdl: XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/
     rb_fdl: XFEL.RF/LLRF.CONTROLLER/VS.LLTDSI1/
-    # leading_gap: 5e-6
 
-  - name: TDSB2
-    area: B2
+  - area: B2
+    streak: horizontal
     sp_fdl: XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSB2/
     rb_fdl: XFEL.RF/LLRF.CONTROLLER/VS.LLTDSB2/
 

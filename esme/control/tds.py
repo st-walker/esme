@@ -1,9 +1,15 @@
-from .mint import XFELMachineInterface, DOOCSAddress
+from enum import Enum, auto
 
-from .sbunches import DiagnosticRegion
+from .dint import DOOCSInterface
 
 class UncalibratedTDSError(RuntimeError):
     pass
+
+
+class StreakingPlane(str, Enum):
+    HORIZONTAL = "HORIZONTAL"
+    VERTICAL = "VERTICAL"
+
 
 class TransverseDeflector:
     PHASE_RB_PROP = "PHASE.SAMPLE"
@@ -11,76 +17,49 @@ class TransverseDeflector:
     PHASE_SP_PROP = "SP.PHASE"
     AMPLITUDE_SP_PROP = "SP.AMPL"
 
-    def __init__(self, location: DiagnosticRegion, sp_fdl: str, rb_fdl: str, calibration=None, mi=None) -> None:
-        self.location = location
+    def __init__(self, sp_fdl: str, rb_fdl: str, plane: StreakingPlane, calibration=None, di=None) -> None:
         self.sp_fdl = sp_fdl
         self.rb_fdl = rb_fdl
+        self.plane = plane
         self.calibration = None
-        self.mi = mi if mi else XFELMachineInterface()
+        self.di = di if di else DOOCSInterface()
 
     def get_phase_rb(self) -> float:
         ch = self.rb_fdl + f"{self.PHASE_RB_PROP}"
-        return self.mi.get_value(ch)
+        return self.di.get_value(ch)
 
     def get_amplitude_rb(self) -> float:
         ch = self.rb_fdl + f"{self.AMPLITUDE_RB_PROP}"
-        return self.mi.get_value(ch)
+        return self.di.get_value(ch)
 
     def get_phase_sp(self) -> float:
         ch = self.sp_fdl + f"{self.PHASE_SP_PROP}"
-        return self.mi.get_value(ch)
+        return self.di.get_value(ch)
 
     def get_amplitude_sp(self) -> float:
         ch = self.sp_fdl + f"{self.AMPLITUDE_SP_PROP}"
-        return self.mi.get_value(ch)
+        return self.di.get_value(ch)
 
     def set_phase(self, value: float) -> None:
         ch = self.sp_fdl + f"{self.PHASE_SP_PROP}"
-        self.mi.set_value(ch, value)
+        self.di.set_value(ch, value)
 
     def set_amplitude(self, value: float) -> None:
         ch = self.sp_fdl + f"{self.AMPLITUDE_SP_PROP}"
-        self.mi.set_value(ch, value)
+        self.di.set_value(ch, value)
 
     def set_voltage(self, voltage: float) -> None:
         try:
-            amplitude = self.calibration.get_amplitude(voltage)
+            amplitude = self.calibration.get_amplitude_sp(voltage)
         except AttributeError as e:
-            raise UncalibratedTDSError("Missing TDS Calibration") from e
+            raise UncalibratedTDSError("Missing TDS Calibration")
 
         self.set_amplitude(amplitude)
+
+    def get_voltage_rb(self) -> float:
+        try:
+            return self.calibration.get_voltage(self.get_amplitude_rb())
+        except AttributeError as e:
+            raise UncalibratedTDSError("Missing TDS Calibration")
         
-
-
-# class TransverseDeflectors:
-#     def __init__(self, deflectors: dict[str, TransverseDeflector]):
-#         self.deflectors = deflectorss
-
-class TransverseDeflectors:
-    def __init__(self, deflectors: list[TransverseDeflector]):
-        self.area = DiagnosticRegion("I1")
-        self.deflectors = deflectors
-
-    def all_tds_locations(self):
-        return [d.location for d in self.deflectors]
-
-    def active_tds(self) -> TransverseDeflector:
-        return self.deflectors[self.all_tds_locations().index(self.area)]
-
-    def get_phase_rb(self) -> float:
-        return self.active_tds().get_phase_rb()
-
-    def get_amplitude_rb(self) -> float:
-        return self.active_tds().get_amplitude_rb()
-
-    def get_phase_sp(self) -> float:
-        return self.active_tds().get_phase_sp()
-
-    def get_amplitude_sp(self) -> float:
-        return self.active_tds().get_amplitude_sp()
-
-    def set_phase(self, value: float) -> None:
-        self.active_tds().set_phase(value)
-
-    def set_amplitude(self, value: float) -> None:
-        self.active_tds().set_amplitude(value)
+        

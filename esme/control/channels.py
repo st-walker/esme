@@ -8,7 +8,7 @@ Script to collect tuning data
 import os
 from pathlib import Path
 
-from esme.mint import BasicAlarm, Snapshot
+from esme.dint import BasicAlarm, Snapshot
 
 DUMP_SCREEN_ADDRESS: str = "XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"
 I1D_SCREEN_ADDRESS = DUMP_SCREEN_ADDRESS

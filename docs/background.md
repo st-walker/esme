@@ -30,3 +30,4 @@ And $\frac{\left < \Delta y \right >}{\Delta t}$ is given by Bolko's TDS calibra
 
 
 
+maybe machine learning to extract Amplitude to Voltage mapping and phase?

@@ -7,11 +7,11 @@ import logging
 
 import numpy as np
 
-from esme.control.mint import XFELMachineInterfaceABC, DOOCSAddress
+from esme.control.dint import DOOCSInterfaceABC, DOOCSAddress
 
 LOG = logging.getLogger(__name__)
 
-class DictionaryXFELMachineInterface(XFELMachineInterfaceABC):
+class DictionaryDOOCSInterface(DOOCSInterfaceABC):
     def __init__(self, initial_state: Optional[dict] = None):
         self._machine_state = {}
         if initial_state is not None:
@@ -162,8 +162,7 @@ class QualifiedImageAddress:
 
 
 
-
-class ScanMachineInterface(DictionaryXFELMachineInterface):
+class ScanMachineInterface(DictionaryDOOCSInterface):
     pass
     # def __init__(self, *args, **kwargs):
     #     super().__init__(args, kwargs)

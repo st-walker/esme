@@ -6,9 +6,7 @@ except ImportError:
     pass
 from dataclasses import dataclass
 
-from .mint import XFELMachineInterface
-
-# from IPython import embed
+from .dint import DOOCSInterface
 
 
 def get_bunch_pattern():

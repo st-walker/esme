@@ -33,12 +33,12 @@ except ImportError:
 LOG = logging.getLogger(__name__)
 
 
-class EuXFELMachineError(RuntimeError):
-    pass
 
 
 def make_doocs_channel_string(facility="", device="", location="", prop=""):
     return f"{facility}/{device}/{location}/{prop}"
+
+
 
 class DOOCSAddress:
     def __init__(self, facility="", device="", location="", prop=""):
@@ -107,7 +107,7 @@ class TimestampedImage:
 from abc import abstractmethod
 
 
-class XFELMachineInterfaceABC:
+class DOOCSInterfaceABC:
     @abstractmethod
     def get_value(self, channel: str) -> Any:
         pass
@@ -121,10 +121,19 @@ class XFELMachineInterfaceABC:
         pass
 
 
-class XFELMachineInterface(XFELMachineInterfaceABC):
+class DOOCSInterface(DOOCSInterfaceABC):
     """
     Machine Interface for European XFEL
     """
+    def __init__(self):
+        # # Just fail immediately if there's no pydoocs...
+        # try:
+        import pydoocs
+        # except ImportError as e:
+        #     raise e
+        # else:
+        #     super().__init__(*args, **kwargs)
+
     def get_value(self, channel: str) -> Any:
         """
         Getter function for XFEL.
@@ -134,10 +143,9 @@ class XFELMachineInterface(XFELMachineInterfaceABC):
         """
         LOG.debug("get_value: channel", channel)
         try:
-            import ipdb; ipdb.set_trace()
             val = pydoocs.read(channel)
         except pydoocs.DoocsException as e:
-            raise pydoocs.DoocsException(f"Failed get_value with channel: {channel}") from e
+            raise DOOCSReadError(f"Failed get_value with channel: {channel}") from e
         return val["data"]
 
     def set_value(self, channel: str, val: Any) -> None:
@@ -152,10 +160,7 @@ class XFELMachineInterface(XFELMachineInterfaceABC):
         try:
             pydoocs.write(channel, val)
         except pydoocs.DoocsException as e:
-            raise pydoocs.DoocsException(f"Failed writing {val} to {channel}") from e
-        except:
-            from ipdb import set_trace; set_trace()
-            from IPython import embed; embed()
+            raise DOOCSWriteError(f"Failed writing {val} to {channel}") from e
 
     def get_charge(self) -> float:
         return self.get_value("XFEL.DIAG/CHARGE.ML/TORA.25.I1/CHARGE.SA1")
@@ -216,12 +221,12 @@ class Snapshot:
 
 class Machine:
     def __init__(
-        self, snapshot: Snapshot, mi: Optional[Type[XFELMachineInterfaceABC]] = None
+        self, snapshot: Snapshot, di: Optional[Type[DOOCSInterfaceABC]] = None
     ):
         self.snapshot = snapshot
-        if mi is None:
-            mi = XFELMachineInterface()
-        self.mi = mi
+        if di is None:
+            di = DOOCSInterface()
+        self.di = di
         self.bpm_server = "ORBIT"  # or "BPM"
         self.server = "XFEL"
         self.subtrain = "ALL"
@@ -237,7 +242,7 @@ class Machine:
 
         for alarm in self.snapshot.alarms:
             # Read from the Machine the value
-            val = self.mi.get_value(alarm.channel)
+            val = self.di.get_value(alarm.channel)
 
             # Check if it's OK:
             if not alarm.is_ok(val):
@@ -250,7 +255,7 @@ class Machine:
         for sec_id in self.snapshot.orbit_sections:
             try:
                 orbit_x = np.array(
-                    self.mi.get_value(
+                    self.di.get_value(
                         self.server
                         + ".DIAG/"
                         + self.bpm_server
@@ -263,7 +268,7 @@ class Machine:
                 )
 
                 orbit_y = np.array(
-                    self.mi.get_value(
+                    self.di.get_value(
                         self.server
                         + ".DIAG/"
                         + self.bpm_server
@@ -292,7 +297,7 @@ class Machine:
         for sec_id in self.snapshot.magnet_sections:
             try:
                 magnets = np.array(
-                    self.mi.get_value(
+                    self.di.get_value(
                         "XFEL.MAGNETS/MAGNET.ML/*." + sec_id + "/KICK_MRAD.SP"
                     )
                 )
@@ -310,7 +315,7 @@ class Machine:
         data = list(data)
         for ch in self.snapshot.channels:
             try:
-                val = self.mi.get_value(ch)
+                val = self.di.get_value(ch)
             except Exception as e:
                 print("id: " + ch + " ERROR: " + str(e))
                 val = np.nan
@@ -322,7 +327,7 @@ class Machine:
         for i, ch in enumerate(self.snapshot.images):
             folder = self.snapshot.image_folders[i]
             try:
-                img = self.mi.get_value(ch)
+                img = self.di.get_value(ch)
             except Exception as e:
                 print("id: " + ch + " ERROR: " + str(e))
                 img = None
@@ -354,7 +359,7 @@ class Machine:
 
     def get_single_image(self, data, all_names):
         ch = self.snapshot.images[0]
-        image = TimestampedImage(ch, self.mi.get_value(ch), datetime.utcnow())
+        image = TimestampedImage(ch, self.di.get_value(ch), datetime.utcnow())
 
         return data, all_names, image
 
@@ -429,3 +434,16 @@ class Machine:
         names = [l[-1] for l in result]
         values = [[l[1]] for l in result]
         return dict(zip(names, values))
+
+
+def is_in_controlroom():
+    name = socket.gethostname()
+    reg = re.compile(r"xfelbkr[0-9]\.desy\.de")
+    return bool(reg.match(name))
+
+def make_default_doocs_interface() -> DOOCSInterfaceABC:
+    if not is_in_controlroom():
+        return get_default_virtual_doocs_interface()
+    else:
+        return DOOCSInterface()
+    

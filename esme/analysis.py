@@ -235,7 +235,9 @@ def calculate_energy_spread_simple(widths) -> ValueWithErrorT:
     return value, error  # in eV
 
 
-def pixel_widths_from_setpoint(setpoint: SetpointDataFrame):
+def pixel_widths_from_setpoint(setpoint: SetpointDataFrame, policy="emax"):
+    policy = "middle"
+    
     image_full_paths = setpoint.image_full_paths
     central_sigmas = []
     for path in image_full_paths:
@@ -247,7 +249,15 @@ def pixel_widths_from_setpoint(setpoint: SetpointDataFrame):
         sigma = get_central_slice_width_from_slice_properties(
             means, bunch_sigmas, padding=10
         )
-        central_width_row = np.argmin(means)
+
+        print(np.argmin(means), len(means) // 2)
+        if policy == "emax":
+            central_width_row = np.argmin(means)
+        elif policy == "middle":
+            print("middle!")
+            central_width_row = len(means) // 2
+        else:
+            raise ValueError(f"Unknown policy: {policy}")
         central_sigmas.append(sigma)
 
     return np.mean(central_sigmas)

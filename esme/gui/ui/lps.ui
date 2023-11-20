@@ -150,6 +150,7 @@
      <string>Menu</string>
     </property>
     <addaction name="action_print_to_logbook"/>
+    <addaction name="actionAbout_HIREIS"/>
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
@@ -178,6 +179,11 @@
   <action name="actionAbout">
    <property name="text">
     <string>About</string>
+   </property>
+  </action>
+  <action name="actionAbout_HIREIS">
+   <property name="text">
+    <string>About HIREIS</string>
    </property>
   </action>
  </widget>

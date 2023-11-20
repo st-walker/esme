@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>802</width>
-    <height>898</height>
+    <width>1400</width>
+    <height>785</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -30,93 +30,105 @@
        <attribute name="title">
         <string>Main</string>
        </attribute>
-       <layout class="QGridLayout" name="gridLayout_8">
-        <item row="0" column="0">
-         <widget class="GraphicsLayoutWidget" name="screen_display_widget" native="true">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-         </widget>
-        </item>
+       <layout class="QGridLayout" name="gridLayout_7">
         <item row="0" column="1">
          <widget class="QGroupBox" name="controls_group_box">
           <property name="maximumSize">
            <size>
-            <width>408</width>
+            <width>16777215</width>
             <height>16777215</height>
            </size>
           </property>
           <property name="title">
-           <string>Controls</string>
+           <string>Diagnostic Area</string>
           </property>
-          <layout class="QGridLayout" name="gridLayout_4">
-           <item row="8" column="0">
-            <widget class="QPushButton" name="lps_button">
-             <property name="text">
-              <string>Long. Phase Space...</string>
-             </property>
-            </widget>
-           </item>
-           <item row="3" column="0">
-            <widget class="Line" name="line">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-            </widget>
-           </item>
-           <item row="6" column="0">
-            <widget class="QPushButton" name="laser_heater_pushbutton">
-             <property name="text">
-              <string>Laser Heater On</string>
-             </property>
-            </widget>
-           </item>
-           <item row="5" column="0">
-            <widget class="Line" name="line_3">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-            </widget>
-           </item>
+          <layout class="QGridLayout" name="gridLayout_2">
            <item row="1" column="0">
-            <widget class="Line" name="line_2">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="0">
-            <layout class="QHBoxLayout" name="horizontalLayout_2">
+            <layout class="QHBoxLayout" name="horizontalLayout_3">
              <item>
-              <widget class="QLabel" name="section_label">
+              <widget class="QLabel" name="screen_label">
                <property name="text">
-                <string>Section</string>
+                <string>Screen</string>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QRadioButton" name="i1_radio_button">
-               <property name="text">
-                <string>I1</string>
-               </property>
-               <property name="checked">
-                <bool>true</bool>
+              <widget class="QComboBox" name="select_screen_combobox">
+               <property name="placeholderText">
+                <string/>
                </property>
               </widget>
              </item>
              <item>
-              <widget class="QRadioButton" name="b2_radio_button">
+              <widget class="QPushButton" name="jddd_screen_gui_button">
                <property name="text">
-                <string>B2</string>
+                <string>JDDD...</string>
                </property>
               </widget>
              </item>
             </layout>
            </item>
-           <item row="4" column="0">
+           <item row="0" column="0">
+            <layout class="QVBoxLayout" name="verticalLayout">
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_2">
+               <item>
+                <widget class="QLabel" name="section_label">
+                 <property name="text">
+                  <string>Section</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QRadioButton" name="i1_radio_button">
+                 <property name="text">
+                  <string>I1</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QRadioButton" name="b2_radio_button">
+                 <property name="text">
+                  <string>B2</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QGroupBox" name="groupBox_3">
+          <property name="title">
+           <string>Special Bunch Midlayer</string>
+          </property>
+          <layout class="QGridLayout" name="gridLayout_5">
+           <item row="0" column="0">
+            <widget class="SpecialBunchMidLayerPanel" name="special_bunch_panel" native="true">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QGroupBox" name="groupBox_2">
+          <property name="title">
+           <string>Transverse Deflecting Structure</string>
+          </property>
+          <layout class="QGridLayout" name="gridLayout_4">
+           <item row="0" column="0">
             <widget class="TDSControl" name="tds_panel" native="true">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
@@ -126,45 +138,116 @@
              </property>
             </widget>
            </item>
-           <item row="9" column="0">
-            <widget class="QPushButton" name="bunch_length_button">
+          </layout>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QGroupBox" name="groupBox">
+          <property name="title">
+           <string>Image Acquisition</string>
+          </property>
+          <layout class="QGridLayout" name="gridLayout_6">
+           <item row="0" column="0">
+            <layout class="QHBoxLayout" name="horizontalLayout">
+             <item>
+              <widget class="QLabel" name="label">
+               <property name="text">
+                <string>Background Shots</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QSpinBox" name="nbg_spinbox">
+               <property name="maximum">
+                <number>5</number>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item row="0" column="1" colspan="2">
+            <layout class="QHBoxLayout" name="horizontalLayout_4">
+             <item>
+              <widget class="QLabel" name="label_2">
+               <property name="text">
+                <string>Beam Shots</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QSpinBox" name="nbeam_spinbox"/>
+             </item>
+            </layout>
+           </item>
+           <item row="1" column="0">
+            <widget class="QCheckBox" name="subtract_bg_checkbox">
              <property name="text">
-              <string>Measure Bunch Length...</string>
+              <string>Subtract background</string>
              </property>
             </widget>
            </item>
-           <item row="10" column="0">
-            <widget class="IndicatorPanel" name="indicator_panel" native="true"/>
-           </item>
-           <item row="2" column="0">
-            <widget class="SpecialBunchControl" name="special_bunch_panel" native="true">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
+           <item row="1" column="1" colspan="2">
+            <widget class="QCheckBox" name="isolate_beam_image_checkbox">
+             <property name="text">
+              <string>Isolate beam image</string>
              </property>
             </widget>
            </item>
-           <item row="7" column="0">
-            <widget class="Line" name="line_4">
-             <property name="orientation">
-              <enum>Qt::Horizontal</enum>
+           <item row="2" column="0" colspan="2">
+            <widget class="QPushButton" name="take_background_button">
+             <property name="text">
+              <string>Accumulate Background</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="2">
+            <widget class="QPushButton" name="take_data_button">
+             <property name="text">
+              <string>Take Data...</string>
              </property>
             </widget>
            </item>
           </layout>
-          <zorder>indicator_panel</zorder>
-          <zorder></zorder>
-          <zorder>laser_heater_pushbutton</zorder>
-          <zorder>special_bunch_panel</zorder>
-          <zorder>tds_panel</zorder>
-          <zorder>line</zorder>
-          <zorder>line_2</zorder>
-          <zorder>line_3</zorder>
-          <zorder>line_4</zorder>
-          <zorder>lps_button</zorder>
-          <zorder>bunch_length_button</zorder>
+         </widget>
+        </item>
+        <item row="4" column="1">
+         <widget class="QGroupBox" name="groupBox_5">
+          <property name="title">
+           <string>Dumpline</string>
+          </property>
+          <layout class="QGridLayout" name="gridLayout_8">
+           <item row="2" column="0">
+            <widget class="QPushButton" name="rollback_button">
+             <property name="text">
+              <string>Rollback</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QPushButton" name="high_streak_optics_button">
+             <property name="text">
+              <string>Apply High Streaking Optics</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="0">
+            <widget class="QPushButton" name="go_to_dump_button">
+             <property name="text">
+              <string>Go to Dump</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item row="0" column="0" rowspan="5">
+         <widget class="ScreenDisplayWidget" name="screen_display_widget" native="true">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
          </widget>
         </item>
        </layout>
@@ -183,12 +266,13 @@
     </item>
    </layout>
   </widget>
+  <widget class="QStatusBar" name="statusbar"/>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>802</width>
+     <width>1400</width>
      <height>22</height>
     </rect>
    </property>
@@ -202,18 +286,8 @@
     <addaction name="action_print_to_logbook"/>
     <addaction name="action_close"/>
    </widget>
-   <widget class="QMenu" name="menuMeasurement">
-    <property name="title">
-     <string>Measurements</string>
-    </property>
-    <addaction name="actionBunch_Length"/>
-    <addaction name="actionLongitudinal_Phase_Space"/>
-    <addaction name="actionEmittance"/>
-   </widget>
    <addaction name="menuMenu"/>
-   <addaction name="menuMeasurement"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
   <action name="action_close">
    <property name="text">
     <string>Close</string>
@@ -253,27 +327,21 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>GraphicsLayoutWidget</class>
-   <extends>QWidget</extends>
-   <header>pyqtgraph</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>IndicatorPanel</class>
-   <extends>QWidget</extends>
-   <header>esme.gui.indicator</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
    <class>TDSControl</class>
    <extends>QWidget</extends>
    <header>esme.gui.tds</header>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>SpecialBunchControl</class>
+   <class>SpecialBunchMidLayerPanel</class>
    <extends>QWidget</extends>
    <header>esme.gui.sbunchpanel</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>ScreenDisplayWidget</class>
+   <extends>QWidget</extends>
+   <header location="global">esme.gui.screen</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

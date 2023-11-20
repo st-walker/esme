@@ -8,7 +8,7 @@ import pytz
 import numpy as np
 import pandas as pd
 
-from esme.control.mint import XFELMachineInterface, DOOCSAddress
+from esme.control.dint import DOOCSInterface, DOOCSAddress
 
 import logging
 
@@ -60,9 +60,9 @@ class SnapshotAccumulator:
 
 
 class Snapshotter:
-    def __init__(self, request: SnapshotRequest, mi: Optional[XFELMachineInterface] = None):
+    def __init__(self, request: SnapshotRequest, di: Optional[DOOCSInterface] = None):
         self.request = request
-        self.mi = mi if mi else XFELMachineInterface()
+        self.di = di if di else DOOCSInterface()
 
     def expand_wildcards(self):
         subaddress_full_address_map = {}
@@ -70,7 +70,7 @@ class Snapshotter:
             wildcard = DOOCSAddress.from_string(wildcard)
             assert wildcard.is_wildcard_address()
             # Now read...
-            reads = self.mi.get_value(str(wildcard))
+            reads = self.di.get_value(str(wildcard))
             addresses_parts = np.array(reads)[:, 4]
 
             full_addresses = [wildcard.with_location(loc) for loc in addresses_parts]
@@ -93,7 +93,7 @@ class Snapshotter:
             return {}
 
         if image is None:
-            image = self.mi.get_value(image_address)
+            image = self.di.get_value(image_address)
 
         fname = make_image_filename(image_dir)
         np.savez(fname, image=image)
@@ -101,12 +101,12 @@ class Snapshotter:
         return {image_address: f"{image_dir.name}/{fname.name}"}
 
     def read_addresses(self) -> dict:
-        return {addy: self.mi.get_value(addy) for addy in self.request.addresses}
+        return {addy: self.di.get_value(addy) for addy in self.request.addresses}
 
     def read_wildcards(self) -> dict:
         result = {}
         for wildcard in self.request.wildcards:
-            reads = np.array(self.mi.get_value(wildcard))
+            reads = np.array(self.di.get_value(wildcard))
             addresses = reads[:, 4]
             values = reads[:, 1]
 

@@ -1,7 +1,7 @@
 from typing import Optional
 import logging
 
-from .mint import XFELMachineInterface
+from .dint import XFELMachineInterface
 from .screens import ScreenService
 
 LOG = logging.getLogger(__name__)
@@ -17,9 +17,9 @@ class VoltageSample:
 class DispersionMeasurer:
     PAUSE_BETWEEN_VOLTAGE_SETPOINTS: float = 1.0
     def __init__(self, ss: ScreenService,
-                 mi: Optional[XFELMachineInterface] = None) -> None:
+                 di: Optional[XFELMachineInterface] = None) -> None:
         self.ss = ss
-        self.mi = mi if mi else XFELMachineInterface()
+        self.di = di if di else XFELMachineInterface()
 
     def measure(self, screen_name):
         pixel_size = ss.get_pixel_dimensions()
@@ -27,7 +27,7 @@ class DispersionMeasurer:
         centres_of_mass = []
         # energies = []...
         for voltage in voltages:
-            self.mi.set_voltage(voltage)
+            self.di.set_voltage(voltage)
             time.sleep(self.PAUSE_BETWEEN_VOLTAGE_SETPOINTS)
             com_bend_plane = self.get_centre_of_mass(screen_name)
             centres_of_mass.append(com_bend_plane)
@@ -45,4 +45,4 @@ class DispersionMeasurer:
         com = centre_of_mass(image)
 
     def set_voltage(self, voltage):
-        self.mi.set_value("hello", voltage)
+        self.di.set_value("hello", voltage)

@@ -14,7 +14,10 @@ import scipy.ndimage as ndi
 from scipy.optimize import curve_fit
 
 from esme.gui.ui import calibration
-from esme.gui.common import build_default_machine_interface, get_i1_calibration_config_dir, setup_screen_display_widget, build_default_lps_machine
+from esme.gui.common import (get_tds_calibration_config_dir,
+                             setup_screen_display_widget,
+                             make_default_i1_lps_machine,
+                             make_default_b2_lps_machine)
 from esme.calibration import TDSCalibration
 from esme.control.configs import load_calibration
 from esme.image import filter_image
@@ -63,15 +66,16 @@ class HumanReadableCalibrationData:
     amplitude: float
 
 class CalibrationMainWindow(QMainWindow):
-    calibration_signal = pyqtSignal(object)
+    calibration_filename_signal = pyqtSignal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self.ui = calibration.Ui_MainWindow()
         self.ui.setupUi(self)
 
-        self.machine = build_default_lps_machine()
-        # self.machine = build_default_machine_interface()
+        self.i1machine = make_default_i1_lps_machine()
+        self.b2machine = make_default_b2_lps_machine()
+        self.machine = self.i1machine
 
         self.ui.start_calib_button.clicked.connect(self.do_calibration)
         self.ui.load_calib_button.clicked.connect(self.load_calibration_file)
@@ -115,7 +119,7 @@ class CalibrationMainWindow(QMainWindow):
         is_zero_crossing = phase_scan_increment.zero_crossing
 
         # from IPython import embed; embed()phase
-        
+
         self.com_scatter.addPoints([phase], [centre_of_mass])
 
         if is_zero_crossing:
@@ -206,7 +210,7 @@ class CalibrationMainWindow(QMainWindow):
 
     def load_calibration_file(self):
         options = QFileDialog.Options()
-        outdir = get_i1_calibration_config_dir()
+        outdir = get_tds_calibration_config_dir() / "i1"
         outdir.mkdir(parents=True, exist_ok=True)
 
         fname, _ = QFileDialog.getOpenFileName(
@@ -238,6 +242,7 @@ class CalibrationWorker(QObject):
         super().__init__()
         self.machine = machine
         self.screen_name = screen_name
+        # XXX Why is this hardcoded?!
         self.screen_name = "OTRC.64.I1D"
         self.amplitudes = amplitudes
         self.cut = cut
@@ -286,7 +291,7 @@ class CalibrationWorker(QObject):
 
     def calibrate_once(self, zero_crossing, amplitude):
         phis = np.linspace(-180, 200, num=191)
-        # phis = np.linspace(-180, 200, num=15)        
+        # phis = np.linspace(-180, 200, num=15)
         ycoms = []
         tds = self.machine.deflectors.active_tds()
         tds.set_phase(phis[0])
@@ -333,7 +338,7 @@ class CalibrationWorker(QObject):
         r34 = self.get_r34_to_screen()
         m = abs(np.gradient(mcom0, time0)[5] * 1e12)  # from per ps to s
 
-        
+
         voltage_v = calculate_voltage(slope=m, r34=r34, energy=130, frequency=3e9)
 
         print(amplitude, voltage_v)
@@ -355,7 +360,7 @@ class CalibrationWorker(QObject):
 
         m1, m2 = get_zero_crossing_slopes(phis, ycoms, zero_crossing=zero_crossing)
         return m1, m2 #XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX JUST USING M1 HERE!!!...
-            
+
     def run(self):
         slopes = self.calibrate()
 

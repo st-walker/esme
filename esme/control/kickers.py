@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from enum import IntEnum
 from typing import Optional
 
-from .mint import XFELMachineInterface
+from .dint import DOOCSInterface
 from .exceptions import EuXFELUserError
 
 
@@ -35,32 +35,32 @@ class FastKicker:
     HV_AUS_SET_PROP = "DIO_CH.19"
     POSITIVE_SET_PROP = "DIO_CH.21"
     NEGATIVE_SET_PROP = "DIO_CH.22"
-    def __init__(self, *, name: str , adio24_fdl:str , trigger_channel:str, mi=None):
+    def __init__(self, *, name: str , adio24_fdl:str , trigger_channel:str, di=None):
         self.name = name
         self.adio24_fdl = adio24_fdl
         self.trigger_channel = trigger_channel
-        self.mi = mi if mi else XFELMachineInterface()
+        self.di = di if di else DOOCSInterface()
         
     def _full_path(self, leaf):
         return f"{self.adio24_fdl}/{leaf}"
 
     def set_hv_off(self):
-        self.mi.set_value(self._full_path(self.HV_AUS_SET_PROP), 1)
+        self.di.set_value(self._full_path(self.HV_AUS_SET_PROP), 1)
 
     def set_hv_on(self):
-        self.mi.set_value(self._full_path(self.HV_EIN_SET_PROP), 1)
+        self.di.set_value(self._full_path(self.HV_EIN_SET_PROP), 1)
 
     def is_hv_on(self):
-        val = self.mi.get_value(self._full_path(self.HV_ON_READ_PROP))
+        val = self.di.get_value(self._full_path(self.HV_ON_READ_PROP))
         return val == self.HV_ON_READ_PROP_VALUE_ON
 
     def set_polarity(self, polarity: PolarityType) -> None:
         if self.is_hv_on():
             raise KickerOperationError("Trying to change the polarity whilst HV is still on.")
         if polarity is PolarityType.POSITIVE:
-            self.mi.set_value(f"{self.adio24_fdl}/{self.POSITIVE_SET_PROP}", 1)
+            self.di.set_value(f"{self.adio24_fdl}/{self.POSITIVE_SET_PROP}", 1)
         elif polarity is PolarityType.NEGATIVE:
-            self.mi.set_value(f"{self.adio24_fdl}/{self.NEGATIVE_SET_PROP}", 1)
+            self.di.set_value(f"{self.adio24_fdl}/{self.NEGATIVE_SET_PROP}", 1)
         else:
             raise TypeError(f"Unrecognised Polarity {polarity}")
 
@@ -68,26 +68,25 @@ class FastKicker:
         if delay < 0:
             raise ValueError(f"Negative delay: {delay}")
         channel = f"XFEL.SDIAG/TIMER/{self.trigger_channel}.DELAY"
-        self.mi.set_value(channel, delay)
+        self.di.set_value(channel, delay)
 
     def set_voltage(self, voltage: float):
         if voltage < 0.0:
             raise ValueError("Negative voltage")
         channel = f"XFEL.SDIAG/KICKER.PS/{self.name}/S0"
-        self.mi.set_value(channel, voltage)
+        self.di.set_value(channel, voltage)
 
     def get_number(self):
-        return self.mi.get_value(f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/{self.name}/KICKER_NUMBER")
+        return self.di.get_value(f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/{self.name}/KICKER_NUMBER")
 
     def is_operational(self):
-        return self.mi.get_value(f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/{self.name}/KICKER_STATUS") == 0
+        return self.di.get_value(f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/{self.name}/KICKER_STATUS") == 0
 
 
 class FastKickerController:
-    def __init__(self, kickers: list[FastKicker], mi=None):
+    def __init__(self, kickers: list[FastKicker], di=None):
         self.kickers = kickers
-
-        self.mi = mi if mi else XFELMachineInterface()
+        self.di = di if di else DOOCSInterface()
 
     @property
     def kicker_names(self) -> list[str]:

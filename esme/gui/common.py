@@ -14,48 +14,76 @@ from PyQt5.QtCore import QObject, pyqtSignal, QByteArray, QBuffer, QIODevice
 from PyQt5.QtWidgets import QWidget
 from PyQt5.QtWidgets import QMessageBox
 
-from esme.control.configs import build_simple_machine_from_config, load_virtual_machine_interface, build_lps_machine_from_config
+from esme.control.configs import load_virtual_machine_interface, build_lps_machine_from_config
+from esme import DiagnosticRegion
 
-from esme.control.vmint import DictionaryXFELMachineInterface
+from esme.control.sbunches import SpecialBunchesControl
+from esme.control.dint import DOOCSInterfaceABC, DOOCSInterface
+from esme.control.vdint import DictionaryDOOCSInterface
 
 
-DEFAULT_CONFIG_PATH = files("esme.gui") / "defaultconf.yml"
+DEFAULT_CONFIG_PATH = files("esme.gui") / "defaultconf.yaml"
 DEFAULT_VCONFIG_PATH = files("esme.gui") / "vmachine.yaml"
+
 
 def is_in_controlroom():
     name = socket.gethostname()
     reg = re.compile(r"xfelbkr[0-9]\.desy\.de")
     return bool(reg.match(name))
 
-
-def build_default_machine_interface():
-    mi = None
+def make_default_machine_interface() -> DOOCSInterfaceABC:
     if not is_in_controlroom():
-        with open(DEFAULT_VCONFIG_PATH, "r") as f:
-            doocsdict = yaml.safe_load(f)
-            mi = load_virtual_machine_interface(doocsdict)
-    machine = build_simple_machine_from_config(DEFAULT_CONFIG_PATH, mi=mi)
-    return machine
+        return get_default_virtual_machine_interface()
+    else:
+        return DOOCSInterface()
 
-def build_default_lps_machine():
-    mi = None
-    if not is_in_controlroom():
-        with open(DEFAULT_VCONFIG_PATH, "r") as f:
-            doocsdict = yaml.safe_load(f)
-            mi = load_virtual_machine_interface(doocsdict)
-    machine = build_lps_machine_from_config(DEFAULT_CONFIG_PATH, mi=mi)
-    return machine
 
-def get_default_virtual_machine_interface():
+def make_default_i1_lps_machine():
+    di = make_default_machine_interface()
+    return build_lps_machine_from_config(DEFAULT_CONFIG_PATH, DiagnosticRegion("I1"), di=di)
+
+def make_default_b2_lps_machine():
+    di = make_default_machine_interface()
+    return build_lps_machine_from_config(DEFAULT_CONFIG_PATH, DiagnosticRegion("B2"), di=di)
+
+def get_default_virtual_machine_interface() -> DictionaryDOOCSInterface:
     with open(DEFAULT_VCONFIG_PATH, "r") as f:
         doocsdict = yaml.safe_load(f)
         return load_virtual_machine_interface(doocsdict)
 
+def make_default_sbm(location=None):
+    di = make_default_machine_interface()
+    if location is None:
+        location = DiagnosticRegion.I1
+    return SpecialBunchesControl(location=location, di=di)
+
 def get_config_path():
     return Path.home() / ".config" / "lps/"
 
-def get_i1_calibration_config_dir():
-    return get_config_path() / "tds/i1"
+def get_tds_calibration_config_dir():
+    return get_config_path() / "tds"
+
+def set_machine_by_region(widget, location: DiagnosticRegion):
+    if location == "I1":
+        widget.machine = widget.i1machine
+    elif location == "B2":
+        widget.machine = widget.b2machine
+    else:
+        raise ValueError(f"Unkonwn location string: {location}")
+
+def set_tds_calibration_by_region(widget, calibration: DiagnosticRegion):
+    if not hasattr(widget, "i1machine") and not hasattr(widget, "b2machine"):
+        raise TypeError("Widget missing i1machine or b2machine instances")
+
+    location = calibration.region
+    if location == "I1":
+        widget.i1machine.deflector.calibration = calibration
+    elif location == "B2":
+        widget.b2machine.deflector.calibration = calibration
+    else:
+        raise ValueError(f"Unkonwn location string: {location}")
+    
+
 
 class QPlainTextEditLogger(QObject, logging.Handler):
     log_signal = pyqtSignal(str)
@@ -65,13 +93,17 @@ class QPlainTextEditLogger(QObject, logging.Handler):
         self.log_signal.emit(msg)
 
 
-def setup_screen_display_widget(widget):
+def setup_screen_display_widget(widget, axes=False):
     image_plot = widget.addPlot()
     image_plot.clear()
+    image = pg.ImageItem(autoDownsample=True, border="k")
+    # if not axes:
     image_plot.hideAxis("left")
     image_plot.hideAxis("bottom")
-    image = pg.ImageItem(autoDownsample=True, border="k")
-
+    if axes:
+        image_plot.setLabel("bottom", "<i>&Delta;x</i>", units="m")
+        image_plot.setLabel("right", "<i>&Delta;y</i>", units="m")    
+    
     image_plot.addItem(image)
 
     colormap = cm.get_cmap("viridis")
@@ -81,6 +113,7 @@ def setup_screen_display_widget(widget):
     image.setLookupTable(lut)
     # print(lut.shape)
 
+    
     return image_plot
 
 

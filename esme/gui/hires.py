@@ -10,7 +10,6 @@ import numpy as np
 
 
 from esme.gui.ui import lps
-from esme.control.sbunches import DiagnosticRegion
 from esme.control.pattern import get_beam_regions, get_bunch_pattern
 from esme.gui.common import build_default_machine_interface, QPlainTextEditLogger, setup_screen_display_widget, send_widget_to_log
 from esme.gui.scannerpanel import ProcessedImage, ScanType

@@ -13,6 +13,7 @@ with warnings.catch_warnings():
     from ocelot.cpbd.magnetic_lattice import MagneticLattice
 
 from esme.maths import line
+from esme import DiagnosticRegion
 
 I1D_ENERGY_ADDRESS = "XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/I1D/ENERGY.ALL"
 
@@ -86,6 +87,9 @@ def sqrt(x, a0, a1) -> Any:
 
 
 class TDSCalibration:
+    def __init__(self, region: DiagnosticRegion):
+        self.region = region
+
     def get_voltage(self, amplitude):
         popt, _ = self.fit_to_voltage()
         return line(amplitude, *popt)
@@ -95,7 +99,7 @@ class TDSCalibration:
         return line(voltage, *popt)
 
     def fit_to_voltage(self):
-        popt, pcov = curve_fit(line, self.get_amplitudes(), self.get_amplitudes())
+        popt, pcov = curve_fit(line, self.get_amplitudes(), self.get_voltages())
         return popt, pcov
 
     def fit_to_amplitude(self):
@@ -104,7 +108,8 @@ class TDSCalibration:
     
 
 class StuartCalibration(TDSCalibration):
-    def __init__(self, amplitudes, voltages):
+    def __init__(self, region: DiagnosticRegion, amplitudes, voltages):
+        super().__init__(region)
         self.amplitudes = amplitudes
         self.voltages = voltages
 
@@ -137,7 +142,8 @@ class BolkoCalibrationSetPoint:
                                  frequency=self.frequency)
 
 class BolkoCalibration(TDSCalibration):
-    def __init__(self, bolko_setpoints):
+    def __init__(self, region: DiagnosticRegion, bolko_setpoints):
+        super().__init__(region)
         self.setpoints = bolko_setpoints
 
     def get_amplitudes(self):
@@ -148,16 +154,21 @@ class BolkoCalibration(TDSCalibration):
 
 
 class IgorCalibration:
-    def __init__(self, amplitudes, voltages):
+    def __init__(self, region: DiagnosticRegion, amplitudes, voltages):
+        super().__init__(region)
         self.amplitudes = amplitudes
         self.voltages = voltages
 
     def get_amplitude(self, voltage):
         return dict(zip(self.voltages, self.amplitudes))[voltage]
 
+    def get_voltage(self, amplitude):
+        return dict(zip(self.amplitudes, self.voltages))[amplitude]
+
 
 class DiscreteCalibration(TDSCalibration):
-    def __init__(self, amplitudes, voltages):
+    def __init__(self, region: DiagnosticRegion, amplitudes, voltages):
+        super().__init__(region)
         self.amplitudes = amplitudes
         self.voltages = voltages
 
@@ -215,7 +226,8 @@ class DiscreteCalibration(TDSCalibration):
 
 
 class TrivialTDSCalibrator:
-    def __init__(self, percentages: Sequence[float], voltages: Sequence[float]):
+    def __init__(self, region: DiagnosticRegion, percentages: Sequence[float], voltages: Sequence[float]):
+        super().__init__(region)
         self.percentages = np.array(percentages)
         self.voltages = np.array(voltages)
 
@@ -230,7 +242,8 @@ class TDSVoltageCalibration:
 
     """
 
-    def __init__(self, amplitudes: Sequence[float], voltages):
+    def __init__(self, region: DiagnosticRegion, amplitudes: Sequence[float], voltages):
+        super().__init__(region)
         self.amplitudes = amplitudes
         self.voltages = voltages
 
@@ -271,3 +284,16 @@ def r34s_from_scan(scan):
         im = measurement.images[0]
         result.append(r34_from_tds_to_screen(im.metadata))
     return np.array(result)
+
+def get_tds_com_slope(r12_streaking, energy_mev, voltage) -> float:
+    """Calculate TDS calibration / TDS centre of mass slope.
+    Energy in MeV
+    frequency in cycles/s
+    voltage in V
+
+    """
+
+    angular_frequency = TDS_FREQUENCY * 2 * np.pi  # to rad/s
+    energy_joules = energy_mev * e * 1e6  # Convert to joules.
+    gradient_m_per_s = e * voltage * r12_streaking * angular_frequency / energy_joules
+    return gradient_m_per_s

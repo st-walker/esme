@@ -4,7 +4,7 @@ import logging
 import numpy as np
 
 from esme.control.sbunches import DiagnosticRegion
-from esme.control.mint import XFELMachineInterface
+from esme.control.dint import DOOCSInterface
 from esme.control.exceptions import EuXFELMachineError
 from esme.analysis import OpticsFixedPoints
 from esme.control.snapshot import SnapshotRequest, Snapshotter
@@ -69,18 +69,18 @@ class Scanner:
     # TODO: should this use sample address as well or instead?  We are using setpoint..
     FDP_QUAD_KICK_SP_ADDRESS = "XFEL.MAGNETS/MAGNET.ML/{}/KICK_MRAD.SP"
     BEAM_ALLOWED_ADDRESS = "XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED"
-    def __init__(self, scan: ScanConfig, mi=None):
+    def __init__(self, scan: ScanConfig, di=None):
         self.scan = scan
-        self.mi = mi if mi else XFELMachineInterface()
+        self.di = di if di else XFELMachineInterface()
 
     def set_quad_strength(self, quad_name: str, kmrad: float) -> None:
         ch = self.FDP_QUAD_KICK_SP_ADDRESS.format(quad_name)
         LOG.debug(f"Setting quad strength: {ch} = {kmrad}")
-        self.mi.set_value(ch, kmrad)
+        self.di.set_value(ch, kmrad)
 
     def get_quad_strength(self, quad_name: str) -> float:
         ch = self.FDP_QUAD_KICK_SP_ADDRESS.format(quad_name)
-        return self.mi.get_value(ch)
+        return self.di.get_value(ch)
 
     def get_setpoint(self, dispersion: float, beta=None) -> None:
         dispersions = self.scan.qscan.dispersions
@@ -95,10 +95,10 @@ class Scanner:
             self.set_quad_strength(quad_name, k1l)
 
     def beam_off(self) -> None:
-        self.mi.set_value(self.BEAM_ALLOWED_ADDRESS, 0)
+        self.di.set_value(self.BEAM_ALLOWED_ADDRESS, 0)
 
     def beam_on(self) -> None:
-        self.mi.set_value(self.BEAM_ALLOWED_ADDRESS, 1)
+        self.di.set_value(self.BEAM_ALLOWED_ADDRESS, 1)
         
     def infer_intended_dispersion_setpoint(self) -> QuadScanSetpoint:
         for setpoint in self.scan.setpoints:
@@ -113,7 +113,7 @@ class Scanner:
         raise ScanSetpointError("Could not determine the current scan setpoint in the machine")
 
     def get_snapshotter(self) -> Snapshotter:
-        return Snapshotter(self.scan.request, mi=self.mi)
+        return Snapshotter(self.scan.request, di=self.di)
 
     def cycle_scan_quads(self) -> None:
         quad_names = set()
@@ -125,7 +125,7 @@ class Scanner:
 
         for quad_name in quad_names:
             LOG.info(f"Cycling quadrupole: {quad_name}")
-            self.mi.set_value(f"XFEL.MAGNETS/MAGNET.ML/{quad_name}/CYCLE", 1)
+            self.di.set_value(f"XFEL.MAGNETS/MAGNET.ML/{quad_name}/CYCLE", 1)
         
 
 class ScannerConfigWidget:

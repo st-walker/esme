@@ -1,58 +1,82 @@
 from .kickers import FastKickerController
-from .mint import XFELMachineInterface
-from .screens import ScreenService
-from .tds import TransverseDeflectors
-from .sbunches import SpecialBunchesControl, DiagnosticRegion
+from .dint import DOOCSInterface
+from .screens import Screen
+from .tds import TransverseDeflector
+from .sbunches import SpecialBunchesControl
 from .scanner import Scanner
-from .optics import I1toI1DSequenceOptics
+from .optics import MachineLinearOptics
+from .exceptions import EuXFELUserError
+from esme import DiagnosticRegion
 
-class BunchLengthMachine:
-    def __init__(self, kickerop: FastKickerController,
-                 sservice: ScreenService,
-                 deflectors: TransverseDeflectors,
-                 initial_location=None,
-                 mi=None) -> None:
-        initial_location = initial_location if initial_location else DiagnosticRegion("I1")
-        mi = mi if mi else XFELMachineInterface()
-        self.kickerop = kickerop
-        self.screens = sservice
+
+class HighResolutionEnergySpreadMachine:
+    """set of high level interfaces to the EuXFEL for measuring the
+    slice energy spread with high resolution.
+
+    """
+    def __init__(self,
+                 region: DiagnosticRegion,
+                 scanner: Scanner,
+                 screens: dict[str, Screen],
+                 deflector: TransverseDeflector,
+                 optics:MachineLinearOptics,
+                 # initial_location=None,
+                 di=None) -> None:
+        self.di = di if di else DOOCSInterface()
+        self.region = region
+        self.scanner = scanner
+        self.screens = screens
         self.deflectors = deflectors
-        self.sbunches = SpecialBunchesControl(mi=mi)
-        self.set_measurement_location(initial_location)
+        self.sbunches = SpecialBunchesControl(di=di)
+        self.optics = optics # I1toI1DSequenceOptics(di=di)
+
+    def beam_off(self):
+        self.di.set_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED", 0)
+
+    def beam_on(self):
+        self.di.set_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED", 1)
+
+    def is_beam_on(self):
+        return bool(self.di.get_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED"))
+        
 
 
-    def set_kicker_for_screen(self, screen_name: str) -> None:
-        kicker_setpoints = self.screens.get_fast_kicker_setpoints_for_screen(screen_name)
+class LPSMachine:
+    def __init__(self, region: DiagnosticRegion,
+                 kickerop: FastKickerController,
+                 screens: dict[str, Screen],
+                 tds: TransverseDeflector,
+                 optics: MachineLinearOptics,
+                 sbunches,
+                 di=None) -> None:
+        di = di if di else DOOCSInterface()
+        self.region = region
+        self.kickerop = kickerop
+        self.screens = screens
+        self.deflector = tds
+        self.optics = optics
+        self.sbunches = sbunches
+        
+    def set_kickers_for_screen(self, screen_name: str) -> None:
+        screen = self.screens[screen_name]
+        try:
+            kicker_setpoints = screen.get_fast_kicker_setpoints()
+        except EuXFELUserError: # Then there is no kicker info (e.g. dump screen)
+            return
         for setpoint in kicker_setpoints:
             self.kickerop.apply_fast_kicker_setpoint(setpoint)
         # self.sbunches.write_kicker
 
-    def set_measurement_location(self, location: DiagnosticRegion):
-        self.sbunches.location = location
-        self.screens.location = location
-        self.deflectors.location = location
+    # def set_use_fast_kickers(self, screen_name):
+    #     screen_name = 
 
+# Interface with the EuXFEL limited to what is necessary for the
+# effective operation of the special bunch midlayer.
+class SpecialBunchLayerInterface:
+    def __init__(self, screens, kickerop, di=None):
+        self.screens = screens
+        self.kickerop = kickerop
 
-class LPSMachine:
-    def __init__(self, scanner: Scanner,
-                 sservice: ScreenService,
-                 deflectors: TransverseDeflectors,
-                 # initial_location=None,
-                 mi=None) -> None:
-        # initial_location = initial_location if initial_location else DiagnosticRegion("I1")
-        self.mi = mi if mi else XFELMachineInterface()
-        self.scanner = scanner
-        self.screens = sservice
-        self.deflectors = deflectors
-        self.sbunches = SpecialBunchesControl(mi=mi)
-        self.optics = I1toI1DSequenceOptics(mi=mi)
-        # self.set_measurement_location(initial_location)
+    
 
-    def beam_off(self):
-        self.mi.set_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED", 0)
-
-    def beam_on(self):
-        self.mi.set_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED", 1)
-
-    def is_beam_on(self):
-        return bool(self.mi.get_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED"))
+    

@@ -64,11 +64,13 @@ What was quantum efficiency before and after?
 
 1. [ ] Find phase.
 2. [ ] Reconstruct current profile using both crossings.
-3. [x] Get transverse projections working.
-4. [x] Get time projection working.
-5. [x] Get energy projection working.
-6. [ ] Subtract background button.
+3. [ ] Subtract background button.
+4. [X] Get transverse projections working.
+5. [X] Get time projection working.
+6. [X] Get energy projection working.
 
+
+I need to be able to distinguish between rising and falling zero intercepts.
 
 ### Middle Priority
 
@@ -76,6 +78,7 @@ What was quantum efficiency before and after?
 2. [ ] bunch pattern to and from I1D or B2D.
 3. [ ] Design kick server, to and from 200m optics, to and from I1D.
 4. [ ] Automatically Calibrate TDS.
+5. [X] Get negative axis working.
 
 
 ### Low Priority

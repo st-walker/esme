@@ -25,31 +25,11 @@ def i1d_conf_from_measurement_df(df):
 
     conf = EuXFELSimConfig()
 
-    chicane_dipoles = ["BL.48I.I1",
-                       "BL.48II.I1",
-                       "BL.50I.I1",
-                       "BL.50II.I1"]
+    r56 = -4.336e-3
+    conf.controls["lh"].r56 = r56
 
-    seq = cat_to_i1d(model_type="real").get_sequence()
-    dipoles = {}
-    for chicane_dipole_name in chicane_dipoles:
-        design_dipole = seq[chicane_dipole_name]
-        angle_sign = np.sign(design_dipole.angle)
-        e1_sign = np.sign(design_dipole.e1)
-        e2_sign = np.sign(design_dipole.e2)
-
-        angle = angle_sign * abs(float(angles[chicane_dipole_name])) * 1e-3
-        e1 = e1_sign * abs(angle)
-        e2 = e2_sign * abs(angle)
-
-        
-        dipoles[chicane_dipole_name] = {"angle": angle}
-        if e1:
-            dipoles[chicane_dipole_name]["e1"] = e1
-        if e2:
-            dipoles[chicane_dipole_name]["e2"] = e2
-
-
+    dump_angle = np.radians(-30)
+    dipoles = {"BB.62.I1D": {"angle": dump_angle, "e1": dump_angle / 2, "e2": dump_angle / 2}}
     quads = {quad_name: {"k1l": float(k1l)*1e-3} for quad_name, k1l in k1ls.items()}
 
     conf.components = quads | dipoles
@@ -135,13 +115,19 @@ def calculate_i1d_r34_from_tds_centre(df, screen_name, energy_mev):
     r34 = rmat[2, 3]
     return r34
 
+def dispersions_at_point(fel, felconfig, screen_name):
+    twiss, mlat = fel.machine_twiss(stop=screen_name, felconfig=felconfig)
+    end = twiss.iloc[-1]
+
+    import pickle
+    with open("mlat.pkl", "wb") as f:
+        pickle.dump(mlat, f)
+
+    with open("fel.pkl", "wb") as f:
+        pickle.dump(fel, f)
+
+    with open("felconfig.pkl", "wb") as f:
+        pickle.dump(felconfig, f)
 
 
-# def lat_from_tds_to_screen(snapshot: pd.Series):
-#     cell = injector_cell_from_snapshot(snapshot)
-#     screen_marker = next(ele for ele in cell if ele.id == "OTRC.64.I1D")
-#     tds_marker = next(ele for ele in cell if ele.id == "TDS2")
-
-#     lat = MagneticLattice(cell, start=tds_marker, stop=screen_marker)
-
-#     return lat
+    return end.Dx, end.Dy

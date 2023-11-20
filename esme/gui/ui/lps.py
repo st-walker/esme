@@ -88,7 +88,10 @@ class Ui_hires_mainwindow(object):
         self.actionMachine_setup.setObjectName("actionMachine_setup")
         self.actionAbout = QtWidgets.QAction(hires_mainwindow)
         self.actionAbout.setObjectName("actionAbout")
+        self.actionAbout_HIREIS = QtWidgets.QAction(hires_mainwindow)
+        self.actionAbout_HIREIS.setObjectName("actionAbout_HIREIS")
         self.menuMenu.addAction(self.action_print_to_logbook)
+        self.menuMenu.addAction(self.actionAbout_HIREIS)
         self.menuHelp.addAction(self.actionMachine_setup)
         self.menuHelp.addAction(self.actionAbout)
         self.menubar.addAction(self.menuMenu.menuAction())
@@ -109,6 +112,7 @@ class Ui_hires_mainwindow(object):
         self.action_print_to_logbook.setShortcut(_translate("hires_mainwindow", "Ctrl+P"))
         self.actionMachine_setup.setText(_translate("hires_mainwindow", "Machine Setup"))
         self.actionAbout.setText(_translate("hires_mainwindow", "About"))
+        self.actionAbout_HIREIS.setText(_translate("hires_mainwindow", "About HIREIS"))
 from esme.gui.scannerpanel import ScannerControl
 from esme.gui.tds import TDSControl
 from pyqtgraph import GraphicsLayoutWidget

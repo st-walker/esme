@@ -1,5 +1,17 @@
 
 
+
+
+class DOOCSError(RuntimeError):
+    pass
+
+class DOOCSReadError(DOOCSError):
+    pass
+
+class DOOCSWriteError(DOOCSError):
+    pass
+
+
 class EuXFELUserError(RuntimeError):
     """Base class for the user trying to do something wrong"""
 
