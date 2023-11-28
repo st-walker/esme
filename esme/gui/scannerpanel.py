@@ -33,6 +33,8 @@ from esme.gui.common import (is_in_controlroom,
                              DEFAULT_CONFIG_PATH,
                              make_default_injector_espread_machine)
 from esme.calibration import TDSCalibration
+from esme.control import optics
+from esme.optics import load_matthias_slice_measurement
 
 from esme.plot import pretty_parameter_table, formatted_parameter_dfs
 
@@ -95,7 +97,7 @@ class ScannerControl(QtWidgets.QWidget):
 
         self.timer = self.build_main_timer(100)
 
-        
+
     def set_ui_initial_values(self, dic):
         self.ui.beam_shots_spinner.setValue(dic["beam_shots_spinner"])
         self.ui.bg_shots_spinner.setValue(dic["bg_shots_spinner"])
@@ -228,6 +230,7 @@ class ScannerControl(QtWidgets.QWidget):
         self.ui.dscan_voltage_label.setEnabled(can_measure)
         self.ui.measurement_name_label.setEnabled(can_measure)
         self.ui.preferences_button.setEnabled(can_measure)
+        self.ui.load_quad_scan_button.setEnabled(can_measure)
 
     def connect_buttons(self):
         """Connect the buttons of the UI to the relevant methods"""
@@ -237,7 +240,53 @@ class ScannerControl(QtWidgets.QWidget):
         self.ui.stop_measurement_button.clicked.connect(self.stop_measurement)
         self.ui.open_jddd_screen_gui_button.clicked.connect(self.open_jddd_screen_window)
         self.ui.cycle_quads_button.clicked.connect(self.machine.scanner.cycle_scan_quads)
+        self.ui.show_optics_button.clicked.connect(self.show_optics_at_screen)
+        self.ui.load_quad_scan_button.clicked.connect(self.load_quad_scan_file)
         self.set_buttons_ready_for_measurement(can_measure=True)
+
+    def load_quad_scan_file(self):
+        initial_directory = "/home/xfeloper/data/quad_scan/2023/"
+        fname, _ = QFileDialog.getOpenFileName(
+            self,
+            "Load Matthias Slice Emittance Measurement",
+            directory=initial_directory,
+            filter="mat files (*.mat)",
+            initialFilter="mat files",
+            options=QFileDialog.Options(),
+        )
+        self.measured_slice_twiss = load_matthias_slice_measurement(fname)
+
+    def show_optics_at_screen(self):
+        fname = "/Users/stuartwalker/Downloads/2023-08-31T221036_quad_scan_slice_I1_h_slice_OTRC_59_I1_screen.mat"
+        self.measured_slice_twiss = load_matthias_slice_measurement(fname)
+
+        stwiss0 = self.measured_slice_twiss
+
+        slice_twiss1 = self.machine.optics.track_measured_slice_twiss(stwiss0=stwiss0,
+                                                                      start="QI.53.I1",
+                                                                      stop="OTRC.64.I1D")
+
+        from esme.gui.mpl_widget import MatplotlibCanvas
+        widget = MatplotlibCanvas(parent=self, nrows=2, sharex=True)
+        nslices = stwiss0.nslices
+
+        indices = np.arange(-nslices // 2, nslices // 2)
+
+        top = widget.axes[0]
+
+        widget.axes[0].plot(indices, list(slice_twiss1.beta_x), label="Propagated Measurement", linestyle="", marker="x")
+        widget.axes[0].axhline(0.6, label="Expected (hardcoded)", linestyle="--")
+        widget.axes[1].plot(indices, list(slice_twiss1.alpha_x), linestyle="", marker="x")
+
+        top.legend()
+        widget.axes[0].set_title("Slice Twiss Parameters at OTRC.64.I1D")
+
+        widget.axes[1].set_xlabel("Slice Index")
+        widget.axes[0].set_ylabel(r"$\beta_x$ / m")
+        widget.axes[1].set_ylabel(r"$\alpha_x$")
+
+        widget.show()
+
 
     def closeEvent(self, event):
         """called automatically when closed, terminate the daughter
@@ -248,7 +297,6 @@ class ScannerControl(QtWidgets.QWidget):
 
     def display_final_result(self, result: OnlineMeasurementResult):
         LOG.debug("Displaying Final Result")
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!??????????????????????????????????????")
         try:
             self.result_dialog.post_measurement_result(result)
         except ValueError:
@@ -344,7 +392,20 @@ class ScanRequest:
     slug: str
     images_per_setpoint: int
     total_background_images: int
+    slice_choice: float = None
     settings: ScanSettings = None
+
+
+@dataclass
+class ProcessedImage:
+    image: np.ndarray
+    scan_type: ScanType
+    central_width: tuple
+    central_width_row: int
+    sigma_z: tuple
+    dispersion: float
+    voltage: float
+    beta: float
 
 
 class ScanWorker(QObject):
@@ -362,7 +423,7 @@ class ScanWorker(QObject):
         self.output_directory = None
 
     # def get_image_raw_address(self):
-    #     screen = 
+    #     screen =
     #     return self.machine.screens.get_image_raw_address(self.scan_request.screen_name)
 
     def make_output_directory(self):
@@ -597,7 +658,7 @@ class ScanWorker(QObject):
         filename = "background.pkl"
         return SnapshotAccumulator(shotter, outdir / filename)
 
-    def process_image(self, image, scan_type: ScanType, dispersion, voltage, beta, bg=0):
+    def process_image(self, image, scan_type: ScanType, dispersion: float, voltage: float, beta: float, bg=0) -> ProcessedImage:
         image = image.T # Flip to match control room..?  TODO
         image = filter_image(image, bg=bg, crop=True)
         _, means, sigmas = get_slice_properties(image)
@@ -938,17 +999,6 @@ def display(pcl):
     main_window.show()
     main_window.raise_()
     sys.exit(app.exec_())
-
-@dataclass
-class ProcessedImage:
-    image: np.ndarray
-    scan_type: ScanType
-    central_width: tuple
-    central_width_row: int
-    sigma_z: tuple
-    dispersion: float
-    voltage: float
-    beta: float
 
 
 def main():

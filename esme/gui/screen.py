@@ -240,7 +240,6 @@ class CalibrationWatcher(QObject):
             self.i1machine.deflector.calibration = tdscalib
         elif region is DiagnosticRegion.B2:
             self.b2machine.deflector.calibration = tdscalib
-
         
     def get_streaking_plane_calibration(self) -> AxisCalibration:
         axis = self.get_streaking_plane()

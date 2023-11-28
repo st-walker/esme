@@ -111,8 +111,7 @@ class CalibrationMainWindow(QMainWindow):
     def do_calibration(self):
         self.worker = CalibrationWorker(self.machine,
                                         screen_name=self.ui.screen_name_line_edit.text(),
-                                        amplitudes=self.parse_amplitude_input_box(),
-                                        cut=self.ui.cut_index_spinbox.value())
+                                        amplitudes=self.parse_amplitude_input_box())
         self.thread = QThread()
         self.worker.moveToThread(self.thread)
         self.thread.started.connect(self.worker.run)
@@ -250,15 +249,13 @@ class CalibrationWorker(QObject):
     amplitude_setpoint_signal = pyqtSignal(AmplitudeCalibrationSetpoint)
     hrcd_signal = pyqtSignal(HumanReadableCalibrationData)
 
-    def __init__(self, machine, screen_name, amplitudes, cut):
+    def __init__(self, machine, screen_name, amplitudes):
         super().__init__()
         self.machine = machine
         self.screen_name = screen_name
         # XXX Why is this hardcoded?!
         self.screen_name = "OTRC.64.I1D"
         self.amplitudes = amplitudes
-        self.cut = cut
-        self.cut = 10000000
         self.kill = False
 
     def get_image(self):
@@ -270,7 +267,6 @@ class CalibrationWorker(QObject):
         self.machine.deflectors.active_tds().set_amplitude(0.0)
         time.sleep(1.0)
         image = self.machine.screens.get_image_raw(self.screen_name)
-        image = image[:self.cut]
         com = ndi.center_of_mass(image)
         ycom = com[1]
         yzero_crossing = ycom
@@ -312,7 +308,6 @@ class CalibrationWorker(QObject):
             time.sleep(0.25)
             tds.set_phase(phi)
             image = self.machine.screens.get_image_raw(self.screen_name)
-            image = image[:self.cut]
             image = filter_image(image, 0)
             com = ndi.center_of_mass(image)
             ycom = com[1]

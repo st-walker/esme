@@ -1,3 +1,4 @@
+from scipy.io import loadmat
 import pandas as pd
 import numpy as np
 from oxfel.predefined import cat_to_i1d
@@ -11,6 +12,45 @@ from ocelot.cpbd.magnetic_lattice import MagneticLattice
 from ocelot.cpbd.beam import Twiss
 import matplotlib.pyplot as plt
 import latdraw.plot as plot
+
+
+
+class SliceEmittanceMeasurement:
+    def __init__(self, emittance, alpha, beta, alpha_err=None, beta_err=None, emit_err=None):
+        self.emittance = emittance
+        self.alpha = alpha
+        self.beta = beta
+        self.alpha_err = alpha_err
+        self.beta_err = beta_err
+        self.emit_err = emit_err
+
+
+        
+    @property
+    def nslices(self):
+        return len(self.beta)
+
+
+def load_matthias_slice_measurement(fname: str) -> SliceEmittanceMeasurement:
+    mat = loadmat(fname, squeeze_me=True, simplify_cells=True)
+    slice_twiss = mat["result"]["fit_x"]["Gaussian"]
+
+    beta_x = slice_twiss["beta"]
+    beta_x_err = slice_twiss["beta_err"]
+
+    alpha_x = slice_twiss["alpha"]
+    alpha_x_err = slice_twiss["alpha_err"]
+
+    emit = slice_twiss["emittace_norm"] # Yes emittace not emittance...
+    emit_err = slice_twiss["emittace_norm_err"] # Yes emittace not emittance...
+
+    return SliceEmittanceMeasurement(emittance=emit,
+                                     alpha=alpha_x,
+                                     beta=beta_x,
+                                     alpha_err=alpha_x_err,
+                                     beta_err=beta_x_err,
+                                     emit_err=emit_err)
+
 
 def i1d_conf_from_measurement_df(df):
     quad_names = df.keys()[df.keys().str.match("^Q")]
@@ -131,3 +171,22 @@ def dispersions_at_point(fel, felconfig, screen_name):
 
 
     return end.Dx, end.Dy
+
+
+
+def track_slice_twiss(fel, felconfig, start: str, stop: str, stwiss0):
+    all_slices = []
+    for alpha, beta in zip(stwiss0.alpha, stwiss0.beta):
+        # Have to include alpha y and beta y otherwise ocelot
+        # implicitly tries to find periodic solution...
+        twiss = Twiss(alpha_x=alpha, beta_x=beta, beta_y=1, alpha_y=1)
+        result, _ = fel.calculate_twiss(twiss, start=start, stop=stop, felconfig=felconfig)
+
+        all_slices.append(result.iloc[-1])
+
+    df = pd.DataFrame(all_slices)
+    del df["beta_y"]
+    del df["alpha_y"]
+    del df["gamma_y"]
+
+    return df

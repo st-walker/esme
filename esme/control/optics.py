@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from oxfel.predefined import cat_to_i1d, cat_to_b2d
 from esme.control.snapshot import SnapshotRequest, Snapshotter
-from esme.optics import calculate_i1d_r34_from_tds_centre, i1d_conf_from_measurement_df, dispersions_at_point
+from esme.optics import calculate_i1d_r34_from_tds_centre, i1d_conf_from_measurement_df, dispersions_at_point, SliceEmittanceMeasurement, track_slice_twiss
 from esme.control import DOOCSReadError
 
 
@@ -47,11 +47,12 @@ def make_b2_snapshot_request():
 
 
 
-
 class MachineLinearOptics:
     def __init__(self, snapshotter, di=None):
         self.snapshotter = snapshotter
         self.di = di if di else DOOCSInterface()
+
+
 
 class I1toI1DLinearOptics(MachineLinearOptics):
     def __init__(self,  di=None):
@@ -63,9 +64,7 @@ class I1toI1DLinearOptics(MachineLinearOptics):
         # Strictly this is r34 not r12, but point is in streaking plane...
         df = pd.DataFrame.from_records([self.snapshotter.snapshot()])
         felconfig = i1d_conf_from_measurement_df(df)
-        return calculate_i1d_r34_from_tds_centre(df,
-                                                 screen_or_marker_name,
-                                                 self.get_beam_energy())
+        return calculate_i1d_r34_from_tds_centre(df, screen_or_marker_name, self.get_beam_energy())
 
     def dispersions_at_screen(self, screen_or_marker_name) -> tuple[float, float]:
         df = pd.DataFrame.from_records([self.snapshotter.snapshot()])
@@ -82,9 +81,10 @@ class I1toI1DLinearOptics(MachineLinearOptics):
 
         raise DOOCSReadError("Unable to read injector beam energy")
 
-    # def track_slice_twiss
-
-    # def track_slice_optics_to_screen(
+    def track_measured_slice_twiss(self, start, stop, stwiss0: SliceEmittanceMeasurement):
+        df = pd.DataFrame.from_records([self.snapshotter.snapshot()])
+        felconfig = i1d_conf_from_measurement_df(df)
+        return track_slice_twiss(self.felmodel, felconfig, start=start, stop=stop, stwiss0=stwiss0)
 
 
 class I1toB2DLinearOptics(MachineLinearOptics):

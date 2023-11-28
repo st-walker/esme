@@ -13,38 +13,37 @@ What was quantum efficiency before and after?
 
 ### High priority:
 
-1. [x] Dynamically load the TDS calibration.
-2. [ ] Get naive implementation based on assumed emittance and screen resolution
+1. [ ] Get naive implementation based on assumed emittance and screen resolution
+2. [ ] Full slice Measurements
 3. [ ] Add dispersion measurement.
-4. [x] make use of special bunch midlayer optional (but the default)
-5. [x] add bunch length to the output
-6. [x] Handle it gracefully on valueerror/domain error when input is shit.
-7. [x] dso it with the special bunch midlayer so that we don't ahve to
+4. [X] Dynamically load the TDS calibration.
+5. [X] make use of special bunch midlayer optional (but the default)
+6. [X] add bunch length to the output
+7. [X] Handle it gracefully on valueerror/domain error when input is shit.
+8. [X] dso it with the special bunch midlayer so that we don't ahve to
    worry about shit going south, masks work etc. Because THE TDS IS
-8. [x] change filenames to local time!  to match logbook...
-9. [x] Save background images too beforehand please.
-10. [x] Add background data to process.
-11. [x] Add beta scan to gui.
-12. [x] Button to interrupt/stop.
-13. [x] get the results box working.
+9. [X] change filenames to local time!  to match logbook...
+10. [X] Save background images too beforehand please.
+11. [X] Add background data to process.
+12. [X] Add beta scan to gui.
+13. [X] Button to interrupt/stop.
+14. [X] get the results box working.
 
 
 ### Middle Priority
 
-1. [ ] Optimise dscan/tscan/beta scan diplicate datapoints...
-2. [ ] Show the selected slice.
-3. [ ] Add checklist to code.
-4. [X] Handle case where measurement is started whilst config is open.
-5. [X] copy configs to output as well for completion please.
-6. [X] write comment box also to file in output directory.
-7. [X] put directory location in text box
-8. [X] Use a proper table for box vis.
-9. [X] Add cycle ability to quadrupoles.
-10. [X] write text box to output
-11. [X] Just crash casually if beam goes off unexpectedly.
-12. [X] Need to control TDS from the panel
-13. [X] Button to open the camera server (CHECK!)
-14. [ ] get buttons working for dispersion/beta selection.
+1. [ ] Add checklist to code.
+2. [X] Handle case where measurement is started whilst config is open.
+3. [X] copy configs to output as well for completion please.
+4. [X] write comment box also to file in output directory.
+5. [X] put directory location in text box
+6. [X] Use a proper table for box vis.
+7. [X] Add cycle ability to quadrupoles.
+8. [X] write text box to output
+9. [X] Just crash casually if beam goes off unexpectedly.
+10. [X] Need to control TDS from the panel
+11. [X] Button to open the camera server (CHECK!)
+12. [ ] get buttons working for dispersion/beta selection.
 
 
 

@@ -38,7 +38,7 @@ from scipy.constants import e
 
 from esme.calibration import TDS_LENGTH, TDS_WAVENUMBER
 from esme.exceptions import EnergySpreadCalculationError, TDSCalibrationError
-from esme.image import get_slice_properties, get_central_slice_width_from_slice_properties, filter_image
+from esme.image import get_slice_properties, get_central_slice_width_from_slice_properties, filter_image, crop_image
 from esme.maths import ValueWithErrorT, linear_fit
 import numpy as np
 from esme.optics import calculate_i1d_r34_from_tds_centre
@@ -622,7 +622,9 @@ def true_bunch_length_from_df(setpoint):
     return bunch_length
 
 
+
 def apparent_bunch_length_from_processed_image(image):
+    image = crop_image(image)
     pixel_indices = np.arange(image.shape[0])  # Assumes streaking is in image Y
     projection = image.sum(axis=1)
     popt, perr = get_gaussian_fit(pixel_indices, projection)
