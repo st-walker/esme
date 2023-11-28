@@ -21,74 +21,13 @@ TDS_FREQUENCY = 3e9
 TDS_WAVELENGTH = c / TDS_FREQUENCY
 TDS_WAVENUMBER = 2 * np.pi / TDS_WAVELENGTH
 TDS_LENGTH = 0.7  # metres
-TDS_PERIOD = 1 / TDS_FREQUENCY
-
-
-def sqrt(x, a0, a1) -> Any:
-    return a0 + a1 * np.sqrt(x)
-
-
-# class TDSCalibrator:
-#     def __init__(
-#         self,
-#         percentages: Sequence[float],
-#         tds_slopes: Sequence[float],
-#         dispersion_setpoint: float,
-#         tds_slope_units: Optional[str] = None,
-#     ):
-#         self.percentages = np.array(percentages)
-#         self.tds_slopes = np.array(tds_slopes)
-#         self.dispersion_setpoint = dispersion_setpoint
-#         if tds_slope_units == "um/ps":
-#             self.tds_slopes = self.tds_slopes * 1e6
-#         elif tds_slope_units is not None:
-#             raise TypeError(f"Wrong tds_slope_units: {tds_slope_units}")
-
-#     def get_tds_slope(self, percentage: float) -> float:
-#         popt, _ = self.fit()
-#         return line(percentage, *popt)
-
-#     def get_voltage(
-#         self, percentage: Union[float, Sequence[float]], snapshot: pd.Series
-#     ) -> Union[float, Sequence[float]]:
-#         tds_slope = self.get_tds_slope(percentage)
-#         return get_tds_voltage(tds_slope, snapshot)
-
-#     def __repr__(self) -> str:
-#         cname = type(self).__name__
-#         dx0 = self.dispersion_setpoint
-#         return f"<{cname}: {dx0=}, %={repr(self.percentages)}, grds={self.tds_slopes}>"
-
-# class CalibrationMapping:
-#     def __init__(self, amplitudes, voltages):
-#         self.amplitudes = amplitudes
-#         self.voltages = voltages
-
-#         popt, _ = curve_fit(line, amplitudes, voltages)
-#         self.get_voltage = partial(line, a0=popt[0], a1=popt[1])
-#         popt, _ = curve_fit(line, voltages, amplitudes)
-#         self.get_amplitude = partial(line, a0=popt[0], a1=popt[1])
-
-#     def get_voltages(self):
-#         return np.array(self.voltages)
-
-#     def get_amplitudes(self):
-#         return np.array(self.amplitudes)
-
-#     def get_voltage_fit_line(self):
-#         amplitudes = np.linspace(0, max(max(self.amplitudes) * 1.1, 25))
-#         fit_voltages = self.get_voltage(amplitudes)
-#         return amplitudes, fit_voltages
-
-#     def get_voltage_fit_parameters(self):
-#         popt, _ = curve_fit(line, self.amplitudes, self.voltages)
-#         return popt
 
 
 
 class TDSCalibration:
-    def __init__(self, region: DiagnosticRegion):
+    def __init__(self, region: DiagnosticRegion, modulator_voltage=None):
         self.region = region
+        self.modulator_voltage = modulator_voltage
 
     def get_voltage(self, amplitude):
         popt, _ = self.fit_to_voltage()
@@ -108,8 +47,8 @@ class TDSCalibration:
     
 
 class StuartCalibration(TDSCalibration):
-    def __init__(self, region: DiagnosticRegion, amplitudes, voltages):
-        super().__init__(region)
+    def __init__(self, region: DiagnosticRegion, amplitudes, voltages, modulator_voltage=None):
+        super().__init__(region, modulator_voltage=modulator_voltage)
         self.amplitudes = amplitudes
         self.voltages = voltages
 
@@ -119,7 +58,8 @@ class StuartCalibration(TDSCalibration):
     def get_amplitudes(self):
         return self.amplitudes
 
-class BolkoCalibrationSetPoint:
+
+class BolkoCalibrationSetpoint:
     def __init__(self, amplitude, slope, r34, energy, frequency):
         self.amplitude = amplitude
         self.slope = slope
@@ -141,19 +81,22 @@ class BolkoCalibrationSetPoint:
                                  energy=self.energy,
                                  frequency=self.frequency)
 
+
 class BolkoCalibration(TDSCalibration):
-    def __init__(self, region: DiagnosticRegion, bolko_setpoints):
-        super().__init__(region)
+    def __init__(self, region: DiagnosticRegion,
+                 bolko_setpoints: list[BolkoCalibrationSetpoint],
+                 modulator_voltage=None):
+        super().__init__(region, modulator_voltage=modulator_voltage)
         self.setpoints = bolko_setpoints
 
     def get_amplitudes(self):
         return np.array([setpoint.amplitude for setpoint in self.setpoints])
 
-    def get_voltages(self):
+    def get_voltage(self):
         return np.array([setpoint.get_voltage() for setpoint in self.setpoints])
 
 
-class IgorCalibration:
+class IgorCalibration(TDSCalibration):
     def __init__(self, region: DiagnosticRegion, amplitudes, voltages):
         super().__init__(region)
         self.amplitudes = amplitudes
@@ -184,87 +127,6 @@ class DiscreteCalibration(TDSCalibration):
     def get_amplitude(self, voltage):
         return dict(zip(self.voltages, self.amplitudes))[voltage]
 
-
-
-# class TDSCalibration:
-#     def __init__(
-#         self,
-#             amplitudes,
-#             phases,
-#             centres_of_mass,
-#         percentages: Sequence[float],
-#         slopes: Sequence[float],
-#         dispersion_setpoint: float,
-#         slope_units: Optional[str] = None,
-#     ):
-#         self.percentages = np.array(percentages)
-#         self.tds_slopes = np.array(tds_slopes)
-#         self.dispersion_setpoint = dispersion_setpoint
-#         if tds_slope_units == "um/ps":
-#             self.tds_slopes = self.tds_slopes * 1e6
-#         elif tds_slope_units is not None:
-#             raise TypeError(f"Wrong tds_slope_units: {tds_slope_units}")
-
-#     def fit(self):
-#         popt, pcov = curve_fit(line, self.percentages, self.tds_slopes)
-#         return popt, pcov
-
-#     def get_tds_slope(self, percentage: float) -> float:
-#         popt, _ = self.fit()
-#         return line(percentage, *popt)
-
-#     def get_voltage(
-#         self, percentage: Union[float, Sequence[float]], snapshot: pd.Series
-#     ) -> Union[float, Sequence[float]]:
-#         tds_slope = self.get_tds_slope(percentage)
-#         return get_tds_voltage(tds_slope, snapshot)
-
-#     def __repr__(self) -> str:
-#         cname = type(self).__name__
-#         dx0 = self.dispersion_setpoint
-#         return f"<{cname}: {dx0=}, %={repr(self.percentages)}, grds={self.tds_slopes}>"
-
-
-class TrivialTDSCalibrator:
-    def __init__(self, region: DiagnosticRegion, percentages: Sequence[float], voltages: Sequence[float]):
-        super().__init__(region)
-        self.percentages = np.array(percentages)
-        self.voltages = np.array(voltages)
-
-    def get_voltage(self, percentage) -> float:
-        return dict(zip(self.percentages, self.voltages))[percentage]
-
-
-class TDSVoltageCalibration:
-    """full TDS calibration mapping amplitudes to voltages or slopes,
-    requires no additional calculation besides interpolating between
-    the data points (i.e. no needs no snapshots)
-
-    """
-
-    def __init__(self, region: DiagnosticRegion, amplitudes: Sequence[float], voltages):
-        super().__init__(region)
-        self.amplitudes = amplitudes
-        self.voltages = voltages
-
-    def fit_voltages(self):
-        popt, pcov = curve_fit(line, self.percentages, self.voltages)
-        return popt, pcov
-
-    def get_voltage(self, amplitude: float) -> float:
-        popt, _ = self.fit_voltages()
-        return line(amplitude, *popt)
-
-
-def get_tds_voltage(
-    gradient_m_per_s: Union[float, Sequence[float]], snapshot: pd.Series
-) -> Union[float, Sequence[float]]:
-    r34 = r34_from_tds_to_screen(snapshot)
-    energy = snapshot[I1D_ENERGY_ADDRESS]
-    angular_frequency = TDS_FREQUENCY * 2 * np.pi  # to rad/s
-    energy_joules = energy * e * 1e6  # Convert to joules.
-    voltage = (energy_joules / (e * angular_frequency * r34)) * gradient_m_per_s
-    return voltage
 
 
 def calculate_voltage(*, slope: float, r34: float, energy: float, frequency: float):

@@ -21,7 +21,7 @@ from esme.control.tds import StreakingPlane
 from esme import DiagnosticRegion
 
 from esme.analysis import OpticsFixedPoints
-from esme.calibration import BolkoCalibrationSetPoint, TDSCalibration, IgorCalibration, DiscreteCalibration, BolkoCalibration, StuartCalibration
+from esme.calibration import BolkoCalibrationSetpoint, TDSCalibration, IgorCalibration, DiscreteCalibration, BolkoCalibration, StuartCalibration
 
 
 def load_kickers_from_config(dconf: dict[str, Any], di=None) -> FastKickerController:
@@ -72,33 +72,25 @@ def parse_polarity(cdict):
         return None
 
 
-# def build_simple_machine_from_config(yamlf: os.PathLike, di=None) -> LPSMachine:
-#     with open(yamlf, "r") as f:
-#         config = yaml.full_load(f)
+def make_hires_injector_energy_spread_machine(yamlf: os.PathLike, di=None) -> LPSMachine:
+    with open(yamlf, "r") as f:
+        config = yaml.full_load(f)
 
-#     kickercontroller = load_kickers_from_config(config, di=di)
-#     screenservice = load_screens_from_config(config, di=di)
-#     deflectors = load_deflectors_from_config(config, di=di)
+    area = DiagnosticRegion.I1
+    kickercontroller = load_kickers_from_config(config, di=di)
+    screen = load_screens_from_config(config, di=di)[area]["OTRC.64.I1D"]
+    deflector = load_deflectors_from_config(config, di=di)[area]
+    scanner = load_scanner_from_config(config, di=di)
+    optics = build_linear_optics(area, di=di)
+    sbunches = SpecialBunchesControl(area, di=di)
 
-#     # if di is not None:
-#     #     kickercontroller.di = di
-#     #     screenservice.di = di
-#     #     deflectors.di = di
+    return HighResolutionEnergySpreadMachine(scanner=scanner,
+                                             screen=screen,
+                                             deflector=deflector,
+                                             sbunches=sbunches,
+                                             optics=optics,
+                                             di=di)
 
-#     return LPSMachine(kickercontroller, screenservice, deflectors, di=di)
-
-
-# def build_lps_machine_from_config(yamlf: os.PathLike, di=None) -> LPSMachine:
-#     with open(yamlf, "r") as f:
-#         config = yaml.full_load(f)
-
-#     scanner = load_scanner_from_config(config, di=di)
-#     screenservice = load_screens_from_config(config, di=di)
-#     deflectors = load_deflectors_from_config(config, di=di)
-#     # optics =
-
-#     return LPSMachine(scanner, screenservice, deflectors, # initial_location=DiagnosticRegion.I1,
-#                       di=di)
 
 
 def build_lps_machine_from_config(yamlf: os.PathLike, area: DiagnosticRegion, di=None):
@@ -110,9 +102,7 @@ def build_lps_machine_from_config(yamlf: os.PathLike, area: DiagnosticRegion, di
 
     kickercontroller = load_kickers_from_config(config, di=di)
     tds = load_deflectors_from_config(config, di=di)[area]
-
     optics = build_linear_optics(area, di=di)
-
     sbunches = SpecialBunchesControl(area, di=di)
 
     return LPSMachine(region=area,
@@ -188,9 +178,9 @@ def _load_dinimal_bolko_calibration(cconf):
     for ampl, slope in zip(amplitudes, slopes):
         if slope_units == "um/ps":
             slope *= 1e6
-        calibs.append(BolkoCalibrationSetPoint(ampl, slope, r34=r34,
-                                       energy=energy,
-                                       frequency=frequency))
+        calibs.append(BolkoCalibrationSetpoint(ampl, slope, r34=r34,
+                                               energy=energy,
+                                               frequency=frequency))
 
     return BolkoCalibration(area, calibs)
 
@@ -198,7 +188,8 @@ def _load_igor_calibration(dcalib):
     area = dcalib["area"]
     amplitudes = dcalib["amplitudes"]
     voltages = dcalib["voltages"]
-    return IgorCalibration(amplitudes, voltages)
+    region = DiagnosticRegion(dcalib["area"])
+    return IgorCalibration(region, amplitudes, voltages)
 
 def _load_discrete_calibration(dcalib):
     amplitudes = dcalib["amplitudes"]

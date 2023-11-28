@@ -36,7 +36,7 @@ from uncertainties import ufloat
 from uncertainties.umath import sqrt as usqrt  # pylint: disable=no-name-in-module
 from scipy.constants import e
 
-from esme.calibration import TDS_LENGTH, TDS_WAVENUMBER, TrivialTDSCalibrator
+from esme.calibration import TDS_LENGTH, TDS_WAVENUMBER
 from esme.exceptions import EnergySpreadCalculationError, TDSCalibrationError
 from esme.image import get_slice_properties, get_central_slice_width_from_slice_properties, filter_image
 from esme.maths import ValueWithErrorT, linear_fit
@@ -236,7 +236,7 @@ def calculate_energy_spread_simple(widths) -> ValueWithErrorT:
 
 
 def pixel_widths_from_setpoint(setpoint: SetpointDataFrame, policy="emax"):
-    policy = "middle"
+    policy = "emax"
     
     image_full_paths = setpoint.image_full_paths
     central_sigmas = []
@@ -262,6 +262,8 @@ def pixel_widths_from_setpoint(setpoint: SetpointDataFrame, policy="emax"):
 
     return np.mean(central_sigmas)
 
+
+# def full_beam_slice_widths
 
 @dataclass
 class OpticsFixedPoints:
@@ -624,6 +626,7 @@ def apparent_bunch_length_from_processed_image(image):
     pixel_indices = np.arange(image.shape[0])  # Assumes streaking is in image Y
     projection = image.sum(axis=1)
     popt, perr = get_gaussian_fit(pixel_indices, projection)
+
     sigma = popt[2]
     sigma_error = perr[2]
 

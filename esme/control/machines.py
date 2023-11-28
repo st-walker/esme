@@ -15,20 +15,19 @@ class HighResolutionEnergySpreadMachine:
 
     """
     def __init__(self,
-                 region: DiagnosticRegion,
+                 *,
                  scanner: Scanner,
-                 screens: dict[str, Screen],
+                 screen: Screen,
                  deflector: TransverseDeflector,
+                 sbunches: SpecialBunchesControl,
                  optics:MachineLinearOptics,
-                 # initial_location=None,
                  di=None) -> None:
         self.di = di if di else DOOCSInterface()
-        self.region = region
         self.scanner = scanner
-        self.screens = screens
-        self.deflectors = deflectors
-        self.sbunches = SpecialBunchesControl(di=di)
-        self.optics = optics # I1toI1DSequenceOptics(di=di)
+        self.screen = screen
+        self.deflector = deflector
+        self.sbunches = sbunches
+        self.optics = optics
 
     def beam_off(self):
         self.di.set_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED", 0)

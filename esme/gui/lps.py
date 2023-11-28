@@ -169,6 +169,10 @@ class LPSMainWindow(QMainWindow):
 
     def closeEvent(self, event):
         self.close_jddd_screen_window()
+        # Close screen display widget where we have threads running
+        # here explicitly otherwise we have a problem.  Could also
+        # emit a closing signal.  This is fine.
+        self.ui.screen_display_widget.close()
 
     def close_jddd_screen_window(self):
         try:

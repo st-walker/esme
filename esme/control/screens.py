@@ -78,11 +78,11 @@ class Screen:
         return self.di.get_value(ch)
     
     def get_image_raw(self) -> npt.ArrayLike:
-        ch = self.get_image_raw_address(self.name)
+        ch = self.get_image_raw_address()
         LOG.debug(f"Getting raw image from channel: {ch}")
         return self.di.get_value(ch)
 
-    def get_image_raw_address(self,) -> npt.ArrayLike:
+    def get_image_raw_address(self) -> npt.ArrayLike:
         return self.SCREEN_RAW_FDP_TEMPLATE.format(self.name)
     
     def get_fast_kicker_setpoints(self) -> list[FastKickerSetpoint]:

@@ -9,6 +9,7 @@ from datetime import datetime
 import pytz
 import re
 from dataclasses import dataclass
+from typing import Optional
 
 import logging
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -26,7 +27,7 @@ from esme.calibration import TDSCalibration
 from esme.control.machines import LPSMachine
 from esme.core import region_from_screen_name
 
-from .calibrator import CalibrationMainWindow
+from .calibrator import CalibrationMainWindow, TaggedCalibration
 
 DEFAULT_CONFIG_PATH = files("esme.gui") / "defaultconf.yml"
 
@@ -48,6 +49,7 @@ LOG.setLevel(logging.DEBUG)
 # has no calibration, then that's OK.
 
 
+# The TDSControl loads any most recent calibrations and emits them.
 
 
 @dataclass
@@ -70,13 +72,12 @@ class TDSControl(QtWidgets.QWidget):
 
         # Make the daughter Calibrator window
         self.calibration_window = CalibrationMainWindow(self)
-        self.calibration_window.calibration_filename_signal.connect(self.update_tds_calibration_from_filename)
+        self.calibration_window.calibration_signal.connect(self.update_tds_calibration)
 
+        self.metadata = self.load_most_recent_calibrations()
+        
         # Connect calibration window.
         self.connect_buttons()
-
-        # Cache both calibrations with their metadata for display purposes
-        self.metadata = self.load_most_recent_calibrations()
 
         self.timer = QTimer()
         self.timer.timeout.connect(lambda: None)
@@ -88,7 +89,6 @@ class TDSControl(QtWidgets.QWidget):
     def emit_calibrations(self) -> None:
         i1c = self.i1machine.deflector.calibration
         b2c = self.b2machine.deflector.calibration
-        print("EMITTING!", i1c, b2c)
         if i1c is not None:
             self.voltage_calibration_signal.emit(i1c)
         if b2c is not None:
@@ -125,8 +125,7 @@ class TDSControl(QtWidgets.QWidget):
         """Simply forward to active machine instance, could either be for I1 or B2"""
         self.machine.deflector.set_amplitude(amplitude)
 
-    def update_tds_calibration_from_filename(self, calibration_filename):
-        calibration = load_calibration(calibration_filename)        
+    def update_tds_calibration(self, calibration):
         if calibration.region is DiagnosticRegion.I1:
             self.b2machine.deflector.calibration = calibration
         elif calibration.region is DiagnosticRegion.B2:
@@ -154,26 +153,34 @@ class TDSControl(QtWidgets.QWidget):
 
     def load_most_recent_calibrations(self) -> dict[DiagnosticRegion, LPSMachine]:
         try:
-            self.i1machine.deflector.calibration, i1md = load_most_recent_calibration(DiagnosticRegion.I1)
+            i1tagged_calib = load_most_recent_calibration(DiagnosticRegion.I1)
         except StopIteration:
-            self.i1.machine.deflector.calibration = None
             i1md = None
+        else:
+            self.i1machine.deflector.calibration = i1tagged_calib.calibration
+            i1md = CalibrationMetadata(filename=i1tagged_calib.filename,
+                                       datetime=i1tagged_calib.datetime)
 
         try:
-            self.b2machine.deflector.calibration, b2md = load_most_recent_calibration(DiagnosticRegion.B2)
+            b2tagged_calib = load_most_recent_calibration(DiagnosticRegion.B2)
         except StopIteration:
-            self.b2machine.deflector.calibration = None
             b2md = None
+        else:
+            self.b2machine.deflector.calibration = i1tagged_calib.calibration
+            b2md = CalibrationMetadata(filename=b2tagged_calib.filename,
+                                       datetime=b2tagged_calib.datetime)
 
         return {DiagnosticRegion.I1: i1md, DiagnosticRegion.B2: b2md}
 
 
-def load_calibration_file(calibration_filename: str) -> tuple[TDSCalibration, CalibrationMetadata]:
+def load_calibration_file(calibration_filename: str) -> TaggedCalibration:
     calibration = load_calibration(calibration_filename)
     file_birthday = datetime.fromtimestamp(os.path.getmtime(calibration_filename))
-    return calibration, CalibrationMetadata(calibration_filename, file_birthday)
+    return TaggedCalibration(calibration=calibration,
+                             filename=calibration_filename,
+                             datetime=file_birthday)
 
-def load_most_recent_calibration(section: DiagnosticRegion) -> CalibrationMetadata:
+def load_most_recent_calibration(section: DiagnosticRegion) -> TaggedCalibration:
     cdir = get_tds_calibration_config_dir() / DiagnosticRegion(section).name.lower()
 
     files = cdir.glob("*.toml")

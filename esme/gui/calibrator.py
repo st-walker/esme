@@ -3,6 +3,8 @@ import sys
 from pathlib import Path
 import logging
 import time
+from typing import Optional
+from datetime import datetime
 
 import pyqtgraph as pg
 from PyQt5 import QtCore, QtGui
@@ -65,8 +67,17 @@ class HumanReadableCalibrationData:
     ycoms: list[float]
     amplitude: float
 
+
+
+@dataclass
+class TaggedCalibration:
+    calibration: TDSCalibration
+    filename: Optional[str] = None
+    datetime: Optional[datetime] = None
+
+
 class CalibrationMainWindow(QMainWindow):
-    calibration_filename_signal = pyqtSignal(str)
+    calibration_signal = pyqtSignal(object)
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -131,6 +142,7 @@ class CalibrationMainWindow(QMainWindow):
 
     @property
     def tds(self):
+        return self.machine.deflectors[DiagnosticRegion.I1]
         return self.machine.deflectors.active_tds()
 
     def setup_plots(self):
@@ -326,7 +338,7 @@ class CalibrationWorker(QObject):
 
         m = np.mean([abs(m1[0]), abs(m2[0])])
 
-        m_m_per_s = m  * (360 * 3e9) / 13.7369*1e-6
+        m_m_per_s = m * (360 * 3e9) / 13.7369*1e-6
         phase0, pxcom0 = first_zero_crossing
         phase1, pxcom1 = second_zero_crossing
 
@@ -344,12 +356,6 @@ class CalibrationWorker(QObject):
         print(amplitude, voltage_v)
         calib_sp = AmplitudeCalibrationSetpoint(amplitude, voltage_v)
         self.amplitude_setpoint_signal.emit(calib_sp)
-
-        # from IPython import embed; embed()
-
-        # time_s = phi / (3e9 * 360)
-        # ycoms_m = np.array(ycoms) * 13.7369 * 1e-6
-
 
 
         return m1, m1 #XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX JUST USING M1 HERE!!!...

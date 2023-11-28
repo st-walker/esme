@@ -206,12 +206,11 @@ class ScreenDisplayWidget(QWidget):
 
         yproj = scipy.signal.savgol_filter(yproj, window_length=20, polyorder=2)
 
-        x = np.linspace(-sh[0]/2, sh[0]/2, num=len(xproj)) * xpixel_size  # ? Why?
+        x = np.linspace(-sh[0]/2, sh[0]/2, num=len(xproj)) * xpixel_size
         y = np.linspace(-sh[1]/2, sh[1]/2, num=len(yproj)) * ypixel_size
 
         self.xplot.plot(x, xproj)
         self.yplot.plot(yproj, y)
-
     
 
 class CalibrationWatcher(QObject):

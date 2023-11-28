@@ -11,7 +11,7 @@ import numpy as np
 
 from esme.gui.ui import lps
 from esme.control.pattern import get_beam_regions, get_bunch_pattern
-from esme.gui.common import build_default_machine_interface, QPlainTextEditLogger, setup_screen_display_widget, send_widget_to_log
+from esme.gui.common import make_default_i1_lps_machine, QPlainTextEditLogger, setup_screen_display_widget, send_widget_to_log
 from esme.gui.scannerpanel import ProcessedImage, ScanType
 from esme.plot import pretty_parameter_table
 
@@ -35,11 +35,9 @@ class HighResolutionEnergySpreadMainWindow(QMainWindow):
 
         self.setup_logger()
 
-        self.machine = build_default_machine_interface()
-
         self.scannerp = self.ui.scanner_panel
 
-        self.ui.tds_panel.calibration_signal.connect(self.ui.scanner_panel.update_tds_calibration)
+        self.ui.tds_panel.voltage_calibration_signal.connect(self.ui.scanner_panel.update_tds_calibration)
 
         self.image_plot = setup_screen_display_widget(self.ui.image_plot)
         self.dispersion_widths_scatter = make_pixel_widths_scatter(self.ui.dispersion_pixel_size_plot_widget,
@@ -65,6 +63,9 @@ class HighResolutionEnergySpreadMainWindow(QMainWindow):
 
         self.timer = self.build_main_timer(100)
         self.finished = False
+
+        self.ui.tds_panel.emit_calibrations()
+
 
     def send_to_logbook(self):
         send_widget_to_log(self, author="High Res. Energy Spread Measurement")
@@ -92,7 +93,7 @@ class HighResolutionEnergySpreadMainWindow(QMainWindow):
             self.voltage_widths_scatter.setData([], [])
             self.finished = False
 
-        image = processed_image.image
+        image = processed_image.image.T
         peak_energy_row = processed_image.central_width_row
         # image[peak_energy_row] *= 0
         items = self.image_plot.items

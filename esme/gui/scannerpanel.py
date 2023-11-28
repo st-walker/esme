@@ -20,16 +20,19 @@ from uncertainties import UFloat
 
 from esme.gui.ui import Ui_scanner_form, Ui_results_box_dialog, Ui_Dialog
 from esme.control.pattern import get_beam_regions, get_bunch_pattern
-from esme.gui.common import build_default_lps_machine, QPlainTextEditLogger, send_to_logbook, DEFAULT_CONFIG_PATH
 from esme.maths import ValueWithErrorT, linear_fit
 from esme.image import get_slice_properties, get_central_slice_width_from_slice_properties, filter_image
 from esme.analysis import SliceWidthsFitter, DerivedBeamParameters, true_bunch_length_from_processed_image
 from esme.control.configs import load_calibration
 from esme.control.snapshot import SnapshotAccumulator, Snapshotter
-from esme.gui.common import is_in_controlroom, load_scanner_panel_ui_defaults, df_to_logbook_table, raise_message_box
+from esme.gui.common import (is_in_controlroom,
+                             load_scanner_panel_ui_defaults,
+                             df_to_logbook_table,
+                             raise_message_box,
+                             send_to_logbook,
+                             DEFAULT_CONFIG_PATH,
+                             make_default_injector_espread_machine)
 from esme.calibration import TDSCalibration
-
-# from esme.maths import ValueWithErrorT, linear_fit
 
 from esme.plot import pretty_parameter_table, formatted_parameter_dfs
 
@@ -71,16 +74,13 @@ class ScannerControl(QtWidgets.QWidget):
     background_image_signal = pyqtSignal(object)
     new_measurement_signal = pyqtSignal()
 
-    def __init__(self, parent=None, machine=None):
+    def __init__(self, parent=None):
         super().__init__(parent=parent)
 
         self.ui = Ui_scanner_form()
         self.ui.setupUi(self)
 
-        if machine is None:
-            self.machine = build_default_lps_machine()
-        else:
-            self.machine = machine
+        self.machine = make_default_injector_espread_machine()
 
         ui_defaults = load_scanner_panel_ui_defaults()
         self.initial_read(ui_defaults["ScannerControl"])
@@ -95,10 +95,10 @@ class ScannerControl(QtWidgets.QWidget):
 
         self.timer = self.build_main_timer(100)
 
+        
     def set_ui_initial_values(self, dic):
         self.ui.beam_shots_spinner.setValue(dic["beam_shots_spinner"])
         self.ui.bg_shots_spinner.setValue(dic["bg_shots_spinner"])
-        self.ui.measured_emittance_spinbox.setValue(dic["measured_emittance_spinbox"])
 
     def apply_current_optics(self):
         selected_dispersion = self.get_chosen_dispersion()
@@ -220,14 +220,12 @@ class ScannerControl(QtWidgets.QWidget):
         self.ui.beam_shots_spinner.setEnabled(can_measure)
         self.ui.cycle_quads_button.setEnabled(can_measure)
         self.ui.slug_line_edit.setEnabled(can_measure)
-        self.ui.measured_emittance_spinbox.setEnabled(can_measure)
         self.ui.background_shots_label.setEnabled(can_measure)
         self.ui.beam_shots_label.setEnabled(can_measure)
         self.ui.beta_label.setEnabled(can_measure)
         self.ui.dispersion_label.setEnabled(can_measure)
         self.ui.tds_voltages_label.setEnabled(can_measure)
         self.ui.dscan_voltage_label.setEnabled(can_measure)
-        self.ui.emittance_label.setEnabled(can_measure)
         self.ui.measurement_name_label.setEnabled(can_measure)
         self.ui.preferences_button.setEnabled(can_measure)
 
@@ -250,7 +248,7 @@ class ScannerControl(QtWidgets.QWidget):
 
     def display_final_result(self, result: OnlineMeasurementResult):
         LOG.debug("Displaying Final Result")
-
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!??????????????????????????????????????")
         try:
             self.result_dialog.post_measurement_result(result)
         except ValueError:
@@ -268,11 +266,7 @@ class ScannerControl(QtWidgets.QWidget):
         self.set_buttons_ready_for_measurement(can_measure=True)
 
     def build_scan_request_from_ui(self):
-        # XXX: THIS NEEDS TO BE DYNAMIC
-        # fname = "/Users/stuartwalker/.config/diagnostics-utility/i1-tds-calibrations/stuart-conf.toml"
-        # fname = "/System/Volumes/Data/home/xfeloper/user/stwalker/stuart-conf.toml"
-        # fname = "/Users/stuartwalker/.config/diagnostics-utility/i1-tds-calibrations/igor-conf.toml"
-        calibration = self.machine.deflectors.active_tds().calibration
+        calibration = self.machine.deflector.calibration
         if calibration is None:
             raise MisconfiguredMeasurementException("Missing TDS Calibration")
 
@@ -300,10 +294,12 @@ class ScannerControl(QtWidgets.QWidget):
         return scan_request
 
     def update_tds_calibration(self, calibration):
+        print(calibration, calibration.region)
+
         # XXX: what if I receive a TDS calibration from I1 but I am
         # applying it here to B2?  This would obviously be wrong...
         # Need to be careful here and think about this in the future.
-        self.machine.deflectors.active_tds().calibration = calibration
+        self.machine.deflector.calibration = calibration
 
     def open_jddd_screen_window(self):
         self.jddd_camera_window_process = QtCore.QProcess()
@@ -365,8 +361,9 @@ class ScanWorker(QObject):
         self.kill = False
         self.output_directory = None
 
-    def get_image_raw_address(self):
-        return self.machine.screens.get_image_raw_address(self.scan_request.screen_name)
+    # def get_image_raw_address(self):
+    #     screen = 
+    #     return self.machine.screens.get_image_raw_address(self.scan_request.screen_name)
 
     def make_output_directory(self):
         basedir = self.scan_request.settings.outdir
@@ -436,7 +433,7 @@ class ScanWorker(QObject):
                                    tscan_widths=tscan_widths,
                                    bscan_widths=bscan_widths)
         ofp = self.machine.scanner.scan.optics_fixed_points
-        beam_energy = self.machine.optics.get_dumpline_beam_energy() * 1e6
+        beam_energy = self.machine.optics.get_beam_energy() * 1e6
         dscan_voltage = self.scan_request.dscan_tds_voltage
 
         tscan_dispersion = self.machine.scanner.scan.tscan.setpoint.dispersion
@@ -573,8 +570,7 @@ class ScanWorker(QObject):
     def set_tds_voltage(self, voltage):
         LOG.info(f"Setting TDS voltage: {voltage / 1e6} MV")
         # amplitude = self.scan_request.calibration.get_amplitude(voltage)
-        # self.machine.deflectors.active_tds().set_amplitude(amplitude)
-        self.machine.deflectors.active_tds().set_voltage(voltage)
+        self.machine.deflector.set_voltage(voltage)
 
     def take_screen_data(self, nbeam, expect_beam=True):
         screen_name = self.scan_request.screen_name
@@ -586,7 +582,7 @@ class ScanWorker(QObject):
                 raise MachineCancelledMeasurementException("Beam unexpectedly on.")
 
             time.sleep(0.2)
-            raw_image = self.machine.screens.get_image_raw(screen_name)
+            raw_image = self.machine.screen.get_image_raw()
             yield raw_image
 
     def snapshot_accumulator(self, scan_type, dispersion, voltage, beta):
@@ -610,12 +606,12 @@ class ScanWorker(QObject):
         )
         central_width_row = np.argmin(means)
 
-        r34 = self.machine.optics.r34_from_tds_to_point(self.scan_request.screen_name)
-        beam_energy = self.machine.optics.get_dumpline_beam_energy() * 1e6 * e # MeV to Joules
+        r12_streaking = self.machine.optics.r12_streaking_from_tds_to_point(self.scan_request.screen_name)
+        beam_energy = self.machine.optics.get_beam_energy() * 1e6 * e # MeV to Joules
 
         sigma_z = true_bunch_length_from_processed_image(image,
                                                          voltage=voltage,
-                                                         r34=r34,
+                                                         r34=r12_streaking,
                                                          energy=beam_energy)
 
         return ProcessedImage(image, scan_type,
@@ -759,7 +755,6 @@ class NewSetpointSignal:
     dispersion: float
     beta: float
 
-
 # def find_window(cls)
 #     # Global function to find the (open) QMainWindow in application
 #     app = QApplication.instance()
@@ -787,7 +782,7 @@ class ScannerResultsDialog(QtWidgets.QDialog):
 
         fitted_beam_parameters = self.online_measurement_result.measurement_parameters
         fit_df, beam_df = formatted_parameter_dfs(fitted_beam_parameters)
-        fit_string = df_to_logbook_table(fit_df, beam_df)
+        fit_string = df_to_logbook_table(fit_df)
         beam_string = df_to_logbook_table(beam_df)
 
         text = dedent(f"""\

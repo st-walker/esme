@@ -30,7 +30,26 @@
        <attribute name="title">
         <string>Main</string>
        </attribute>
-       <layout class="QGridLayout" name="gridLayout_7">
+       <layout class="QGridLayout" name="gridLayout_3">
+        <item row="2" column="1">
+         <widget class="QGroupBox" name="groupBox_2">
+          <property name="title">
+           <string>Transverse Deflecting Structure</string>
+          </property>
+          <layout class="QGridLayout" name="gridLayout_4">
+           <item row="0" column="0">
+            <widget class="TDSControl" name="tds_panel" native="true">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
         <item row="0" column="1">
          <widget class="QGroupBox" name="controls_group_box">
           <property name="maximumSize">
@@ -122,19 +141,30 @@
           </layout>
          </widget>
         </item>
-        <item row="2" column="1">
-         <widget class="QGroupBox" name="groupBox_2">
+        <item row="4" column="1">
+         <widget class="QGroupBox" name="groupBox_5">
           <property name="title">
-           <string>Transverse Deflecting Structure</string>
+           <string>Dumpline</string>
           </property>
-          <layout class="QGridLayout" name="gridLayout_4">
+          <layout class="QGridLayout" name="gridLayout_8">
+           <item row="1" column="0">
+            <widget class="QPushButton" name="high_streak_optics_button">
+             <property name="text">
+              <string>Apply High Streaking Optics</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QPushButton" name="rollback_button">
+             <property name="text">
+              <string>Rollback</string>
+             </property>
+            </widget>
+           </item>
            <item row="0" column="0">
-            <widget class="TDSControl" name="tds_panel" native="true">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
+            <widget class="QPushButton" name="go_to_dump_button">
+             <property name="text">
+              <string>Go to Dump</string>
              </property>
             </widget>
            </item>
@@ -159,7 +189,7 @@
              <item>
               <widget class="QSpinBox" name="nbg_spinbox">
                <property name="maximum">
-                <number>5</number>
+                <number>10</number>
                </property>
               </widget>
              </item>
@@ -175,7 +205,14 @@
               </widget>
              </item>
              <item>
-              <widget class="QSpinBox" name="nbeam_spinbox"/>
+              <widget class="QSpinBox" name="nbeam_spinbox">
+               <property name="buttonSymbols">
+                <enum>QAbstractSpinBox::UpDownArrows</enum>
+               </property>
+               <property name="maximum">
+                <number>99</number>
+               </property>
+              </widget>
              </item>
             </layout>
            </item>
@@ -210,37 +247,33 @@
           </layout>
          </widget>
         </item>
-        <item row="4" column="1">
-         <widget class="QGroupBox" name="groupBox_5">
+        <item row="5" column="1">
+         <widget class="QGroupBox" name="groupBox_4">
           <property name="title">
-           <string>Dumpline</string>
+           <string>Measurements</string>
           </property>
-          <layout class="QGridLayout" name="gridLayout_8">
-           <item row="2" column="0">
-            <widget class="QPushButton" name="rollback_button">
+          <layout class="QVBoxLayout" name="verticalLayout_2">
+           <item>
+            <widget class="QPushButton" name="pushButton">
              <property name="text">
-              <string>Rollback</string>
+              <string>Current Profile</string>
              </property>
             </widget>
            </item>
-           <item row="1" column="0">
-            <widget class="QPushButton" name="high_streak_optics_button">
-             <property name="text">
-              <string>Apply High Streaking Optics</string>
+           <item>
+            <widget class="QPushButton" name="pushButton_2">
+             <property name="enabled">
+              <bool>false</bool>
              </property>
-            </widget>
-           </item>
-           <item row="0" column="0">
-            <widget class="QPushButton" name="go_to_dump_button">
              <property name="text">
-              <string>Go to Dump</string>
+              <string>Emittance</string>
              </property>
             </widget>
            </item>
           </layout>
          </widget>
         </item>
-        <item row="0" column="0" rowspan="5">
+        <item row="0" column="0" rowspan="6">
          <widget class="ScreenDisplayWidget" name="screen_display_widget" native="true">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">

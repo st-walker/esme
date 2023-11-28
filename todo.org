@@ -34,16 +34,16 @@ What was quantum efficiency before and after?
 1. [ ] Optimise dscan/tscan/beta scan diplicate datapoints...
 2. [ ] Show the selected slice.
 3. [ ] Add checklist to code.
-4. [x] Handle case where measurement is started whilst config is open.
-5. [x] copy configs to output as well for completion please.
-6. [x] write comment box also to file in output directory.
-7. [x] put directory location in text box
-8. [x] Use a proper table for box vis.
-9. [x] Add cycle ability to quadrupoles.
-10. [x] write text box to output
-11. [x] Just crash casually if beam goes off unexpectedly.
-12. [x] Need to control TDS from the panel
-13. [x] Button to open the camera server (CHECK!)
+4. [X] Handle case where measurement is started whilst config is open.
+5. [X] copy configs to output as well for completion please.
+6. [X] write comment box also to file in output directory.
+7. [X] put directory location in text box
+8. [X] Use a proper table for box vis.
+9. [X] Add cycle ability to quadrupoles.
+10. [X] write text box to output
+11. [X] Just crash casually if beam goes off unexpectedly.
+12. [X] Need to control TDS from the panel
+13. [X] Button to open the camera server (CHECK!)
 14. [ ] get buttons working for dispersion/beta selection.
 
 
@@ -53,8 +53,8 @@ What was quantum efficiency before and after?
 1. [ ] "Repeat TDS Scan" button (no need always to do e.g. dispersion scan or whatever...)
 2. [ ] get beta/dispersion selection correct.
 3. [ ] Full suite of data plots.
-4. [x] make sure the config panel works.
-5. [x] Add label to dispersion setting label.
+4. [X] make sure the config panel works.
+5. [X] Add label to dispersion setting label.
 
 
 ## LPS Main GUI
@@ -76,7 +76,7 @@ I need to be able to distinguish between rising and falling zero intercepts.
 
 1. [ ] Get plain data taking working.
 2. [ ] bunch pattern to and from I1D or B2D.
-3. [ ] Design kick server, to and from 200m optics, to and from I1D.
+3. [ ] Design kick server, tto and from 200m optics, to and from I1D.
 4. [ ] Automatically Calibrate TDS.
 5. [X] Get negative axis working.
 
@@ -85,3 +85,4 @@ I need to be able to distinguish between rising and falling zero intercepts.
 
 1. [ ] Get indiciators working.
 2. [ ] Dispersion measurement.
+3. [ ] Steering with kickers onto the screen.

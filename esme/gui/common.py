@@ -14,7 +14,7 @@ from PyQt5.QtCore import QObject, pyqtSignal, QByteArray, QBuffer, QIODevice
 from PyQt5.QtWidgets import QWidget
 from PyQt5.QtWidgets import QMessageBox
 
-from esme.control.configs import load_virtual_machine_interface, build_lps_machine_from_config
+from esme.control.configs import load_virtual_machine_interface, build_lps_machine_from_config, make_hires_injector_energy_spread_machine
 from esme import DiagnosticRegion
 
 from esme.control.sbunches import SpecialBunchesControl
@@ -31,19 +31,24 @@ def is_in_controlroom():
     reg = re.compile(r"xfelbkr[0-9]\.desy\.de")
     return bool(reg.match(name))
 
-def make_default_machine_interface() -> DOOCSInterfaceABC:
+def make_default_doocs_interface() -> DOOCSInterfaceABC:
     if not is_in_controlroom():
         return get_default_virtual_machine_interface()
     else:
         return DOOCSInterface()
 
 
+def make_default_injector_espread_machine():
+    di = make_default_doocs_interface()
+    return make_hires_injector_energy_spread_machine(DEFAULT_CONFIG_PATH, di=di)
+
+    
 def make_default_i1_lps_machine():
-    di = make_default_machine_interface()
+    di = make_default_doocs_interface()
     return build_lps_machine_from_config(DEFAULT_CONFIG_PATH, DiagnosticRegion("I1"), di=di)
 
 def make_default_b2_lps_machine():
-    di = make_default_machine_interface()
+    di = make_default_doocs_interface()
     return build_lps_machine_from_config(DEFAULT_CONFIG_PATH, DiagnosticRegion("B2"), di=di)
 
 def get_default_virtual_machine_interface() -> DictionaryDOOCSInterface:
@@ -52,7 +57,7 @@ def get_default_virtual_machine_interface() -> DictionaryDOOCSInterface:
         return load_virtual_machine_interface(doocsdict)
 
 def make_default_sbm(location=None):
-    di = make_default_machine_interface()
+    di = make_default_doocs_interface()
     if location is None:
         location = DiagnosticRegion.I1
     return SpecialBunchesControl(location=location, di=di)

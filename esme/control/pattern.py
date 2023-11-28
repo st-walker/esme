@@ -4,7 +4,6 @@ try:
     import pydoocs
 except ImportError:
     pass
-from dataclasses import dataclass
 
 from .dint import DOOCSInterface
 
@@ -15,11 +14,6 @@ def get_bunch_pattern():
 
 def rf_transition_entries_mask(bp):
     return is_bit_set(bp, 24)
-
-
-def get_any_injector_laser(bp):
-    return is_bit_set(bp, 4) | is_bit_set(bp, 5) | is_bit_set(bp, 6) | is_bit_set(bp, 7)
-
 
 def nbeam_regions(bp):
     transition_entries = rf_transition_entries_mask(bp)
@@ -94,8 +88,8 @@ def get_transition_regions(bp):
 
 class Section:
     T0 = 800  # first bunch pattern starts at 800 us.
-    FREQUENCY = 9.028e6  # MHz
-    PERIOD = 1e6 / FREQUENCY  # Microseconds
+    FREQUENCY = 9.028e6  # MHz.  Twice the max frequency of the machine.
+    PERIOD = 1e6 / FREQUENCY  # Microseconds.  half the minimum bunch spacing.
 
     def __len__(self):
         return len(self.subpattern)

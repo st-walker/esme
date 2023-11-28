@@ -82,6 +82,10 @@ class I1toI1DLinearOptics(MachineLinearOptics):
 
         raise DOOCSReadError("Unable to read injector beam energy")
 
+    # def track_slice_twiss
+
+    # def track_slice_optics_to_screen(
+
 
 class I1toB2DLinearOptics(MachineLinearOptics):
     def __init__(self, di=None):

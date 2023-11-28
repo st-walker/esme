@@ -5,6 +5,10 @@ from .dint import DOOCSInterface
 class UncalibratedTDSError(RuntimeError):
     pass
 
+# XFEL.RF/TDS.MODULATOR/TDSA.52.I1.MODULATOR/CHARGE_VOLTAGE.SP
+
+
+# XFEL.RF/TDS.MODULATOR/TDSB.428.B2/CCPS_UREAD
 
 class StreakingPlane(str, Enum):
     HORIZONTAL = "HORIZONTAL"
@@ -50,7 +54,7 @@ class TransverseDeflector:
 
     def set_voltage(self, voltage: float) -> None:
         try:
-            amplitude = self.calibration.get_amplitude_sp(voltage)
+            amplitude = self.calibration.get_amplitude(voltage)
         except AttributeError as e:
             raise UncalibratedTDSError("Missing TDS Calibration")
 
