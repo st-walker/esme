@@ -78,7 +78,7 @@ doc = [
 
 [tool.poetry.scripts]
 esme = 'esme.cli:main'
-lpsgui = 'esme.gui.gui:start_gui'
+lpsgui = 'esme.gui.lps:start_gui'
 tdsc = 'esme.gui.calibrator:main'
 hires = 'esme.gui.hires:start_hires_gui'
 
