@@ -170,4 +170,20 @@ def get_slice_properties(
 
 def get_central_slice_width_from_slice_properties(means, sigmas, padding=10):
     centre_index = means.argmin()
+    
     return np.mean(sigmas[centre_index - padding : centre_index + padding])
+
+
+
+def get_selected_central_slice_width_from_slice_properties(means, sigmas, padding=10, slice_pos=None):
+    centre_index = int(len(means)) // 2
+    if slice_pos is None:
+        centre_index = means.argmin()
+    elif abs(slice_pos) > 0.5:
+        raise ValueError("slice pos outside of [-0.5, 0.5].")
+    else:
+        centre_index += int(slice_pos * len(means) // 2)
+        
+
+    
+    return centre_index, np.mean(sigmas[centre_index - padding : centre_index + padding])

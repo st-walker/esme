@@ -8,7 +8,7 @@ from esme.control import DOOCSReadError
 
 # XXX: This will not work if just doing an off axis measurement in the
 # injector with beam going straight, for example.
-# Tried in order:  Why?  if beamline is readable then we are there.  
+# Tried in order:  Why?  if beamline is readable then we are there.
 INJECTOR_ENERGY_ADDRESSES = ["XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/I1D/ENERGY.ALL",
                              "XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/B1/ENERGY.ALL"]
 
@@ -99,4 +99,3 @@ class I1toB2DLinearOptics(MachineLinearOptics):
         return calculate_b2d_r12_from_tds_centre(df,
                                                  screen_or_marker_name,
                                                  self.get_beam_energy())
-

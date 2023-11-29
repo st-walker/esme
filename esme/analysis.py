@@ -244,8 +244,11 @@ def pixel_widths_from_setpoint(setpoint: SetpointDataFrame, policy="emax"):
         image = np.load(path)["image"]
         image = image.T # Flip to match control room..?  TODO
         # XXX: I do not use any bg here...
-        image = filter_image(image, bg=0.0, crop=False)
-        _, means, bunch_sigmas = get_slice_properties(image)
+        image = filter_image(image, bg=0.0, crop=True)
+        from IPython import embed; embed()
+        # from IPython import embed; embed()
+
+        _, means, bunch_sigmas = get_slice_properties(image, fast=False)
         sigma = get_central_slice_width_from_slice_properties(
             means, bunch_sigmas, padding=10
         )

@@ -38,6 +38,44 @@
       <string>Scan Options</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_3">
+      <item row="3" column="0">
+       <widget class="QCheckBox" name="pick_slice_based_on_position_checkbox">
+        <property name="text">
+         <string>Pick Slice Based On Position</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <layout class="QHBoxLayout" name="horizontalLayout_12">
+        <item>
+         <widget class="QCheckBox" name="do_beta_scan_checkbox">
+          <property name="text">
+           <string>Do Beta Scan</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="remeasure_dispersoin_checkbox">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>Remeasure Dispersion</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="do_full_phase_space_checkbox">
+          <property name="text">
+           <string>Full Phase Space</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
       <item row="0" column="0">
        <layout class="QHBoxLayout" name="horizontalLayout_8">
         <item>
@@ -77,38 +115,7 @@
         </item>
        </layout>
       </item>
-      <item row="2" column="0">
-       <layout class="QHBoxLayout" name="horizontalLayout_12">
-        <item>
-         <widget class="QCheckBox" name="do_beta_scan_checkbox">
-          <property name="text">
-           <string>Do Beta Scan</string>
-          </property>
-          <property name="checked">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QCheckBox" name="remeasure_dispersoin_checkbox">
-          <property name="enabled">
-           <bool>false</bool>
-          </property>
-          <property name="text">
-           <string>Remeasure Dispersion</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="Line" name="line">
-          <property name="orientation">
-           <enum>Qt::Vertical</enum>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item row="3" column="0">
+      <item row="4" column="0">
        <layout class="QHBoxLayout" name="horizontalLayout_15">
         <item>
          <widget class="QLabel" name="label">
@@ -118,7 +125,23 @@
          </widget>
         </item>
         <item>
-         <widget class="QDoubleSpinBox" name="doubleSpinBox"/>
+         <widget class="QDoubleSpinBox" name="slice_selection_spinner">
+          <property name="decimals">
+           <number>2</number>
+          </property>
+          <property name="minimum">
+           <double>-0.500000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>0.500000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.100000000000000</double>
+          </property>
+          <property name="stepType">
+           <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
+          </property>
+         </widget>
         </item>
        </layout>
       </item>
@@ -297,7 +320,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QLabel" name="quad_scan_file_path">
+         <widget class="QLabel" name="quad_scan_filename">
           <property name="text">
            <string>No File</string>
           </property>

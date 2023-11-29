@@ -9,6 +9,17 @@ from .exceptions import EuXFELUserError
 from esme import DiagnosticRegion
 
 
+# class StreakingPlaneCalibrationMixin:
+#     def get_streaking_com_slope(self, screen_name):
+#         voltage = self.deflector.get_voltage_rb()
+#         r12 = self.machine.optics.r12_streaking_from_tds_to_point(self.name)
+#         energy_mev = self.machine.optics.get_beam_energy() # MeV is fine here.
+#         com_slope = get_tds_com_slope(r12, energy_mev, voltage)
+#         scale_factor = 1 / com_slope
+#         return 
+    
+
+
 class HighResolutionEnergySpreadMachine:
     """set of high level interfaces to the EuXFEL for measuring the
     slice energy spread with high resolution.

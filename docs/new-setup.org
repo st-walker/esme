@@ -1,20 +1,16 @@
 
-1. [X] Dump switch :: Operations/Procedures -> Operation -> Dump Switch
-2. [X] Main Timing :: Injector -> Main Timing -> Bunch Pattern Server etc..
-3. [X] RF sum voltage control, etc.
-4. [X] Set scalar mode
-5. [X] A1 and AH1 to 0.0
-6. [X] Take AH1 off beam.
-7. [X] Go to 130MeV in I1D.
-8. [X] Turn off LH
-9. [X] Magnet energizer server
-10. [X] Cycle magnets :: MAgnets -> Magnets -> Overview
-11. [X] Find A1 phase :: RF -> Scan Tools -> INtelliPhase -> A1 with LH
-12. [X] Gun Phase :: Injector -> RF Gun Tools -> Gun Phase Scan
+1. [ ] Dump switch :: Operations/Procedures -> Operation -> Dump Switch
+2. [ ] Main Timing :: Injector -> Main Timing -> Bunch Pattern Server etc..
+3. [ ] RF sum voltage control, etc.
+4. [ ] Set scalar mode
+5. [ ] A1 and AH1 to 0.0
+6. [ ] Take AH1 off beam.
+7. [ ] Go to 130MeV in I1D.
+8. [ ] Turn off LH
+9. [ ] Magnet energizer server
+10. [ ] Cycle magnets :: MAgnets -> Magnets -> Overview
+11. [ ] Find A1 phase :: RF -> Scan Tools -> INtelliPhase -> A1 with LH
+12. [ ] Gun Phase :: Injector -> RF Gun Tools -> Gun Phase Scan
+    1. Must put to 100pC and turn off feedbacks, including charge feedback
+    2. Turn back on afterwards.
 13. [ ] Calibrate the TDS
-
-
-
-# Todo
-
-1. Sort out latdraw and all that shit...!
