@@ -14,3 +14,13 @@
     1. Must put to 100pC and turn off feedbacks, including charge feedback
     2. Turn back on afterwards.
 13. [ ] Calibrate the TDS
+
+
+
+* Matching for normal operation
+
+
+- Set all chirps to zero in injector
+- Scale cold magnets
+- Match
+

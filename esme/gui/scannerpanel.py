@@ -72,7 +72,7 @@ class OnlineMeasurementResult:
 
 class ScannerControl(QtWidgets.QWidget):
     processed_image_signal = pyqtSignal(object)
-    full_measurement_result_signal = pyqtSignal(DerivedBeamParameters)
+    full_measurement_result_signal = pyqtSignal(OnlineMeasurementResult)
     background_image_signal = pyqtSignal(object)
     new_measurement_signal = pyqtSignal()
 

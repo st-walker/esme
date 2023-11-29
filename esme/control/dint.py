@@ -24,6 +24,8 @@ import matplotlib
 import numpy as np
 import pandas as pd
 
+from esme.exceptions import DOOCSReadError
+
 try:
     import pydoocs
 except ImportError:
