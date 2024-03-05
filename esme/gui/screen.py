@@ -3,16 +3,16 @@ import logging
 from enum import Enum, auto
 import time
 
-from PyQt5 import QtCore, QtGui
-from PyQt5.QtWidgets import QFileDialog, QFrame, QMessageBox, QGridLayout, QWidget
-from PyQt5.QtCore import QObject, QThread, QTimer, pyqtSignal, pyqtSlot, QRunnable
+from PyQt5 import QtGui
+from PyQt5.QtWidgets import QGridLayout, QWidget
+from PyQt5.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
 import pyqtgraph as pg
 import numpy as np
 
 
 from esme import DiagnosticRegion
-from esme.gui.common import setup_screen_display_widget, send_to_logbook, make_default_i1_lps_machine, make_default_b2_lps_machine
-from esme.calibration import TDSCalibration, get_tds_com_slope
+from esme.gui.common import make_default_b2_lps_machine, make_default_i1_lps_machine, setup_screen_display_widget
+from esme.calibration import get_tds_com_slope
 from esme.control.tds import StreakingPlane, UncalibratedTDSError
 
 
@@ -436,7 +436,6 @@ class NegatableLabelsAxisItem(pg.AxisItem):
         # Zero ends up signed which I don't like but oh well.
         strings = super().tickStrings(values, scale, spacing)
         if self.negate:
-            out = []
             strings = [str(-float(s)) for s in strings]
         return strings
     

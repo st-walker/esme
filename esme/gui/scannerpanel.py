@@ -6,37 +6,27 @@ import sys
 import logging
 from collections import defaultdict
 from enum import Enum, auto
-from textwrap import dedent
-import shutil
 from copy import deepcopy
 
 import numpy as np
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import QObject, QThread, QTimer, pyqtSignal, pyqtSlot
-from PyQt5.QtWidgets import QApplication, QFileDialog, QFrame, QMainWindow, QMessageBox, QTableWidgetItem, QLabel
+from PyQt5 import QtCore, QtWidgets
+from PyQt5.QtCore import QObject, QThread, QTimer, pyqtSignal
+from PyQt5.QtWidgets import QApplication, QFileDialog, QMessageBox
 from scipy.constants import e
 from uncertainties import UFloat
 
 
-from esme.gui.ui import Ui_scanner_form, Ui_results_box_dialog, Ui_Dialog
-from esme.control.pattern import get_beam_regions, get_bunch_pattern
-from esme.maths import ValueWithErrorT, linear_fit
-from esme.image import get_slice_properties, get_central_slice_width_from_slice_properties, filter_image, get_selected_central_slice_width_from_slice_properties
-from esme.analysis import SliceWidthsFitter, DerivedBeamParameters, true_bunch_length_from_processed_image
-from esme.control.configs import load_calibration
-from esme.control.snapshot import SnapshotAccumulator, Snapshotter
+from esme.gui.ui import Ui_scanner_form, Ui_Dialog
+from esme.image import filter_image, get_selected_central_slice_width_from_slice_properties, get_slice_properties
+from esme.analysis import SliceWidthsFitter, DerivedBeamParameters, true_bunch_length_from_processed_image, ScanType
+from esme.control.snapshot import SnapshotAccumulator
 from esme.gui.common import (is_in_controlroom,
                              load_scanner_panel_ui_defaults,
-                             df_to_logbook_table,
                              raise_message_box,
-                             send_to_logbook,
-                             DEFAULT_CONFIG_PATH,
                              make_default_injector_espread_machine)
-from esme.calibration import TDSCalibration
-from esme.control import optics
+from esme.calibration import AmplitudeVoltageMapping
 from esme.optics import load_matthias_slice_measurement
 
-from esme.plot import pretty_parameter_table, formatted_parameter_dfs
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -113,7 +103,7 @@ class ScannerControl(QtWidgets.QWidget):
     def fill_combo_boxes(self):
         self.ui.dispersion_setpoint_combo_box.clear()
         scan = self.machine.scanner.scan
-        name = scan.name
+        scan.name
         dispersions = [str(s.dispersion) for s in scan.qscan.setpoints]
         self.ui.dispersion_setpoint_combo_box.addItems(dispersions)
 
@@ -328,9 +318,8 @@ class ScannerControl(QtWidgets.QWidget):
         total_background_images = self.ui.bg_shots_spinner.value()
         screen_name = self.machine.scanner.scan.screen
 
-        measured_slice_twiss = None
         if self.ui.do_full_phase_space_checkbox.isChecked():
-            measured_slice_twiss = self.measured_slice_twiss
+            self.measured_slice_twiss
 
         settings = self.settings_dialog.get_scan_settings()
 
@@ -395,7 +384,7 @@ class ScannerControl(QtWidgets.QWidget):
 
 @dataclass
 class ScanRequest:
-    calibration: TDSCalibration
+    calibration: AmplitudeVoltageMapping
     voltages: list[float]
     do_beta_scan: bool
     dscan_tds_voltage: float
@@ -575,7 +564,7 @@ class ScanWorker(QObject):
         lengths = defaultdict(list)
 
         # We also calculate the bunch length at the maximum streak of the TDS Scan
-        max_voltage = max(self.scan_request.voltages)
+        max(self.scan_request.voltages)
 
         for voltage in self.scan_request.voltages:
             self.set_tds_voltage(voltage)
@@ -654,7 +643,7 @@ class ScanWorker(QObject):
         self.machine.deflector.set_voltage(voltage)
 
     def take_screen_data(self, nbeam, expect_beam=True):
-        screen_name = self.scan_request.screen_name
+        self.scan_request.screen_name
         for _ in range(nbeam):
             is_beam_on = self.machine.is_beam_on()
             if expect_beam and not is_beam_on:
@@ -861,165 +850,6 @@ class NewSetpointSignal:
 #             return widget
 #     raise ValueError(f"Could not find widget of type: {cls}")
 
-
-class ScannerResultsDialog(QtWidgets.QDialog):
-    DEFAULT_AUTHOR = "High Resolution Slice Energy Measurer"
-    DEFAULT_TITLE = "Slice Energy Spread @ OTRC.64.I1D"
-    def __init__(self, parent=None):
-        super().__init__(parent=parent)
-        self.ui = Ui_results_box_dialog()
-        self.ui.setupUi(self)
-
-        self.ui.send_to_logbook_button.clicked.connect(self.send_to_logbook)
-        self.ui.close_button.clicked.connect(self.close)
-        self.online_measurement_result = None
-
-    def send_to_logbook(self):
-        # TODO: maybe also send screenshot of parent panel?  if it exists...s
-        text = self.ui.comments_browser.toPlainText()
-
-        fitted_beam_parameters = self.online_measurement_result.measurement_parameters
-        fit_df, beam_df = formatted_parameter_dfs(fitted_beam_parameters)
-        fit_string = df_to_logbook_table(fit_df)
-        beam_string = df_to_logbook_table(beam_df)
-
-        text = dedent(f"""\
-        {text}
-
-        !!Derived Beam Parameters
-        {beam_string}
-
-        !!Fit Parameters
-        {fit_string}
-        """)
-
-        # # C
-        # with (Path(self.online_measurement_result) / "notes.txt").open("w") as f:
-        #     f.write(text)
-
-        # shutil.copy(DEFAULT_CONFIG_PATH, self.online_measurement_result)
-
-        send_to_logbook(title=self.DEFAULT_TITLE,
-                        author=self.DEFAULT_AUTHOR,
-                        severity="MEASURE",
-                        text=text)
-
-
-
-    def post_measurement_result(self, online_measurement_result: OnlineMeasurementResult):
-        message = f"Written files to {online_measurement_result.output_directory}\n\n"
-        self.ui.comments_browser.setPlainText(message)
-        self.ui.title_line_edit.setText(self.DEFAULT_TITLE)
-
-        self.online_measurement_result = online_measurement_result
-        measurement_parameters = self.online_measurement_result.measurement_parameters
-
-        fit_df, beam_df = formatted_parameter_dfs(measurement_parameters)
-
-        self.fill_beam_table(beam_df, fit_df)
-        self.ui.comments_browser.setFocus()
-
-    def fill_beam_table(self, df, df2):
-        # Space either side of units is a hardcoded hack so that the
-        # mm.mrad units are visible in the column...
-        # Yes this method is hideous.
-        header = ["Variable", "Values", "Alt. Values", "     Units     "]
-
-        row_labels = ["<i>σ</i><sub>E</sub>",
-                      "<i>σ</i><sub>I</sub>",
-                      "<i>σ</i><sub>E</sub><sup>TDS</sup>",
-                      "<i>σ</i><sub>B</sub>",
-                      "<i>σ</i><sub>R</sub>",
-                      "<i>ε</i><sub><i>x</i></sub>",
-                      "<i>σ</i><sub><i>z</i></sub>",
-                      "<i>σ</i><sub><i>t</i></sub>",
-                      ]
-
-        row_units = ["keV", "μm", "keV", "μm", "μm", "mm·mrad", "mm", "ps"]
-
-        bt = self.ui.beam_parameters_table
-        bt.setColumnCount(len(header))
-        bt.setRowCount(len(row_labels) + len(df2))
-
-        for i, tup in enumerate(df.itertuples()):
-            label = row_labels[i]
-            value = tup.values
-            alt_value = tup.alt_values
-            units = row_units[i]
-
-            set_richtext_widget(bt, i, 3, units)
-
-            widget = QtWidgets.QWidget()
-            widgetText =  QtWidgets.QLabel(label)
-            widgetText.setWordWrap(True)
-            widgetLayout = QtWidgets.QHBoxLayout()
-            widgetLayout.addWidget(widgetText)
-            widgetLayout.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
-
-            widget.setLayout(widgetLayout)
-
-            bt.setCellWidget(i, 0, widget)
-            if "nan" not in value:
-                value_item = QTableWidgetItem(value)
-                bt.setItem(i, 1, value_item)
-            if "nan" not in alt_value:
-                alt_value_item = QTableWidgetItem(alt_value)
-                bt.setItem(i, 2, alt_value_item)
-
-            # units_item = QTableWidgetItem(units)
-            # bt.setItem(i, 3, units_item)
-
-        labels2 = {"V_0": "<i>V</i><sub>0</sub>",
-                   "D_0": "<i>D</i><sub>0</sub>",
-                   "E_0": "<i>E</i><sub>0</sub>",
-                   "A_V": "<i>A</i><sub><i>V</i></sub>",
-                   "B_V": "<i>B</i><sub><i>V</i></sub>",
-                   "A_D": "<i>A</i><sub><i>D</i></sub>",
-                   "B_D": "<i>B</i><sub><i>D</i></sub>",
-                   "A_beta": "<i>A</i><sub><i>β</i></sub>",
-                   "B_beta": "<i>B</i><sub><i>β</i></sub>"}
-
-        units2 = {"V_0": "MV",
-                  "D_0": "m",
-                  "E_0": "MeV",
-                  "A_V": "m<sup>2</sup>",
-                  "B_V": "m<sup>2</sup>V<sup>-2</sup>",
-                  "A_D": "m<sup>2</sup>",
-                  "B_D": "",
-                  "A_beta": "m<sup>2</sup>",
-                  "B_beta": "m"}
-
-        for i, tup in enumerate(df2.itertuples(), start=i + 1):
-            label = labels2[tup.Index]
-
-            value = tup.values
-            units = units2[tup.Index]
-
-            set_richtext_widget(bt, i, 0, label)
-
-            value_item = QTableWidgetItem(value)
-            bt.setItem(i, 1, value_item)
-            set_richtext_widget(bt, i, 3, units)
-
-
-        bt.setSizeAdjustPolicy(
-            QtWidgets.QAbstractScrollArea.AdjustToContents)
-
-        bt.setHorizontalHeaderLabels(header)
-        bt.resizeRowsToContents()
-        bt.resizeColumnsToContents()
-
-
-def set_richtext_widget(table, row, column, text):
-    widget = QtWidgets.QWidget()
-    widgetText =  QtWidgets.QLabel(text)
-    widgetText.setWordWrap(True)
-    widgetLayout = QtWidgets.QHBoxLayout()
-    widgetLayout.addWidget(widgetText)
-    widgetLayout.setSizeConstraint(QtWidgets.QLayout.SetFixedSize)
-    widget.setLayout(widgetLayout)
-
-    table.setCellWidget(row, column, widget)
 
 
 

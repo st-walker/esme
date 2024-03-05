@@ -3,12 +3,11 @@
 # from PyQt5.QtWidgets import QAbstractButton, QPushButton, QCheckBox,
 import logging
 
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import QObject, QThread, QTimer, pyqtSignal, pyqtSlot
+from PyQt5 import QtWidgets
+from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QMessageBox
 
 from .ui.special_bunch_panel import Ui_special_bunch_panel
-from esme.control.sbunches import SpecialBunchesControl
 from esme.control.pattern import get_beam_regions, get_bunch_pattern
 from esme.gui.common import make_default_sbm,  set_machine_by_region
 from esme.control.screens import FastKickerSetpoint

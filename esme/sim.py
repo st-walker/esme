@@ -122,7 +122,7 @@ def run_i1_dispersion_scan(dscan_conf, fparray, dirname, fast=False):
     i1dlat = lattice.make_to_i1d_lattice()
     start = "matching-point-at-start-of-q52"
     stop = None
-    twiss_at_q52 = make_twiss_at_q52()
+    make_twiss_at_q52()
 
     fel_sim_configs = make_i1_dscan_simulation_configs(
         dscan_conf, do_physics=do_physics
@@ -151,7 +151,7 @@ def _dscan_conf_to_magnetic_config_dicts(dscan_conf) -> dict:
 
 
 def _calculate_dscan_optics(lat, twiss0, dscan_sim_configs, start, stop):
-    s_offset = lat.get_element_end_s(start)
+    lat.get_element_end_s(start)
 
     for setpoint_sim_conf in dscan_sim_configs:
         twiss0 = make_twiss_at_q52()
@@ -164,7 +164,7 @@ def _calculate_dscan_optics(lat, twiss0, dscan_sim_configs, start, stop):
 
 
 def _calculate_dscan_tracked_optics(lat, parray0, dscan_sim_configs, start, stop):
-    s_offset = lat.get_element_end_s(start)
+    lat.get_element_end_s(start)
 
     for setpoint_sim_conf in dscan_sim_configs:
         twiss0 = make_twiss_at_q52()
@@ -183,7 +183,7 @@ def _calculate_dscan_tracked_optics(lat, parray0, dscan_sim_configs, start, stop
 def _run_dispersion_scan_from_matching_point(
     lat, parray_mp, dscan_sim_configs, start, stop
 ):
-    s_offset = lat.get_element_end_s(start)
+    lat.get_element_end_s(start)
 
     for setpoint_sim_conf in dscan_sim_configs:
         twiss0 = make_twiss_at_q52()
@@ -808,7 +808,7 @@ def a1_dscan_piecewise_tracked_optics(fparray0, dscan_conf, do_physics=False):
     i1dlat = lattice.make_to_i1d_lattice()
     start = "matching-point-at-start-of-q52"
     stop = None
-    twiss_at_q52 = make_twiss_at_q52()
+    make_twiss_at_q52()
 
     fel_sim_configs = make_i1_dscan_simulation_configs(
         dscan_conf, do_physics=do_physics

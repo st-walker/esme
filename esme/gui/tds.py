@@ -3,29 +3,26 @@
 # from PyQt5.QtWidgets import QAbstractButton, QPushButton, QCheckBox,
 from importlib_resources import files
 import os
-import time
 from pathlib import Path
 from datetime import datetime
 import pytz
 import re
 from dataclasses import dataclass
-from typing import Optional
 
 import logging
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import QObject, QThread, QTimer, pyqtSignal, pyqtSlot
+from PyQt5 import QtWidgets
+from PyQt5.QtCore import QTimer, pyqtSignal
 
 from .ui.tds import Ui_tds_control_panel
 from esme.gui.common import (make_default_i1_lps_machine,
                              make_default_b2_lps_machine,
                              get_tds_calibration_config_dir,
-                             set_machine_by_region,
-                             raise_message_box)
+                             set_machine_by_region)
 from esme.control.configs import load_calibration
 from esme import DiagnosticRegion
-from esme.calibration import TDSCalibration
 from esme.control.machines import LPSMachine
 from esme.core import region_from_screen_name
+from esme.load import load_calibration_from_yaml
 
 from .calibrator import CalibrationMainWindow, TaggedCalibration
 
@@ -72,7 +69,7 @@ class TDSControl(QtWidgets.QWidget):
 
         # Make the daughter Calibrator window
         self.calibration_window = CalibrationMainWindow(self)
-        self.calibration_window.calibration_signal.connect(self.update_tds_calibration)
+        self.calibration_window.avmapping_signal.connect(self.update_tds_calibration)
 
         self.metadata = self.load_most_recent_calibrations()
         
@@ -174,7 +171,7 @@ class TDSControl(QtWidgets.QWidget):
 
 
 def load_calibration_file(calibration_filename: str) -> TaggedCalibration:
-    calibration = load_calibration(calibration_filename)
+    calibration = load_calibration_from_yaml(calibration_filename)
     file_birthday = datetime.fromtimestamp(os.path.getmtime(calibration_filename))
     return TaggedCalibration(calibration=calibration,
                              filename=calibration_filename,

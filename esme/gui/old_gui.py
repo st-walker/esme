@@ -25,7 +25,7 @@ import toml
 from matplotlib import cm
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import QObject, QThread, QTimer, pyqtSignal
-from PyQt5.QtWidgets import QApplication, QFileDialog, QFrame, QMainWindow, QMessageBox
+from PyQt5.QtWidgets import QApplication, QFileDialog, QMainWindow, QMessageBox
 
 import esme.image as iana
 from esme.analysis import FittedBeamParameters, OpticalConfig, transform_pixel_widths
@@ -34,7 +34,6 @@ from esme.inout import (
     i1_dscan_config_from_scan_config_file,
     i1_tds_amplitudes_from_scan_config_file,
     make_data_taker,
-    make_measurement_runner,
 )
 from esme.maths import ValueWithErrorT, linear_fit
 from esme.measurement import (
@@ -44,8 +43,6 @@ from esme.measurement import (
     SetpointSnapshots,
 )
 from esme.plot import (
-    TDS_AMPLITUDE_LABEL,
-    TDS_CALIBRATION_LABEL,
     plot_calibrator_with_fits,
 )
 
@@ -150,8 +147,8 @@ class FitWorker(QThread):
         voltage = np.array(self.tscan_widths.keys())
         twidths = self.tscan_widths.values()
 
-        tdata = TDSScanData(voltage, twidths)
-        ddata = DispersionScanData(dispersions, dwidths)
+        TDSScanData(voltage, twidths)
+        DispersionScanData(dispersions, dwidths)
 
         sem = SliceEnergySpreadMeasurement(
             dscan,
@@ -508,9 +505,8 @@ class EnergySpreadMeasurementMainWindow(QMainWindow):
     def update_image_from_payload(self, payload):
         # image_event = payload.image.astype("float64")
         image_event = payload.image.image
-        p = payload
-        ampl = payload.tds_percentage
-        disp = payload.dispersion_setpoint
+        payload.tds_percentage
+        payload.dispersion_setpoint
         LOG.info("Posting image: bg:{p.is_bg}, tds:{ampl}, {dispersion_setpoint}")
         self.sw.setImage(image_event)
 
@@ -665,7 +661,7 @@ class DataTakingThread(QThread):
 
 
 def get_image_filename_from_payload(outdir, payload):
-    channel = payload.image.channel
+    payload.image.channel
     dirname = f"images-{payload.image.screen_name()}"
     fstem = payload.image.name()
 
@@ -743,7 +739,6 @@ class TDSTimeCalibrationWorker(QThread):
 
 
 from .calibrate_tds import (
-    get_longest_two_monotonic_intervals,
     get_truncated_longest_sections,
     smooth,
 )
@@ -1053,7 +1048,7 @@ class TDSCalibrationWindow(QMainWindow):
     def apply_calibration_to_parent_widget(self):
         if self.parent is None:
             return
-        parent_name = self.parent.windowTitle()
+        self.parent.windowTitle()
         # self.tds_calibrator = self.
 
     def save_calibration_file(self):

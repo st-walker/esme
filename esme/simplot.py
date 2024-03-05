@@ -116,7 +116,7 @@ def a1_to_i1d_piecewise_measurement_optics(dscan_conf, outdir=None):
     # i1dm = I1DSimulatedEnergySpreadMeasurement(dscan_conf, tscan_voltages=None)
 
     all_twiss, _ = sim.a1_to_q52_matching_point_measurement_optics()
-    s_offset = all_twiss.iloc[0].s
+    all_twiss.iloc[0].s
     bl = latdraw.interfaces.lattice_from_ocelot(full_sequence)
     fig, (mx, axt, axd, axe) = latdraw.subplots_with_lattice(bl, nrows=3)
 
@@ -239,7 +239,7 @@ def dscan_piecewise_tracking_optics(fparray0, dscan_conf, outdir, do_physics=Fal
     )
     fig, (mx, axbx, axdx, axe) = latdraw.subplots_with_lattice(bl, nrows=3)
 
-    twiss_q52 = all_twiss.iloc[-1]
+    all_twiss.iloc[-1]
 
     # axbx.plot(all_twiss.s, all_twiss.beta_x, label="Linear Optics")
     # axdx.plot(all_twiss.s, all_twiss.Dx)
@@ -288,7 +288,7 @@ def dscan_piecewise_tracking_optics(fparray0, dscan_conf, outdir, do_physics=Fal
 
     axe.legend()
 
-    legend = axbx.legend()
+    axbx.legend()
     axdx.legend()
 
     axbx.set_ylabel(BETX_LABEL_STRING)
@@ -339,7 +339,6 @@ def bolko_optics_comparison(dscan_conf, tscan_voltages):
         "Special Bolko Optics for BC2 TDS Operation, OCELOT and MAD8 Optics to B2D"
     )
 
-    tds_name = "TDSB.428.B2"
 
     plt.show()
 
@@ -351,7 +350,7 @@ def new_tds_optics_comparison(dscan_conf, tscan_voltages):
     import pand8
 
     mad8 = "/Users/stuartwalker/repos/esme-xfel/esme/sections/bolko-optics.tfs"
-    df8 = pand8.read(mad8)
+    pand8.read(mad8)
 
     s_offset = 0
     bl = latdraw.interfaces.lattice_from_ocelot(
@@ -796,7 +795,6 @@ def plot_b2_design_optics(b2_dscan_conf, b2_tscan_voltages):
     b2 = sim.B2SimulatedEnergySpreadMeasurement(b2_dscan_conf, b2_tscan_voltages)
 
     sequence = b2.gun_to_dump_sequence()
-    s_offset = 0
 
     import pandas as pd
 

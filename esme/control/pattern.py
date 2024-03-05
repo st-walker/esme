@@ -5,7 +5,6 @@ try:
 except ImportError:
     pass
 
-from .dint import DOOCSInterface
 
 
 def get_bunch_pattern():

@@ -2,9 +2,9 @@ What was quantum efficiency before and after?
 
 ## TDS Calibration
 
-1. [ ] Algorithm for moving from point to point.
+1. [ ] Algorithm for moving from point to point (to ramp).
 2. [ ] Use the special bunch mid layer to do this stuff.
-2. [ ] Save Points (centres of mass) of TDS calibration phase scan.
+2. [ ] Save EVERYTHING for this measurement.
 3. [ ] Algorithm for shifting to edges.
 4. [ ] write the calibration to file at the end.
 
@@ -27,6 +27,7 @@ What was quantum efficiency before and after?
 11. [x] Add beta scan to gui.
 12. [x] Button to interrupt/stop.
 13. [x] get the results box working.
+
 
 
 ### Middle Priority

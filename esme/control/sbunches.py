@@ -22,8 +22,7 @@ the injector alongside kickers in B2.
 """
 
 
-from typing import Optional, Union
-from enum import Enum, auto
+from typing import Optional
 import logging
 
 from .dint import DOOCSInterface

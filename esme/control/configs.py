@@ -21,7 +21,6 @@ from esme.control.tds import StreakingPlane
 from esme import DiagnosticRegion
 
 from esme.analysis import OpticsFixedPoints
-from esme.calibration import BolkoCalibrationSetpoint, TDSCalibration, IgorCalibration, DiscreteCalibration, BolkoCalibration, StuartCalibration
 
 
 def load_kickers_from_config(dconf: dict[str, Any], di=None) -> FastKickerController:
@@ -159,33 +158,33 @@ def load_calibration(fname):
     raise ValueError("malformed calibration...")
 
 
-def _load_stuart_calibration(cconf):
-    amplitudes = cconf["amplitudes"]
-    voltages = cconf["voltages"]
-    area = DiagnosticRegion(cconf["area"])
-    return StuartCalibration(area, amplitudes, voltages)
+# def _load_stuart_calibration(cconf):
+#     amplitudes = cconf["amplitudes"]
+#     voltages = cconf["voltages"]
+#     area = DiagnosticRegion(cconf["area"])
+#     return StuartCalibration(area, amplitudes, voltages)
 
-def _load_dinimal_bolko_calibration(cconf):
-    area = DiagnosticRegion(cconf["area"])
-    amplitudes = cconf["amplitudes"]
-    slopes = cconf["slopes"]
-    r34 = cconf["r34"]
-    slope_units = cconf["slope_units"]
-    frequency = cconf["frequency"]
-    energy = cconf["energy"]
+# def _load_dinimal_bolko_calibration(cconf):
+#     area = DiagnosticRegion(cconf["area"])
+#     amplitudes = cconf["amplitudes"]
+#     slopes = cconf["slopes"]
+#     r34 = cconf["r34"]
+#     slope_units = cconf["slope_units"]
+#     frequency = cconf["frequency"]
+#     energy = cconf["energy"]
 
-    calibs = []
-    for ampl, slope in zip(amplitudes, slopes):
-        if slope_units == "um/ps":
-            slope *= 1e6
-        calibs.append(BolkoCalibrationSetpoint(ampl, slope, r34=r34,
-                                               energy=energy,
-                                               frequency=frequency))
+#     calibs = []
+#     for ampl, slope in zip(amplitudes, slopes):
+#         if slope_units == "um/ps":
+#             slope *= 1e6
+#         calibs.append(BolkoCalibrationSetpoint(ampl, slope, r34=r34,
+#                                                energy=energy,
+#                                                frequency=frequency))
 
-    return BolkoCalibration(area, calibs)
+#     return BolkoCalibration(area, calibs)
 
 def _load_igor_calibration(dcalib):
-    area = dcalib["area"]
+    dcalib["area"]
     amplitudes = dcalib["amplitudes"]
     voltages = dcalib["voltages"]
     region = DiagnosticRegion(dcalib["area"])
@@ -199,7 +198,6 @@ def _load_discrete_calibration(dcalib):
 
 def load_scanner_from_config(dconf, di=None):
     scans = []
-    scanners = []
     for scan in dconf["scanner"]["scans"]:
         quad_setpoints = []
         for dsetpoint in scan["dispersion_scan_setpoints"]:

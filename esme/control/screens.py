@@ -2,13 +2,11 @@ from typing import Optional
 import numpy.typing as npt
 
 import logging
-from dataclasses import dataclass
 
 from .dint import DOOCSInterface
 from .kickers import FastKickerSetpoint
 from .exceptions import EuXFELUserError
 from .dint import DOOCSInterface
-from esme.core import DiagnosticRegion
 
 LOG = logging.getLogger(__name__)
 

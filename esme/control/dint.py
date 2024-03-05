@@ -8,12 +8,9 @@ S.Tomin, 2017
 
 from __future__ import absolute_import, print_function
 
-import subprocess
-import base64
 import logging
 import os
 import pickle
-import subprocess
 import time
 from dataclasses import dataclass
 from datetime import datetime
@@ -130,7 +127,7 @@ class DOOCSInterface(DOOCSInterfaceABC):
     def __init__(self):
         # # Just fail immediately if there's no pydoocs...
         # try:
-        import pydoocs
+        pass
         # except ImportError as e:
         #     raise e
         # else:

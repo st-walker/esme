@@ -1,3 +1,9 @@
+%,   m/ps
+5,    0.00023257
+10,   0.00047279
+15,   0.00072981
+
+
 What was quantum efficiency before and after?
 
 ## TDS Calibration
@@ -14,36 +20,47 @@ What was quantum efficiency before and after?
 ### High priority:
 
 1. [ ] Get naive implementation based on assumed emittance and screen resolution
-2. [ ] Full slice Measurements
-3. [ ] Add dispersion measurement.
-4. [X] Dynamically load the TDS calibration.
-5. [X] make use of special bunch midlayer optional (but the default)
-6. [X] add bunch length to the output
-7. [X] Handle it gracefully on valueerror/domain error when input is shit.
-8. [X] dso it with the special bunch midlayer so that we don't ahve to
-   worry about shit going south, masks work etc. Because THE TDS IS
-9. [X] change filenames to local time!  to match logbook...
-10. [X] Save background images too beforehand please.
-11. [X] Add background data to process.
-12. [X] Add beta scan to gui.
-13. [X] Button to interrupt/stop.
-14. [X] get the results box working.
+2. [ ] Add timestmap to output.
+3. [ ] Full slice Measurements
+4. [ ] Add dispersion measurement.
+5. [ ] Add Laser Heater Status
+6. [ ] Fix bug with TDS tickbox going out of date in SBM panel.
+7. [ ] Refuse the loading of projected match .mat file.
+8. [ ] Add Beam on/off buttons, add TDS on/off buttons.
+9. [X] Dynamically load the TDS calibration.
+10. [X] make use of special bunch midlayer optional (but the default)
+11. [X] add bunch length to the output
+12. [X] Handle it gracefully on valueerror/domain error when input is shit.
+13. [X] dso it with the special bunch midlayer so that we don't ahve to
+    worry about shit going south, masks work etc. Because THE TDS IS
+14. [X] change filenames to local time!  to match logbook...
+15. [X] Save background images too beforehand please.
+16. [X] Add background data to process.
+17. [X] Add beta scan to gui.
+18. [X] Button to interrupt/stop.
+19. [X] get the results box working.
+20. [ ] Open output directory button
+21. [ ] LH indicator
+22. [ ] also write which version of esme is being used and where?e
+23. [ ] copy over scan.yaml as well also writing the calibration to the scan.yaml file.
+
 
 
 ### Middle Priority
 
 1. [ ] Add checklist to code.
-2. [X] Handle case where measurement is started whilst config is open.
-3. [X] copy configs to output as well for completion please.
-4. [X] write comment box also to file in output directory.
-5. [X] put directory location in text box
-6. [X] Use a proper table for box vis.
-7. [X] Add cycle ability to quadrupoles.
-8. [X] write text box to output
-9. [X] Just crash casually if beam goes off unexpectedly.
-10. [X] Need to control TDS from the panel
-11. [X] Button to open the camera server (CHECK!)
-12. [ ] get buttons working for dispersion/beta selection.
+2. [ ] If measurement successfully ran through to the end, then write a "file successful" thing too...  or write link to logbook entry!
+3. [X] Handle case where measurement is started whilst config is open.
+4. [X] copy configs to output as well for completion please.
+5. [X] write comment box also to file in output directory.
+6. [X] put directory location in text box
+7. [X] Use a proper table for box vis.
+8. [X] Add cycle ability to quadrupoles.
+9. [X] write text box to output
+10. [X] Just crash casually if beam goes off unexpectedly.
+11. [X] Need to control TDS from the panel
+12. [X] Button to open the camera server (CHECK!)
+13. [ ] get buttons working for dispersion/beta selection.
 
 
 
@@ -85,3 +102,42 @@ I need to be able to distinguish between rising and falling zero intercepts.
 1. [ ] Get indiciators working.
 2. [ ] Dispersion measurement.
 3. [ ] Steering with kickers onto the screen.
+
+
+* Data Explorer
+
+** High Priority
+
+- [ ] Change the TDS Calibration.
+- [ ] Get image analysis actually working.
+- [X] Jump to result.
+- [ ] Mask images.
+- [ ] Show slice energy spread.
+- [ ] Add outlier filtering
+
+
+** Medium Priority
+
+
+- [ ] R34 plot.
+- [ ] Plot TDS voltages
+- [ ] Plot streaking parameters
+- [ ] plot apparent bunch lengths
+- [ ] plot actual bunch lengths
+- [ ] plot fits.
+- [X] Highlight line when I click on it
+- [ ] Change number of slices (slider).
+- [ ] Change slice algorithm (position versus max energy based).
+- [ ] Mask Setpoints.
+- [ ] Also show background images.
+- [ ] Close children when parent is closed.
+
+** Low Priority
+
+- [ ] Highlight in image ana breakdown when i click row.
+- [ ] Use multiprocessing or multithreading.
+- [ ] Save plot, save plot data...
+- [ ] should TDS scan be linear or not?
+- [ ] Maintain image processing stage across different image viewings.
+- [ ] Show in window what the "current" slice energy spread is at each stage.
+- [ ] Force cropping when image analysis is on.  otherwise it makes no sense anyway!

@@ -4,7 +4,6 @@ import logging
 import numpy as np
 
 from esme.control.sbunches import DiagnosticRegion
-from esme.control.dint import DOOCSInterface
 from esme.control.exceptions import EuXFELMachineError
 from esme.analysis import OpticsFixedPoints
 from esme.control.snapshot import SnapshotRequest, Snapshotter
@@ -102,7 +101,7 @@ class Scanner:
         
     def infer_intended_dispersion_setpoint(self) -> QuadScanSetpoint:
         for setpoint in self.scan.setpoints:
-            dispersion = setpoint.dispersion
+            setpoint.dispersion
             for name, k1l in setpoint.k1ls.items():
                 actual_k1l = self.get_quad_strength(name)
                 if not np.isclose(k1l, actual_k1l):

@@ -1,19 +1,18 @@
 import warnings
-from typing import Any, Optional, Sequence, Union
+from typing import Optional
 from dataclasses import dataclass
+from typing import Optional
 
 import numpy as np
-import pandas as pd
 from scipy.constants import c, e
 from scipy.optimize import curve_fit
-from functools import partial
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
-    from ocelot.cpbd.magnetic_lattice import MagneticLattice
 
 from esme.maths import line
 from esme import DiagnosticRegion
+from esme.optics import calculate_i1d_r34_from_tds_centre
 
 I1D_ENERGY_ADDRESS = "XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/I1D/ENERGY.ALL"
 
@@ -24,108 +23,83 @@ TDS_LENGTH = 0.7  # metres
 
 
 
-class TDSCalibration:
-    def __init__(self, region: DiagnosticRegion, modulator_voltage=None):
+class AmplitudeVoltageMapping:
+    def __init__(self, region: DiagnosticRegion, amplitudes, voltages):
         self.region = region
-        self.modulator_voltage = modulator_voltage
+        self._amplitudes = amplitudes
+        self._voltages = voltages
+
+        self._amp_to_voltage_popt = self.fit_to_voltage()
+        self._voltage_to_amp_popt = self.fit_to_amplitude()
 
     def get_voltage(self, amplitude):
-        popt, _ = self.fit_to_voltage()
-        return line(amplitude, *popt)
+        popt, _ = self._voltage_to_amp_popt
+        return line(np.array(amplitude), *popt)
 
     def get_amplitude(self, voltage):
-        popt, _ = self.fit_to_amplitude()
-        return line(voltage, *popt)
+        popt, _ = self._amp_to_voltage_popt
+        return line(np.array(voltage), *popt)
 
     def fit_to_voltage(self):
-        popt, pcov = curve_fit(line, self.get_amplitudes(), self.get_voltages())
-        return popt, pcov
-
+        popt, pcov = curve_fit(line, self._amplitudes, self._voltages)
+        return popt, 
     def fit_to_amplitude(self):
-        popt, pcov = curve_fit(line, self.get_voltages(), self.get_amplitudes())
+        popt, pcov = curve_fit(line, self._voltages, self._amplitudes)
         return popt, pcov
-    
 
-class StuartCalibration(TDSCalibration):
-    def __init__(self, region: DiagnosticRegion, amplitudes, voltages, modulator_voltage=None):
-        super().__init__(region, modulator_voltage=modulator_voltage)
-        self.amplitudes = amplitudes
-        self.voltages = voltages
-
-    def get_voltages(self):
-        return self.voltages
-
-    def get_amplitudes(self):
-        return self.amplitudes
+    def __call__(self, amplitude):
+        return self.get_amplitude(amplitude)
 
 
-class BolkoCalibrationSetpoint:
-    def __init__(self, amplitude, slope, r34, energy, frequency):
-        self.amplitude = amplitude
-        self.slope = slope
-        self.r34 = r34
-        self.energy = energy
-        self.frequency = frequency
-
-    def __repr__(self):
-        amp = self.amplitude
-        slope = self.slope
-        r34 = self.r34
-        energy = self.energy
-        freq = self.frequency
-        return f"<BolkoCalibrationSetpoint: {amp=}, {slope=}, {r34=}, {energy=}, {freq=}>"
-
-    def get_voltage(self):
-        return calculate_voltage(slope=self.slope,
-                                 r34=self.r34,
-                                 energy=self.energy,
-                                 frequency=self.frequency)
+@dataclass
+class CalibrationOptics:
+    energy: float
+    magnets: Optional[dict[str, float]] = None
+    r12_streaking: Optional[float] = None
+    frequency: Optional[float] = 3e9
 
 
-class BolkoCalibration(TDSCalibration):
+class CompleteCalibration:
+    CAL_M_PER_PS = 1e-12
+    CAL_UM_PER_PS = 1e-6
+
     def __init__(self, region: DiagnosticRegion,
-                 bolko_setpoints: list[BolkoCalibrationSetpoint],
-                 modulator_voltage=None):
-        super().__init__(region, modulator_voltage=modulator_voltage)
-        self.setpoints = bolko_setpoints
+                 screen_name: str,
+                 optics: CalibrationOptics,
+                 amplitudes: list[float],
+                 cal_factors: Optional[list[float]] = None,
+                 voltages: Optional[list[float]] = None):
 
-    def get_amplitudes(self):
-        return np.array([setpoint.amplitude for setpoint in self.setpoints])
-
-    def get_voltage(self):
-        return np.array([setpoint.get_voltage() for setpoint in self.setpoints])
-
-
-class IgorCalibration(TDSCalibration):
-    def __init__(self, region: DiagnosticRegion, amplitudes, voltages):
-        super().__init__(region)
+        self.region = region
+        self.screen_name = screen_name
+        self.optics = optics
         self.amplitudes = amplitudes
-        self.voltages = voltages
+        self.cal_factors = cal_factors
 
-    def get_amplitude(self, voltage):
-        return dict(zip(self.voltages, self.amplitudes))[voltage]
+        if cal_factors is None and voltages is not None:
+            self.cal_factors = get_tds_com_slope(optics.r12_streaking,
+                                                 optics.energy,
+                                                 np.array(voltages))
 
-    def get_voltage(self, amplitude):
-        return dict(zip(self.amplitudes, self.voltages))[amplitude]
+        if cal_factors is None and voltages is None:
+            raise ValueError("")
+
+    def r34_from_optics(self):
+        from IPython import embed; embed()
+        return -5.5 #XXXXXX??
+
+    def calculate_voltages(self):
+        from IPython import embed; embed()
+
+    def mapping(self) -> AmplitudeVoltageMapping:
+        amps = self.amplitudes
+        voltages = self.calculate_voltages(amps)
+        return AmplitudeVoltageMapping(amps, voltages)
 
 
-class DiscreteCalibration(TDSCalibration):
-    def __init__(self, region: DiagnosticRegion, amplitudes, voltages):
-        super().__init__(region)
-        self.amplitudes = amplitudes
-        self.voltages = voltages
+    # def r34(self):
+    #     if not
 
-    def get_voltages(self):
-        return np.array([sp.voltage for sp in self.setpoints])
-
-    def get_amplitudes(self):
-        return np.array([sp.amplitude for sp in self.setpoints])
-
-    def get_voltage(self, amplitude):
-        return dict(zip(self.amplitudes, self.voltages))[amplitude]
-
-    def get_amplitude(self, voltage):
-        return dict(zip(self.voltages, self.amplitudes))[voltage]
 
 
 

@@ -550,7 +550,7 @@ class LambaAlarm:
         self.fn = fn
 
     def is_ok(self, machine, fn):
-        values = [machine.read_value(ch) for ch in channels]
+        [machine.read_value(ch) for ch in channels]
 
 
 class Snapshot:

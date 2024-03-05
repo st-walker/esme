@@ -1,4 +1,4 @@
-from enum import Enum, auto
+from enum import Enum
 
 from .dint import DOOCSInterface
 
@@ -55,7 +55,7 @@ class TransverseDeflector:
     def set_voltage(self, voltage: float) -> None:
         try:
             amplitude = self.calibration.get_amplitude(voltage)
-        except AttributeError as e:
+        except AttributeError:
             raise UncalibratedTDSError("Missing TDS Calibration")
 
         self.set_amplitude(amplitude)
@@ -63,7 +63,7 @@ class TransverseDeflector:
     def get_voltage_rb(self) -> float:
         try:
             return self.calibration.get_voltage(self.get_amplitude_rb())
-        except AttributeError as e:
+        except AttributeError:
             raise UncalibratedTDSError("Missing TDS Calibration")
         
         

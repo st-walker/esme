@@ -250,25 +250,11 @@
         <item row="5" column="1">
          <widget class="QGroupBox" name="groupBox_4">
           <property name="title">
-           <string>Measurements</string>
+           <string>Machine State</string>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_2">
            <item>
-            <widget class="QPushButton" name="pushButton">
-             <property name="text">
-              <string>Current Profile</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QPushButton" name="pushButton_2">
-             <property name="enabled">
-              <bool>false</bool>
-             </property>
-             <property name="text">
-              <string>Emittance</string>
-             </property>
-            </widget>
+            <widget class="IndicatorPanelWidget" name="widget" native="true"/>
            </item>
           </layout>
          </widget>
@@ -306,7 +292,7 @@
      <x>0</x>
      <y>0</y>
      <width>1400</width>
-     <height>22</height>
+     <height>24</height>
     </rect>
    </property>
    <property name="nativeMenuBar">
@@ -375,6 +361,12 @@
    <class>ScreenDisplayWidget</class>
    <extends>QWidget</extends>
    <header location="global">esme.gui.screen</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>IndicatorPanelWidget</class>
+   <extends>QWidget</extends>
+   <header>esme.gui.indicator</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

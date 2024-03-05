@@ -1,206 +1,387 @@
 """Set of functions for plotting and make results tables"""
 
 
+from dataclasses import dataclass
 import logging
 import pickle
-import shutil
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import tabulate
-from scipy.constants import c, e
 from uncertainties import ufloat
+from scipy.ndimage import gaussian_filter1d
 
-import esme.beam as beam
 import esme.calibration as cal
 import esme.image as image
 # import esme.lattice as lat
 import esme.maths as maths
-from esme.exceptions import TDSCalibrationError
+import esme.analysis as ana
+import esme.optics as optics
+
 
 LOG = logging.getLogger(__name__)
 
 SLICE_WIDTH_LABEL = r"$\sigma_M\,/\,\mathrm{\mu m}$"
+SLICE_WIDTH_PIXELS_LABEL = r"$\sigma_M\,/\,\mathrm{px}$"
+BETA_LABEL = r"$\beta_\mathrm{OTR}\,/\,\mathrm{m}$"
 ETA_LABEL = r"$\eta_\mathrm{{OTR}}\,/\,\mathrm{m}$"
 ETA2_LABEL = r"$\eta^2_\mathrm{{OTR}}\,/\,\mathrm{m}$"
 VOLTAGE_LABEL = r"$|V_\mathrm{TDS}|\,/\,\mathrm{MV}$"
 VOLTAGE2_LABEL = r"$|V^2_\mathrm{TDS}|\,/\,\mathrm{MV}$"
 TDS_CALIBRATION_LABEL = r"Gradient / $\mathrm{\mu{}mps^{-1}}$"
-TDS_AMPLITUDE_LABEL = r"TDS Amplitude / %"
+TDS_AMPLITUDE_SETPOINT_LABEL = r"TDS Amplitude Setpoint / %"
+TDS_AMPLITUDE_READBACK_LABEL = r"TDS Amplitude Readback / %"
+TDS_AMPLITUDE_LABEL = "TDS Amplitude / %"
+STREAKING_LABEL = "$S$"
+R34_LABEL = r"$R_{34}\,/\,\mathrm{mm\cdot{}mrad^{-1}}$"
+BEAM_SIZE_Y_LABEL = r"$\sigma_y\,/\,\mathrm{\mu m}$"
+LONG_RESOLUTION_LABEL = r"$(\sigma_y\,/\,S)\,/\,\mathrm{\mu{}m}$"
+LONG_RESOLUTION_PIXELS_LABEL = r"$(\sigma_y\,/\,S)\,/\,\mathrm{px}$"
+
+def break_single_image_down(im, strategy, title="", fast_analysis=True):
+    fig = plt.figure(figsize=(14, 8))
+    ax1 = fig.add_subplot(2, 2, 1) # Image axes
+    ax2 = fig.add_subplot(2, 2, 2, sharey=ax1) #
+    ax3 = fig.add_subplot(2, 2, 3)
+    ax4 = fig.add_subplot(2, 2, 4)
+
+    index_chosen_row = strategy.slice_centre
+
+    # First show the image and the chosen row that we are using for
+    # the maximum slice, this is pre-calculated using the fully
+    # processed image, and then used for the (maybe raw) image here
+    ax1.imshow(im)
+    ax1.axhline(index_chosen_row, alpha=0.25, color="white")
+
+    # The image should already be cropped, so we don't crop it again.
+    # Do the slice analysis on the image now which should be cropped
+    # but otherwise is in some generally unknown position along the
+    # image processing pipeline.
+    rows, means, sigmas = image.get_slice_properties(im, fast=fast_analysis, mask_nans=False, crop=False)
+    parab_fit_mask = means.nonzero() # Filter where rows or means are zero
+    rows_parab = rows[parab_fit_mask]
+    means_parab = means[parab_fit_mask]
+    yparab = image.get_fitted_parabola_from_image_means(rows_parab, means_parab)
+
+    # Annoying crap to get rid of the uncertainties
+    means = [m.n for m in means]
+    sigmas = [s.n for s in sigmas]
+    # Get the indices for inverted plotting
+    indices = list(range(len(means)))
+    # Plot the mean slice position on the beam image.
+    ax1.plot(means, indices, linewidth=0.4, color="green")
+
+    ax4.plot(means, indices, color="green", label="Gaussian means")
 
 
-def dump_full_scan(esme, root_outdir) -> None:
-    dispersion_scan = esme.dscan
-    tds_scan = esme.tscan
+    # Plot to the right of the image the slice widths for the (maybe
+    # raw!) image
+    ax2.plot(sigmas, indices, label="Slice Widths from image")
 
-    dscan_dir = root_outdir / "dispersion-scan"
+    # Now we filter them to provide a trend line on top of the raw widths.
+    # ax2.plot(sigmasf, indices, label="Smoothed Slice Widths")
+    # centre_index_when_smoothed = np.argmin(meansf)
 
-    for i, measurement in enumerate(dispersion_scan):
-        dx = measurement.dx
-        # tds = dispersion_scan.tds_percentage
+    window = strategy.window
+    lower, upper = get_bounds_from_window(index_chosen_row, window)
 
-        LOG.debug(f"starting to plot before/after for dscan, {dx=}m")
+    # Show region that I am using
+    ax2.axhspan(lower, upper, color="orange", alpha=0.25, label=f"{strategy.window} Slices about $E_\mathrm{{max}}$")
 
-        measurement_outdir = dscan_dir / f"{i=},{dx=}"
-        measurement_outdir.mkdir(parents=True, exist_ok=True)
+    # ax2.axhline(rows[centre_index_when_smoothed], alpha=0.25, color="pink", label="Peak Energy Slice if smoothed")
+    ax1.plot(yparab, rows_parab, label="Parabolic fit", color="red", linewidth=0.4)
 
-        data_dir = measurement_outdir / "raw-beam-images"
-        data_dir.mkdir(exist_ok=True)
+    ax4.plot(yparab, rows_parab, color="red", label="Parabolic fit to Gaussian means")
 
-        for image_index in range(measurement.nimages):
-            LOG.debug(f"plotting before/after for image number: {image_index}")
-            fig = show_before_after_processing(measurement, image_index)
+    ax4.legend()
+    ax4.set_ylabel("Row Index")
+    ax4.set_xlabel("Column Index")
 
-            image_file_path = measurement[image_index].filename
+    ax4.set_title("Slice means with parabolic fits")
 
-            shutil.copy(image_file_path, data_dir / image_file_path.name)
+    ax2.set_xlim(3, 6)
 
-            if root_outdir is not None:
-                fig.savefig(measurement_outdir / f"{image_index}.png")
-                plt.close()
-            else:
-                plt.show()
-
-        background_dir = measurement_outdir / "raw-background-images"
-        background_dir.mkdir(exist_ok=True)
-        for image_index, image in enumerate(measurement.bg):
-            image_file_path = image.filename
-            shutil.copy(image_file_path, background_dir / image_file_path.name)
-
-    dscan_dir = root_outdir / "tds-scan"
-    for i, measurement in enumerate(tds_scan):
-        # dx = measurement.dx
-        tds = measurement.tds_percentage
-
-        measurement_outdir = dscan_dir / f"{i=},{tds=}"
-        measurement_outdir.mkdir(parents=True, exist_ok=True)
-        LOG.debug(f"starting to plot before/after for tds scan, tds = {tds}%")
-
-        data_dir = measurement_outdir / "raw-beam-images"
-        data_dir.mkdir(exist_ok=True)
-
-        for image_index in range(measurement.nimages):
-            LOG.debug(f"plotting before/after for image number: {image_index}")
-            fig = show_before_after_processing(measurement, image_index)
-            if root_outdir:
-                fig.savefig(measurement_outdir / f"{image_index}.png")
-                plt.close()
-            else:
-                plt.show()
-
-            image_file_path = measurement[image_index].filename
-            save = shutil.copy(image_file_path, data_dir / image_file_path.name)
-
-        background_dir = measurement_outdir / "raw-background-images"
-        background_dir.mkdir(exist_ok=True)
-        for image_index, image in enumerate(measurement.bg):
-            image_file_path = image.filename
-            shutil.copy(image_file_path, background_dir / image_file_path.name)
-
-    bscan = esme.bscan
-    if not bscan:
-        return
-    bscan_dir = root_outdir / "beta-scan"
-    for i, measurement in enumerate(bscan):
-        # dx = measurement.dx
-        beta = measurement.beta
-
-        measurement_outdir = bscan_dir / f"{i=},{beta=}"
-        measurement_outdir.mkdir(parents=True, exist_ok=True)
-        LOG.debug(f"starting to plot before/after for beta scan, beta = {beta}%")
-
-        for image_index in range(measurement.nimages):
-            LOG.debug(f"plotting before/after for image number: {image_index}")
-            fig = show_before_after_processing(measurement, image_index)
-            if root_outdir:
-                fig.savefig(measurement_outdir / f"{image_index}.png")
-                plt.close()
-            else:
-                plt.show()
+    # Plot the central  slice's projection
+    ax3.plot(im[index_chosen_row], label="Peak Energy Row")
 
 
-# def show_before_after_processing(
-#     measurement: ana.ScanMeasurement, index: int
-# ) -> plt.Figure:
-#     im = measurement.to_im(index, process=False)
-#     imp = measurement.to_im(index, process=True)
+    # Boring bits
+    # Ax1
+    ax1.set_title("Cropped Image")
+    # Ax2
+    ax2.set_title("Slice sigmas with/without Gaussian filter.")
+    ax2.yaxis.set_label_position("right")
+    ax2.yaxis.tick_right()
+    ax2.set_xlabel(r"$\sigma_M$ / px")
+    ax2.set_ylabel("Row Index")
+    ax2.legend()
+    # Ax3
+    ax3.legend()
+    ax3.set_title(fr"$\sigma_M = {sigmas[index_chosen_row]}$ px")
+    ax3.yaxis.tick_right()
 
-#     fig = plt.figure(figsize=(14, 8))
-#     ax1 = fig.add_subplot(2, 2, 1)
-#     ax2 = fig.add_subplot(2, 2, 2)
-#     ax3 = fig.add_subplot(2, 2, 3, sharex=ax1, sharey=ax1)
-#     ax4 = fig.add_subplot(2, 2, 4, sharex=ax2, sharey=ax2)
+    # Fig
+    fig.suptitle(title)
 
-#     ax1.imshow(im, aspect="auto")
-#     ax3.imshow(imp, aspect="auto")
+    return ImageAnalysisResult(figure=fig,
+                               central_slice_index=index_chosen_row,
+                               window=window,
+                               widths=sigmas)
 
-#     y, slice_mus, _ = ana.get_slice_properties(imp)
-#     idy_emax = y[
-#         np.argmin(slice_mus)
-#     ]  # Min not max because image index counts from top.
 
-#     ax1.axhline(idy_emax, alpha=0.25, color="white")
-#     ax3.axhline(idy_emax, alpha=0.25, color="white")
+def get_bounds_from_window(centre, window_full_size):
+    slice_half_width = window_full_size // 2
+    lower = centre - slice_half_width
+    upper = centre + slice_half_width + 1
+    return lower, upper
 
-#     padding = 10
-#     central_slice_index = np.s_[idy_emax - padding : idy_emax + padding]
-#     slc = im[central_slice_index].mean(axis=0)
-#     slcp = imp[central_slice_index].mean(axis=0)
 
-#     bg = measurement.mean_bg_im()[central_slice_index].mean(axis=0)
+def plot_all_slice_widths(measurement):
+    setpoints = measurement.tscans
+    fig, ax = plt.subplots()
+    prop_cycle = plt.rcParams['axes.prop_cycle']
+    colours = prop_cycle.by_key()['color']
+    # setpoints = setpoints[1:2]
 
-#     ax2.plot(slc, label="Raw")
-#     ax4.plot(slcp, label="After processing")
-#     ax2.plot(bg, label="Background")
-#     ax2.plot((slc - bg).clip(min=0), label="Raw - background")
+    for (setpoint, colour) in zip(setpoints, colours):
+        label = f"V = {setpoint.voltage / 1e6} MV"
+        for path in setpoint.image_full_paths:
+            im = np.load(path)["image"]
+            im = im.T
+            # Do "canonical"/standard image analysis to refer back to to get the widths
+            # XXX: NO BACKGROUND ?
+            processed_image = image.filter_image(im, bg=0.0)
+            crop = image.get_cropping_slice(processed_image)
+            # These will be in global coordinates
+            rows_processed, means_processed, bunch_sigmas_processed = image.get_slice_properties(processed_image[crop], fast=False)
 
-#     shift = np.argmax(slcp)
-#     xcore, ycore = get_slice_core(slcp)
-#     popt, perr = maths.get_gaussian_fit(xcore, ycore)
+            # Means and sigmas here are for the unrpocessed image, so
+            # it is unwise to use the means here to pick the max energy slice.
+            rows, means, bunch_sigmas = image.get_slice_properties(im[crop], fast=fast_analysis)
+            # I need to instead
 
-#     popt[1] = shift  # Shift mean back to whatever it was.
-#     vertical_index = np.linspace(popt[1] - 50, popt[1] + 50, 100)
-#     y = maths.gauss(vertical_index, *popt)
-#     ax4.plot(vertical_index, y, label="Fit")
+            bunch_sigmas = [b.n for b in bunch_sigmas]
+            # means = gaussian_filter1d(means, 4)
+            bunch_sigmas = gaussian_filter1d(bunch_sigmas, 4)
 
-#     ax4.set_xlim(min(vertical_index), max(vertical_index))
+            # from IPython import embed; embed()
+            centre_index = means_processed.argmin()
+            rows = rows - rows[centre_index]
 
-#     sigma = popt[-1]
-#     sigma_sigma = perr[-1]
+            ax.plot(rows, bunch_sigmas, label=label, color=colour, linewidth=0.2)
+            label = None
 
-#     ax4.set_title(rf"Fitted $\sigma_M = {sigma:.3f}±{sigma_sigma:.3f}$ px")
+    ax.set_xlabel("Slice pixel index from peak energy slice")
+    ax.set_ylabel(r"$\sigma_M\,/\,\mathrm{px}$")
+    ax.legend()
+    plt.show()
 
-#     # Left plots
-#     ax1.set_title("Image before and after processing")
-#     ax3.set_xlabel("Pixel Column index")
-#     ax1.set_ylabel("Pixel Row index")
-#     ax3.set_ylabel("Pixel Row index")
-#     # Right plots
-#     ax2.set_title("Highest energy column")
-#     ax4.set_xlabel("Pixel Column Index")
-#     ax2.set_ylabel("Pixel Brightness")
-#     ax4.set_ylabel("Pixel Brightness")
-#     m = measurement
-#     fname = (
-#         measurement.metadata["XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"]
-#         .iloc[index]
-#         .name
-#     )
-#     fig.suptitle(
-#         fr"TDS Ampl. = {m.tds_percentage}%, $D_\mathrm{{OTR}}={m.dx}\,\mathrm{{m}}$, image {index}, before/after image processing: {fname}"
-#     )
-#     ax2.legend()
-#     ax4.legend()
 
-#     # ix1 is the "bottom" rather than the "top" because origin is in the top
-#     # left hand corner when plotting images!
-#     (ix0, ix1), (iy0, iy1) = image.get_cropping_bounds(imp)
-#     ax1.set_ylim(ix1, ix0)
-#     ax1.set_xlim(iy0, iy1)
+def break_setpoint_image_analysis_down(setpoint, outdir, fast_analysis=True, window=21, parabolic=False) -> None:
+    outdir = Path(str(Path(outdir) / setpoint.name).replace(" ",""))
+    outdir.mkdir(exist_ok=True, parents=True)
 
-#     return fig
+    fast_analysis = True
+
+    all_widths = []
+    all_window_stds = []
+    # for i, (im, bg) in enumerate(setpoint.get_images_with_background()):
+    pipeline = make_image_processing_pipeline(bg=setpoint.bg)
+
+    for i, tim in enumerate(setpoint.tagged_images()):
+        dbim = DecomposedBeamImage(pipeline, tim)
+
+        sliceana = dbim.slice_analysis
+
+        if parabolic:
+            chosen_row_index = image.get_chosen_slice_from_fitted_parabola(sliceana.rows,
+                                                                           sliceana.means)
+        else:
+            centre_index = sliceana.means.argmin()
+            chosen_row_index = aliceana.rows[centre_index] # in original uncropped coordinate system
+
+
+        filebasename = f"image-{i}"
+
+        method = "mean"
+        if parabolic:
+            method = "parabolic"
+
+        strategy = SlicingStrategy(slice_centre=chosen_row_index,
+                                   window=window,
+                                   method=method)
+
+        # I process the cropped image.
+        widths, window_width_stds = break_filter_image_down(dbim,
+                                                            strategy,
+                                                            outdir,
+                                                            filebasename,
+                                                            fast_analysis=fast_analysis)
+        all_widths.append(widths)
+        all_window_stds.append(window_width_stds)
+
+    # Finally we do a bit of filtering on the final step of the
+    # widths.  We do this here and not for each individual image
+    # because we need the full sample to determine if there are outliers or not.
+    all_widths = np.array(all_widths)
+    all_window_stds = np.array(all_window_stds)
+    outliers_mask = ana.make_outlier_widths_mask(all_widths[..., -1], 3)[..., np.newaxis]
+
+    filtered_widths = all_widths[..., -1, np.newaxis].copy()
+    filtered_window_stds = all_window_stds[..., -1, np.newaxis].copy()
+
+    filtered_widths[outliers_mask] = np.nan
+    filtered_window_stds[outliers_mask] = np.nan
+
+    all_widths = np.hstack((all_widths, filtered_widths))
+    all_window_stds = np.hstack((all_window_stds, filtered_window_stds))
+
+    fig, ax = plt.subplots()
+    for window_std in all_window_stds:
+        ax.plot(STAGE_MAP, window_std)
+    mean_window_std_by_image_processing_step = np.nanmean(all_window_stds, axis=0)
+    ax.set_xlabel("Image Processing Stage")
+    ax.set_ylabel(r"$\sigma_{\sigma_M}$ / px")
+    ax.set_title(f"Window size = {window}")
+    ax.plot(STAGE_MAP, mean_window_std_by_image_processing_step, label="Average", linewidth=4.0, linestyle="--", color="black")
+    ax.set_ylim(np.nanmin(all_window_stds[..., -1]) * 0.9, np.nanmax(all_window_stds[..., -1]) / 0.9)
+    fig.savefig(outdir / "./all-image-processing-step-noise.pdf")
+
+
+    fig, ax = plt.subplots()
+    for widths in all_widths:
+        ax.plot(STAGE_MAP, widths)
+
+    bg = 0.0
+    ax.set_xlabel("Image Processing Stage")
+    ax.set_ylabel(SLICE_WIDTH_PIXELS_LABEL)
+
+    if bg == 0.0:
+        ax.set_title("No Background Subtraction done")
+    else:
+        ax.set_title("With background subtraction")
+
+    mean_widths_by_image_processing_step = np.nanmean(all_widths, axis=0)
+    ax.plot(STAGE_MAP, mean_widths_by_image_processing_step, label="Average", linewidth=4.0, linestyle="--", color="black")
+    ax.legend()
+
+    ax.set_title(f"Average $\sigma_M$ from {min(mean_widths_by_image_processing_step)} px to {max(mean_widths_by_image_processing_step)} px")
+    fig.savefig(outdir / "./all-image-processing-step-widths.pdf")
+
+    widths_fully_processed = all_widths[..., -1]
+    widths_fully_processed = widths_fully_processed[~np.isnan(widths_fully_processed)]
+    plt.close("all")
+    final_mean_width = np.nanmean(widths_fully_processed)
+    final_mean_window_noise = mean_window_std_by_image_processing_step[-1]
+
+    return final_mean_width, final_mean_window_noise
+
+
+@dataclass
+class ImageAnalysisResult:
+    figure: plt.Figure
+    central_slice_index: int
+    window: int
+    widths: np.ndarray
+
+    @property
+    def window_slice(self):
+        lower, upper = get_bounds_from_window(self.central_slice_index, self.window)
+        return np.s_[lower: upper]
+
+    @property
+    def width(self):
+        return np.mean(self.window_widths)
+
+    @property
+    def window_widths(self):
+        return self.widths[self.window_slice]
+
+
+# @dataclass
+# class SetpointImageAnalysisResult
+
+STAGE_MAP = ["Raw Image",
+             "Background Subtraction",
+             "Uniform Filtered: 100",
+             "Uniform Filtered: 3",
+             "Remove isolated pixels",
+             "Outlier images filtered"]
+
+
+@dataclass
+class SlicingStrategy:
+    slice_centre: int
+    window: int = 21
+    method: str = "mean"
+
+
+def plot_decomposed_image(im_decomp, strategy, outdir, filebasename, fast_analysis=True, window=21):
+    outdir = Path(outdir)
+
+    stage = 0
+    widths = []
+    stages = []
+    window_stds = []
+
+    
+    for im in im_decomp.all_stages():
+        break_single_image_down(im, strategy, title="Raw Image", fast_analysis=fast_analysis)
+        
+    
+    res = break_single_image_down(im, strategy, title="Raw Image", fast_analysis=fast_analysis)
+    save_and_close(res.figure, outdir / f"{filebasename}-stage-{stage}.pdf")
+    stages.append(stage)
+    widths.append(res.width)
+    window_stds.append(np.std(res.window_widths))
+    stage +=1
+
+    im = image.subtract_background(im, bg)
+    res = break_single_image_down(im, strategy, title="Background subtracted image", fast_analysis=fast_analysis)
+    save_and_close(res.figure, outdir / f"{filebasename}-stage-{stage}.pdf")
+    stages.append(stage)
+    widths.append(res.width)
+    window_stds.append(np.std(res.window_widths))
+    stage += 1
+
+    size = 100
+    im = image.remove_background_noise(im, size=size)
+    res = break_single_image_down(im, strategy, title=f"Background noise removed", fast_analysis=fast_analysis)
+    save_and_close(res.figure, outdir / f"{filebasename}-stage-{stage}.pdf")
+    stages.append(stage)
+    widths.append(res.width)
+    window_stds.append(np.std(res.window_widths))
+    stage += 1
+
+    size = 3
+    im = image.smooth_noise_hotspots(im)
+    res = break_single_image_down(im, strategy, title=f"Hotspot pixels smoothed", fast_analysis=fast_analysis)
+    save_and_close(res.figure, outdir / f"{filebasename}-stage-{stage}.pdf")
+    stages.append(stage)
+    widths.append(res.width)
+    window_stds.append(np.std(res.window_widths))
+    stage += 1
+
+    im = image.remove_all_disconnected_pixels(im)
+    res = break_single_image_down(im, strategy, title=f"With Isolated blobs removed.  (Final image step)", fast_analysis=fast_analysis)
+    save_and_close(res.figure, outdir / f"{filebasename}-stage-{stage}.pdf")
+    stages.append(stage)
+    widths.append(res.width)
+    window_stds.append(np.std(res.window_widths))
+    stage += 1
+
+    return widths, window_stds
+
+
+def save_and_close(figure, path):
+    figure.savefig(path)
+    figure.clf()
+    plt.close(figure)
+    plt.close("all")
+    plt.close()
 
 
 def plot_dispersion_scan(esme, ax=None) -> None:
@@ -464,6 +645,41 @@ def plot_scan_central_widths(scan, x, ax1, ax2):
 # def _um_tuple(pair):
 #     return pair*-
 
+def break_scan_down(setpoints, outdir, xvar, xlabel, scan_type, window=21, parabolic=False):
+    widths = []
+    window_stds = []
+    outdir /= scan_type
+    outdir.mkdir(exist_ok=True, parents=True)
+
+    for setpoint in setpoints:
+        mean_width, mean_window_std = break_setpoint_image_analysis_down(setpoint, outdir, window=window, parabolic=parabolic)
+        widths.append(mean_width)
+        window_stds.append(mean_window_std)
+
+    # from IPython import embed; embed()
+
+    widths = np.array(widths)
+    window_stds = np.array(window_stds)
+    # from IPython import embed; embed()
+
+    xvar_widths = np.hstack((xvar[..., np.newaxis], widths[..., np.newaxis]))
+    xvar_stds = np.hstack((xvar[..., np.newaxis], window_stds[..., np.newaxis]))
+
+    np.savetxt(outdir / f"{scan_type}-widths.txt", xvar_widths)
+    np.savetxt(outdir/ f"{scan_type}-window-stds.txt", xvar_stds)
+
+    fig, ax = plt.subplots()
+    ax.plot(xvar, widths, marker="x")
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(r"$\sigma_M$ / px")
+    fig.savefig(outdir / f"{scan_type}-mean-slice-widths.pdf")
+
+    fig, ax = plt.subplots()
+    ax.plot(xvar, window_stds, marker="x")
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(r"$\sigma_{\sigma_M}$ / px")
+    fig.savefig(outdir / f"{scan_type}-mean-window-stds.pdf")
+
 
 def compare_both_derivations(test, latex=True):
     pass
@@ -494,6 +710,14 @@ def formatted_parameter_dfs(params, latex=False) -> str:
         beam_params.loc["sigma_t"] = {"values": params.sigma_t[0]*1e12,
                                       "errors": params.sigma_t[1]*1e12}
 
+    if params.sigma_z_rms is not None:
+        beam_params.loc["sigma_z_rms"] = {"values": params.sigma_z_rms[0], "errors": params.sigma_z_rms[1]}
+        beam_params.loc["sigma_z_rms"] *= 1e3  # to mm
+        # To picseconds:
+        beam_params.loc["sigma_t_rms"] = {"values": params.sigma_t_rms[0]*1e12,
+                                          "errors": params.sigma_t_rms[1]*1e12}
+
+        
     beam_params.loc[
         ["emitx", "sigma_i", "sigma_b", "sigma_r"]
     ] *= 1e6  # to mm.mrad & um
@@ -511,6 +735,8 @@ def formatted_parameter_dfs(params, latex=False) -> str:
         'B_beta': 'm',
         "sigma_z": "mm",
         "sigma_t": "ps",
+        "sigma_z_rms": "mm",
+        "sigma_t_rms": "ps",
         'sigma_e': 'keV',
         'sigma_e_from_tds': 'keV',
         'sigma_i': 'um',
@@ -531,6 +757,8 @@ def formatted_parameter_dfs(params, latex=False) -> str:
         'B_beta': '$B_\\beta$',
         "sigma_z": r"$\sigma_z$",
         "sigma_t": r"$\sigma_t$",
+        "sigma_z_rms": r"$\sigma_z^\mathrm{rms}$",
+        "sigma_t_rms": r"$\sigma_t^\mathrm{rms}$",
         'sigma_e': '$\\sigma_E$',
         'sigma_i': '$\\sigma_I$',
         'sigma_e_from_tds': '$\\sigma_E^{\mathrm{TDS}}$',
@@ -588,7 +816,7 @@ def pretty_parameter_table(fit, beam, latex=False):
     beam_table = tabulate.tabulate(
         beam, tablefmt=tablefmt, headers=["Variable", "Value", "Alt. Value", "Units"]
     )
-
+    
     return f"{beam_table}\n\n\n{fit_table}"
 
 # def control_room_table(fit, beam):
@@ -610,7 +838,11 @@ def _format_df_for_printing(
         formatted_strings[value_col_name] = []
         values, errors = df[value_col_name], df[error_col_name]
         for value, error in zip(values, errors):
-            pretty_value = f"{ufloat(value, error):.1u}"
+            if error:
+                pretty_value = f"{ufloat(value, error):.1u}"
+            else:
+                pretty_value = f"{value:.4g}"
+
             if latex:  # Typset for siunitx (latex)
                 pm_symbol = "+-"
                 pretty_value = pretty_value.translate(trans)
@@ -783,7 +1015,7 @@ def plot_calibrator_with_fits(calib, fig=None, ax=None):
 
     try:
         y = calib.tds_slopes * 1e-6
-        yfit = calib.get_tds_slope(sample_x) * 1e-6
+        calib.get_tds_slope(sample_x) * 1e-6
         ylabel = TDS_CALIBRATION_LABEL
     except AttributeError:  # Then it's a TrivialTDSCalibrator
         y = calib.voltages * 1e-6
@@ -848,141 +1080,284 @@ def plot_calibrated_tds(sesme):
     return fig, dikt
 
 
-def _streaks_from_scan(scan, scan_voltages=None):
-    if scan_voltages is None:
-        scan_voltages = scan.voltage
-    energy = scan.beam_energy() * e  # in eV and convert to joules
-    k0 = e * abs(scan_voltages) * cal.TDS_WAVENUMBER / energy
-    r34s = cal.r34s_from_scan(scan)
-    streak = r34s * k0
+def _plot_scan_tds_rb_and_sp(scan, ax, colours, markers, label):
+    all_rbs = scan.amplitude_rbs()
+    # rb_means = rbs.mean(axis=1)
+    # rb_stds = rbs.std(axis=1)
+    sps = scan.amplitude_sps()
+    # Setpoint is constant, but rbs will be different for every single image.
+    # We plot for each setpoint mu
+    colour = next(colours)
+    marker = next(markers)
+    for sp, rbs in zip(sps, all_rbs):
+        print(sp)
+        ax.scatter(np.ones_like(rbs) * sp, rbs, color=colour, marker=marker, label=label)
+        label = None
 
-    return streak
+def plot_amplitude_setpoints_with_readbacks(measurement, outdir):
+    fig, ax = plt.subplots(figsize=(12.8, 8), sharey=True)
+    prop_cycle = plt.rcParams['axes.prop_cycle']
+    colours = iter(prop_cycle.by_key()['color'])
+    markers = iter(["x", ".", "*"])
+
+    _plot_scan_tds_rb_and_sp(measurement.dscan, ax, colours=colours, markers=markers, label="Dispersion Scan")
+    _plot_scan_tds_rb_and_sp(measurement.tscan, ax, colours=colours, markers=markers, label="TDS Scan")
+    _plot_scan_tds_rb_and_sp(measurement.bscan, ax, colours=colours, markers=markers, label="Beta Scan")
+
+    ax.legend()
+    ax.set_xlabel(TDS_AMPLITUDE_SETPOINT_LABEL)
+    ax.set_ylabel(TDS_AMPLITUDE_READBACK_LABEL)
+
+    return fig
+
+def plot_tds_voltages(measurement, outdir):
+    fig, axes = plt.subplots(ncols=measurement.nfullscans(), figsize=(12.8, 8), sharey=True)
+    iaxes = iter(axes)
+
+    try:
+        ax = next(iaxes)
+        ax.plot(measurement.dscan.dispersions(), measurement.dscan.voltages()*1e-6)
+        ax.set_xlabel(ETA_LABEL)
+    except StopIteration:
+        pass
+
+    try:
+        ax = next(iaxes)
+        ax.plot(measurement.tscan.amplitude_sps(), measurement.tscan.voltages()*1e-6)
+        ax.set_xlabel(TDS_AMPLITUDE_SETPOINT_LABEL)
+    except StopIteration:
+        pass
+
+    try:
+        ax = next(iaxes)
+        ax.plot(measurement.bscan.betas(), measurement.bscan.voltages()*1e-6)
+        ax.set_xlabel(BETA_LABEL)
+    except StopIteration:
+        pass
+
+    axes[0].set_ylabel(VOLTAGE_LABEL)
 
 
-def plot_tds_voltage(sesme):
-    fig, (ax1, ax2) = plt.subplots(ncols=2, figsize=(12.8, 8), sharey=True)
-
-    dscan = sesme.dscan
-    dscan_dx = dscan.dx
-    dscan_voltage = abs(dscan.voltage * 1e-6)
-
-    ax1.plot(dscan_dx, dscan_voltage, marker="x")
-    ax1.set_ylabel(VOLTAGE_LABEL)
-    ax1.set_xlabel(ETA_LABEL)
-    ax2.set_xlabel(r"TDS Amplitude / %")
-
-    tscan = sesme.tscan
-    tscan_percent = tscan.tds_percentage
-    tscan_voltage = _get_tds_tscan_abs_voltage_in_mv_from_scans(sesme)
-
-    ax2.plot(tscan_percent, tscan_voltage, marker="x")
-    ax2.set_xlabel(r"TDS Amplitude / %")
-
-    # Should have all the same percentages for the dispersion scan.
-    dscan_pc = sesme.dscan.tds_percentage
-    assert (dscan_pc == dscan_pc[0]).all()
-    # Should have same dispersion throughout for the tds scan.
-    tscan_dx = sesme.tscan.dx
-    assert (tscan_dx == tscan_dx[0]).all()
-
-    tit1 = rf"$\eta_\mathrm{{OTR}}$-scan; TDS Amplitude at ${{{dscan_pc[0]}}}\%$"
-    ax1.set_title(tit1)
-    tit2 = rf"TDS-scan; $\eta_\mathrm{{OTR}}={{{tscan_dx[0]}}}\mathrm{{m}}$"
-    ax2.set_title(tit2)
-
-    dikt = {
-        "dscan_dx": dscan_dx,
-        "dscan_voltage": dscan_voltage,
-        "tscan_percent": tscan_percent,
-        "tscan_voltage": tscan_voltage,
-    }
-
-    return fig, dikt
+    plt.show()
+    return fig
+    import sys
+    sys.exit()
 
 
-def plot_streaking_parameters(sesme):
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(
-        ncols=2, nrows=2, figsize=(14, 8), sharey=False
-    )
+def _plot_scan_streaking_parameters(scan, axes, xvar, xlabel):
+    s = _streaks_from_scan(scan)
+    axes.plot(xvar, s)
+    axes.set_xlabel(xlabel)
 
-    dscan_streak = abs(_streaks_from_scan(sesme.dscan))
 
-    raw_bunch_lengths, raw_bl_errors = beam.apparent_bunch_lengths(sesme.dscan)
-    true_bunch_lengths, true_bl_errors = beam.true_bunch_lengths(sesme.dscan)
+def _streaks_from_scan(scan):
+    voltages = scan.voltages()
+    energy = scan.beam_energies().mean() # this is in MeV
+    r34s = _r34s_from_scan(scan)
 
-    # To ps
-    def to_ps(length):
-        return (length / c) * 1e12
+    s = ana.streaking_parameter(voltage=voltages,
+                                energy=energy*1e6, # Has to be eV
+                                r12_streaking=r34s)
+    return s
 
-    ax3.errorbar(
-        sesme.dscan.dx,
-        to_ps(raw_bunch_lengths),
-        linestyle="",
-        yerr=to_ps(raw_bl_errors),
-        label="Raw bunch length",
-        marker=".",
-    )
 
-    ax3.errorbar(
-        sesme.dscan.dx,
-        to_ps(true_bunch_lengths),
-        linestyle="",
-        yerr=to_ps(true_bl_errors),
-        label="True bunch length",
-        marker=".",
-    )
+def _r34s_from_scan(scan):
+    energy = scan.beam_energies().mean() # this is in MeV
 
-    ax3.legend()
-    # ax3.plot(sesme.dscan.dx, image_lengths, label="True bunch length")
+    r34s = []
+    for setpoint in scan.setpointdfs:
+        r34 = optics.calculate_i1d_r34_from_tds_centre(setpoint.df,
+                                                       "OTRC.64.I1D",
+                                                       energy) # This has to be in MeV...
+        r34s.append(r34)
+    return np.array(r34s)
 
-    ax1.plot(sesme.dscan.dx, dscan_streak, marker="x", linestyle="")
+def plot_streaking_parameters(measurement, outdir):
+    fig, axes = plt.subplots(ncols=measurement.nfullscans(), figsize=(12.8, 8), sharey=True)
+    iax = iter(axes)
 
-    ax1.set_ylabel(r"$|S|$")
+    _plot_scan_streaking_parameters(measurement.dscan, next(iax), measurement.dscan.dispersions(), xlabel=ETA_LABEL)
+    _plot_scan_streaking_parameters(measurement.tscan, next(iax), measurement.tscan.voltages() * 1e-6, xlabel=VOLTAGE_LABEL)
+    _plot_scan_streaking_parameters(measurement.bscan, next(iax), measurement.bscan.betas(), xlabel=BETA_LABEL)
 
-    tscan_streak = abs(
-        _streaks_from_scan(
-            sesme.tscan,
-            scan_voltages=_get_tds_tscan_abs_voltage_in_mv_from_scans(sesme) * 1e6,
-        )
-    )
+    axes[0].set_ylabel(STREAKING_LABEL)
 
-    ax2.plot(
-        _get_tds_tscan_abs_voltage_in_mv_from_scans(sesme),
-        tscan_streak,
-        marker="x",
-        linestyle="",
-    )
 
-    raw_bunch_lengths, raw_bl_errors = beam.apparent_bunch_lengths(sesme.tscan)
-    true_bunch_lengths, true_bl_errors = beam.true_bunch_lengths(
-        sesme.tscan, _get_tds_tscan_abs_voltage_in_mv_from_scans(sesme) * 1e6
-    )
+def plot_r12_streaking(measurement, outdir):
+    fig, axes = plt.subplots(ncols=measurement.nfullscans(), figsize=(12.8, 8), sharey=True)
+    iax = iter(axes)
 
-    ax4.errorbar(
-        _get_tds_tscan_abs_voltage_in_mv_from_scans(sesme),
-        to_ps(raw_bunch_lengths),
-        linestyle="",
-        marker=".",
-        yerr=to_ps(raw_bl_errors),
-        label="Raw bunch length",
-    )
+    _plot_scan_r12_streaking(measurement.dscan, next(iax), measurement.dscan.dispersions(), xlabel=ETA_LABEL)
+    _plot_scan_r12_streaking(measurement.tscan, next(iax), measurement.tscan.voltages() * 1e-6, xlabel=VOLTAGE_LABEL)
+    _plot_scan_r12_streaking(measurement.bscan, next(iax), measurement.bscan.betas(), xlabel=BETA_LABEL)
 
-    ax4.errorbar(
-        _get_tds_tscan_abs_voltage_in_mv_from_scans(sesme),
-        to_ps(true_bunch_lengths),
-        linestyle="",
-        marker=".",
-        yerr=to_ps(true_bl_errors),
-        label="True bunch length",
-    )
+    axes[0].set_ylabel(R34_LABEL)
 
-    ax3.set_ylabel("Bunch Length / ps")
-    ax3.set_xlabel(ETA_LABEL)
-    ax4.set_xlabel(VOLTAGE_LABEL)
 
-    df = None
+def _plot_scan_r12_streaking(scan, axes, xvar, xlabel):
+    r34s = _r34s_from_scan(scan)
+    axes.plot(xvar, r34s)
+    axes.set_xlabel(xlabel)
 
-    return fig, df
+
+def _plot_scan_time_resolution(scan, axes, xvar, xlabel, scale=1):
+    sfactors = abs(_streaks_from_scan(scan))
+    beamsizes = _get_streaking_plane_beamsizes(scan)
+
+    resolution = beamsizes / sfactors
+
+    axes.plot(xvar, resolution * 1e6 * scale)
+    axes.set_xlabel(xlabel)
+
+
+def plot_slice_length(measurement, outdir):
+    fig, axes = plt.subplots(ncols=measurement.nfullscans(), figsize=(12.8, 8), sharey=True)
+    iax = iter(axes)
+
+    _plot_scan_time_resolution(measurement.dscan, next(iax), measurement.dscan.dispersions(), xlabel=ETA_LABEL)
+    _plot_scan_time_resolution(measurement.tscan, next(iax), measurement.tscan.voltages() * 1e-6, xlabel=VOLTAGE_LABEL)
+    _plot_scan_time_resolution(measurement.bscan, next(iax), measurement.bscan.betas(), xlabel=BETA_LABEL)
+
+    fig.suptitle("Longitudinal resolution (i.e. slice $\it{length}$ in bunch that contributes to signal at given point")
+
+    axes[0].set_ylabel(LONG_RESOLUTION_LABEL)
+
+
+def plot_apparent_bunch_lengths(measurement, outdir):
+    fig, axes = plt.subplots(ncols=measurement.nfullscans(), figsize=(12.8, 8), sharey=True)
+    iax = iter(axes)
+
+    _plot_scan_apparent_bunch_lengths(measurement.dscan, next(iax), measurement.dscan.dispersions(), xlabel=ETA_LABEL)
+    _plot_scan_apparent_bunch_lengths(measurement.tscan, next(iax), measurement.tscan.voltages() * 1e-6, xlabel=VOLTAGE_LABEL)
+    _plot_scan_apparent_bunch_lengths(measurement.bscan, next(iax), measurement.bscan.betas(), xlabel=BETA_LABEL)
+
+    axes[0].set_ylabel(r"Apparent Bunch Length / mm")
+
+    plt.show()
+
+
+
+def plot_true_bunch_lengths(measurement, outdir):
+    fig, axes = plt.subplots(ncols=measurement.nfullscans(), figsize=(12.8, 8), sharey=True)
+    iax = iter(axes)
+
+    _plot_scan_true_bunch_lengths(measurement.dscan, next(iax), measurement.dscan.dispersions(), xlabel=ETA_LABEL)
+    _plot_scan_true_bunch_lengths(measurement.tscan, next(iax), measurement.tscan.voltages() * 1e-6, xlabel=VOLTAGE_LABEL)
+    _plot_scan_true_bunch_lengths(measurement.bscan, next(iax), measurement.bscan.betas(), xlabel=BETA_LABEL)
+
+    axes[0].set_ylabel(r"True Bunch Length / mm")
+
+    plt.show()
+
+
+def _plot_scan_apparent_bunch_lengths(scan, axes, xvar, xlabel):
+    values, errors = _get_scan_apparent_bunch_lengths(scan)
+
+    axes.errorbar(xvar, values*1e3, yerr=errors*1e3)
+    axes.set_xlabel(xlabel)
+
+def _plot_scan_true_bunch_lengths(scan, axes, xvar, xlabel):
+    values, errors = _get_scan_true_bunch_lengths(scan)
+
+    axes.errorbar(xvar, values*1e3, yerr=errors*1e3)
+    axes.set_xlabel(xlabel)
+
+
+def _get_scan_true_bunch_lengths(scan):
+    bunch_lengths = []
+    errors = []
+    for setpoint in scan.setpointdfs:
+        bunch_length = ana.true_bunch_length_from_df(setpoint)
+        bunch_lengths.append(bunch_length.n)
+        errors.append(bunch_length.s)
+
+    return np.array(bunch_lengths), np.array(errors)
+    # from IPython import embed; embed()
+
+
+    # axes.errorbar(xvar, values*1e3, yerr=errors*1e3)
+    # axes.set_xlabel(xlabel)
+
+
+def _get_scan_apparent_bunch_lengths(scan):
+    mean_lengths = []
+    for setpoint in scan.setpointdfs:
+        lengths = []
+        for raw_im, bg in setpoint.get_images_with_background():
+            imp = image.filter_image(raw_im, bg=bg, crop=True)
+            length, error = ana.apparent_bunch_length_from_processed_image(imp)
+            lengths.append(ufloat(length, error))
+
+        mean_lengths.append(np.mean(lengths))
+
+    values = np.array([n.n for n in mean_lengths])
+    errors = np.array([n.s for n in mean_lengths])
+
+    return values, errors
+
+
+
+def _plot_scan_apparent_rms_bunch_lengths(scan, axes, xvar, xlabel):
+    pass
+
+# def plot_normalised_slice_length(measurement, outdir)
+
+# def plot_slice_e(measurement, outdir):
+#     fig, axes = plt.subplots(ncols=measurement.nfullscans(), figsize=(12.8, 8), sharey=True)
+#     iax = iter(axes)
+
+#     scale = 1 / ana.PIXEL_SCALE_Y_UM
+#     _plot_scan_time_resolution(measurement.dscan, next(iax), measurement.dscan.dispersions(), xlabel=ETA_LABEL, scale=scale)
+#     _plot_scan_time_resolution(measurement.tscan, next(iax), measurement.tscan.voltages() * 1e-6, xlabel=VOLTAGE_LABEL, scale=scale)
+#     _plot_scan_time_resolution(measurement.bscan, next(iax), measurement.bscan.betas(), xlabel=BETA_LABEL, scale=scale)
+
+#     fig.suptitle("Longitudinal resolution")
+
+#     axes[0].set_ylabel(LONG_RESOLUTION_PIXELS_LABEL)
+
+
+def plot_streaking_plane_beamsizes(measurement, outdir):
+    fig, axes = plt.subplots(ncols=measurement.nfullscans(), figsize=(12.8, 8), sharey=True)
+    iax = iter(axes)
+
+    _plot_scan_streaking_plane_beamsizes(measurement.dscan, next(iax), measurement.dscan.dispersions(), xlabel=ETA_LABEL)
+    _plot_scan_streaking_plane_beamsizes(measurement.tscan, next(iax), measurement.tscan.voltages() * 1e-6, xlabel=VOLTAGE_LABEL)
+    _plot_scan_streaking_plane_beamsizes(measurement.bscan, next(iax), measurement.bscan.betas(), xlabel=BETA_LABEL)
+
+    fig.suptitle("Initial beamsizes in the streaking plane (without any streaking).  Analytical (no data).")
+
+    axes[0].set_ylabel(BEAM_SIZE_Y_LABEL)
+
+    plt.show()
+
+def _plot_scan_streaking_plane_beamsizes(scan, axes, xvar, xlabel):
+    # OK!  So we don't have any measured beamsize data, so we assume
+    # 0.4mmmrad, and we use the quadrupole strengths (whihc are
+    # measured!) to get the optics at the screen.
+
+    emittance = 0.4e-6
+    sizes = _get_streaking_plane_beamsizes(scan, emittance=emittance)
+    axes.plot(xvar, np.array(sizes) * 1e6)
+    axes.set_xlabel(xlabel)
+
+
+def _get_streaking_plane_beamsizes(scan, emittance=0.4e-6):
+    emittance = 0.4e-6
+    sizes = []
+    for setpoint in scan.setpointdfs:
+        df, _ = optics.optics_from_measurement_df(setpoint.df)
+        beta_y = df[df.id == "OTRC.64.I1D"].beta_y.item()
+        energy = df[df.id == "OTRC.64.I1D"].E.item()
+        m_e_GeV = 0.511e-3
+        gamma = energy / m_e_GeV
+        geo_emittance = emittance / gamma
+
+        beam_size = np.sqrt(beta_y * geo_emittance)
+        sizes.append(beam_size)
+
+    return sizes
+
+
 
 
 def get_slice_core(pixels) -> tuple[npt.NDArray, npt.NDArray]:
@@ -1029,30 +1404,3 @@ def plot_tds_set_point_vs_readback(dscan_files, tscan_files, title=""):
     ax1.set_title(title)
 
     plt.show()
-
-
-def _get_tds_tscan_abs_voltage_in_mv_from_scans(sesme):
-    """this is simply to handle the case where i accidentally
-    calibrated the TDS at a different dispersion to what i did the
-    tds scan at"""
-    # What we actually used in our scan:
-    tds_percentage = sesme.tscan.tds_percentage
-    try:
-        derived_voltage = abs(sesme.tscan.voltage * 1e-6)  # MV
-    except TDSCalibrationError:
-        # Then I guess I accidentally calibrated the TDS at the wrong
-        # dispersion sp.  oops!  Calculate it more "by hand" by
-        # getting the correct snapshot (and therefore R34) from the
-        # *dispersion* scan, and then use that to calculate the TDS voltage.
-        correct_snapshot = (
-            np.array(sesme.dscan.measurements)[
-                sesme.dscan.dx == sesme.dscan.calibrator.dispersion_setpoint
-            ]
-            .item()
-            .metadata.iloc[0]
-        )
-        derived_voltage = (
-            abs(sesme.tscan.calibrator.get_voltage(tds_percentage, correct_snapshot))
-            * 1e-6
-        )
-    return derived_voltage

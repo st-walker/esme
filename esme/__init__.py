@@ -5,4 +5,4 @@ __email__ = 'stuart.walker@desy.de'
 __version__ = '0.1.0'
 
 
-from .core import DiagnosticRegion
+from esme.core import DiagnosticRegion

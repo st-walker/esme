@@ -1,26 +1,35 @@
+1. [ ] Turn off write protection on main dump dipole                                                                               
+2. [ ] Dump switch :: Operations/Procedures -> Operation -> Dump Switch
+3. [ ] Main Timing :: Injector -> Main Timing -> Bunch Pattern Server etc..
+4. [ ] Turn INJ feedback off:: Operations & Procedures -> SASE1 Tuning -> INJ off
+5. [ ] RF sum voltage control, etc.
+6. [ ] Set scalar mode
+7. [ ] A1 and AH1 to 0.0
+8. [ ] Take AH1 off beam.
+9. [ ] Go to 130MeV in I1D.
+10. [ ] Turn off LH
+11. [ ] Magnet energizer server
+12. [ ] Cycle magnets :: Magnets -> Magnets -> Overview
+13. [ ] Find A1 phase :: RF -> Scan Tools -> INtelliPhase -> A1 with LH.  Does not need to be in scalar mode.
+14. [ ] Find AH1 phase :: RF -> Scan Tools -> INtelliPhase -> AH1 with LH.  Does not need to be in scalar mode.
+15. [ ] Go to 100pC :: Injector -> Injector Laser NEPAL -> right click
+    -> layers-> Show attenuator -> move slider to right to decrease
+    charge
+16. [ ] Gun Phase :: Injector -> RF Gun Tools -> Gun Phase Scan.
+17. [ ] go back to 250pC
+18. [ ] Calibrate the TDS
 
-1. [ ] Dump switch :: Operations/Procedures -> Operation -> Dump Switch
-2. [ ] Main Timing :: Injector -> Main Timing -> Bunch Pattern Server etc..
-3. [ ] RF sum voltage control, etc.
-4. [ ] Set scalar mode
-5. [ ] A1 and AH1 to 0.0
-6. [ ] Take AH1 off beam.
-7. [ ] Go to 130MeV in I1D.
-8. [ ] Turn off LH
-9. [ ] Magnet energizer server
-10. [ ] Cycle magnets :: MAgnets -> Magnets -> Overview
-11. [ ] Find A1 phase :: RF -> Scan Tools -> INtelliPhase -> A1 with LH
-12. [ ] Gun Phase :: Injector -> RF Gun Tools -> Gun Phase Scan
-    1. Must put to 100pC and turn off feedbacks, including charge feedback
-    2. Turn back on afterwards.
-13. [ ] Calibrate the TDS
+Open Output Directory button.                  
+insert real dispersions.
+Get calibration working properly...  has to be done for next time please...
+Clear Beta plot properly plz.
 
+Get data directly from the plot?  Could be cleaner...
 
+pause when no beam.  even though yes we use SBML
 
-* Matching for normal operation
+button to just take data, don't bother with visualiation
 
+please turn off sbml at end properly!!sruss
 
-- Set all chirps to zero in injector
-- Scale cold magnets
-- Match
 

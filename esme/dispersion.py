@@ -1,6 +1,5 @@
 """Module relating to the measurement of dispersion"""
 
-from dataclasses import dataclass
 
 
 

@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 import yaml
 import re
 import socket
@@ -98,7 +97,7 @@ class QPlainTextEditLogger(QObject, logging.Handler):
         self.log_signal.emit(msg)
 
 
-def setup_screen_display_widget(widget, axes=False):
+def setup_screen_display_widget(widget, axes=False, units="m"):
     image_plot = widget.addPlot()
     image_plot.clear()
     image = pg.ImageItem(autoDownsample=True, border="k")
@@ -106,8 +105,8 @@ def setup_screen_display_widget(widget, axes=False):
     image_plot.hideAxis("left")
     image_plot.hideAxis("bottom")
     if axes:
-        image_plot.setLabel("bottom", "<i>&Delta;x</i>", units="m")
-        image_plot.setLabel("right", "<i>&Delta;y</i>", units="m")    
+        image_plot.setLabel("bottom", "<i>&Delta;x</i>", units=units)
+        image_plot.setLabel("right", "<i>&Delta;y</i>", units=units)    
     
     image_plot.addItem(image)
 
@@ -174,6 +173,7 @@ def send_to_logbook(author="", title="", severity="", text="", image=None) -> No
     # join list to the final string
     elogXMLString = '\n'.join(elogXMLStringList)
     # open printer process
+    print(elogXMLString)
     elog = "xfellog"
     lpr = subprocess.Popen(
         ['/usr/bin/lp', '-o', 'raw', '-d', elog],

@@ -128,14 +128,14 @@ class TDSCalibratingMachine(Machine):
     def calibrate(self, amplitudes, dirout=None):
         for amplitude in amplitudes:
             self.tds.set_amplitude(amplitude)
-            slope = self.get_slope(amplitude)
+            self.get_slope(amplitude)
 
     def scan_phase(self):
-        npoints = len(self.phase)
+        len(self.phase)
 
         for i, _ in enumerate(self.phases):
             self.tds.set_phase(phase)
-            screen = self.get_screen_image()
+            self.get_screen_image()
 
     def get_slope(self, amplitude):
         phases = np.linspace(-200, 200, self.nphase_points)
@@ -146,7 +146,6 @@ class TDSCalibratingMachine(Machine):
 
         ycoms = []
         total = []
-        all_images = []
 
         print("Phase is currently", self.tds.read_rb_phase())
         for phase in phases:
@@ -156,7 +155,7 @@ class TDSCalibratingMachine(Machine):
             time.sleep(1.1)
             from esme.image import process_image
 
-            all_images = process_image(screen, 0)
+            process_image(screen, 0)
             from scipy.ndimage import center_of_mass
 
             ycoms.append(center_of_mass(screen)[1])

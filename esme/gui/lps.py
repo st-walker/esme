@@ -1,18 +1,12 @@
-from dataclasses import dataclass
 import sys
 import logging
-import time
 
-import pyqtgraph as pg
-from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import QObject, QThread, QTimer, pyqtSignal, pyqtSlot, QRunnable
-from PyQt5.QtWidgets import QApplication, QFileDialog, QFrame, QMainWindow, QMessageBox, QGridLayout
-from matplotlib import cm
-import numpy as np
+from PyQt5 import QtCore
+from PyQt5.QtCore import QObject, QRunnable, QTimer, pyqtSignal
+from PyQt5.QtWidgets import QApplication, QMainWindow
 
 from esme.gui.ui import mainwindow
-from esme.gui.common import (send_to_logbook,
-                             make_default_i1_lps_machine,
+from esme.gui.common import (make_default_i1_lps_machine,
                              make_default_b2_lps_machine,
                              set_tds_calibration_by_region)
 

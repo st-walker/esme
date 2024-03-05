@@ -10,8 +10,6 @@ from ocelot.cpbd.optics import Twiss, twiss as oce_calc_twiss
 from ocelot.cpbd.magnetic_lattice import MagneticLattice
 
 from ocelot.cpbd.beam import Twiss
-import matplotlib.pyplot as plt
-import latdraw.plot as plot
 
 
 
@@ -61,7 +59,7 @@ def i1d_conf_from_measurement_df(df):
 
     n_cavities_a1 = 8
     a1v = df["XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/AMPL.SAMPLE"].iloc[0] / n_cavities_a1
-    a1phi = df["XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/PHASE.SAMPLE"]
+    df["XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/PHASE.SAMPLE"]
 
     conf = EuXFELSimConfig()
 
@@ -85,11 +83,9 @@ def optics_from_measurement_df(df):
 
     conf = i1d_conf_from_measurement_df(df)
 
-    # from IPython import embed; embed()
-
     twiss52 = get_default_match_point("MATCH.52.I1")
     twiss52.E = 0.13
-
+    
     twiss_after, mlat = lat.calculate_twiss(twiss52, start="MATCH.52.I1", felconfig=conf)
 
     before_match52 = lat.get_sequence(stop="MATCH.52.I1", felconfig=conf)
@@ -109,8 +105,6 @@ def optics_from_measurement_df(df):
     # mlat = MagneticLattice(chicane)
     # mlat.transfer_maps(energy=130e-3)
     # print(m[4, 5] * 1e3)
-
-    # from IPython import embed; embed()
 
 
     mlat = MagneticLattice(before_match52)

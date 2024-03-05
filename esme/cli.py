@@ -1,30 +1,28 @@
 """Console script for esme."""
 
-import glob
 import logging
-from contextlib import ExitStack
 from pathlib import Path
 import numpy as np
-from scipy.constants import c
 
 import pandas as pd
 from click import Option
 from click import Path as CPath
 from click import UsageError, argument, echo, group, option
-import yaml
 
 import esme.analysis as ana
-from esme.analysis import calculate_energy_spread_simple, MeasurementDataFrames, SetpointDataFrame
-from esme.gui.hires import start_hires_gui
-from esme.gui.common import DEFAULT_CONFIG_PATH
-from esme.control.configs import get_scan_config_for_area
-from esme.plot import pretty_parameter_table, formatted_parameter_dfs
-from esme.optics import calculate_i1d_r34_from_tds_centre
-
+from esme.analysis import SetpointDataFrame
+from esme.plot import pretty_parameter_table
+import esme.plot as plot
+from esme.load import load_result_directory
+from esme.gui.explorer import start_explorer_gui
+from esme.gui.calibrator import start_calibration_explorer_gui
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 LOG = logging.getLogger(__name__)
+
+
+
 
 
 class MutuallyExclusiveOption(Option):
@@ -59,7 +57,8 @@ def calculate_bunch_length(setpoint: SetpointDataFrame):
 
 @group()
 @option("--debug", is_flag=True, help="Run all subcommands in debug mode")
-def main(debug):
+@option("--profile", is_flag=True)
+def main(debug, profile):
     """Main entrypoint."""
     echo("esme-xfel")
     echo("=" * len("esme-xfel"))
@@ -77,7 +76,81 @@ def main(debug):
         logging.getLogger("esme.measurement").setLevel(logging.DEBUG)
         logging.getLogger("esme.sim").setLevel(logging.DEBUG)
         logging.getLogger("esme.simplot").setLevel(logging.DEBUG)
+        logging.getLogger("esme.explorer").setLevel(logging.DEBUG)        
+
         logging.getLogger("ocelot.utils.fel_track").setLevel(logging.DEBUG)
+        
+
+    if profile:
+        import cProfile
+        import pstats
+        import io
+        import atexit
+
+        print("Profiling...")
+        pr = cProfile.Profile()
+        pr.enable()
+
+        def exit():
+            pr.disable()
+            print("Profiling completed")
+            s = io.StringIO()
+            pstats.Stats(pr, stream=s).sort_stats("cumulative").print_stats()
+            print(s.getvalue())
+
+        atexit.register(exit)
+
+
+@main.command(no_args_is_help=True)
+@argument("dirname", nargs=1, type=CPath(exists=True, file_okay=False, path_type=Path))
+@option("--analysis", is_flag=True)
+@option("--widths", is_flag=True)
+@option("--window", type=int, help="window FULL SIZE", default=21)
+@option("--parabolic", is_flag=True)
+def debug(dirname, analysis, widths, window, parabolic):
+    measurement = load_result_directory(dirname)
+
+    outdir = Path(f"ANALYSIS-{dirname.name}")
+
+    if analysis:
+        fit_type_string = "-parabolic-fit" if parabolic else "-gaussian-fit"
+        image_outdir = outdir / f"image-analysis-{window=}{fit_type_string}"
+        voltage = measurement.tscan.voltages() * 1e-6
+        dispersion = measurement.dscan.dispersions()
+        beta = measurement.bscan.betas()
+
+        plot.break_scan_down(measurement.tscan, image_outdir, voltage, plot.VOLTAGE_LABEL, "tscan", window=window, parabolic=parabolic)
+        plot.break_scan_down(measurement.dscan, image_outdir, dispersion, plot.ETA_LABEL, "dscan", window=window)
+        plot.break_scan_down(measurement.bscan, image_outdir, beta, plot.BETA_LABEL, "bscan", window=window)
+
+    # plot.plot_tds_voltages(measurement, outdir)
+    # plot.plot_amplitude_setpoints_with_readbacks(measurement, outdir)
+    # plot.plot_streaking_parameters(measurement, outdir)
+    # plot.plot_r12_streaking(measurement, outdir)
+    # plot.plot_streaking_plane_beamsizes(measurement, outdir)
+    plot.plot_slice_length(measurement, outdir)
+    # plot.plot_apparent_bunch_lengths(measurement, outdir)
+    plot.plot_true_bunch_lengths(measurement, outdir)    
+
+    import matplotlib.pyplot as plt
+    plt.show()
+
+
+@main.command()
+@option("--calibration", required=False, nargs=1, type=CPath(exists=True, dir_okay=False, path_type=Path))
+@argument("dirname", required=False, type=CPath(exists=True, file_okay=False, path_type=Path))
+def explorer(dirname, calibration):
+    start_explorer_gui(dirname, calibration)
+
+# @main.command()
+# @argument("calib_file", required=True)
+# # def calibration(calib_file):
+
+@main.command()
+@argument("calib_file", required=True)
+def calibration(calib_file):
+    start_calibration_explorer_gui(calib_file)
+
 
 
 @main.command(no_args_is_help=True)
@@ -87,66 +160,15 @@ def main(debug):
 @option("--derr")
 @option("--simple", is_flag=True)
 def process(dirname, with_sigr, with_en, derr, simple):
-
-    scan_setpoint_path = dirname / "scan.yaml"
-    with scan_setpoint_path.open("r") as f:
-        scan_conf = yaml.safe_load(f)
-    image_address = scan_conf["channels"]["image"]
-    energy_address = scan_conf["channels"]["energy_at_screen"]
-    
-    ofp = ana.OpticsFixedPoints(beta_screen=scan_conf["beta_screen"],
-                                beta_tds=scan_conf["beta_tds"],
-                                alpha_tds=scan_conf["alpha_tds"])
-
     # Calculate bunch length for maximum streaking case.
-    measurement = MeasurementDataFrames.from_filenames(list(dirname.glob("*m.pkl")),
-                                                       image_dir=dirname,
-                                                       image_address=image_address,
-                                                       energy_address=energy_address)
-
+    measurement = load_result_directory("./")# list(dirname.glob("*m.pkl")),
+                                             #  image_dir=dirname,
+                                             #  image_address=image_address,
+                                             #  energy_address=energy_address)
+    calib = load_calibration_from_result_directory("./")
+    avmapping = calib.mapping()
+    fit_df, beam_df = ana.process_measurment_dfs(measurement, avmapping)
     
-    
-    tscan_widths = {}
-    for tscan_setpoint in measurement.tscans:
-        tscan_widths[tscan_setpoint.voltage] = ana.pixel_widths_from_setpoint(tscan_setpoint)
-
-    dscan_widths = {}
-    for dscan_setpoint in measurement.dscans:
-        dscan_widths[dscan_setpoint.dispersion] = ana.pixel_widths_from_setpoint(dscan_setpoint)
-
-    bscan_widths = {}
-    for bscan_setpoint in measurement.bscans:
-        bscan_widths[dscan_setpoint.beta] = ana.pixel_widths_from_setpoint(bscan_setpoint)
-
-
-    # in metres
-    bunch_length = calculate_bunch_length(measurement.max_voltage_df())
-
-    fitter = ana.SliceWidthsFitter(dscan_widths, tscan_widths)
-    params = fitter.all_fit_parameters(measurement.energy() * 1e6, # to eV
-                                       dscan_voltage=measurement.dscan_voltage(),
-                                       tscan_dispersion=measurement.tscan_dispersion(),
-                                       optics_fixed_points=ofp,
-                                       sigma_z=(bunch_length.n, bunch_length.s))
-
-    beam_df = params.beam_parameters_to_df()
-    fit_df = params.fit_parameters_to_df()
-
-    # If failed to reconstruct values...
-    if np.isnan(beam_df.loc["sigma_i"]["values"]):
-        sigma_e = _simple_calc(measurement.max_dispersion_sp())
-        beam_df.loc["sigma_e"] = {"values": sigma_e.n,
-                                  "errors": sigma_e.s,
-                                  "alt_values": np.nan,
-                                  "alt_errors": np.nan}
-        
-    beam_df.to_pickle(f"{dirname}-beam.pkl")
-    fit_df.to_pickle(f"{dirname}-fit.pkl")
-
-    # from IPython import embed; embed()
-
-    fit_df, beam_df = formatted_parameter_dfs(params)
-
     print(pretty_parameter_table(fit_df, beam_df))
 
 def _simple_calc(setpoint, sigma_r=28e-6):
@@ -176,14 +198,22 @@ def _simple_calc(setpoint, sigma_r=28e-6):
     return sigma_e
 
 
+
 @main.command()
-@argument("pcl", nargs=1)
-def display(pcl):
+@argument("dirname")
+def show(dirname):
+    measurement, ofp = load_result_directory(dirname)
+    for setpoint in measurement.tscan:
+        for path in setpoint.image_full_paths:
+            np.load
 
-    from esme.gui.scannerpanel import display
+            
+# @main.command()
+# @argument("pcl", nargs=1)
+# def display(pcl):
+#     from esme.gui.scannerpanel import display
+#     display(pcl)
 
-    display(pcl)
-    
     # from IPython import embed; embed()
 
 

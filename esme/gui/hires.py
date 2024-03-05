@@ -1,19 +1,14 @@
 import sys
 import logging
-import time
 
 import pyqtgraph as pg
-from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import QObject, QThread, QTimer, pyqtSignal, pyqtSlot
-from PyQt5.QtWidgets import QApplication, QFileDialog, QFrame, QMainWindow, QMessageBox
-import numpy as np
+from PyQt5.QtCore import QTimer, pyqtSignal
+from PyQt5.QtWidgets import QApplication, QMainWindow
 
 
 from esme.gui.ui import lps
-from esme.control.pattern import get_beam_regions, get_bunch_pattern
-from esme.gui.common import make_default_i1_lps_machine, QPlainTextEditLogger, setup_screen_display_widget, send_widget_to_log
+from esme.gui.common import QPlainTextEditLogger, send_widget_to_log, setup_screen_display_widget
 from esme.gui.scannerpanel import ProcessedImage, ScanType
-from esme.plot import pretty_parameter_table
 
 
 def start_hires_gui():
@@ -54,7 +49,7 @@ class HighResolutionEnergySpreadMainWindow(QMainWindow):
                                                              xlabel="Beta", xunits="m",
                                                              ylabel="Widths", yunits="px")
 
-        
+
         self.scannerp.processed_image_signal.connect(self.post_processed_image)
         self.scannerp.background_image_signal.connect(self.post_background_image)
         self.scannerp.full_measurement_result_signal.connect(self.post_final_result)
@@ -73,10 +68,10 @@ class HighResolutionEnergySpreadMainWindow(QMainWindow):
     def post_background_image(self, image):
         items = self.image_plot.items
         assert len(items) == 1
-            
+
         image_item = items[0]
         image_item.setImage(image)
-        
+
     def post_final_result(self, final_result):
         self.finished = True
 
@@ -94,7 +89,7 @@ class HighResolutionEnergySpreadMainWindow(QMainWindow):
             self.finished = False
 
         image = processed_image.image.T
-        peak_energy_row = processed_image.central_width_row
+        processed_image.central_width_row
         # image[peak_energy_row] *= 0
         items = self.image_plot.items
         assert len(items) == 1
@@ -111,7 +106,7 @@ class HighResolutionEnergySpreadMainWindow(QMainWindow):
         elif processed_image.scan_type is ScanType.BETA:
             scatter_data = [processed_image.beta], [processed_image.central_width.n]
             self.beta_widths_scatter.addPoints(*scatter_data)
-            
+
         image_item = items[0]
         image_item.setImage(image)
 
@@ -140,7 +135,7 @@ def make_pixel_widths_scatter(widget, title, xlabel, xunits, ylabel, yunits):
 
     plot.setLabel('bottom', xlabel, units=xunits)
     plot.setLabel('left', ylabel, units=yunits)
-    
+
     scatter = pg.ScatterPlotItem(size=10, pen=pg.mkPen(None), brush=pg.mkBrush(255, 0, 0, 100))
     plot.addItem(scatter)
 

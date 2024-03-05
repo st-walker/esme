@@ -1,10 +1,7 @@
 import pickle
-import sys
-from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
-import scipy.ndimage as ndi
 
 
 def com_label(ax):
@@ -37,7 +34,7 @@ def get_monotonic_intervals(phases, coms):
     (indices,) = np.where(np.diff(rising_mask))
     indices += 1  # off by one otherwise.
 
-    phase_turning_points = phases[indices]
+    phases[indices]
 
     piecewise_monotonic_coms = np.split(coms, indices)
     piecewise_monotonic_com_phases = np.split(phases, indices)
@@ -182,7 +179,6 @@ def main():
     ax.axhline(1027)
     ax.legend()
 
-    frequency = 3e9
 
     # from IPython import embed; embed()
 
