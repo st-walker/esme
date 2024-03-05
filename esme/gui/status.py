@@ -123,6 +123,11 @@ class IndicatorPanelWidget(QWidget):
                 else:  # For CircleIndicator or similar
                     indicator.set_status(result)
 
+
+class LPSStateWatcher(IndicatorPanelWidget):
+    pass
+
+
 # Boilerplate code to initialize and run the application
 if __name__ == '__main__':
     app = QApplication(sys.argv)

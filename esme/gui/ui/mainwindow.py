@@ -144,7 +144,7 @@ class Ui_MainWindow(object):
         self.groupBox_4.setObjectName("groupBox_4")
         self.verticalLayout_2 = QtWidgets.QVBoxLayout(self.groupBox_4)
         self.verticalLayout_2.setObjectName("verticalLayout_2")
-        self.machine_state_widget = IndicatorPanelWidget(self.groupBox_4)
+        self.machine_state_widget = LPSStateWatcher(self.groupBox_4)
         self.machine_state_widget.setObjectName("machine_state_widget")
         self.verticalLayout_2.addWidget(self.machine_state_widget)
         self.gridLayout_3.addWidget(self.groupBox_4, 5, 1, 1, 1)
@@ -233,7 +233,7 @@ class Ui_MainWindow(object):
         self.actionEmail_Maintainer.setText(_translate("MainWindow", "Email Maintainer"))
 from esme.gui.sbunchpanel import SpecialBunchMidLayerPanel
 from esme.gui.screen import ScreenDisplayWidget
-from esme.gui.status import IndicatorPanelWidget
+from esme.gui.status import LPSStateWatcher
 from esme.gui.tds import TDSControl
 
 
