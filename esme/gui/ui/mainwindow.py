@@ -144,9 +144,9 @@ class Ui_MainWindow(object):
         self.groupBox_4.setObjectName("groupBox_4")
         self.verticalLayout_2 = QtWidgets.QVBoxLayout(self.groupBox_4)
         self.verticalLayout_2.setObjectName("verticalLayout_2")
-        self.widget = IndicatorPanelWidget(self.groupBox_4)
-        self.widget.setObjectName("widget")
-        self.verticalLayout_2.addWidget(self.widget)
+        self.machine_state_widget = IndicatorPanelWidget(self.groupBox_4)
+        self.machine_state_widget.setObjectName("machine_state_widget")
+        self.verticalLayout_2.addWidget(self.machine_state_widget)
         self.gridLayout_3.addWidget(self.groupBox_4, 5, 1, 1, 1)
         self.screen_display_widget = ScreenDisplayWidget(self.maintab)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
@@ -231,9 +231,9 @@ class Ui_MainWindow(object):
         self.actionLongitudinal_Phase_Space.setText(_translate("MainWindow", "Longitudinal Phase Space..."))
         self.actionEmittance.setText(_translate("MainWindow", "Emittance..."))
         self.actionEmail_Maintainer.setText(_translate("MainWindow", "Email Maintainer"))
-from esme.gui.indicator import IndicatorPanelWidget
 from esme.gui.sbunchpanel import SpecialBunchMidLayerPanel
 from esme.gui.screen import ScreenDisplayWidget
+from esme.gui.status import IndicatorPanelWidget
 from esme.gui.tds import TDSControl
 
 

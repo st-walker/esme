@@ -254,7 +254,7 @@
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_2">
            <item>
-            <widget class="IndicatorPanelWidget" name="widget" native="true"/>
+            <widget class="IndicatorPanelWidget" name="machine_state_widget" native="true"/>
            </item>
           </layout>
          </widget>
@@ -366,7 +366,7 @@
   <customwidget>
    <class>IndicatorPanelWidget</class>
    <extends>QWidget</extends>
-   <header>esme.gui.indicator</header>
+   <header>esme.gui.status</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
