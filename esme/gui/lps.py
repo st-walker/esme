@@ -144,11 +144,6 @@ class LPSMainWindow(QMainWindow):
         self.screen_name_signal.emit(screen_name)
         self.machine.set_kickers_for_screen(screen_name)
 
-    def setup_indicators(self):
-        self.indicator1 = self.ui.indicator_panel.add_indicator("TDS")
-        self.indicator2 = self.ui.indicator_panel.add_indicator("Screen")
-        self.indicator3 = self.ui.indicator_panel.add_indicator("Kicker")
-
     def set_bunch_control_enabled(self, enabled):
         self.ui.i1_radio_button.setEnabled(enabled)
         self.ui.b2_radio_button.setEnabled(enabled)
