@@ -130,8 +130,8 @@ class ScannerControl(QtWidgets.QWidget):
     def get_chosen_dispersion(self):
         return float(self.ui.dispersion_setpoint_combo_box.currentText())
 
-    # def get_chosen_beta(self):
-    #     return float(self.ui.betas_setpoint_combo_box.currentText())
+    def get_chosen_beta(self):
+        return float(self.ui.beta_setpoint_combo_box.currentText())
 
     def initial_read(self, dic):
         self.set_ui_initial_values(dic)
@@ -248,8 +248,8 @@ class ScannerControl(QtWidgets.QWidget):
         self.measured_slice_twiss = load_matthias_slice_measurement(fname)
 
     def show_optics_at_screen(self):
-        fname = "/Users/stuartwalker/Downloads/2023-08-31T221036_quad_scan_slice_I1_h_slice_OTRC_59_I1_screen.mat"
-        self.measured_slice_twiss = load_matthias_slice_measurement(fname)
+        # fname = "/Users/stuartwalker/Downloads/2023-08-31T221036_quad_scan_slice_I1_h_slice_OTRC_59_I1_screen.mat"
+        # self.measured_slice_twiss = load_matthias_slice_measurement(fname)
 
         stwiss0 = self.measured_slice_twiss
 
@@ -457,6 +457,9 @@ class ScanWorker(QObject):
     def run(self):
         self.make_output_directory()
 
+        print(self.machine)
+        print(self.machine.di)
+        self.machine.beam_off()
         try:
             background = self.take_background(self.scan_request.total_background_images)
         except InterruptedMeasurementException as e:
@@ -467,6 +470,7 @@ class ScanWorker(QObject):
         # using this over directly affecting the TDS timing because we
         # don't have to worry about the blms complaining.
         if is_in_controlroom():
+            pass
             self.setup_special_bunch_midlayer()
 
         # Turn the beam on and put the TDS on beam and wait.
@@ -475,14 +479,14 @@ class ScanWorker(QObject):
         time.sleep(self.scan_request.settings.beam_on_wait)
 
         try:
+            tscan_widths, tscan_bunch_lengths = self.tds_scan(background)
+            time.sleep(5)
             bscan_widths = None
             if self.scan_request.do_beta_scan:
                 time.sleep(5)
                 bscan_widths = self.beta_scan(background)
             time.sleep(5)
             dscan_widths = self.dispersion_scan(background)
-            time.sleep(5)
-            tscan_widths, tscan_bunch_lengths = self.tds_scan(background)
         except InterruptedMeasurementException as e:
             self.measurement_interrupted_signal.emit(e)
             return
@@ -677,7 +681,7 @@ class ScanWorker(QObject):
         #     means, sigmas, padding=10, slice_pos=slice_pos
         # )
 
-        central_width_row, sigma = get_selected_central_slice_width_from_slice_properties(means, sigmas, padding=10, slice_pos=slice_pos)
+        central_width_row, sigma = get_selected_central_slice_width_from_slice_properties(means, sigmas, padding=20, slice_pos=slice_pos)
 
         # # Initially just pick middle slice
         # central_width_row = int(len(means) // 2)

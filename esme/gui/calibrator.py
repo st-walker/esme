@@ -19,9 +19,11 @@ from esme.load import load_calibration_from_yaml
 from esme.gui.ui import calibration
 from esme.gui.common import (get_tds_calibration_config_dir,
                              setup_screen_display_widget,
-                             make_default_i1_lps_machine)
-from esme.calibration import CompleteCalibration
+                             make_default_i1_lps_machine,
+                             make_default_b2_lps_machine,
+                             make_default_injector_espread_machine)
 from esme.control.configs import load_calibration
+from esme.calibration import CompleteCalibration
 from esme.image import filter_image
 import logging
 import oxfel
@@ -79,8 +81,8 @@ class CalibrationMainWindow(QMainWindow):
         self.ui = calibration.Ui_MainWindow()
         self.ui.setupUi(self)
 
-        self.i1machine = make_default_i1_lps_machine()
-        # self.b2machine = make_default_b2_lps_machine()
+        self.i1machine = make_default_injector_espread_machine() # make_default_i1_lps_machine()
+        self.b2machine = make_default_b2_lps_machine()
         self.machine = self.i1machine
 
         self.ui.start_calib_button.clicked.connect(self.do_calibration)
@@ -136,8 +138,9 @@ class CalibrationMainWindow(QMainWindow):
 
     @property
     def tds(self):
-        return self.machine.deflectors[DiagnosticRegion.I1]
-        return self.machine.deflectors.active_tds()
+        # return self.machine.deflectors[DiagnosticRegion.I1]
+        return self.machine.deflector
+        # return self.machine.deflectors.active_tds()
 
     def setup_plots(self):
         ax1 = self.ui.zero_crossing_extraction_plot.axes
@@ -205,7 +208,7 @@ class CalibrationMainWindow(QMainWindow):
         # ax.legend()
         self.draw()
 
-    
+
     def load_calibration_file(self):
         options = QFileDialog.Options()
         outdir = get_tds_calibration_config_dir() / "i1"
@@ -248,21 +251,24 @@ class CalibrationWorker(QObject):
         self.kill = False
 
     def get_image(self):
-        image = self.machine.screens.get_image(self.screen_name)
+        image = self.machine.screen.get_image_raw()
         LOG.info("Reading image from: %s", self.screen_name)
         return image # .astype(np.float32)
 
     def calibrate(self):
-        self.machine.deflectors.active_tds().set_amplitude(0.0)
+        # self.machine.deflectors.active_tds().set_amplitude(0.0)
+        self.machine.deflector.set_amplitude(0.0)
         time.sleep(1.0)
-        image = self.machine.screens.get_image_raw(self.screen_name)
+        print(self.machine.screen, self.machine.screen.name, "!!!!!!!!!!!!")
+        image = self.machine.screen.get_image_raw()
         com = ndi.center_of_mass(image)
         ycom = com[1]
         yzero_crossing = ycom
 
         slopes = []
         for amplitude in self.amplitudes:
-            self.machine.deflectors.active_tds().set_amplitude(amplitude)
+            # self.machine.deflectors.active_tds().set_amplitude(amplitude)
+            self.machine.deflector.set_amplitude(amplitude)
             m1, m2 = self.calibrate_once(yzero_crossing, amplitude)
             slopes.append((np.mean(abs(m1[0])), np.mean(abs(m2[0]))))
 
@@ -290,13 +296,13 @@ class CalibrationWorker(QObject):
         phis = np.linspace(-180, 200, num=191)
         # phis = np.linspace(-180, 200, num=15)
         ycoms = []
-        tds = self.machine.deflectors.active_tds()
+        tds = self.machine.deflector
         tds.set_phase(phis[0])
         time.sleep(4)
         for phi in phis:
             time.sleep(0.25)
             tds.set_phase(phi)
-            image = self.machine.screens.get_image_raw(self.screen_name)
+            image = self.machine.screen.get_image_raw()
             image = filter_image(image, 0)
             com = ndi.center_of_mass(image)
             ycom = com[1]
@@ -495,11 +501,11 @@ import csv
 class CalibrationExplorer(QtWidgets.QMainWindow):
     avmapping_signal = pyqtSignal(AmplitudeVoltageMapping)
     NROWS = 100
-    
+
     def __init__(self, ccalib: CompleteCalibration, fname=None, parent=None):
         super().__init__(parent)
         self.init_ui(ccalib, fname=fname, parent=parent)
-        
+
     def init_ui(self, ccalib, fname=None, parent=None):
         self.setWindowTitle('TDS Calibration Explorer')
         self.updating_table = False  # Flag to prevent recursive updates
@@ -536,7 +542,7 @@ class CalibrationExplorer(QtWidgets.QMainWindow):
 
         self.graphics_widget = pg.GraphicsLayoutWidget()
         main_layout.addWidget(self.graphics_widget)
-        
+
 
         self.create_plots()
         self.create_table(left_layout)
@@ -579,7 +585,7 @@ class CalibrationExplorer(QtWidgets.QMainWindow):
             self._set_cal_factor_row(i, cal)
         for j in range(i + 1, self.NROWS):
             self.table_widget.setItem(j, 0, QTableWidgetItem(""))
-            self.table_widget.setItem(j, 1, QTableWidgetItem(""))            
+            self.table_widget.setItem(j, 1, QTableWidgetItem(""))
 
     def create_table(self, left_layout):
         self.table_widget = QtWidgets.QTableWidget(self.NROWS, 3)
@@ -674,7 +680,7 @@ class CalibrationExplorer(QtWidgets.QMainWindow):
         for row in range(self.table_widget.rowCount()):
             try:
                 calibration_item = self.table_widget.item(row, 1)
-                cal_factor = float(calibration_item.text()) / CompleteCalibration.CAL_UM_PER_PS                
+                cal_factor = float(calibration_item.text()) / CompleteCalibration.CAL_UM_PER_PS
                 r = self.r_3412_spin_box.value()
                 energy = self.beam_energy_spin_box.value()
                 frequency_ghz = self.tds_frequency_spin_box.value()
@@ -714,7 +720,7 @@ class CalibrationExplorer(QtWidgets.QMainWindow):
     def _get_amplitude_row(self, irow):
         amplitude_item = self.table_widget.item(irow, 0)
         return float(amplitude_item.text())
-            
+
     def update_plots(self):
         amplitudes = []
         calibrations = []

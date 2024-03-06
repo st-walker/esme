@@ -66,4 +66,9 @@ class TransverseDeflector:
         except AttributeError:
             raise UncalibratedTDSError("Missing TDS Calibration")
         
+    def amplitude_rb_matches_sp(self, tol: float = 0.05) -> bool:
+        rb = self.get_amplitude_sp()
+        sp = self.get_amplitude_sp()
+        return abs((rb - sp) / sp) < tol
+        
         

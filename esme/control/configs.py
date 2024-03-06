@@ -19,6 +19,7 @@ from esme.control.snapshot import SnapshotRequest
 from esme.control.optics import I1toI1DLinearOptics, I1toB2DLinearOptics
 from esme.control.tds import StreakingPlane
 from esme import DiagnosticRegion
+from esme.control.mstate import AreaWatcher
 
 from esme.analysis import OpticsFixedPoints
 
@@ -33,6 +34,7 @@ def load_kickers_from_config(dconf: dict[str, Any], di=None) -> FastKickerContro
                                   di=di))
 
     return FastKickerController(kickers, di=di)
+
 
 def load_screens_from_config(dconf: dict[str, Any], di=None) -> dict[str, dict[str, Screen]]:
     screen_defs = dconf["screens"]
@@ -111,6 +113,25 @@ def build_lps_machine_from_config(yamlf: os.PathLike, area: DiagnosticRegion, di
                       optics=optics,
                       sbunches=sbunches,
                       di=di)
+
+def build_area_watcher_from_config(yamlf: os.PathLike, area: DiagnosticRegion, di=None):
+    with open(yamlf, "r") as f:
+        config = yaml.full_load(f)
+
+    all_screens = load_screens_from_config(config, di=di)
+    section_screens = all_screens[area]
+
+    kickercontroller = load_kickers_from_config(config, di=di)
+    tds = load_deflectors_from_config(config, di=di)[area]
+    # optics = build_linear_optics(area, di=di)
+    sbunches = SpecialBunchesControl(area, di=di)
+
+    return AreaWatcher(kickerop=kickercontroller,
+                       screens=section_screens,
+                       tds=tds,
+ #                      optics=optics,
+                       sbunches=sbunches,
+                       di=di)
                
 
 def build_linear_optics(area: DiagnosticRegion, di=None):

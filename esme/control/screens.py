@@ -20,30 +20,34 @@ class Screen:
     CAMERA_FD = "XFEL.DIAG/CAMERA/{}/{}"
 
     SCREEN_IS_POS_VALUE = 1
-    CAMERA_IS_ON_VALUE = 1
+    CAMERA_IS_TAKING_DATA_VALUE = 1
 
     SCREEN_FDP_TEMPLATE = "XFEL.DIAG/CAMERA/{}/IMAGE_EXT"
     SCREEN_RAW_FDP_TEMPLATE = "XFEL.DIAG/CAMERA/{}/IMAGE_EXT_ZMQ"    
-
-    
     def __init__(self, name,
                  fast_kicker_setpoints: Optional[list[FastKickerSetpoint]] = None,
                  di: Optional[DOOCSInterface] = None) -> None:
         self.name = name
         self.fast_kicker_setpoints = fast_kicker_setpoints
         self.di = di if di else DOOCSInterface()
-        
-    def is_offaxis(self):
+    
+    def read_camera_status(self) -> str:
+        return self.di.get_value(self.CAMERA_FD.format(self.name, "CAM.STATUS"))
+    
+    def is_online(self) -> bool:
+        return self.read_camera_status() == "Online"
+
+    def is_offaxis(self) -> bool:
         value = self.di.get_value(self.SCREEN_ML_FD.format(self.name, "STATUS.STR"))
         return value == "OFFAXIS_LYSO"
 
-    def is_onaxis(self):
+    def is_onaxis(self) -> bool:
         value = self.di.get_value(self.SCREEN_ML_FD.format(self.name, "STATUS.STR"))
         return value == "ONAXIS_LYSO"
 
-    def is_camera_on(self):
-        value = self.di.get_value(self.CAMERA_DF.format(self.name, "START"))
-        return value == self.CAMERA_IS_ON_VALUE
+    def is_camera_taking_data(self):
+        value = self.di.get_value(self.CAMERA_FD.format(self.name, "START"))
+        return value == self.CAMERA_IS_TAKING_DATA_VALUE
 
     def is_screen_ok(self):
         return (self.is_in() or self.is_off_axis()) and self.is_on()

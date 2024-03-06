@@ -99,8 +99,14 @@ class Snapshotter:
 
         return {image_address: f"{image_dir.name}/{fname.name}"}
 
+    def try_and_read(self, addy, default=np.nan):
+        try:
+            return self.di.get_value(addy)
+        except:
+            return default
+
     def read_addresses(self) -> dict:
-        return {addy: self.di.get_value(addy) for addy in self.request.addresses}
+        return {addy: self.try_and_read(addy) for addy in self.request.addresses}
 
     def read_wildcards(self) -> dict:
         result = {}

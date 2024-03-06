@@ -2,7 +2,7 @@ import pandas as pd
 from oxfel.predefined import cat_to_i1d, cat_to_b2d
 from esme.control.snapshot import SnapshotRequest, Snapshotter
 from esme.optics import calculate_i1d_r34_from_tds_centre, i1d_conf_from_measurement_df, dispersions_at_point, SliceEmittanceMeasurement, track_slice_twiss
-from esme.exceptions import DOOCSReadError
+from esme.control.exceptions import DOOCSReadError
 
 
 # XXX: This will not work if just doing an off axis measurement in the

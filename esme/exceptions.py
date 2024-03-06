@@ -9,6 +9,3 @@ class TDSCalibrationError(ESMEException):
 class EnergySpreadCalculationError(ESMEException):
     pass
 
-
-class DOOCSReadError(ESMEException):
-    pass

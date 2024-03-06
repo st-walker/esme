@@ -123,11 +123,12 @@ class SpecialBunchMidLayerPanel(QtWidgets.QWidget):
 
     def update_panel_start_stop_state(self):
         is_diag_bunch_firing = self.sbinterface.is_diag_bunch_firing()
+        print(f"{is_diag_bunch_firing=}")
         if is_diag_bunch_firing:
             self.set_bunch_control_enabled(False)
             self.ui.start_button.setEnabled(False)
             self.ui.stop_button.setEnabled(True)
         else:
             self.set_bunch_control_enabled(True)
-            self.ui.stop_button.setEnabled(True)
+            self.ui.start_button.setEnabled(True)
             self.ui.stop_button.setEnabled(False)

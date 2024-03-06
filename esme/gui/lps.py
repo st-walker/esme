@@ -48,6 +48,7 @@ class LPSMainWindow(QMainWindow):
         # widget and have to propagate to the child widgets.
         self.screen_name_signal.connect(self.ui.tds_panel.set_region_from_screen_name)
         self.screen_name_signal.connect(self.ui.screen_display_widget.set_screen)
+        self.screen_name_signal.connect(self.ui.machine_state_widget.set_screen)
 
         # Connect the emission of the TDS panel's TDS voltage calibrations to here.
         self.ui.tds_panel.voltage_calibration_signal.connect(self.update_tds_voltage_calibration)
@@ -65,7 +66,8 @@ class LPSMainWindow(QMainWindow):
         # have stored, that we we can propagate them from here to
         # wherever else they need to be.
         self.ui.tds_panel.emit_calibrations()
-
+        # Emit initial screen name to any widgets.
+        self.emit_current_screen_name()
 
     def update_location(self):
         self.update_screen_combo_box()
@@ -143,6 +145,11 @@ class LPSMainWindow(QMainWindow):
         screen_name = self.ui.select_screen_combobox.currentText()
         self.screen_name_signal.emit(screen_name)
         self.machine.set_kickers_for_screen(screen_name)
+
+    def setup_indicators(self):
+        self.indicator1 = self.ui.indicator_panel.add_indicator("TDS")
+        self.indicator2 = self.ui.indicator_panel.add_indicator("Screen")
+        self.indicator3 = self.ui.indicator_panel.add_indicator("Kicker")
 
     def set_bunch_control_enabled(self, enabled):
         self.ui.i1_radio_button.setEnabled(enabled)

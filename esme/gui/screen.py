@@ -14,7 +14,7 @@ from esme import DiagnosticRegion
 from esme.gui.common import make_default_b2_lps_machine, make_default_i1_lps_machine, setup_screen_display_widget
 from esme.calibration import get_tds_com_slope
 from esme.control.tds import StreakingPlane, UncalibratedTDSError
-
+from esme.control.exceptions import DOOCSReadError
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -101,11 +101,15 @@ class ScreenDisplayWidget(QWidget):
         dx, dy = self.machine.optics.dispersions_at_screen(screen_name)
 
         screen = self.machine.screens[screen_name]
-        xpixel_size = screen.get_pixel_xsize()
-        ypixel_size = screen.get_pixel_ysize()
+        try:
+            xpixel_size = screen.get_pixel_xsize()
+            ypixel_size = screen.get_pixel_ysize()
 
-        nxpixel = screen.get_image_xpixels()
-        nypixel = screen.get_image_ypixels()
+            nxpixel = screen.get_image_xpixels()
+            nypixel = screen.get_image_ypixels()
+        except DOOCSReadError:
+            return
+        
 
         tr = QtGui.QTransform()  # prepare ImageItem transformation:
         tr.scale(xpixel_size, ypixel_size)       # scale horizontal and vertical axes
@@ -266,6 +270,7 @@ class CalibrationWatcher(QObject):
 
     def get_non_streaking_plane_calibration(self) -> AxisCalibration:
         beam_energy = self.machine.optics.get_beam_energy() * 1e6 # in MeV to eV
+
         axis = self.get_non_streaking_plane()
 
         # If there is no dispersion then we just plot x or y
@@ -343,8 +348,15 @@ class CalibrationWatcher(QObject):
 
     def run(self) -> None:
         while not self.kill:
-            self.check_non_streaking_plane_axis_calibration()
-            self.check_streaking_plane_axis_calibration()
+            # Be tolerant of DOOCSReadErrors which might be very fleeting 
+            # and not really a problem, e.g. 
+            # if beam goes off for a moment we won't be able to read the energy
+            # for a bit, but that shoudln't crash the whole GUI.
+            try:
+                self.check_non_streaking_plane_axis_calibration()
+                self.check_streaking_plane_axis_calibration()
+            except DOOCSReadError:
+                pass
             time.sleep(0.25)
 
     def set_screen_name(self, screen_name: str) -> None:
@@ -385,10 +397,13 @@ class ScreenWatcher(QObject):
         LOG.info(f"Setting screen name for Screen Worker thread: {screen_name}")
         self.screen_name = screen_name
         screen = self.machine.screens[screen_name]
-        xsize = screen.get_pixel_xsize()
-        ysize = screen.get_pixel_ysize()
-        nx = screen.get_image_xpixels()
-        ny = screen.get_image_ypixels()
+        try:
+            xsize = screen.get_pixel_xsize()
+            ysize = screen.get_pixel_ysize()
+            nx = screen.get_image_xpixels()
+            ny = screen.get_image_ypixels()
+        except DOOCSReadError:
+            return
 
         pix = PixelInfo(xsize=xsize, ysize=ysize, nx=nx, ny=ny)
         self.pixels_signal.emit(pix)

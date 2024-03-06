@@ -21,7 +21,7 @@ import matplotlib
 import numpy as np
 import pandas as pd
 
-from esme.control.exceptions import DOOCSReadError
+from esme.control.exceptions import DOOCSReadError, DOOCSWriteError
 
 try:
     import pydoocs

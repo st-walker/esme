@@ -87,7 +87,7 @@ class SpecialBunchesControl:
     def set_use_tds(self, use_tds: bool) -> None:
         clist = self.get_kicker_control_list()
         clist[1] = int(bool(use_tds))
-        qself.di.set_value(self.control_address(), clist)
+        self.di.set_value(self.control_address(), clist)
 
     def get_use_tds(self) -> bool:
         clist = self.get_kicker_control_list()
@@ -113,7 +113,7 @@ class SpecialBunchesControl:
 
     def power_on_kickers(self) -> None:
         # Why is this *?
-        *_, loc = self.di.get_value(f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/*{self.location}/KICKER.ON")
+        *_, loc = self.di.get_value(f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/*{self.location}/KICKER.ON")[0]
         ch = f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/{loc}/KICKER.ON"
         value = 0
         LOG.debug(f"Setting value: {ch=} value={value}")
@@ -152,7 +152,7 @@ class SpecialBunchesControl:
         return value == self.STATUS_IS_OK_VALUE
 
     def is_screen_ok(self) -> bool:
-        value = self.di.get_value(self.status_address("SCREEN"))
+        value = self.di.get_value(self.status_address("CAMERA"))
         return value == self.STATUS_IS_OK_VALUE
 
     def is_kicker_ok(self) -> bool:

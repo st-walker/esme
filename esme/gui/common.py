@@ -13,7 +13,10 @@ from PyQt5.QtCore import QObject, pyqtSignal, QByteArray, QBuffer, QIODevice
 from PyQt5.QtWidgets import QWidget
 from PyQt5.QtWidgets import QMessageBox
 
-from esme.control.configs import load_virtual_machine_interface, build_lps_machine_from_config, make_hires_injector_energy_spread_machine
+from esme.control.configs import (load_virtual_machine_interface,
+                                    build_lps_machine_from_config,
+                                    make_hires_injector_energy_spread_machine, 
+                                    build_area_watcher_from_config)
 from esme import DiagnosticRegion
 
 from esme.control.sbunches import SpecialBunchesControl
@@ -36,6 +39,13 @@ def make_default_doocs_interface() -> DOOCSInterfaceABC:
     else:
         return DOOCSInterface()
 
+def make_i1_watcher():
+    di = make_default_doocs_interface()
+    return build_area_watcher_from_config(DEFAULT_CONFIG_PATH, area=DiagnosticRegion.I1, di=di)
+
+def make_b2_watcher():
+    di = make_default_doocs_interface()
+    return build_area_watcher_from_config(DEFAULT_CONFIG_PATH, area=DiagnosticRegion.B2, di=di)
 
 def make_default_injector_espread_machine():
     di = make_default_doocs_interface()
@@ -172,6 +182,9 @@ def send_to_logbook(author="", title="", severity="", text="", image=None) -> No
     elogXMLStringList.append('</entry>')
     # join list to the final string
     elogXMLString = '\n'.join(elogXMLStringList)
+    print(elogXMLStringList)
+    with open("logbook-stuart-attempt.xml", "w") as f:
+        f.write(elogXMLString)
     # open printer process
     print(elogXMLString)
     elog = "xfellog"

@@ -1,8 +1,13 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGridLayout, QHBoxLayout
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel
 from PyQt5.QtGui import QPainter, QColor, QBrush
+
+from esme.gui.common import make_default_i1_lps_machine, make_default_b2_lps_machine, make_i1_watcher, make_b2_watcher
+from esme.control.mstate import AreaWatcher
+from esme.core import region_from_screen_name
+from esme import DiagnosticRegion
 
 class CircleIndicator(QWidget):
     def __init__(self, diameter=20, tooltip_text=None, parent=None):
@@ -21,7 +26,7 @@ class CircleIndicator(QWidget):
         painter.setPen(Qt.NoPen)
         painter.drawEllipse(0, 0, self.diameter, self.diameter)
 
-    def update_status(self, status_ok, tooltip_text):
+    def set_status(self, status_ok, tooltip_text):
         self.status_ok = status_ok
         self.setToolTip(tooltip_text)
         self.update()
@@ -105,7 +110,12 @@ class IndicatorPanelWidget(QWidget):
         self.layout.addWidget(container, row, 0)
 
         if check_callback:
-            status_true, tooltip_text = check_callback()
+            result = check_callback()
+            try:
+                status_true, tooltip_text = result
+            except TypeError:
+                status_true = result
+                tooltip_text = ""
             text_indicator.set_status(status_true)
             text_indicator.setToolTip(tooltip_text)
 
@@ -116,16 +126,53 @@ class IndicatorPanelWidget(QWidget):
         for indicator, callback in self.indicators:
             if callback:
                 result = callback()
-                if isinstance(result, tuple):  # For TextIndicator
+                try:
                     status_true, tooltip_text = result
+                except TypeError:
+                    status_true = result
+                    tooltip_text = ""
+                try:
+                    indicator.set_status(status_true, tooltip_text)
+                except:
                     indicator.set_status(status_true)
-                    indicator.setToolTip(tooltip_text)
-                else:  # For CircleIndicator or similar
-                    indicator.set_status(result)
+#                indicator.setToolTip(tooltip_text)
 
 
 class LPSStateWatcher(IndicatorPanelWidget):
-    pass
+    def __init__(self, parent=None):
+        super().__init__(parent=None)
+        self._i1state: AreaWatcher = make_i1_watcher()
+        self._b2state: AreaWatcher = make_b2_watcher()
+        self.mstate: AreaWatcher = self._i1state 
+
+        self.add_text_indicator("Laser Heater Shutter", "OPEN", "CLOSED", self.mstate.is_laser_heater_shutter_open)
+        self.add_indicator("Screen", check_callback=self._check_screen_state)
+        self.add_indicator("TDS", check_callback=self._check_tds_state)
+        self.add_indicator("Fast Kickers", check_callback=self._check_kickers_state)
+
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.check_indicators)
+        self.timer.start(0.5)
+
+    def _check_screen_state(self) -> tuple[bool, str]:
+        return self.mstate.check_screen_state()
+    
+    def _check_tds_state(self) -> tuple[bool, str]:
+        return self.mstate.check_tds_state()
+    
+    def _check_kickers_state(self) -> tuple[bool, str]:
+        return self.mstate.check_tds_state()
+
+    def set_screen(self, screen: str) -> None:
+        region = region_from_screen_name(screen)
+        if region is DiagnosticRegion.I1:
+            self.mstate = self._i1state
+        elif region is DiagnosticRegion.B2:
+            self.mstate = self._b2state
+        else:
+            raise ValueError("Unexpected Diagnostic Region")
+        self.mstate.watched_screen_name = screen
+
 
 
 # Boilerplate code to initialize and run the application
