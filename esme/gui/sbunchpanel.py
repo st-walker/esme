@@ -33,7 +33,7 @@ class SpecialBunchMidLayerPanel(QtWidgets.QWidget):
         self.timer = QTimer()
         self.timer.timeout.connect(lambda: None)
         self.timer.timeout.connect(self.update_ui)
-        self.timer.start(100)
+        self.timer.start(500)
 
     def set_kicker_setpoint(self, ksp: list[FastKickerSetpoint]) -> None:
         self.kicker_setpoint = ksp

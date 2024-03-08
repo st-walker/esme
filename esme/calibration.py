@@ -42,7 +42,8 @@ class AmplitudeVoltageMapping:
 
     def fit_to_voltage(self):
         popt, pcov = curve_fit(line, self._amplitudes, self._voltages)
-        return popt, 
+        return popt, pcov
+
     def fit_to_amplitude(self):
         popt, pcov = curve_fit(line, self._voltages, self._amplitudes)
         return popt, pcov
@@ -85,11 +86,11 @@ class CompleteCalibration:
             raise ValueError("")
 
     def r34_from_optics(self):
-        from IPython import embed; embed()
         return -5.5 #XXXXXX??
 
     def calculate_voltages(self):
-        from IPython import embed; embed()
+        pass
+        # from IPython import embed; embed()
 
     def mapping(self) -> AmplitudeVoltageMapping:
         amps = self.amplitudes

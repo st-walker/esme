@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import QGridLayout, QWidget
 from PyQt5.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
 import pyqtgraph as pg
 import numpy as np
+import scipy
 
 
 from esme import DiagnosticRegion
@@ -62,12 +63,25 @@ class PixelInfo:
 class ImagePayload:
     image: np.ndarray
     pixels: PixelInfo
+    levels: tuple[float, float]
+    xproj: np.ndarray
+    yproj: np.ndarray
+
+    @property
+    def x(self):
+        sh = self.image.shape
+        return np.linspace(-sh[0]/2, sh[0]/2, num=len(self.xproj)) * self.pixels.xsize
+
+    @property
+    def y(self):
+        sh = self.image.shape
+        return np.linspace(-sh[1]/2, sh[1]/2, num=len(self.yproj)) * self.pixels.ysize
 
 
 class ScreenDisplayWidget(QWidget):
     screen_name_signal = pyqtSignal(str)
     tds_calibration_signal = pyqtSignal(object)
-    
+
     def __init__(self, parent=None):
         super().__init__(parent=parent)
 
@@ -109,7 +123,7 @@ class ScreenDisplayWidget(QWidget):
             nypixel = screen.get_image_ypixels()
         except DOOCSReadError:
             return
-        
+
 
         tr = QtGui.QTransform()  # prepare ImageItem transformation:
         tr.scale(xpixel_size, ypixel_size)       # scale horizontal and vertical axes
@@ -124,7 +138,8 @@ class ScreenDisplayWidget(QWidget):
         # Flip lr is necessary to make it look good, this goes in
         # combination with the imageAxisOrder of pyqtgraph!  Changing
         # one requires the other to also change...
-        image_item.setImage(np.fliplr(image_payload.image))
+        image_item.setLevels(image_payload.levels)
+        image_item.setImage(image_payload.image)
 
     def set_axis_transform_with_label(self, axis_calib):
         if axis_calib.axis == "x":
@@ -136,7 +151,7 @@ class ScreenDisplayWidget(QWidget):
         axis.setLabel(**AXES_KWARGS[axis_calib.parameter])
         axis.negate = axis_calib.scale_factor < 0
         axis.setScale(abs(axis_calib.scale_factor))
-        
+
         self.xplot.update()
 
     def add_transverse_projection(self, dimension):
@@ -192,30 +207,13 @@ class ScreenDisplayWidget(QWidget):
         self.screen_thread.wait()
         self.calibration_thread.terminate()
         self.calibration_thread.wait()
-    
+
     def update_projection_plots(self, image_payload):
-        image = np.fliplr(image_payload.image)
-        sh = image.shape
+        self.xplot.clear()
+        self.yplot.clear()
+        self.xplot.plot(image_payload.x, image_payload.xproj)
+        self.yplot.plot(image_payload.yproj, image_payload.y)
 
-        xpixel_size = image_payload.pixels.xsize
-        ypixel_size = image_payload.pixels.ysize
-        import scipy
-        # t_sg = scipy.signal.savgol_filter(t, window_length=35, polyorder=2)
-        xproj = image.sum(axis=1, dtype=np.float64)
-        # print(sum(xproj))
-        # xproj /= np.sum(xproj)
-        xproj = scipy.signal.savgol_filter(xproj, window_length=20, polyorder=2)
-        yproj = image.sum(axis=0, dtype=np.float64)
-        # yproj /= np.sum(yproj)
-
-        yproj = scipy.signal.savgol_filter(yproj, window_length=20, polyorder=2)
-
-        x = np.linspace(-sh[0]/2, sh[0]/2, num=len(xproj)) * xpixel_size
-        y = np.linspace(-sh[1]/2, sh[1]/2, num=len(yproj)) * ypixel_size
-
-        self.xplot.plot(x, xproj)
-        self.yplot.plot(yproj, y)
-    
 
 class CalibrationWatcher(QObject):
     # This is necessary in case the calibrations change at all at the
@@ -244,7 +242,7 @@ class CalibrationWatcher(QObject):
             self.i1machine.deflector.calibration = tdscalib
         elif region is DiagnosticRegion.B2:
             self.b2machine.deflector.calibration = tdscalib
-        
+
     def get_streaking_plane_calibration(self) -> AxisCalibration:
         axis = self.get_streaking_plane()
         # If TDS is set to be used in the special bunch mid layer then
@@ -348,8 +346,8 @@ class CalibrationWatcher(QObject):
 
     def run(self) -> None:
         while not self.kill:
-            # Be tolerant of DOOCSReadErrors which might be very fleeting 
-            # and not really a problem, e.g. 
+            # Be tolerant of DOOCSReadErrors which might be very fleeting
+            # and not really a problem, e.g.
             # if beam goes off for a moment we won't be able to read the energy
             # for a bit, but that shoudln't crash the whole GUI.
             try:
@@ -363,7 +361,7 @@ class CalibrationWatcher(QObject):
         # necessary to have this method for connecting signal to.
         self.screen_name = screen_name
 
-        
+
 
 
 class ScreenWatcher(QObject):
@@ -382,7 +380,18 @@ class ScreenWatcher(QObject):
     def get_image(self):
         image = self.machine.screens[self.screen_name].get_image()
         LOG.info("Reading image from: %s", self.screen_name)
-        return ImagePayload(image=image, pixels=self.pixels)
+        minpix = image.min()
+        maxpix = image.max()
+
+        xproj = image.sum(axis=1, dtype=np.float64)        
+        xproj = scipy.signal.savgol_filter(xproj, window_length=20, polyorder=2)
+        yproj = image.sum(axis=0, dtype=np.float64)
+        
+        return ImagePayload(image=image,
+                            pixels=self.pixels,
+                            levels=(minpix, maxpix),
+                            xproj=xproj,
+                            yproj=yproj)
 
     def run(self):
         while not self.kill:
@@ -444,7 +453,7 @@ class NegatableLabelsAxisItem(pg.AxisItem):
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.negate = False 
+        self.negate = False
 
     def tickStrings(self, values, scale, spacing):
         # should probably do this in tickValues instead, but this is waye easier.
@@ -453,5 +462,3 @@ class NegatableLabelsAxisItem(pg.AxisItem):
         if self.negate:
             strings = [str(-float(s)) for s in strings]
         return strings
-    
-        

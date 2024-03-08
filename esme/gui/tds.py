@@ -79,7 +79,7 @@ class TDSControl(QtWidgets.QWidget):
         self.timer = QTimer()
         self.timer.timeout.connect(lambda: None)
         self.timer.timeout.connect(self.update_ui)
-        self.timer.start(250)
+        self.timer.start(500)        
 
         self.emit_calibrations()
 

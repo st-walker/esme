@@ -8,12 +8,19 @@ from esme.gui.common import make_default_i1_lps_machine, make_default_b2_lps_mac
 from esme.control.mstate import AreaWatcher
 from esme.core import region_from_screen_name
 from esme import DiagnosticRegion
+from esme.control.mstate import Status
+
 
 class CircleIndicator(QWidget):
+    COLOUR_MAPPING = {Status.GOOD: QColor(148, 255, 67),
+                      Status.WARNING: QColor(220, 152, 56),
+                      Status.BAD: QColor(227, 49, 30),
+                      Status.UNKNOWN: QColor(63, 63, 63)}
+
     def __init__(self, diameter=20, tooltip_text=None, parent=None):
         super().__init__(parent)
         self.diameter = diameter
-        self.status_ok = True
+        self.status: Status = Status.UNKNOWN
         self.setFixedSize(self.diameter, self.diameter)
         if tooltip_text:
             self.setToolTip(tooltip_text)
@@ -21,13 +28,13 @@ class CircleIndicator(QWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-        color = QColor(148, 255, 67) if self.status_ok else QColor(227, 49, 30)
+        color = self.COLOUR_MAPPING[self.status]
         painter.setBrush(QBrush(color))
         painter.setPen(Qt.NoPen)
         painter.drawEllipse(0, 0, self.diameter, self.diameter)
 
-    def set_status(self, status_ok, tooltip_text):
-        self.status_ok = status_ok
+    def set_status(self, status, tooltip_text):
+        self.status = status
         self.setToolTip(tooltip_text)
         self.update()
 
@@ -80,9 +87,9 @@ class IndicatorPanelWidget(QWidget):
         container.setLayout(container_layout)
         container_layout.setContentsMargins(0, 0, 0, 0)  # Reduce container margins
 
-        label = QLabel(label_text)
-        label.setAlignment(Qt.AlignVCenter)
-        container_layout.addWidget(label, alignment=Qt.AlignLeft)
+        # label = QLabel(label_text)
+        # label.setAlignment(Qt.AlignVCenter)
+        # container_layout.addWidget(label, alignment=Qt.AlignLeft)
 
         return container, container_layout
 
@@ -92,22 +99,28 @@ class IndicatorPanelWidget(QWidget):
 
         indicator = CircleIndicator()
         indicator.setToolTip(tooltip_text)
-        container_layout.addWidget(indicator, 1, alignment=Qt.AlignHCenter)
+        label = QLabel(label_text)
 
+        label.setAlignment(Qt.AlignVCenter)
+        # indicator.setAlignment(Qt.AlignVCenter)
         row = self.layout.rowCount()
-        self.layout.addWidget(container, row, 0)
+        self.layout.addWidget(label, row, 0)
+        self.layout.addWidget(indicator, row, 1, alignment=Qt.AlignHCenter)
 
         self.indicators.append((indicator, check_callback))
 
     def add_text_indicator(self, label_text: str, true_text: str, false_text: str, check_callback=None):
         """Add a new text-based status indicator with a label to the panel."""
-        container, container_layout = self.create_container(label_text)
-
-        text_indicator = TextIndicator(true_text=true_text, false_text=false_text)
-        container_layout.addWidget(text_indicator, 1, alignment=Qt.AlignHCenter)
+        # container, container_layout = self.create_container(label_text)
 
         row = self.layout.rowCount()
-        self.layout.addWidget(container, row, 0)
+
+        text_indicator = TextIndicator(true_text=true_text, false_text=false_text)
+        self.layout.addWidget(text_indicator, row, 1, alignment=Qt.AlignHCenter)
+
+        label = QLabel(label_text)
+        label.setAlignment(Qt.AlignVCenter)
+        self.layout.addWidget(label, row, 0)
 
         if check_callback:
             result = check_callback()
@@ -143,7 +156,7 @@ class LPSStateWatcher(IndicatorPanelWidget):
         super().__init__(parent=None)
         self._i1state: AreaWatcher = make_i1_watcher()
         self._b2state: AreaWatcher = make_b2_watcher()
-        self.mstate: AreaWatcher = self._i1state 
+        self.mstate: AreaWatcher = self._i1state
 
         self.add_text_indicator("Laser Heater Shutter", "OPEN", "CLOSED", self.mstate.is_laser_heater_shutter_open)
         self.add_indicator("Screen", check_callback=self._check_screen_state)
@@ -152,14 +165,14 @@ class LPSStateWatcher(IndicatorPanelWidget):
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.check_indicators)
-        self.timer.start(0.5)
+        self.timer.start(1000)
 
     def _check_screen_state(self) -> tuple[bool, str]:
         return self.mstate.check_screen_state()
-    
+
     def _check_tds_state(self) -> tuple[bool, str]:
         return self.mstate.check_tds_state()
-    
+
     def _check_kickers_state(self) -> tuple[bool, str]:
         return self.mstate.check_tds_state()
 

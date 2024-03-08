@@ -14,19 +14,62 @@ from esme.gui.common import (make_default_i1_lps_machine,
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
 
+from functools import wraps
+import cProfile
+import io
+import pstats
 
+
+
+def profile(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        pr = cProfile.Profile()
+        pr.enable()
+
+        result = func(*args, **kwargs)
+
+        pr.disable()
+        s = io.StringIO()
+        sortby = 'cumulative'
+        ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+        ps.print_stats()
+
+        print(s.getvalue())
+        return result
+    return wrapper
+
+@profile
 def start_gui():
     # make pyqt threadsafe
     # QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
     # create the application
+    # import yappi
+    # yappi.start()
+
+    import cProfile
+
     app = QApplication(sys.argv)
 
     main_window = LPSMainWindow()
 
     main_window.show()
     main_window.raise_()
-    sys.exit(app.exec_())
+    # sys.exit(app.exec_())
+    app.exec_()
+    # from IPython import embed; embed()
 
+    # x = yappi.get_func_stats()
+    # x.sort("ttot").print_all(columns={0:("name", 150),
+    #                                   1: ("ncall", 10),
+    #                                   2: ("tavg", 15), 3: ("ttot", 15)}
+    #                          )
+
+    # yappi.get_func_stats().print_all()
+    # yappi.get_thread_stats().print_all()
+
+
+    
 
 
 class LPSMainWindow(QMainWindow):
@@ -60,7 +103,7 @@ class LPSMainWindow(QMainWindow):
 
         self.jddd_camera_window_process = None
 
-        self.timer = self.build_main_timer(period=100)
+        self.timer = self.build_main_timer(period=500)
 
         # Get the TDS child panel to emit any TDS calibrations it may
         # have stored, that we we can propagate them from here to

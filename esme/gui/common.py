@@ -23,6 +23,14 @@ from esme.control.sbunches import SpecialBunchesControl
 from esme.control.dint import DOOCSInterfaceABC, DOOCSInterface
 from esme.control.vdint import DictionaryDOOCSInterface
 
+try:
+    import numba
+except ImportError:
+    pass
+else:
+    pg.setConfigOption('useNumba', True)
+
+
 
 DEFAULT_CONFIG_PATH = files("esme.gui") / "defaultconf.yaml"
 DEFAULT_VCONFIG_PATH = files("esme.gui") / "vmachine.yaml"
@@ -110,7 +118,7 @@ class QPlainTextEditLogger(QObject, logging.Handler):
 def setup_screen_display_widget(widget, axes=False, units="m"):
     image_plot = widget.addPlot()
     image_plot.clear()
-    image = pg.ImageItem(autoDownsample=True, border="k")
+    image = pg.ImageItem(border="k")
     # if not axes:
     image_plot.hideAxis("left")
     image_plot.hideAxis("bottom")
@@ -125,7 +133,7 @@ def setup_screen_display_widget(widget, axes=False, units="m"):
     lut = (colormap._lut * 255).view(np.ndarray)
 
     image.setLookupTable(lut)
-    # print(lut.shape)
+    print(lut.shape)
 
     
     return image_plot

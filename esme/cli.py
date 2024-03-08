@@ -24,7 +24,6 @@ LOG = logging.getLogger(__name__)
 
 
 
-
 class MutuallyExclusiveOption(Option):
     # From https://stackoverflow.com/a/37491504
     def __init__(self, *args, **kwargs):
@@ -99,6 +98,13 @@ def main(debug, profile):
             print(s.getvalue())
 
         atexit.register(exit)
+
+
+
+@main.command()
+def bolko():
+    from esme.gui.calibrator import start_bolko_tool
+    start_bolko_tool()
 
 
 @main.command(no_args_is_help=True)

@@ -1,4 +1,5 @@
 from typing import Optional
+from enum import Enum, auto
 
 from .dint import DOOCSInterface
 from .screens import Screen
@@ -10,11 +11,18 @@ from .tds import TransverseDeflector
 LH_CLOSED_ADDRESS = "XFEL.UTIL/LASERINT/GUN/SH3_CLOSED"
 LH_OPEN_ADDRESS = "XFEL.UTIL/LASERINT/GUN/SH3_OPEN"
 
+class Status(Enum):
+    GOOD = auto()
+    WARNING = auto()
+    BAD = auto()
+    UNKNOWN = auto()
+
+
 class AreaWatcher:
     def __init__(self, screens: Optional[dict[str, dict[str, Screen]]] = None,
                  kickerop: Optional[FastKickerController] = None,
                  tds: Optional[TransverseDeflector] = None,
-                 sbunches: Optional[SpecialBunchesControl] = None,                 
+                 sbunches: Optional[SpecialBunchesControl] = None,
                 watched_screen_name: Optional[str] = None,
                 di : Optional[DOOCSInterface] = None):
         self._screens = screens
@@ -27,11 +35,13 @@ class AreaWatcher:
     def is_laser_heater_shutter_open(self) -> bool:
         is_open = self.di.get_value(LH_OPEN_ADDRESS)
         is_closed = self.di.get_value(LH_CLOSED_ADDRESS)
-        return is_open and not is_closed
-    
+        if is_open and not is_closed:
+            return Status.GOOD
+        return Status.BAD
+
     def _get_watched_screen(self) -> Screen:
         return self._screens[self.watched_screen_name]
-    
+
     def check_screen_state(self) -> tuple[bool, str]:
         tooltips = []
         try:
@@ -51,9 +61,10 @@ class AreaWatcher:
                 tooltips.append(f"• Camera status: \"{screen.read_camera_status()}\"")
         except DOOCSReadError as e:
             tooltips.append("Unexpected read error whilst checking\nscreen state.")
-    
+
         tooltip = "\n".join(tooltips)
-        return not bool(tooltips), tooltip
+        state = Status.GOOD if not bool(tooltips) else Status.BAD
+        return state, tooltip
 
     def check_tds_state(self) -> tuple[bool, str]:
         tooltips = []
@@ -67,8 +78,9 @@ class AreaWatcher:
         except DOOCSReadError as e:
             tooltips.append("Unexpected read error whilst checking\nTDS state.")
         tooltip = "\n".join(tooltips)
-        return not bool(tooltips), tooltip
-    
+        state = Status.GOOD if not bool(tooltips) else Status.BAD
+        return state, tooltip
+
     def check_kickers_state(self) -> tuple[bool, str]:
         tooltips = []
         try:
@@ -88,7 +100,5 @@ class AreaWatcher:
         except DOOCSReadError as e:
             tooltips.append("Unexpected read error whilst checking\nkicker state")
         tooltip = "\n".join(tooltips)
-        return not bool(tooltips), tooltip
-            
-
-        
+        state = Status.GOOD if not bool(tooltips) else Status.BAD
+        return state, tooltip
