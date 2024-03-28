@@ -31,146 +31,6 @@
         <string>Main</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_3">
-        <item row="2" column="1">
-         <widget class="QGroupBox" name="groupBox_2">
-          <property name="title">
-           <string>Transverse Deflecting Structure</string>
-          </property>
-          <layout class="QGridLayout" name="gridLayout_4">
-           <item row="0" column="0">
-            <widget class="TDSControl" name="tds_panel" native="true">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="QGroupBox" name="controls_group_box">
-          <property name="maximumSize">
-           <size>
-            <width>16777215</width>
-            <height>16777215</height>
-           </size>
-          </property>
-          <property name="title">
-           <string>Diagnostic Area</string>
-          </property>
-          <layout class="QGridLayout" name="gridLayout_2">
-           <item row="1" column="0">
-            <layout class="QHBoxLayout" name="horizontalLayout_3">
-             <item>
-              <widget class="QLabel" name="screen_label">
-               <property name="text">
-                <string>Screen</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QComboBox" name="select_screen_combobox">
-               <property name="placeholderText">
-                <string/>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="jddd_screen_gui_button">
-               <property name="text">
-                <string>JDDD...</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
-           <item row="0" column="0">
-            <layout class="QVBoxLayout" name="verticalLayout">
-             <item>
-              <layout class="QHBoxLayout" name="horizontalLayout_2">
-               <item>
-                <widget class="QLabel" name="section_label">
-                 <property name="text">
-                  <string>Section</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QRadioButton" name="i1_radio_button">
-                 <property name="text">
-                  <string>I1</string>
-                 </property>
-                 <property name="checked">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QRadioButton" name="b2_radio_button">
-                 <property name="text">
-                  <string>B2</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </item>
-            </layout>
-           </item>
-          </layout>
-         </widget>
-        </item>
-        <item row="1" column="1">
-         <widget class="QGroupBox" name="groupBox_3">
-          <property name="title">
-           <string>Special Bunch Midlayer</string>
-          </property>
-          <layout class="QGridLayout" name="gridLayout_5">
-           <item row="0" column="0">
-            <widget class="SpecialBunchMidLayerPanel" name="special_bunch_panel" native="true">
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-        </item>
-        <item row="4" column="1">
-         <widget class="QGroupBox" name="groupBox_5">
-          <property name="title">
-           <string>Dumpline</string>
-          </property>
-          <layout class="QGridLayout" name="gridLayout_8">
-           <item row="1" column="0">
-            <widget class="QPushButton" name="high_streak_optics_button">
-             <property name="text">
-              <string>Apply High Streaking Optics</string>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="0">
-            <widget class="QPushButton" name="rollback_button">
-             <property name="text">
-              <string>Rollback</string>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="0">
-            <widget class="QPushButton" name="go_to_dump_button">
-             <property name="text">
-              <string>Go to Dump</string>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-        </item>
         <item row="3" column="1">
          <widget class="QGroupBox" name="groupBox">
           <property name="title">
@@ -247,7 +107,7 @@
           </layout>
          </widget>
         </item>
-        <item row="5" column="1">
+        <item row="4" column="1">
          <widget class="QGroupBox" name="groupBox_4">
           <property name="title">
            <string>Machine State</string>
@@ -259,14 +119,109 @@
           </layout>
          </widget>
         </item>
-        <item row="0" column="0" rowspan="6">
-         <widget class="ScreenDisplayWidget" name="screen_display_widget" native="true">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-            <horstretch>0</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
+        <item row="2" column="1">
+         <widget class="QGroupBox" name="groupBox_2">
+          <property name="title">
+           <string>Transverse Deflecting Structure</string>
           </property>
+          <layout class="QGridLayout" name="gridLayout_4">
+           <item row="0" column="0">
+            <widget class="TDSControl" name="tds_panel" native="true"/>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item row="0" column="0" rowspan="5">
+         <widget class="ScreenDisplayWidget" name="screen_display_widget" native="true"/>
+        </item>
+        <item row="1" column="1">
+         <widget class="QGroupBox" name="groupBox_3">
+          <property name="title">
+           <string>Special Bunch Midlayer</string>
+          </property>
+          <layout class="QGridLayout" name="gridLayout_5">
+           <item row="0" column="0">
+            <widget class="SpecialBunchMidLayerPanel" name="special_bunch_panel" native="true"/>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QGroupBox" name="controls_group_box">
+          <property name="maximumSize">
+           <size>
+            <width>16777215</width>
+            <height>16777215</height>
+           </size>
+          </property>
+          <property name="title">
+           <string>Diagnostic Area</string>
+          </property>
+          <layout class="QGridLayout" name="gridLayout_2">
+           <item row="1" column="0">
+            <layout class="QHBoxLayout" name="horizontalLayout_3">
+             <item>
+              <widget class="QLabel" name="screen_label">
+               <property name="text">
+                <string>Screen</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QComboBox" name="select_screen_combobox">
+               <property name="toolTip">
+                <string>The name of the screen to use</string>
+               </property>
+               <property name="placeholderText">
+                <string/>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="jddd_screen_gui_button">
+               <property name="toolTip">
+                <string>Open the corresponding JDDD camera control panel for the selected screen</string>
+               </property>
+               <property name="text">
+                <string>JDDD...</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item row="0" column="0">
+            <layout class="QVBoxLayout" name="verticalLayout">
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_2">
+               <item>
+                <widget class="QLabel" name="section_label">
+                 <property name="text">
+                  <string>Section</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QRadioButton" name="i1_radio_button">
+                 <property name="text">
+                  <string>I1</string>
+                 </property>
+                 <property name="checked">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QRadioButton" name="b2_radio_button">
+                 <property name="text">
+                  <string>B2</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </item>
+          </layout>
          </widget>
         </item>
        </layout>
@@ -305,7 +260,13 @@
     <addaction name="action_print_to_logbook"/>
     <addaction name="action_close"/>
    </widget>
+   <widget class="QMenu" name="menuOptics">
+    <property name="title">
+     <string>Optics</string>
+    </property>
+   </widget>
    <addaction name="menuMenu"/>
+   <addaction name="menuOptics"/>
   </widget>
   <action name="action_close">
    <property name="text">

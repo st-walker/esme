@@ -158,7 +158,6 @@ def calibration(calib_file):
     start_calibration_explorer_gui(calib_file)
 
 
-
 @main.command(no_args_is_help=True)
 @argument("dirname", nargs=1, type=CPath(exists=True, file_okay=False, path_type=Path))
 @option("--with-sigr", is_flag=True)

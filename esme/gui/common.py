@@ -2,7 +2,7 @@ import yaml
 import re
 import socket
 from pathlib import Path
-from importlib_resources import files
+from importlib.resources import files
 import logging
 import pyqtgraph as pg
 from matplotlib import cm

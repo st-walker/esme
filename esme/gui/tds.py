@@ -1,7 +1,7 @@
 # from PyQt5.QtCore import QPointF
 # from PyQt5.QtGui import QColor, QPainter, QBrush
 # from PyQt5.QtWidgets import QAbstractButton, QPushButton, QCheckBox,
-from importlib_resources import files
+from importlib.resources import files
 import os
 from pathlib import Path
 from datetime import datetime

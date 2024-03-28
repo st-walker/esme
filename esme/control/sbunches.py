@@ -38,6 +38,8 @@ class SpecialBunchesControl:
     DIAG_BUNCH_FIRE_VALUE = 1
     DIAG_BUNCH_STOP_VALUE = 0
     DONT_USE_KICKERS_DUMMY_KICKER_NUMBER = 666
+    LFF_X_ADDRESS = "XFEL.DIAG/DAMC2IBFB/DI1914TL.0_CTRL/ADAPTIVE_FF_EN_X"
+    LFF_Y_ADDRESS = "XFEL.DIAG/DAMC2IBFB/DI1914TL.0_CTRL/ADAPTIVE_FF_EN_Y"
 
     def __init__(self, location: Optional[DiagnosticRegion] = None,
                  di: Optional[DOOCSInterface] = None) -> None:
@@ -92,7 +94,7 @@ class SpecialBunchesControl:
     def get_use_tds(self) -> bool:
         clist = self.get_kicker_control_list()
         return bool(clist[1])
-        
+
     def set_kicker_name(self, kicker_name: str) -> None:
         clist = self.get_kicker_control_list()
         kmap = self.get_kicker_name_to_kicker_index_map()
@@ -102,12 +104,13 @@ class SpecialBunchesControl:
         self.di.set_value(self.control_address(), clist)
 
     def get_use_kicker(self):
+        value = False
         for readout in self.di.get_value(f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/*{self.location}/KICKER.ON"):
             value, *_, loc = readout
             _, location = loc.split(".")
             if location == self.location:
                 break
-        ch = f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/{location}/KICKER.ON"
+        ch = f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/{self.location}/KICKER.ON"
         LOG.debug(f"Read {value} from {ch}")
         return value
 
@@ -172,6 +175,23 @@ class SpecialBunchesControl:
         ch = self.fire_diagnostic_bunch_address()
         LOG.info(f"Stopping diagnostic bunches: {ch} = {self.DIAG_BUNCH_STOP_VALUE}")
         self.di.set_value(ch, self.DIAG_BUNCH_STOP_VALUE)
+
+    def ibfb_x_lff_is_on(self) -> bool:
+        """Check LFF for IBFB in x-plane"""
+        return bool(self.di.get_value(self.LFF_X_ADDRESS))
+
+    def ibfb_y_lff_is_on(self) -> bool:
+        """Check LFF for IBFB in x-plane"""
+        return bool(self.di.get_value(self.LFF_Y_ADDRESS))
+
+    def is_either_ibfb_on(self) -> bool:
+        return self.ibfb_x_lff_is_on() or self.ibfb_y_lff_is_on()
+
+    def set_ibfb_lff(self, *, on: bool) -> None:
+        state = int(bool(on))
+        self.di.set_value(self.LFF_X_ADDRESS, state)
+        self.di.set_value(self.LFF_Y_ADDRESS, state)
+
 
     # def dump_all(self) -> dict:
     #     addresses = [self.control_address(),

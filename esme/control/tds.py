@@ -32,6 +32,10 @@ class TransverseDeflector:
         ch = self.rb_fdl + f"{self.PHASE_RB_PROP}"
         return self.di.get_value(ch)
 
+    def increment_phase(self, phase_increment: float) -> None:
+        phase_increment += self.get_phase_sp()
+        self.set_phase(phase_increment)        
+
     def get_amplitude_rb(self) -> float:
         ch = self.rb_fdl + f"{self.AMPLITUDE_RB_PROP}"
         return self.di.get_value(ch)

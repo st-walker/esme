@@ -159,6 +159,7 @@ class LPSStateWatcher(IndicatorPanelWidget):
         self.mstate: AreaWatcher = self._i1state
 
         self.add_text_indicator("Laser Heater Shutter", "OPEN", "CLOSED", self.mstate.is_laser_heater_shutter_open)
+        self.add_text_indicator("IBFB", "OFF", "ON", self.mstate.check_ibfb_state)
         self.add_indicator("Screen", check_callback=self._check_screen_state)
         self.add_indicator("TDS", check_callback=self._check_tds_state)
         self.add_indicator("Fast Kickers", check_callback=self._check_kickers_state)

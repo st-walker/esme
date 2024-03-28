@@ -9,15 +9,9 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>379</width>
-    <height>215</height>
+    <width>489</width>
+    <height>287</height>
    </rect>
-  </property>
-  <property name="sizePolicy">
-   <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-    <horstretch>0</horstretch>
-    <verstretch>0</verstretch>
-   </sizepolicy>
   </property>
   <property name="minimumSize">
    <size>
@@ -34,22 +28,64 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout">
-   <item row="5" column="0" colspan="2">
+  <layout class="QGridLayout" name="gridLayout_2">
+   <item row="0" column="0">
+    <widget class="QLabel" name="phase_label_2">
+     <property name="text">
+      <string>Phase / °</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QDoubleSpinBox" name="tds_voltage_spinbox">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QDoubleSpinBox" name="tds_amplitude_spinbox">
+     <property name="maximum">
+      <double>100.000000000000000</double>
+     </property>
+    </widget>
+   </item>
+   <item row="6" column="0">
+    <widget class="QPushButton" name="tds_calibration_pushbutton">
+     <property name="text">
+      <string>Calibration...</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="2">
+    <widget class="QLabel" name="label_2">
+     <property name="text">
+      <string>Readback / %</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="3">
+    <widget class="ReadOnlyNumberDisplay" name="tds_amplitude_readback"/>
+   </item>
+   <item row="2" column="2">
+    <widget class="QLabel" name="label_3">
+     <property name="text">
+      <string>Readback / MV</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QLabel" name="voltage_label">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="text">
+      <string>Voltage / MV</string>
+     </property>
+    </widget>
+   </item>
+   <item row="6" column="1" colspan="2">
     <layout class="QHBoxLayout" name="horizontalLayout_10">
-     <item>
-      <widget class="QLabel" name="calibration_label">
-       <property name="text">
-        <string>Calibration:</string>
-       </property>
-       <property name="scaledContents">
-        <bool>false</bool>
-       </property>
-       <property name="textInteractionFlags">
-        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-       </property>
-      </widget>
-     </item>
      <item>
       <widget class="QLabel" name="calibration_file_path_label">
        <property name="text">
@@ -62,60 +98,31 @@
      </item>
     </layout>
    </item>
-   <item row="0" column="0" colspan="2">
-    <layout class="QHBoxLayout" name="horizontalLayout_8">
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_3">
-       <item>
-        <widget class="QLabel" name="phase_label_2">
-         <property name="text">
-          <string>Phase / °</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QDoubleSpinBox" name="tds_phase_spinbox">
-         <property name="minimum">
-          <double>-1080.000000000000000</double>
-         </property>
-         <property name="maximum">
-          <double>1080.000000000000000</double>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_4">
-       <item>
-        <widget class="QLineEdit" name="tds_phase_readback_line">
-         <property name="styleSheet">
-          <string notr="true">background-color: rgba(255, 255, 255, 0);</string>
-         </property>
-         <property name="maxLength">
-          <number>4</number>
-         </property>
-         <property name="readOnly">
-          <bool>true</bool>
-         </property>
-         <property name="clearButtonEnabled">
-          <bool>false</bool>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-    </layout>
+   <item row="1" column="0">
+    <widget class="QLabel" name="amplitude_label">
+     <property name="text">
+      <string>Amplitude / %</string>
+     </property>
+    </widget>
    </item>
-   <item row="6" column="0" colspan="2">
+   <item row="0" column="1">
+    <widget class="QDoubleSpinBox" name="tds_phase_spinbox">
+     <property name="minimum">
+      <double>-1080.000000000000000</double>
+     </property>
+     <property name="maximum">
+      <double>1080.000000000000000</double>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="3">
+    <widget class="ReadOnlyNumberDisplay" name="tds_voltage_readback"/>
+   </item>
+   <item row="0" column="3">
+    <widget class="ReadOnlyNumberDisplay" name="tds_phase_readback"/>
+   </item>
+   <item row="6" column="3">
     <layout class="QHBoxLayout" name="horizontalLayout_7">
-     <item>
-      <widget class="QLabel" name="calibration_time_label">
-       <property name="text">
-        <string>Calibration Time:</string>
-       </property>
-      </widget>
-     </item>
      <item>
       <widget class="QLabel" name="calibration_time_label_2">
        <property name="text">
@@ -128,85 +135,107 @@
      </item>
     </layout>
    </item>
-   <item row="2" column="0">
-    <layout class="QHBoxLayout" name="horizontalLayout">
-     <item>
-      <widget class="QLabel" name="voltage_label">
+   <item row="5" column="0" colspan="4">
+    <widget class="Line" name="line">
+     <property name="frameShadow">
+      <enum>QFrame::Sunken</enum>
+     </property>
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="0" colspan="4">
+    <layout class="QGridLayout" name="gridLayout">
+     <item row="1" column="1">
+      <widget class="QPushButton" name="pushButton">
+       <property name="text">
+        <string>+180°</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QPushButton" name="pushButton_2">
        <property name="enabled">
         <bool>false</bool>
        </property>
        <property name="text">
-        <string>Voltage / MV</string>
+        <string>Go to Zero Crossing</string>
        </property>
       </widget>
      </item>
-     <item>
-      <widget class="QDoubleSpinBox" name="tds_voltage_spinbox">
+     <item row="0" column="0">
+      <widget class="QPushButton" name="find_zero_crossing_button">
        <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>Find Zero Crossing</string>
+       </property>
+       <property name="flat">
         <bool>false</bool>
        </property>
       </widget>
      </item>
+     <item row="0" column="1" colspan="2">
+      <widget class="QPushButton" name="set_zero_crossing_button">
+       <property name="text">
+        <string>Set Zero Crossing</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="3">
+      <widget class="QPushButton" name="ramp_to_button">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>Ramp from 0% to...</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="3">
+      <widget class="QLabel" name="zero_crossing_label">
+       <property name="text">
+        <string>Crossing: </string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <widget class="QPushButton" name="pushButton_3">
+       <property name="text">
+        <string>-180°</string>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
-   <item row="4" column="1">
-    <widget class="QPushButton" name="tds_calibration_pushbutton">
-     <property name="text">
-      <string>Calibration...</string>
+   <item row="3" column="0" colspan="4">
+    <widget class="Line" name="line_2">
+     <property name="frameShadow">
+      <enum>QFrame::Sunken</enum>
+     </property>
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
      </property>
     </widget>
    </item>
-   <item row="4" column="0">
-    <widget class="QPushButton" name="pushButton">
+   <item row="0" column="2">
+    <widget class="QLabel" name="label">
      <property name="text">
-      <string>Find Phase</string>
-     </property>
-     <property name="flat">
-      <bool>false</bool>
+      <string>Readback / °</string>
      </property>
     </widget>
-   </item>
-   <item row="1" column="0" colspan="2">
-    <layout class="QHBoxLayout" name="horizontalLayout_9">
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_2">
-       <item>
-        <widget class="QLabel" name="amplitude_label">
-         <property name="text">
-          <string>Ampl. / %</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QDoubleSpinBox" name="tds_amplitude_spinbox">
-         <property name="maximum">
-          <double>100.000000000000000</double>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_5">
-       <item>
-        <widget class="QLineEdit" name="tds_amplitude_readback_line">
-         <property name="styleSheet">
-          <string notr="true">background-color: rgba(255, 255, 255, 0);</string>
-         </property>
-         <property name="maxLength">
-          <number>4</number>
-         </property>
-         <property name="readOnly">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-    </layout>
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ReadOnlyNumberDisplay</class>
+   <extends>QLineEdit</extends>
+   <header>esme.gui.core</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

@@ -84,6 +84,10 @@ What was quantum efficiency before and after?
 4. [X] Get transverse projections working.
 5. [X] Get time projection working.
 6. [X] Get energy projection working.
+7. [ ] Current profile reconstruction
+8. [ ] Ensure SBM behaves itself when stopping
+10. [ ] IBFP Check
+
 
 
 I need to be able to distinguish between rising and falling zero intercepts.

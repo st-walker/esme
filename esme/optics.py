@@ -2,7 +2,7 @@ from scipy.io import loadmat
 import pandas as pd
 import numpy as np
 from oxfel.predefined import cat_to_i1d
-from oxfel.fel_track import EuXFELSimConfig
+from oxfel.xfelt import EuXFELSimConfig
 from oxfel.optics import get_default_match_point
 from ocelot.cpbd.elements import Cavity
 

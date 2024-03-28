@@ -6,20 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>402</width>
-    <height>190</height>
+    <width>450</width>
+    <height>100</height>
    </rect>
-  </property>
-  <property name="sizePolicy">
-   <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-    <horstretch>0</horstretch>
-    <verstretch>0</verstretch>
-   </sizepolicy>
   </property>
   <property name="minimumSize">
    <size>
     <width>0</width>
-    <height>186</height>
+    <height>100</height>
    </size>
   </property>
   <property name="maximumSize">
@@ -31,88 +25,38 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout_3">
-   <item row="4" column="3">
-    <widget class="QPushButton" name="stop_button">
-     <property name="text">
-      <string>Stop</string>
-     </property>
-    </widget>
-   </item>
-   <item row="4" column="0" colspan="3">
-    <widget class="QPushButton" name="start_button">
-     <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Start diagnostic bunch optionally with fast kickers and the TDS&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-     </property>
-     <property name="text">
-      <string>Start Diag. Bunch</string>
-     </property>
-     <property name="checkable">
-      <bool>true</bool>
-     </property>
-     <property name="checked">
-      <bool>false</bool>
-     </property>
-     <property name="autoRepeat">
-      <bool>false</bool>
-     </property>
-    </widget>
-   </item>
-   <item row="4" column="4">
-    <layout class="QHBoxLayout" name="horizontalLayout">
-     <item>
-      <widget class="QLabel" name="npulses_label">
+  <layout class="QGridLayout" name="gridLayout_2">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item row="0" column="0">
+    <layout class="QGridLayout" name="gridLayout">
+     <item row="0" column="4">
+      <widget class="QCheckBox" name="use_fast_kickers_checkbox">
+       <property name="toolTip">
+        <string>Whether to fire the fast kickers for the diagnostic bunch</string>
+       </property>
        <property name="text">
-        <string>Pulses</string>
+        <string>Fast Kickers</string>
        </property>
       </widget>
      </item>
-     <item>
-      <widget class="QSpinBox" name="npulses_spinbox">
-       <property name="maximum">
-        <number>10000000</number>
-       </property>
-       <property name="value">
-        <number>10000</number>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item row="1" column="4">
-    <widget class="QCheckBox" name="use_tds_checkbox">
-     <property name="text">
-      <string>Use TDS</string>
-     </property>
-    </widget>
-   </item>
-   <item row="3" column="0" colspan="2">
-    <layout class="QGridLayout" name="gridLayout_2">
-     <item row="0" column="0">
-      <widget class="QLabel" name="bunch_label">
-       <property name="text">
-        <string>Bunch</string>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="1">
-      <widget class="QSpinBox" name="bunch_spinbox">
-       <property name="minimum">
-        <number>1</number>
-       </property>
-       <property name="maximum">
-        <number>4000</number>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item row="2" column="2" rowspan="2" colspan="3">
-    <layout class="QVBoxLayout" name="verticalLayout">
-     <item>
+     <item row="0" column="3">
       <widget class="QPushButton" name="go_to_last_bunch_in_br_pushbutton">
        <property name="enabled">
         <bool>true</bool>
+       </property>
+       <property name="toolTip">
+        <string>Set the bunch number to the last bunch in the selected beam region</string>
        </property>
        <property name="text">
         <string>Last in Beam Region</string>
@@ -122,10 +66,20 @@
        </property>
       </widget>
      </item>
-     <item>
+     <item row="1" column="1">
+      <widget class="QLabel" name="bunch_label">
+       <property name="text">
+        <string>Bunch</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="3">
       <widget class="QPushButton" name="go_to_last_laserpulse_pushbutton">
        <property name="enabled">
         <bool>true</bool>
+       </property>
+       <property name="toolTip">
+        <string>Append a bunch to the last beam region in the machine</string>
        </property>
        <property name="text">
         <string>Append Diag. Bunch</string>
@@ -135,32 +89,100 @@
        </property>
       </widget>
      </item>
-    </layout>
-   </item>
-   <item row="2" column="0" colspan="2">
-    <layout class="QGridLayout" name="gridLayout">
-     <item row="0" column="0">
+     <item row="0" column="2">
+      <widget class="QSpinBox" name="beamregion_spinbox">
+       <property name="toolTip">
+        <string>The beam region in which to select a diagnostic bunch</string>
+       </property>
+       <property name="minimum">
+        <number>1</number>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="2">
+      <widget class="QSpinBox" name="bunch_spinbox">
+       <property name="toolTip">
+        <string>The bunch number within the selected beam region to optionally fire the kickers or TDS for.</string>
+       </property>
+       <property name="minimum">
+        <number>1</number>
+       </property>
+       <property name="maximum">
+        <number>4000</number>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
       <widget class="QLabel" name="beam_region_label">
        <property name="text">
         <string>Beam Region</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="1">
-      <widget class="QSpinBox" name="beamregion_spinbox">
-       <property name="minimum">
-        <number>1</number>
+     <item row="1" column="4">
+      <widget class="QCheckBox" name="use_tds_checkbox">
+       <property name="toolTip">
+        <string>Whether to fire the TDS for the diagnostic bunch</string>
+       </property>
+       <property name="text">
+        <string>TDS</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="3">
+      <widget class="QPushButton" name="start_button">
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Start diagnostic bunch optionally with fast kickers and the TDS&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="text">
+        <string>Start Diag. Bunch</string>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+       <property name="checked">
+        <bool>false</bool>
+       </property>
+       <property name="autoRepeat">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="2">
+      <layout class="QHBoxLayout" name="horizontalLayout">
+       <item>
+        <widget class="QSpinBox" name="npulses_spinbox">
+         <property name="toolTip">
+          <string>The number of times to fire the special diagnostic bunch before stopping</string>
+         </property>
+         <property name="maximum">
+          <number>10000000</number>
+         </property>
+         <property name="value">
+          <number>10000</number>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item row="2" column="1">
+      <widget class="QLabel" name="npulses_label">
+       <property name="text">
+        <string>Pulses</string>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="4">
+      <widget class="QCheckBox" name="ibfb_checkbox">
+       <property name="toolTip">
+        <string>IBFB Adaptive FF State (Should typically be off when doing measurements)</string>
+       </property>
+       <property name="text">
+        <string>IBFB AFF</string>
        </property>
       </widget>
      </item>
     </layout>
-   </item>
-   <item row="1" column="0" colspan="2">
-    <widget class="QCheckBox" name="use_fast_kickers_checkbox">
-     <property name="text">
-      <string>Use Fast Kickers</string>
-     </property>
-    </widget>
    </item>
   </layout>
  </widget>

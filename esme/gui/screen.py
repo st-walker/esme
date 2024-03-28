@@ -179,7 +179,7 @@ class ScreenDisplayWidget(QWidget):
         self.screen_name_signal.connect(screen_worker.set_screen_name)
         screen_thread = QThread()
         screen_worker.moveToThread(screen_thread)
-        screen_thread.started.connect(screen_worker.run)
+        screen_thread.started.connect(screen_worker.run_offline)
         screen_thread.start() # XXX Is this important?!!??!?!  Before signal connection?!?
         screen_worker.image_signal.connect(self.post_beam_image)
         screen_worker.image_signal.connect(self.update_projection_plots)
@@ -379,7 +379,7 @@ class ScreenWatcher(QObject):
 
     def get_image(self):
         image = self.machine.screens[self.screen_name].get_image()
-        LOG.info("Reading image from: %s", self.screen_name)
+        # LOG.debug("Reading image from: %s", self.screen_name)
         minpix = image.min()
         maxpix = image.max()
 
@@ -393,9 +393,18 @@ class ScreenWatcher(QObject):
                             xproj=xproj,
                             yproj=yproj)
 
-    def run(self):
+    def run_offline(self):
         while not self.kill:
             time.sleep(1)
+            image = self.get_image()
+            if image is None:
+                continue
+            else:
+                self.image_signal.emit(image)
+
+
+    def run(self):
+        while not self.kill:
             image = self.get_image()
             if image is None:
                 continue

@@ -39,7 +39,7 @@ def profile(func):
         return result
     return wrapper
 
-@profile
+# @profile
 def start_gui():
     # make pyqt threadsafe
     # QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
@@ -112,26 +112,26 @@ class LPSMainWindow(QMainWindow):
         # Emit initial screen name to any widgets.
         self.emit_current_screen_name()
 
-    def update_location(self):
-        self.update_screen_combo_box()
+    # def update_location(self):
+    #     self.update_screen_combo_box()
 
-    def update_screen_combo_box(self):
-        self.ui.select_screen_combobox.clear()
-        self.ui.select_screen_combobox.addItems(self.machine.screens)
+    # def update_screen_combo_box(self):
+    #     self.ui.select_screen_combobox.clear()
+    #     self.ui.select_screen_combobox.addItems(self.machine.screens)
 
-    def emit_current_screen_name(self):
-        self.screen_name_signal.emit(self.get_selected_screen_name())
+    # def emit_current_screen_name(self):
+    #     self.screen_name_signal.emit(self.get_selected_screen_name())
 
-    def get_selected_screen_name(self) -> str:
-        return self.ui.select_screen_combobox.currentText()
+    # def get_selected_screen_name(self) -> str:
+    #     return self.ui.select_screen_combobox.currentText()
 
-    def open_jddd_screen_window(self):
-        self.jddd_camera_window_process = QtCore.QProcess()
-        screen = self.get_selected_screen_name()
-        command = f"jddd-run -file commonAll_In_One_Camera_Expert.xml -address XFEL.DIAG/CAMERA/{screen}/"
-        self.jddd_camera_window_process.start(command)
-        self.jddd_camera_window_process.waitForStarted()
-        self.jddd_camera_window_process.finished.connect(self.close_jddd_screen_window)
+    # def open_jddd_screen_window(self):
+    #     self.jddd_camera_window_process = QtCore.QProcess()
+    #     screen = self.get_selected_screen_name()
+    #     command = f"jddd-run -file commonAll_In_One_Camera_Expert.xml -address XFEL.DIAG/CAMERA/{screen}/"
+    #     self.jddd_camera_window_process.start(command)
+    #     self.jddd_camera_window_process.waitForStarted()
+    #     self.jddd_camera_window_process.finished.connect(self.close_jddd_screen_window)
 
     def update_tds_voltage_calibration(self, voltage_calibration):
         set_tds_calibration_by_region(self, voltage_calibration)

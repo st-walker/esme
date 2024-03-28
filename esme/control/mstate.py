@@ -47,7 +47,7 @@ class AreaWatcher:
         try:
             screen = self._get_watched_screen()
         except:
-            return False, "No Screen Name Set"
+            return Status.UNKNOWN, "No Screen Name Set"
         try:
             if not screen.is_online():
                 tooltips.append("• Camera is off")
@@ -86,7 +86,7 @@ class AreaWatcher:
         try:
             screen = self._get_watched_screen()
         except KeyError:
-            return False, "No screen name set, unable to determine kicker"
+            return Status.UNKNOWN, "No screen name set, unable to determine kicker"
 
         kicker_setpoints = screen.get_fast_kicker_setpoints()
         try:
@@ -98,7 +98,25 @@ class AreaWatcher:
                 if not kicker.is_hv_on():
                     tooltips.append(f"• HV is not on for kicker {name}")
         except DOOCSReadError as e:
-            tooltips.append("Unexpected read error whilst checking\nkicker state")
+            tooltips.append(f"Unexpected read: {e.channel} error whilst checking\nkicker state")
         tooltip = "\n".join(tooltips)
         state = Status.GOOD if not bool(tooltips) else Status.BAD
         return state, tooltip
+
+    def check_ibfb_state(self) -> tuple[Status, str]:
+        tooltips = []
+        try:
+            is_off = self._sbunches.is_either_ibfb_on()
+            if is_off:
+                return Status.GOOD
+
+            if self._sbunches.ibfb_x_lff_is_on():
+                tooltips.append("• IBFB X is on")
+
+            if self._sbunches.ibfb_y_lff_is_on():
+                tooltips.append("• IBFB Y is on")                
+        except DOOCSReadError as e:
+            return Status.UNKNOWN, f"Unable to read {e.channel} when checking IBFB"
+        else:
+            return Status.BAD, "\n".join(tooltips)
+

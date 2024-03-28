@@ -79,7 +79,7 @@ from esme.gui.common import (make_default_i1_lps_machine,
 class CalibrationMainWindow(QMainWindow):
     avmapping_signal = pyqtSignal(AmplitudeVoltageMapping)
     NROWS = 5
-    NCOLS = 5
+    NCOLS = 7
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -176,7 +176,14 @@ class CalibrationMainWindow(QMainWindow):
     def create_table(self, left_layout):
         self.table_widget = QtWidgets.QTableWidget(self.NROWS, self.NCOLS)
         self.table_widget.setHorizontalHeaderLabels(
-            ["Amplitude / %", "𝜙₀₊ / °", "𝜙₁₊ / °", "Calibration Factor µm/ps", "Voltage / MV"])
+            ["Amplitude / %",
+             "  𝜙₀₀ / °  ",
+             "  𝜙₀₁ / °  ",
+             "  𝜙₁₀ / °  ",
+             "  𝜙₁₁ / °  ",
+             "Calibration Factor µm/ps",
+             "Voltage / MV"]
+        )
         self.table_widget.horizontalHeader().setStretchLastSection(True)
         # self.table_widget.itemChanged.connect(self.update_plots_and_voltage)
         left_layout.addWidget(self.table_widget)
@@ -184,7 +191,7 @@ class CalibrationMainWindow(QMainWindow):
         for row in range(self.table_widget.rowCount()):
             item = QtWidgets.QTableWidgetItem()
             item.setFlags(item.flags() ^ QtCore.Qt.ItemIsEditable)
-            self.table_widget.setItem(row, 4, item)
+            self.table_widget.setItem(row, 6, item)
         self.table_widget.resizeColumnsToContents()
 
     def create_calibration_group_box(self, layout):

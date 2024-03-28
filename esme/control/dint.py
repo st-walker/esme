@@ -1,3 +1,8 @@
+
+# PYBIND11: /Users/xfeloper/.conda/envs/esme/bin/pybind11-config
+# PKG_CONFIG: export PKG_CONFIG_PATH=/local/Darwin-x86_64/lib/pkgconfig
+
+
 """
 
 EuXFEL machine interfaces
@@ -144,7 +149,7 @@ class DOOCSInterface(DOOCSInterfaceABC):
         try:
             val = pydoocs.read(channel)
         except pydoocs.DoocsException as e:
-            raise DOOCSReadError(f"Failed get_value with channel: {channel}") from e
+            raise DOOCSReadError(channel) from e
         return val["data"]
 
     def set_value(self, channel: str, val: Any) -> None:
@@ -159,7 +164,7 @@ class DOOCSInterface(DOOCSInterfaceABC):
         try:
             pydoocs.write(channel, val)
         except pydoocs.DoocsException as e:
-            raise DOOCSWriteError(f"Failed writing {val} to {channel}") from e
+            raise DOOCSWriteError(channel, val) from e
 
     def get_charge(self) -> float:
         return self.get_value("XFEL.DIAG/CHARGE.ML/TORA.25.I1/CHARGE.SA1")

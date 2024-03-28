@@ -1,15 +1,22 @@
-
-
+"""A set of exceptions to be used when interacting with the machine directly."""
 
 
 class DOOCSError(RuntimeError):
-    pass
+    def __init__(self, address):
+        self.address = address
+
 
 class DOOCSReadError(DOOCSError):
-    pass
+    def __str__(self):
+        f"Read Error with channel: {self.channel}"
 
 class DOOCSWriteError(DOOCSError):
-    pass
+    def __init__(self, address: str, value: str):
+        super().__init__(address)
+        self.value = value
+
+    def __str__(self) -> str:
+        return f"Write error with channel: {self.channel=}, {value=}"
 
 
 class EuXFELUserError(RuntimeError):
@@ -22,4 +29,3 @@ class EuXFELMachineError(RuntimeError):
     conducive to successul GUI operation
 
     """
-
