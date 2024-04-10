@@ -43,7 +43,7 @@ class SpecialBunchesControl:
 
     def __init__(self, location: Optional[DiagnosticRegion] = None,
                  di: Optional[DOOCSInterface] = None) -> None:
-        self.location = location if location else DiagnosticRegion.I1
+        self.location: DiagnosticRegion = location if location else DiagnosticRegion.I1
         self.di = di if di else DOOCSInterface()
 
     def set_beam_region(self, br: int) -> None:
@@ -105,25 +105,25 @@ class SpecialBunchesControl:
 
     def get_use_kicker(self):
         value = False
-        for readout in self.di.get_value(f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/*{self.location}/KICKER.ON"):
+        for readout in self.di.get_value(f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/*{self.location.name}/KICKER.ON"):
             value, *_, loc = readout
             _, location = loc.split(".")
             if location == self.location:
                 break
-        ch = f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/{self.location}/KICKER.ON"
+        ch = f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/{self.location.name}/KICKER.ON"
         LOG.debug(f"Read {value} from {ch}")
         return value
 
     def power_on_kickers(self) -> None:
         # Why is this *?
-        *_, loc = self.di.get_value(f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/*{self.location}/KICKER.ON")[0]
+        *_, loc = self.di.get_value(f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/*{self.location.name}/KICKER.ON")[0]
         ch = f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/{loc}/KICKER.ON"
         value = 0
         LOG.debug(f"Setting value: {ch=} value={value}")
         self.di.set_value(ch, value)
 
     def power_off_kickers(self) -> None:
-        *_, loc = self.di.get_value(f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/*{self.location}/KICKER.ON")
+        *_, loc = self.di.get_value(f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/*{self.location.name}/KICKER.ON")
         ch = f"XFEL.SDIAG/SPECIAL_BUNCHES.ML/{loc}/KICKER.ON"
         value = 1
         LOG.debug(f"Setting value: {ch=} value={value}")
@@ -136,19 +136,19 @@ class SpecialBunchesControl:
         self.di.set_value(self.control_address(), clist)
 
     def control_address(self) -> str:
-        return "XFEL.SDIAG/SPECIAL_BUNCHES.ML/{}/CONTROL".format(self.location)
+        return "XFEL.SDIAG/SPECIAL_BUNCHES.ML/{}/CONTROL".format(self.location.name)
 
     def beamregion_address(self) -> str:
-        return "XFEL.SDIAG/SPECIAL_BUNCHES.ML/{}/SUBTRAIN".format(self.location)
+        return "XFEL.SDIAG/SPECIAL_BUNCHES.ML/{}/SUBTRAIN".format(self.location.name)
 
     def status_address(self, thing: str) -> str:
-        return "XFEL.SDIAG/SPECIAL_BUNCHES.ML/{}/STATUS.{}".format(self.location, thing)
+        return "XFEL.SDIAG/SPECIAL_BUNCHES.ML/{}/STATUS.{}".format(self.location.name, thing)
 
     def npulses_address(self) -> str:
-        return "XFEL.SDIAG/SPECIAL_BUNCHES.ML/{}/PULSES.ACTIVE".format(self.location)
+        return "XFEL.SDIAG/SPECIAL_BUNCHES.ML/{}/PULSES.ACTIVE".format(self.location.name)
 
     def fire_diagnostic_bunch_address(self) -> str:
-        return "XFEL.SDIAG/SPECIAL_BUNCHES.ML/{}/START".format(self.location)
+        return "XFEL.SDIAG/SPECIAL_BUNCHES.ML/{}/START".format(self.location.name)
 
     def is_tds_ok(self) -> bool:
         value = self.di.get_value(self.status_address("TDS"))

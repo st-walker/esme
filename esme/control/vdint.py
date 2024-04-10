@@ -21,7 +21,10 @@ class DictionaryDOOCSInterface(DOOCSInterfaceABC):
         if "*" in channel:
             return self._get_wildcard(channel)
 
-        value = self._machine_state[channel]
+        try:
+            value = self._machine_state[channel]
+        except:
+            import ipdb; ipdb.set_trace()
         try:
             return value.get_value(self)
         except AttributeError:

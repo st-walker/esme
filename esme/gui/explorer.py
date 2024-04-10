@@ -30,10 +30,10 @@ from esme.gui.ui.explorer import Ui_MainWindow
 from esme.load import load_result_directory, load_calibration_from_result_directory
 from esme.analysis import DecomposedBeamImage, make_outlier_widths_mask, MeasurementDataFrames, SliceWidthsFitter, OpticsFixedPoints, DerivedBeamParameters
 from esme.image import make_image_processing_pipeline
-from esme.gui.common import setup_screen_display_widget
-from esme.gui.scannerpanel import ScanType
-from esme.gui.result import FullResultWidget
-from esme.gui.calibrator import CalibrationExplorer
+from esme.gui.widgets.common import setup_screen_display_widget
+from esme.gui.widgets.scannerpanel import ScanType
+from esme.gui.widgets.result import FullResultWidget
+from esme.gui.tds_calibrator import CalibrationExplorer
 from esme.analysis import true_bunch_length_from_setpoint
 from esme.calibration import AmplitudeVoltageMapping
 

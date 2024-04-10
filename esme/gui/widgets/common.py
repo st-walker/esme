@@ -32,8 +32,8 @@ else:
 
 
 
-DEFAULT_CONFIG_PATH = files("esme.gui") / "defaultconf.yaml"
-DEFAULT_VCONFIG_PATH = files("esme.gui") / "vmachine.yaml"
+DEFAULT_CONFIG_PATH = files("esme.gui.widgets") / "defaultconf.yaml"
+DEFAULT_VCONFIG_PATH = files("esme.gui.widgets") / "vmachine.yaml"
 
 
 def is_in_controlroom():

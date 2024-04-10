@@ -154,7 +154,7 @@ class Ui_TDSCalibrationWindow(object):
         self.menuMenu.setTitle(_translate("TDSCalibrationWindow", "Menu"))
         self.actionPrint_to_Logbook.setText(_translate("TDSCalibrationWindow", "Print to Logbook"))
         self.actionQuit.setText(_translate("TDSCalibrationWindow", "Quit"))
-from esme.gui.mpl_widget import MatplotlibCanvas
+from esme.gui.widgets.mpl_widget import MatplotlibCanvas
 
 
 if __name__ == "__main__":

@@ -12,7 +12,7 @@ import scipy
 
 
 from esme import DiagnosticRegion
-from esme.gui.common import make_default_b2_lps_machine, make_default_i1_lps_machine, setup_screen_display_widget
+from .common import make_default_b2_lps_machine, make_default_i1_lps_machine, setup_screen_display_widget
 from esme.calibration import get_tds_com_slope
 from esme.control.tds import StreakingPlane, UncalibratedTDSError
 from esme.control.exceptions import DOOCSReadError

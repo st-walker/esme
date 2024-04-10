@@ -14,184 +14,115 @@
    <string>High Resolution Slice Energy Spread Measurer</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="ScannerControl" name="scanner_panel" native="true">
-    <property name="geometry">
-     <rect>
-      <x>319</x>
-      <y>714</y>
-      <width>469</width>
-      <height>16</height>
-     </rect>
-    </property>
-    <property name="minimumSize">
-     <size>
-      <width>0</width>
-      <height>0</height>
-     </size>
-    </property>
-    <property name="maximumSize">
-     <size>
-      <width>500</width>
-      <height>16777215</height>
-     </size>
-    </property>
-   </widget>
-   <widget class="QGroupBox" name="groupBox">
-    <property name="geometry">
-     <rect>
-      <x>340</x>
-      <y>240</y>
-      <width>361</width>
-      <height>80</height>
-     </rect>
-    </property>
-    <property name="title">
-     <string>Beam</string>
-    </property>
-    <widget class="QPushButton" name="beam_on_button">
-     <property name="geometry">
-      <rect>
-       <x>30</x>
-       <y>30</y>
-       <width>100</width>
-       <height>32</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>On</string>
-     </property>
-    </widget>
-    <widget class="QPushButton" name="beam_on_button_2">
-     <property name="geometry">
-      <rect>
-       <x>150</x>
-       <y>30</y>
-       <width>100</width>
-       <height>32</height>
-      </rect>
-     </property>
-     <property name="text">
-      <string>Off</string>
-     </property>
-    </widget>
-   </widget>
-   <widget class="QWidget" name="layoutWidget">
-    <property name="geometry">
-     <rect>
-      <x>0</x>
-      <y>0</y>
-      <width>291</width>
-      <height>710</height>
-     </rect>
-    </property>
-    <layout class="QVBoxLayout" name="verticalLayout_2">
-     <item>
-      <widget class="GraphicsLayoutWidget" name="dispersion_pixel_size_plot_widget" native="true">
-       <property name="minimumSize">
-        <size>
-         <width>289</width>
-         <height>170</height>
-        </size>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="GraphicsLayoutWidget" name="voltage_pixel_size_plot_widget" native="true">
-       <property name="minimumSize">
-        <size>
-         <width>289</width>
-         <height>169</height>
-        </size>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="GraphicsLayoutWidget" name="beta_pixel_size_plot" native="true">
-       <property name="minimumSize">
-        <size>
-         <width>289</width>
-         <height>169</height>
-        </size>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="GraphicsLayoutWidget" name="image_plot" native="true">
-       <property name="minimumSize">
-        <size>
-         <width>289</width>
-         <height>170</height>
-        </size>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </widget>
-   <widget class="QLabel" name="label">
-    <property name="geometry">
-     <rect>
-      <x>319</x>
-      <y>12</y>
-      <width>23</width>
-      <height>16</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Log</string>
-    </property>
-   </widget>
-   <widget class="QTextBrowser" name="info_log_box">
-    <property name="geometry">
-     <rect>
-      <x>319</x>
-      <y>38</y>
-      <width>256</width>
-      <height>192</height>
-     </rect>
-    </property>
-    <property name="minimumSize">
-     <size>
-      <width>256</width>
-      <height>0</height>
-     </size>
-    </property>
-    <property name="maximumSize">
-     <size>
-      <width>500</width>
-      <height>16777215</height>
-     </size>
-    </property>
-   </widget>
-   <widget class="QGroupBox" name="tds_group_box">
-    <property name="geometry">
-     <rect>
-      <x>319</x>
-      <y>640</y>
-      <width>251</width>
-      <height>59</height>
-     </rect>
-    </property>
-    <property name="minimumSize">
-     <size>
-      <width>251</width>
-      <height>0</height>
-     </size>
-    </property>
-    <property name="maximumSize">
-     <size>
-      <width>500</width>
-      <height>16777215</height>
-     </size>
-    </property>
-    <property name="title">
-     <string>TDS</string>
-    </property>
-    <layout class="QGridLayout" name="gridLayout_2">
-     <item row="0" column="0">
-      <widget class="TDSControl" name="tds_panel" native="true"/>
-     </item>
-    </layout>
-   </widget>
+   <layout class="QGridLayout" name="gridLayout">
+    <item row="0" column="0" rowspan="4">
+     <layout class="QVBoxLayout" name="verticalLayout_2">
+      <item>
+       <widget class="GraphicsLayoutWidget" name="dispersion_pixel_size_plot_widget" native="true">
+        <property name="minimumSize">
+         <size>
+          <width>289</width>
+          <height>170</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="GraphicsLayoutWidget" name="voltage_pixel_size_plot_widget" native="true">
+        <property name="minimumSize">
+         <size>
+          <width>289</width>
+          <height>169</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="GraphicsLayoutWidget" name="beta_pixel_size_plot" native="true">
+        <property name="minimumSize">
+         <size>
+          <width>289</width>
+          <height>169</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="GraphicsLayoutWidget" name="image_plot" native="true">
+        <property name="minimumSize">
+         <size>
+          <width>289</width>
+          <height>170</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </item>
+    <item row="0" column="1">
+     <widget class="QLabel" name="label">
+      <property name="text">
+       <string>Log</string>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="1" colspan="2">
+     <widget class="QTextBrowser" name="info_log_box">
+      <property name="minimumSize">
+       <size>
+        <width>256</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="maximumSize">
+       <size>
+        <width>500</width>
+        <height>16777215</height>
+       </size>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="1" colspan="2">
+     <widget class="ScannerControl" name="scanner_panel" native="true">
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="maximumSize">
+       <size>
+        <width>500</width>
+        <height>16777215</height>
+       </size>
+      </property>
+     </widget>
+    </item>
+    <item row="2" column="1" colspan="2">
+     <widget class="QGroupBox" name="tds_group_box">
+      <property name="minimumSize">
+       <size>
+        <width>251</width>
+        <height>0</height>
+       </size>
+      </property>
+      <property name="maximumSize">
+       <size>
+        <width>500</width>
+        <height>16777215</height>
+       </size>
+      </property>
+      <property name="title">
+       <string>TDS</string>
+      </property>
+      <layout class="QGridLayout" name="gridLayout_2">
+       <item row="0" column="0">
+        <widget class="TDSControl" name="tds_panel" native="true"/>
+       </item>
+      </layout>
+     </widget>
+    </item>
+   </layout>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -199,7 +130,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>24</height>
+     <height>22</height>
     </rect>
    </property>
    <property name="defaultUp">
@@ -260,13 +191,13 @@
   <customwidget>
    <class>TDSControl</class>
    <extends>QWidget</extends>
-   <header>esme.gui.tds</header>
+   <header>esme.gui.widgets.tds</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>ScannerControl</class>
    <extends>QWidget</extends>
-   <header>esme.gui.scannerpanel</header>
+   <header>esme.gui.widgets.scannerpanel</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

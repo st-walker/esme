@@ -6,9 +6,9 @@ from PyQt5.QtCore import QObject, QRunnable, QTimer, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QMainWindow
 
 from esme.gui.ui import mainwindow
-from esme.gui.common import (make_default_i1_lps_machine,
-                             make_default_b2_lps_machine,
-                             set_tds_calibration_by_region)
+from esme.gui.widgets.common import (make_default_i1_lps_machine,
+                                     make_default_b2_lps_machine,
+                                     set_tds_calibration_by_region)
 
 
 LOG = logging.getLogger(__name__)
@@ -39,38 +39,12 @@ def profile(func):
         return result
     return wrapper
 
-# @profile
-def start_gui():
-    # make pyqt threadsafe
-    # QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_X11InitThreads)
-    # create the application
-    # import yappi
-    # yappi.start()
-
-    import cProfile
-
+def start_lps_gui():
     app = QApplication(sys.argv)
-
     main_window = LPSMainWindow()
-
     main_window.show()
     main_window.raise_()
-    # sys.exit(app.exec_())
-    app.exec_()
-    # from IPython import embed; embed()
-
-    # x = yappi.get_func_stats()
-    # x.sort("ttot").print_all(columns={0:("name", 150),
-    #                                   1: ("ncall", 10),
-    #                                   2: ("tavg", 15), 3: ("ttot", 15)}
-    #                          )
-
-    # yappi.get_func_stats().print_all()
-    # yappi.get_thread_stats().print_all()
-
-
-    
-
+    sys.exit(app.exec_())
 
 class LPSMainWindow(QMainWindow):
     screen_name_signal = pyqtSignal(str)
@@ -89,14 +63,12 @@ class LPSMainWindow(QMainWindow):
 
         # Connect signals for screen name which we select in this
         # widget and have to propagate to the child widgets.
-        self.screen_name_signal.connect(self.ui.tds_panel.set_region_from_screen_name)
-        self.screen_name_signal.connect(self.ui.screen_display_widget.set_screen)
-        self.screen_name_signal.connect(self.ui.machine_state_widget.set_screen)
+        self.ui.area.screen_name_signal.connect(self.ui.tds_panel.set_region_from_screen_name)
+        self.ui.area.screen_name_signal.connect(self.ui.screen_display_widget.set_screen)
+        self.ui.area.screen_name_signal.connect(self.ui.machine_state_widget.set_screen)
 
         # Connect the emission of the TDS panel's TDS voltage calibrations to here.
         self.ui.tds_panel.voltage_calibration_signal.connect(self.update_tds_voltage_calibration)
-
-        self.update_screen_combo_box()
 
         self.connect_buttons()
         # self.setup_indicators()
@@ -109,29 +81,10 @@ class LPSMainWindow(QMainWindow):
         # have stored, that we we can propagate them from here to
         # wherever else they need to be.
         self.ui.tds_panel.emit_calibrations()
+        
         # Emit initial screen name to any widgets.
-        self.emit_current_screen_name()
+        self.ui.area.emit_current_screen_name()
 
-    # def update_location(self):
-    #     self.update_screen_combo_box()
-
-    # def update_screen_combo_box(self):
-    #     self.ui.select_screen_combobox.clear()
-    #     self.ui.select_screen_combobox.addItems(self.machine.screens)
-
-    # def emit_current_screen_name(self):
-    #     self.screen_name_signal.emit(self.get_selected_screen_name())
-
-    # def get_selected_screen_name(self) -> str:
-    #     return self.ui.select_screen_combobox.currentText()
-
-    # def open_jddd_screen_window(self):
-    #     self.jddd_camera_window_process = QtCore.QProcess()
-    #     screen = self.get_selected_screen_name()
-    #     command = f"jddd-run -file commonAll_In_One_Camera_Expert.xml -address XFEL.DIAG/CAMERA/{screen}/"
-    #     self.jddd_camera_window_process.start(command)
-    #     self.jddd_camera_window_process.waitForStarted()
-    #     self.jddd_camera_window_process.finished.connect(self.close_jddd_screen_window)
 
     def update_tds_voltage_calibration(self, voltage_calibration):
         set_tds_calibration_by_region(self, voltage_calibration)
@@ -168,26 +121,15 @@ class LPSMainWindow(QMainWindow):
     def set_i1(self):
         LOG.debug("Setting location to I1")
         self.machine = self.i1machine
-        self.update_screen_combo_box()
 
     def set_b2(self):
         LOG.debug("Setting location to B2")
         self.machine = self.b2machine
-        self.update_screen_combo_box()
 
     def connect_buttons(self):
         # Location buttons
-        self.ui.i1_radio_button.pressed.connect(self.set_i1)
-        self.ui.b2_radio_button.pressed.connect(self.set_b2)
-        self.ui.jddd_screen_gui_button.clicked.connect(self.open_jddd_screen_window)
-        self.ui.select_screen_combobox.activated.connect(self.select_screen)
         self.ui.action_print_to_logbook.triggered.connect(self.send_to_logbook)
         self.ui.action_close.triggered.connect(self.close)
-
-    def select_screen(self, _):
-        screen_name = self.ui.select_screen_combobox.currentText()
-        self.screen_name_signal.emit(screen_name)
-        self.machine.set_kickers_for_screen(screen_name)
 
     def setup_indicators(self):
         self.indicator1 = self.ui.indicator_panel.add_indicator("TDS")
@@ -244,4 +186,4 @@ class BackgroundTaker(QRunnable):
 
 
 if __name__ == "__main__":
-    start_gui()
+    start_lps_gui()

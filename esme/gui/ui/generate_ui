@@ -1,5 +1,5 @@
 for f in *.ui
 do
 bn="$(basename $f .ui)"
-pyuic5 -x -o "${bn}.py" "${f}"
+python -m PyQt5.uic.pyuic -x -o "${bn}.py" "${f}"
 done

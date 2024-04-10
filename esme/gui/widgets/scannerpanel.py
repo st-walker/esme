@@ -20,12 +20,13 @@ from esme.gui.ui import Ui_scanner_form, Ui_Dialog
 from esme.image import filter_image, get_selected_central_slice_width_from_slice_properties, get_slice_properties
 from esme.analysis import SliceWidthsFitter, DerivedBeamParameters, true_bunch_length_from_processed_image, ScanType
 from esme.control.snapshot import SnapshotAccumulator
-from esme.gui.common import (is_in_controlroom,
-                             load_scanner_panel_ui_defaults,
-                             raise_message_box,
-                             make_default_injector_espread_machine)
+from esme.gui.widgets.common import (is_in_controlroom,
+                                     load_scanner_panel_ui_defaults,
+                                     raise_message_box,
+                                     make_default_injector_espread_machine)
 from esme.calibration import AmplitudeVoltageMapping
 from esme.optics import load_matthias_slice_measurement
+from esme.gui.widgets.result import ScannerResultsDialog
 
 
 LOG = logging.getLogger(__name__)

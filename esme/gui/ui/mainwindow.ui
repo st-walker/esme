@@ -158,68 +158,8 @@
            <string>Diagnostic Area</string>
           </property>
           <layout class="QGridLayout" name="gridLayout_2">
-           <item row="1" column="0">
-            <layout class="QHBoxLayout" name="horizontalLayout_3">
-             <item>
-              <widget class="QLabel" name="screen_label">
-               <property name="text">
-                <string>Screen</string>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QComboBox" name="select_screen_combobox">
-               <property name="toolTip">
-                <string>The name of the screen to use</string>
-               </property>
-               <property name="placeholderText">
-                <string/>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QPushButton" name="jddd_screen_gui_button">
-               <property name="toolTip">
-                <string>Open the corresponding JDDD camera control panel for the selected screen</string>
-               </property>
-               <property name="text">
-                <string>JDDD...</string>
-               </property>
-              </widget>
-             </item>
-            </layout>
-           </item>
            <item row="0" column="0">
-            <layout class="QVBoxLayout" name="verticalLayout">
-             <item>
-              <layout class="QHBoxLayout" name="horizontalLayout_2">
-               <item>
-                <widget class="QLabel" name="section_label">
-                 <property name="text">
-                  <string>Section</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QRadioButton" name="i1_radio_button">
-                 <property name="text">
-                  <string>I1</string>
-                 </property>
-                 <property name="checked">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QRadioButton" name="b2_radio_button">
-                 <property name="text">
-                  <string>B2</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
-             </item>
-            </layout>
+            <widget class="AreaControl" name="area" native="true"/>
            </item>
           </layout>
          </widget>
@@ -309,25 +249,31 @@
   <customwidget>
    <class>TDSControl</class>
    <extends>QWidget</extends>
-   <header>esme.gui.tds</header>
+   <header>esme.gui.widgets.tds</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>SpecialBunchMidLayerPanel</class>
    <extends>QWidget</extends>
-   <header>esme.gui.sbunchpanel</header>
+   <header>esme.gui.widgets.sbunchpanel</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>ScreenDisplayWidget</class>
    <extends>QWidget</extends>
-   <header location="global">esme.gui.screen</header>
+   <header location="global">esme.gui.widgets.screen</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>LPSStateWatcher</class>
    <extends>QWidget</extends>
-   <header>esme.gui.status</header>
+   <header>esme.gui.widgets.status</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>AreaControl</class>
+   <extends>QWidget</extends>
+   <header>esme.gui.widgets.area</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

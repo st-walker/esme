@@ -4,7 +4,7 @@ from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel
 from PyQt5.QtGui import QPainter, QColor, QBrush
 
-from esme.gui.common import make_default_i1_lps_machine, make_default_b2_lps_machine, make_i1_watcher, make_b2_watcher
+from .common import make_default_i1_lps_machine, make_default_b2_lps_machine, make_i1_watcher, make_b2_watcher
 from esme.control.mstate import AreaWatcher
 from esme.core import region_from_screen_name
 from esme import DiagnosticRegion

@@ -214,7 +214,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
   <customwidget>
    <class>MatplotlibCanvas</class>
    <extends>QWidget</extends>
-   <header>esme.gui.mpl_widget</header>
+   <header>esme.gui.widgets.mpl_widget</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

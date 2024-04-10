@@ -233,7 +233,7 @@
   <customwidget>
    <class>ReadOnlyNumberDisplay</class>
    <extends>QLineEdit</extends>
-   <header>esme.gui.core</header>
+   <header>esme.gui.widgets.core</header>
   </customwidget>
  </customwidgets>
  <resources/>

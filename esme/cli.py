@@ -15,7 +15,7 @@ from esme.plot import pretty_parameter_table
 import esme.plot as plot
 from esme.load import load_result_directory
 from esme.gui.explorer import start_explorer_gui
-from esme.gui.calibrator import start_calibration_explorer_gui
+from esme.gui.tds_calibrator import start_calibration_explorer_gui
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
@@ -244,13 +244,10 @@ def rm(pcl_files, imname, dry_run):
 
 
 @main.command()
-@argument("ftoml", nargs=1)
-@option("--replay", "-r", nargs=1, help="scan.toml file to replay output from")
-def gui(ftoml, replay):
+def gui():
     """Start the measurement GUI"""
-    from esme.gui import start_gui
-
-    start_gui(ftoml, debug_mode=True, replay=replay)
+    from esme.gui import start_lps_gui
+    start_lps_gui()
 
 
 @main.command()

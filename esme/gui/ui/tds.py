@@ -139,7 +139,7 @@ class Ui_tds_control_panel(object):
         self.zero_crossing_label.setText(_translate("tds_control_panel", "Crossing: "))
         self.pushButton_3.setText(_translate("tds_control_panel", "-180°"))
         self.label.setText(_translate("tds_control_panel", "Readback / °"))
-from esme.gui.core import ReadOnlyNumberDisplay
+from esme.gui.widgets.core import ReadOnlyNumberDisplay
 
 
 if __name__ == "__main__":

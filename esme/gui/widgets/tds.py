@@ -13,18 +13,18 @@ import logging
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import QTimer, pyqtSignal
 
-from .ui.tds import Ui_tds_control_panel
-from esme.gui.common import (make_default_i1_lps_machine,
-                             make_default_b2_lps_machine,
-                             get_tds_calibration_config_dir,
-                             set_machine_by_region)
+from esme.gui.ui.tds import Ui_tds_control_panel
+from .common import (make_default_i1_lps_machine,
+                     make_default_b2_lps_machine,
+                     get_tds_calibration_config_dir,
+                     set_machine_by_region)
 from esme.control.configs import load_calibration
 from esme import DiagnosticRegion
 from esme.control.machines import LPSMachine
 from esme.core import region_from_screen_name
 from esme.load import load_calibration_from_yaml
 
-from .calibrator import CalibrationMainWindow, TaggedCalibration
+from esme.gui.tds_calibrator import CalibrationMainWindow, TaggedCalibration
 
 DEFAULT_CONFIG_PATH = files("esme.gui") / "defaultconf.yml"
 
@@ -104,8 +104,8 @@ class TDSControl(QtWidgets.QWidget):
     def update_ui(self) -> None:
         """Update the various readback values and so on."""
         self.set_calibration_info_strings()
-        self.ui.tds_phase_readback_line.setText(f"{(self.machine.deflector.get_phase_rb()):.2f}")
-        self.ui.tds_amplitude_readback_line.setText(f"{self.machine.deflector.get_amplitude_rb():.2f}")
+        self.ui.tds_phase_readback.setText(f"{(self.machine.deflector.get_phase_rb()):.2f}")
+        self.ui.tds_amplitude_readback.setText(f"{self.machine.deflector.get_amplitude_rb():.2f}")
         self.ui.tds_phase_spinbox.setValue(self.machine.deflector.get_phase_sp())
         self.ui.tds_amplitude_spinbox.setValue(self.machine.deflector.get_amplitude_sp())
 

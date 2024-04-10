@@ -7,8 +7,8 @@ from PyQt5.QtWidgets import QApplication, QMainWindow
 
 
 from esme.gui.ui import lps
-from esme.gui.common import QPlainTextEditLogger, send_widget_to_log, setup_screen_display_widget
-from esme.gui.scannerpanel import ProcessedImage, ScanType
+from esme.gui.widgets.common import QPlainTextEditLogger, send_widget_to_log, setup_screen_display_widget
+from esme.gui.widgets.scannerpanel import ProcessedImage, ScanType
 
 
 def start_hires_gui():

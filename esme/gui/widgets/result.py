@@ -10,7 +10,7 @@ import pyqtgraph as pg
 import numpy as np
 
 from esme.plot import formatted_parameter_dfs
-from esme.gui.common import df_to_logbook_table, send_to_logbook
+from esme.gui.widgets.common import df_to_logbook_table, send_to_logbook
 from esme.analysis import DerivedBeamParameters, OpticsFixedPoints
 from esme.gui.ui import Ui_results_box_dialog
 import logging

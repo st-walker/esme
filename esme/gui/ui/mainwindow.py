@@ -97,35 +97,9 @@ class Ui_MainWindow(object):
         self.controls_group_box.setObjectName("controls_group_box")
         self.gridLayout_2 = QtWidgets.QGridLayout(self.controls_group_box)
         self.gridLayout_2.setObjectName("gridLayout_2")
-        self.horizontalLayout_3 = QtWidgets.QHBoxLayout()
-        self.horizontalLayout_3.setObjectName("horizontalLayout_3")
-        self.screen_label = QtWidgets.QLabel(self.controls_group_box)
-        self.screen_label.setObjectName("screen_label")
-        self.horizontalLayout_3.addWidget(self.screen_label)
-        self.select_screen_combobox = QtWidgets.QComboBox(self.controls_group_box)
-        self.select_screen_combobox.setPlaceholderText("")
-        self.select_screen_combobox.setObjectName("select_screen_combobox")
-        self.horizontalLayout_3.addWidget(self.select_screen_combobox)
-        self.jddd_screen_gui_button = QtWidgets.QPushButton(self.controls_group_box)
-        self.jddd_screen_gui_button.setObjectName("jddd_screen_gui_button")
-        self.horizontalLayout_3.addWidget(self.jddd_screen_gui_button)
-        self.gridLayout_2.addLayout(self.horizontalLayout_3, 1, 0, 1, 1)
-        self.verticalLayout = QtWidgets.QVBoxLayout()
-        self.verticalLayout.setObjectName("verticalLayout")
-        self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
-        self.horizontalLayout_2.setObjectName("horizontalLayout_2")
-        self.section_label = QtWidgets.QLabel(self.controls_group_box)
-        self.section_label.setObjectName("section_label")
-        self.horizontalLayout_2.addWidget(self.section_label)
-        self.i1_radio_button = QtWidgets.QRadioButton(self.controls_group_box)
-        self.i1_radio_button.setChecked(True)
-        self.i1_radio_button.setObjectName("i1_radio_button")
-        self.horizontalLayout_2.addWidget(self.i1_radio_button)
-        self.b2_radio_button = QtWidgets.QRadioButton(self.controls_group_box)
-        self.b2_radio_button.setObjectName("b2_radio_button")
-        self.horizontalLayout_2.addWidget(self.b2_radio_button)
-        self.verticalLayout.addLayout(self.horizontalLayout_2)
-        self.gridLayout_2.addLayout(self.verticalLayout, 0, 0, 1, 1)
+        self.area = AreaControl(self.controls_group_box)
+        self.area.setObjectName("area")
+        self.gridLayout_2.addWidget(self.area, 0, 0, 1, 1)
         self.gridLayout_3.addWidget(self.controls_group_box, 0, 1, 1, 1)
         self.tabWidget.addTab(self.maintab, "")
         self.logtab = QtWidgets.QWidget()
@@ -185,13 +159,6 @@ class Ui_MainWindow(object):
         self.groupBox_2.setTitle(_translate("MainWindow", "Transverse Deflecting Structure"))
         self.groupBox_3.setTitle(_translate("MainWindow", "Special Bunch Midlayer"))
         self.controls_group_box.setTitle(_translate("MainWindow", "Diagnostic Area"))
-        self.screen_label.setText(_translate("MainWindow", "Screen"))
-        self.select_screen_combobox.setToolTip(_translate("MainWindow", "The name of the screen to use"))
-        self.jddd_screen_gui_button.setToolTip(_translate("MainWindow", "Open the corresponding JDDD camera control panel for the selected screen"))
-        self.jddd_screen_gui_button.setText(_translate("MainWindow", "JDDD..."))
-        self.section_label.setText(_translate("MainWindow", "Section"))
-        self.i1_radio_button.setText(_translate("MainWindow", "I1"))
-        self.b2_radio_button.setText(_translate("MainWindow", "B2"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.maintab), _translate("MainWindow", "Main"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.logtab), _translate("MainWindow", "Log"))
         self.menuMenu.setTitle(_translate("MainWindow", "Menu"))
@@ -204,10 +171,11 @@ class Ui_MainWindow(object):
         self.actionLongitudinal_Phase_Space.setText(_translate("MainWindow", "Longitudinal Phase Space..."))
         self.actionEmittance.setText(_translate("MainWindow", "Emittance..."))
         self.actionEmail_Maintainer.setText(_translate("MainWindow", "Email Maintainer"))
-from esme.gui.sbunchpanel import SpecialBunchMidLayerPanel
-from esme.gui.screen import ScreenDisplayWidget
-from esme.gui.status import LPSStateWatcher
-from esme.gui.tds import TDSControl
+from esme.gui.widgets.area import AreaControl
+from esme.gui.widgets.sbunchpanel import SpecialBunchMidLayerPanel
+from esme.gui.widgets.screen import ScreenDisplayWidget
+from esme.gui.widgets.status import LPSStateWatcher
+from esme.gui.widgets.tds import TDSControl
 
 
 if __name__ == "__main__":
