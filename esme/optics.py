@@ -153,15 +153,15 @@ def dispersions_at_point(fel, felconfig, screen_name):
     twiss, mlat = fel.machine_twiss(stop=screen_name, felconfig=felconfig)
     end = twiss.iloc[-1]
 
-    import pickle
-    with open("mlat.pkl", "wb") as f:
-        pickle.dump(mlat, f)
+    # import pickle
+    # with open("mlat.pkl", "wb") as f:
+    #     pickle.dump(mlat, f)
 
-    with open("fel.pkl", "wb") as f:
-        pickle.dump(fel, f)
+    # with open("fel.pkl", "wb") as f:
+    #     pickle.dump(fel, f)
 
-    with open("felconfig.pkl", "wb") as f:
-        pickle.dump(felconfig, f)
+    # with open("felconfig.pkl", "wb") as f:
+    #     pickle.dump(felconfig, f)
 
 
     return end.Dx, end.Dy
