@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 import logging
 from enum import Enum, auto
@@ -12,7 +14,7 @@ import scipy
 
 
 from esme import DiagnosticRegion
-from .common import make_default_b2_lps_machine, make_default_i1_lps_machine, setup_screen_display_widget
+from .common import make_default_b2_lps_machine, make_default_i1_lps_machine, setup_screen_display_widget, LPSMachine
 from esme.calibration import get_tds_com_slope
 from esme.control.tds import StreakingPlane, UncalibratedTDSError
 from esme.control.exceptions import DOOCSReadError
@@ -24,7 +26,7 @@ pg.setConfigOption("useNumba", True)
 
 
 # Below this dispersion we take the dispersion to be 0.
-# Used for deciding whether to
+# Used for deciding whether to apply an energy axis to the screen or not.
 ZERO_DISPERSION_THRESHOLD = 0.1
 
 # If axis changed by 5% or less then don't propagate a new axis to save unnecessary updates.
@@ -68,12 +70,12 @@ class ImagePayload:
     yproj: np.ndarray
 
     @property
-    def x(self):
+    def x(self) -> np.ndarray:
         sh = self.image.shape
         return np.linspace(-sh[0]/2, sh[0]/2, num=len(self.xproj)) * self.pixels.xsize
 
     @property
-    def y(self):
+    def y(self) -> np.ndarray:
         sh = self.image.shape
         return np.linspace(-sh[1]/2, sh[1]/2, num=len(self.yproj)) * self.pixels.ysize
 
@@ -104,7 +106,7 @@ class ScreenDisplayWidget(QWidget):
 
         self.set_screen("OTRC.55.I1")
 
-    def propagate_tds_calibration_signal(self, calib):
+    def propagate_tds_calibration_signal(self, calib) -> None:
         print("received a TDS calibration signal...")
         self.tds_calibration_signal.emit(calib)
         self.calibration_worker.update_tds_voltage_calibration(calib)
@@ -131,7 +133,7 @@ class ScreenDisplayWidget(QWidget):
         self.image_plot.items[0].setTransform(tr) # assign transform
 
     @pyqtSlot(ImagePayload)
-    def post_beam_image(self, image_payload):
+    def post_beam_image(self, image_payload: ImagePayload) -> None:
         items = self.image_plot.items
         assert len(items) == 1
         image_item = items[0]
@@ -141,7 +143,7 @@ class ScreenDisplayWidget(QWidget):
         image_item.setLevels(image_payload.levels)
         image_item.setImage(image_payload.image)
 
-    def set_axis_transform_with_label(self, axis_calib):
+    def set_axis_transform_with_label(self, axis_calib: AxisCalibration) -> None:
         if axis_calib.axis == "x":
             axis = self.xplot.getAxis("bottom")
         elif axis_calib.axis == "y":
@@ -154,7 +156,7 @@ class ScreenDisplayWidget(QWidget):
 
         self.xplot.update()
 
-    def add_transverse_projection(self, dimension):
+    def add_transverse_projection(self, dimension: str) -> None:
         win = self.glwidget
         if dimension == "y":
             axis = {"right": NegatableLabelsAxisItem("right", text="<i>&Delta;y</i>", units="m")}
@@ -173,7 +175,7 @@ class ScreenDisplayWidget(QWidget):
             self.xplot.setMaximumHeight(200)
             self.xplot.setXLink(self.image_plot)
 
-    def setup_screen_worker(self):
+    def setup_screen_worker(self) -> tuple[ScreenWatcher, QThread]:
         LOG.debug("Initialising screen worker thread")
         screen_worker = ScreenWatcher(self.machine)
         self.screen_name_signal.connect(screen_worker.set_screen_name)
@@ -186,7 +188,7 @@ class ScreenDisplayWidget(QWidget):
 
         return screen_worker, screen_thread
 
-    def setup_calibration_worker(self):
+    def setup_calibration_worker(self) -> tuple[CalibrationWatcher, QThread]:
         LOG.debug("Initialising calibration worker thread")
         # XXX need to update machine when I1 or B2 is changed!
 
@@ -200,7 +202,7 @@ class ScreenDisplayWidget(QWidget):
         calib_thread.start()
         return calib_worker, calib_thread
 
-    def closeEvent(self, event):
+    def closeEvent(self, event) -> None:
         self.screen_worker.kill = True
         self.calibration_worker.kill = True
         self.screen_thread.terminate()
@@ -208,11 +210,15 @@ class ScreenDisplayWidget(QWidget):
         self.calibration_thread.terminate()
         self.calibration_thread.wait()
 
-    def update_projection_plots(self, image_payload):
+    def update_projection_plots(self, image_payload: ImagePayload) -> None:
         self.xplot.clear()
         self.yplot.clear()
         self.xplot.plot(image_payload.x, image_payload.xproj)
         self.yplot.plot(image_payload.yproj, image_payload.y)
+
+    # def accumulate_background(self):
+        
+
 
 
 class CalibrationWatcher(QObject):
@@ -221,7 +227,7 @@ class CalibrationWatcher(QObject):
 
     # XXX: What if scale factor is 0?
     axis_calibration_signal = pyqtSignal(AxisCalibration)
-    def __init__(self, machine, screen_name):
+    def __init__(self, machine: LPSMachine, screen_name: str):
         super().__init__()
 
         self.i1machine = make_default_i1_lps_machine()

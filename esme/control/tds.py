@@ -21,11 +21,15 @@ class TransverseDeflector:
     PHASE_SP_PROP = "SP.PHASE"
     AMPLITUDE_SP_PROP = "SP.AMPL"
 
-    def __init__(self, sp_fdl: str, rb_fdl: str, plane: StreakingPlane, calibration=None, di=None) -> None:
+    def __init__(self, sp_fdl: str, rb_fdl: str, plane: StreakingPlane,
+                 calibration=None,
+                 zero_crossing: float | None = None,
+                 di: DOOCSInterface | None = None) -> None:
         self.sp_fdl = sp_fdl
         self.rb_fdl = rb_fdl
         self.plane = plane
         self.calibration = None
+        self.zero_crossing = None
         self.di = di if di else DOOCSInterface()
 
     def get_phase_rb(self) -> float:
@@ -34,7 +38,7 @@ class TransverseDeflector:
 
     def increment_phase(self, phase_increment: float) -> None:
         phase_increment += self.get_phase_sp()
-        self.set_phase(phase_increment)        
+        self.set_phase(phase_increment)
 
     def get_amplitude_rb(self) -> float:
         ch = self.rb_fdl + f"{self.AMPLITUDE_RB_PROP}"
@@ -69,10 +73,21 @@ class TransverseDeflector:
             return self.calibration.get_voltage(self.get_amplitude_rb())
         except AttributeError:
             raise UncalibratedTDSError("Missing TDS Calibration")
-        
+
     def amplitude_rb_matches_sp(self, tol: float = 0.05) -> bool:
         rb = self.get_amplitude_sp()
         sp = self.get_amplitude_sp()
         return abs((rb - sp) / sp) < tol
-        
-        
+
+    def set_phase_to_zero_crossing(self):
+        if self.zero_crossing is None:
+            raise ValueError("Zero Crossing has not been set")
+        self.set_phase(self.zero_crossing)
+
+    def set_zero_crossing(self):
+        phase = self.get_phase_sp()
+        if phase < 0:
+            phase %= -180
+        else:
+            phase %= 180            
+        self.zero_crossing =  phase

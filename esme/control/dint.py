@@ -28,15 +28,16 @@ import pandas as pd
 
 from esme.control.exceptions import DOOCSReadError, DOOCSWriteError
 
+import sys
+sys.path.append("/Users/xfeloper/stwalker/llpydoocs/build")
+
 try:
-    import pydoocs
+    import llpydoocs
 except ImportError:
     pass
 
 
 LOG = logging.getLogger(__name__)
-
-
 
 
 def make_doocs_channel_string(facility="", device="", location="", prop=""):
@@ -70,7 +71,7 @@ class DOOCSAddress:
         return address
 
     def with_location(self, location):
-        return f"{self.facility}/{self.device}/{location}/{self.prop}"        
+        return f"{self.facility}/{self.device}/{location}/{self.prop}"
 
     def is_wildcard_address(self):
         return "*" in self.resolve()
@@ -450,4 +451,3 @@ def make_default_doocs_interface() -> DOOCSInterfaceABC:
         return get_default_virtual_doocs_interface()
     else:
         return DOOCSInterface()
-    

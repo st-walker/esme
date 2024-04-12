@@ -72,14 +72,14 @@ class TDSControl(QtWidgets.QWidget):
         self.calibration_window.avmapping_signal.connect(self.update_tds_calibration)
 
         self.metadata = self.load_most_recent_calibrations()
-        
+
         # Connect calibration window.
         self.connect_buttons()
 
         self.timer = QTimer()
         self.timer.timeout.connect(lambda: None)
         self.timer.timeout.connect(self.update_ui)
-        self.timer.start(500)        
+        self.timer.start(500)
 
         self.emit_calibrations()
 
@@ -99,7 +99,7 @@ class TDSControl(QtWidgets.QWidget):
         # Changing between state for using I1 or B2 diagnostics
         LOG.info(f"Setting region for TDSControl panel: {region=}")
         set_machine_by_region(self, region) # Update self.machine.
-        # self.set_active_calibration()
+        self.ui.go_to_zero_crossing_button.setEnabled(self.machine.deflector.zero_crossing is not None)
 
     def update_ui(self) -> None:
         """Update the various readback values and so on."""
@@ -113,6 +113,27 @@ class TDSControl(QtWidgets.QWidget):
         self.ui.tds_phase_spinbox.valueChanged.connect(self.set_phase)
         self.ui.tds_amplitude_spinbox.valueChanged.connect(self.set_amplitude)
         self.ui.tds_calibration_pushbutton.clicked.connect(self.calibration_window.show)
+        self.ui.set_zero_crossing_button.clicked.connect(self.set_zero_crossing)
+        self.ui.go_to_zero_crossing_button.clicked.connect(self.go_to_zero_crossing)
+        self.ui.subtract_180deg_button.clicked.connect(self.subtract_180_deg)
+        self.ui.subtract_180deg_button.clicked.connect(self.add_180_deg)        
+
+    def subtract_180_deg(self) -> None:
+        phase = self.machine.deflector.get_phase_sp()
+        self.machine.deflector.set_phase(phase - 180)
+
+    def add_180_deg(self) -> None:
+        phase = self.machine.deflector.get_phase_sp()
+        self.machine.deflector.set_phase(phase + 180)
+
+    def set_zero_crossing(self) -> None:
+        self.machine.deflector.set_zero_crossing()
+        self.ui.go_to_zero_crossing_button.setEnabled(True)
+        zc = self.machine.deflector.zero_crossing
+        self.ui.zero_crossing_label.setText(f"Zero Crossing: {zc:.4g}°")
+
+    def go_to_zero_crossing(self) -> None:
+        self.machine.deflector.set_phase_to_zero_crossing()
 
     def set_phase(self, phase: float) -> None:
         """Simply forward to active machine instance, could either be for I1 or B2"""
@@ -145,7 +166,7 @@ class TDSControl(QtWidgets.QWidget):
         self.ui.calibration_time_label_2.setText(timestamp)
 
     def set_missing_calibration_info_string(self):
-        self.ui.calibration_file_path_label.setText("No TDS Calibration")        
+        self.ui.calibration_file_path_label.setText("No TDS Calibration")
         self.ui.calibration_time_label_2.setText("")
 
     def load_most_recent_calibrations(self) -> dict[DiagnosticRegion, LPSMachine]:

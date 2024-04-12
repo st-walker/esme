@@ -94,7 +94,7 @@ def make_hires_injector_energy_spread_machine(yamlf: os.PathLike, di=None) -> LP
 
 
 
-def build_lps_machine_from_config(yamlf: os.PathLike, area: DiagnosticRegion, di=None):
+def build_lps_machine_from_config(yamlf: os.PathLike, area: DiagnosticRegion, di=None) -> LPSMachine:
     with open(yamlf, "r") as f:
         config = yaml.full_load(f)
 

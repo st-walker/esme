@@ -14,9 +14,10 @@ from PyQt5.QtWidgets import QWidget
 from PyQt5.QtWidgets import QMessageBox
 
 from esme.control.configs import (load_virtual_machine_interface,
-                                    build_lps_machine_from_config,
-                                    make_hires_injector_energy_spread_machine, 
-                                    build_area_watcher_from_config)
+                                  build_lps_machine_from_config,
+                                  make_hires_injector_energy_spread_machine, 
+                                  build_area_watcher_from_config,
+                                  LPSMachine)
 from esme import DiagnosticRegion
 
 from esme.control.sbunches import SpecialBunchesControl
@@ -60,11 +61,11 @@ def make_default_injector_espread_machine():
     return make_hires_injector_energy_spread_machine(DEFAULT_CONFIG_PATH, di=di)
 
     
-def make_default_i1_lps_machine():
+def make_default_i1_lps_machine() -> LPSMachine:
     di = make_default_doocs_interface()
     return build_lps_machine_from_config(DEFAULT_CONFIG_PATH, DiagnosticRegion("I1"), di=di)
 
-def make_default_b2_lps_machine():
+def make_default_b2_lps_machine() -> LPSMachine:
     di = make_default_doocs_interface()
     return build_lps_machine_from_config(DEFAULT_CONFIG_PATH, DiagnosticRegion("B2"), di=di)
 

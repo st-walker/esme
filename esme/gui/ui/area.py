@@ -15,6 +15,11 @@ class Ui_area_widget(object):
     def setupUi(self, area_widget):
         area_widget.setObjectName("area_widget")
         area_widget.resize(438, 72)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Preferred)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(area_widget.sizePolicy().hasHeightForWidth())
+        area_widget.setSizePolicy(sizePolicy)
         self.gridLayout = QtWidgets.QGridLayout(area_widget)
         self.gridLayout.setContentsMargins(0, 0, 0, 0)
         self.gridLayout.setObjectName("gridLayout")

@@ -1,8 +1,11 @@
+from __future__ import annotations
+
 from datetime import datetime
 from typing import Optional
 from pathlib import Path
 from dataclasses import dataclass
 import pytz
+from typing import Any, Self
 
 import numpy as np
 import pandas as pd
@@ -24,32 +27,33 @@ class SnapshotRequest:
 
 
 class SnapshotAccumulator:
-    def __init__(self, snapshotter, filename):
+    def __init__(self, snapshotter: Snapshotter, filename | None : str = None):
         self.filename = Path(filename)
         self.records = []
         self.snapshotter = snapshotter
 
     @property
-    def outdir(self):
+    def outdir(self) -> Path:
         return Path(self.filename).parent
 
     @property
-    def image_outdir(self):
+    def image_outdir(self) -> Path:
         return self.outdir / "images"
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         LOG.debug(f"Entering SnapshotAccumulator, filename={self.filename}")
         self.outdir.mkdir(exist_ok=True)
         self.image_outdir.mkdir(exist_ok=True)
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        print("exiting...")
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         df = pd.DataFrame.from_records(self.records)
         df = df.rename(self.snapshotter.expand_wildcards())
-        fname = self.filename.with_suffix(".pkl")
-        LOG.debug(f"Writing DataFrame to {fname}")
-        df.to_pickle(fname)
+
+        if self.filename:
+            fname = self.filename.with_suffix(".pkl")
+            LOG.debug(f"Writing DataFrame to {fname}")
+            df.to_pickle(fname)
 
     def take_snapshot(self, image: Optional[list] = None, **kvps):
         result = self.snapshotter.snapshot(image_dir=self.image_outdir,
@@ -59,7 +63,7 @@ class SnapshotAccumulator:
 
 
 class Snapshotter:
-    def __init__(self, request: SnapshotRequest, di: Optional[DOOCSInterface] = None):
+    def __init__(self, request: SnapshotRequest, di: DOOCSInterface | None = None):
         self.request = request
         self.di = di if di else DOOCSInterface()
 
@@ -77,7 +81,7 @@ class Snapshotter:
 
         return subaddress_full_address_map
 
-    def snapshot(self, image_dir=None, image=None, **kvps):
+    def snapshot(self, image_dir: str | None = None, image: np.ndarray | None = None, **kvps):
         result = {}
         result.update(self.read_addresses())
         result.update(self.read_wildcards())
@@ -86,7 +90,7 @@ class Snapshotter:
         result.update(kvps)
         return result
 
-    def read_image(self, image_dir, image=None):
+    def read_image(self, image_dir: str, image: np.ndarray | None = None) -> dict[str, str]:
         image_address = self.request.image
         if not image_address:
             return {}
@@ -97,15 +101,15 @@ class Snapshotter:
         fname = make_image_filename(image_dir)
         np.savez(fname, image=image)
 
-        return {image_address: f"{image_dir.name}/{fname.name}"}
+        return {image_address: f"{image_dir.name}/{fname.name}"}, image
 
-    def try_and_read(self, addy, default=np.nan):
+    def try_and_read(self, addy: str, default: float = np.nan) -> Any:
         try:
             return self.di.get_value(addy)
         except:
             return default
 
-    def read_addresses(self) -> dict:
+    def read_addresses(self) -> dict[str, Any]:
         return {addy: self.try_and_read(addy) for addy in self.request.addresses}
 
     def read_wildcards(self) -> dict:
@@ -118,10 +122,9 @@ class Snapshotter:
             result.update(dict(zip(addresses, values)))
         return result
 
-def make_image_filename(imagedir):
+def make_image_filename(imagedir: str) -> Path:
     # this is the local time.
     tz = pytz.timezone("Europe/Berlin")
     local_hamburg_time = tz.localize(datetime.now())
     filename = local_hamburg_time.strftime(f"%Y-%m-%d-%H:%M:%S:%f.npz")
     return Path(imagedir) / filename
-

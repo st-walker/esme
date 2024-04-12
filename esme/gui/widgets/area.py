@@ -58,3 +58,15 @@ class AreaControl(QWidget):
         screen_name = self.ui.select_screen_combobox.currentText()
         self.screen_name_signal.emit(screen_name)
         self.machine.set_kickers_for_screen(screen_name)
+
+    def closeEvent(self, event) -> None:
+        self.close_jddd_screen_window()
+
+    def close_jddd_screen_window(self) -> None:
+        try:
+            self.jddd_camera_window_process.close()
+        except AttributeError:
+            pass
+        else:
+            self.jddd_camera_window_process = None
+        

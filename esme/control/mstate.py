@@ -56,7 +56,7 @@ class AreaWatcher:
             if screen.is_camera_taking_data():
                 tooltips.append("• Camera is not taking data")
             if not self._sbunches.is_screen_ok():
-                tooltips.append("• SBML is unhappy with the screen")
+                tooltips.append("• SBM is unhappy with the screen")
             if tooltips: # If something's wrong then read camera status to try to help.
                 tooltips.append(f"• Camera status: \"{screen.read_camera_status()}\"")
         except DOOCSReadError as e:
@@ -70,7 +70,7 @@ class AreaWatcher:
         tooltips = []
         try:
             if not self._sbunches.is_tds_ok():
-                tooltips.append("• SBML is unhappy with the TDS")
+                tooltips.append("• SBM is unhappy with the TDS")
             if not self._tds.amplitude_rb_matches_sp():
                 rb = self._tds.get_amplitude_rb()
                 sp = self._tds.get_amplitude_sp()
@@ -94,7 +94,7 @@ class AreaWatcher:
                 name = kicker_setpoint.name
                 kicker = self._kickerop.get_kicker(name)
                 if not kicker.is_operational() or not self.is_kicker_ok():
-                    tooltips.append(f"• SBML is complaining about {name}")
+                    tooltips.append(f"• SBM is complaining about {name}")
                 if not kicker.is_hv_on():
                     tooltips.append(f"• HV is not on for kicker {name}")
         except DOOCSReadError as e:
