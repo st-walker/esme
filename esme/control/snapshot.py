@@ -27,7 +27,7 @@ class SnapshotRequest:
 
 
 class SnapshotAccumulator:
-    def __init__(self, snapshotter: Snapshotter, filename | None : str = None):
+    def __init__(self, snapshotter: Snapshotter, filename: str | None = None):
         self.filename = Path(filename)
         self.records = []
         self.snapshotter = snapshotter

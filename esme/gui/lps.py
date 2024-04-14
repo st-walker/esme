@@ -5,6 +5,7 @@ from PyQt5 import QtCore
 from PyQt5.QtCore import QObject, QRunnable, QTimer, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QMainWindow
 import pyqtgraph as pg
+import numpy as np
 
 from esme.gui.ui import mainwindow
 from esme.gui.widgets.common import (make_default_i1_lps_machine,
@@ -51,7 +52,7 @@ class BackgroundCache:
     def __init__(self):
         self._cache = defaultdict(partial(deque, maxlen=self.MAX_BG))
 
-    def add_image(self, screen_name: str, image: np.npdarray) -> None:
+    def add_image(self, screen_name: str, image: np.ndarray) -> None:
         self._cache[screen_name].add(image)
 
     def clear_cache(self, screen_name: str) -> None:
@@ -169,7 +170,8 @@ class LPSMainWindow(QMainWindow):
     def accumulate_background(self) -> None:
         """Take background data and cache the result.  The images can
         be used for background subtraction in the main image."""
-        with SnapshotAccumulator
+        # with SnapshotAccumulator
+        return
 
 
 class QPlainTextEditLogger(QObject, logging.Handler):
