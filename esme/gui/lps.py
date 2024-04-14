@@ -161,7 +161,7 @@ class LPSMainWindow(QMainWindow):
         return timer
 
     def closeEvent(self, event) -> None:
-        self.ui.area.close(event)
+        self.ui.area.close()
         # Close screen display widget where we have threads running
         # here explicitly otherwise we have a problem.  Could also
         # emit a closing signal.  This is fine.
