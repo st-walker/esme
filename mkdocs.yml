@@ -1,4 +1,4 @@
-site_name: EuXFEL Slice Energy Spread Measurement Tool
+site_name: Longitudinal Phase Space 
 site_url: https://st-walker.github.io/esme-xfel
 repo_url: https://github.com/st-walker/esme-xfel
 repo_name: st-walker/esme-xfel
@@ -8,8 +8,9 @@ nav:
   - Installation: installation.md
   - Usage: usage.md
   - Modules: api.md
-  - Background: background.md
-  - "Measurement Checklist": checklist.md
+  - Some Theory: theory.md
+  - "Roadmap": todo.md
+  - "High Resolution Energy Spread Measurements": "hires-espread.md"
   - Changelog: changelog.md
 theme:
   name: material
@@ -25,8 +26,9 @@ theme:
     - navigation.tabs.sticky
 markdown_extensions:
   - pymdownx.emoji:
-      emoji_index: !!python/name:materialx.emoji.twemoji
-      emoji_generator: !!python/name:materialx.emoji.to_svg
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.tasklist
   - pymdownx.critic
   - pymdownx.caret
   - pymdownx.mark
@@ -51,8 +53,9 @@ plugins:
   - search:
       lang: en
   - mkdocstrings:
-      watch:
-        - esme
+      handlers:
+        python:
+          paths: [esme]
 extra:
   social:
     - icon: fontawesome/brands/twitter
@@ -68,12 +71,6 @@ extra:
       name: Github
     - icon: material/email
       link: "mailto:stuart.walker@desy.de"
-  # to enable disqus, uncomment the following and put your disqus id below
-  # disqus: disqus_id
-# uncomment the following and put your google tracking id below to enable GA
-#google_analytics:
-  #- UA-xxx
-  #- auto
 
 extra_javascript:
   - javascripts/mathjax.js

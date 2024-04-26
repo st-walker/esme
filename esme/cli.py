@@ -100,10 +100,9 @@ def main(debug, profile):
         atexit.register(exit)
 
 
-
 @main.command()
 def bolko():
-    from esme.gui.calibrator import start_bolko_tool
+    from esme.gui.tds_calibrator import start_bolko_tool
     start_bolko_tool()
 
 

@@ -1,13 +1,22 @@
+import logging
+
 from PyQt5.QtWidgets import QWidget
 from PyQt5.QtCore import pyqtSignal, QProcess
 
 from esme.gui.ui import Ui_area_widget
 from esme.gui.widgets.common import make_default_i1_lps_machine, make_default_b2_lps_machine
 
+LOG = logging.getLogger(__name__)
+LOG.setLevel(logging.DEBUG)
 
 
 class AreaControl(QWidget):
     screen_name_signal = pyqtSignal(str)
+    # These default screen names are from the Bolko tool.  I guess
+    # they're the best to use for reasons of phase advance or
+    # whatever.
+    I1_DEFAULT_SCREEN = "OTRC.58.I1"
+    B2_DEFAULT_SCREEN = "OTRB.457.B2"
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -23,19 +32,26 @@ class AreaControl(QWidget):
         self.ui.b2_radio_button.pressed.connect(self.set_b2)
         self.ui.jddd_screen_gui_button.clicked.connect(self.open_jddd_screen_window)
         self.ui.select_screen_combobox.activated.connect(self.select_screen)
-        
-        self.update_screen_combo_box()
-        
-    def update_screen_combo_box(self) -> None:
+
+        self._selected_i1_screen = None
+        self._selected_b2_screen = None
+
+        self.update_screen_combo_box(self.I1_DEFAULT_SCREEN)
+
+
+    def update_screen_combo_box(self, initial_value=None) -> None:
         self.ui.select_screen_combobox.clear()
         self.ui.select_screen_combobox.addItems(self.machine.screens)
-        
+        if initial_value:
+            index = self.ui.select_screen_combobox.findText(initial_value)
+            self.ui.select_screen_combobox.setCurrentIndex(index)
+
     def emit_current_screen_name(self) -> None:
         self.screen_name_signal.emit(self.get_selected_screen_name())
 
     def get_selected_screen_name(self) -> str:
         return self.ui.select_screen_combobox.currentText()
-        
+
     def open_jddd_screen_window(self) -> None:
         self.jddd_camera_window_process = QtCore.QProcess()
         screen = self.get_selected_screen_name()
@@ -45,14 +61,25 @@ class AreaControl(QWidget):
         self.jddd_camera_window_process.finished.connect(self.close_jddd_screen_window)
 
     def set_i1(self) -> None:
+        # This if loop is just to basically restore state so when we
+        # click on I1 after being on B2, the screen name from before
+        # is remembered rather than reset to some default value every time.
+        if self.machine is self.b2machine: # Keep track of selected screen if moving from B2 to I1
+            self._selected_b2_screen = self.get_selected_screen_name()
+
         LOG.debug(f"Setting area in {self} to I1")
         self.machine = self.i1machine
-        self.update_screen_combo_box()
+        screen_name = self._selected_i1_screen or self.I1_DEFAULT_SCREEN
+        self.update_screen_combo_box(screen_name)
 
     def set_b2(self):
+        if self.machine is self.i1machine:
+            self._selected_i1_screen = self.get_selected_screen_name()
+
         LOG.debug(f"Setting area in {self} to B2<")
         self.machine = self.b2machine
-        self.update_screen_combo_box()
+        screen_name = self._selected_b2_screen or self.B2_DEFAULT_SCREEN
+        self.update_screen_combo_box(screen_name)
 
     def select_screen(self, _):
         screen_name = self.ui.select_screen_combobox.currentText()
@@ -69,4 +96,3 @@ class AreaControl(QWidget):
             pass
         else:
             self.jddd_camera_window_process = None
-        

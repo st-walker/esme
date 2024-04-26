@@ -2,18 +2,25 @@ from dataclasses import dataclass
 import sys
 import logging
 import time
-from typing import Optional, Union
+from typing import Optional, Union, Iterator
 from datetime import datetime
 import os
 from pathlib import Path
+from typing import TypeVar, Callable
+from types import SimpleNamespace
 
+import csv
 import pyqtgraph as pg
 from PyQt5 import QtCore
 from PyQt5.QtCore import QObject, QThread, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QFileDialog, QMainWindow, QTableWidgetItem
+from PyQt5 import QtWidgets
 import numpy as np
 import scipy.ndimage as ndi
 from scipy.optimize import curve_fit
+import oxfel
+from ocelot.cpbd.elements import Quadrupole
+from ocelot.cpbd.magnetic_lattice import MagneticLattice
 
 from esme.load import load_calibration_from_yaml
 from esme.gui.ui import calibration
@@ -23,14 +30,14 @@ from esme.gui.widgets.common import (get_tds_calibration_config_dir,
                              make_default_b2_lps_machine,
                              make_default_injector_espread_machine)
 from esme.control.configs import load_calibration
+from esme.gui.widgets.area import AreaControl
 from esme.calibration import CompleteCalibration
 from esme.image import filter_image
-import logging
-import oxfel
-from ocelot.cpbd.elements import Quadrupole
-from ocelot.cpbd.magnetic_lattice import MagneticLattice
 from esme.calibration import calculate_voltage, AmplitudeVoltageMapping
 from esme import DiagnosticRegion
+
+LayoutBaseType = TypeVar("LayoutBaseType", bound=QtWidgets.QLayout)
+
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -74,8 +81,12 @@ class TaggedCalibration:
 
 class CalibrationMainWindow(QMainWindow):
     avmapping_signal = pyqtSignal(AmplitudeVoltageMapping)
-    NROWS = 5
+    NROWS = 100
     NCOLS = 7
+    # When measuring the crossing, we take data at the lower and upper
+    # phases, but also in between.  The total amount of phase setpoints is set here.
+    # E.g. 5 = the two ends plus 3 the middle.
+    PHASE_COMS_TO_MEASURE = 5
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -89,58 +100,88 @@ class CalibrationMainWindow(QMainWindow):
         self.setWindowTitle('Bolko Redux Mk. II')
         self.updating_table = False  # Flag to prevent recursive updates
 
-        self.main_widget = QtWidgets.QWidget()
-        self.setCentralWidget(self.main_widget)
-        main_layout = QtWidgets.QHBoxLayout(self.main_widget)
+        self.ui = SimpleNamespace()
+
+        self.ui.main_widget = QtWidgets.QWidget()
+        self.setCentralWidget(self.ui.main_widget)
+        main_layout = QtWidgets.QHBoxLayout(self.ui.main_widget)
 
         left_layout = QtWidgets.QVBoxLayout()
         main_layout.addLayout(left_layout)
+        self.create_area_group_box(left_layout)
 
         self.create_calibration_group_box(left_layout)
 
-        self.file_path_label = QtWidgets.QLabel()
-        self.load_button = QtWidgets.QPushButton("Load...")
-        self.load_button.clicked.connect(self.load_yaml_file)
+        self.ui.file_path_label = QtWidgets.QLabel()
+        self.ui.load_button = QtWidgets.QPushButton("Load...")
+        self.ui.load_button.clicked.connect(self.load_yaml_file)
 
         io_layout = QtWidgets.QHBoxLayout()
         left_layout.addLayout(io_layout)
 
         load_layout = QtWidgets.QHBoxLayout()
-        load_layout.addWidget(self.load_button)
-        load_layout.addWidget(self.file_path_label)
+        load_layout.addWidget(self.ui.load_button)
+        load_layout.addWidget(self.ui.file_path_label)
         io_layout.addLayout(load_layout)
 
+        run_apply_layout = QtWidgets.QHBoxLayout()
+        left_layout.addLayout(run_apply_layout)
 
-        self.apply_button = QtWidgets.QPushButton("Apply")
-        self.apply_button.clicked.connect(self.apply_calibration)
+        self.ui.apply_button = QtWidgets.QPushButton("Apply")
+        self.ui.apply_button.clicked.connect(self.apply_calibration)
         # Add the button underneath the table
-        left_layout.addWidget(self.apply_button)
-        if parent is None:
-            self.apply_button.hide()
+
+        run_apply_layout.addWidget(self.ui.apply_button)
+        self.ui.start_calib_button = QtWidgets.QPushButton("Start Calibration")
+        self.ui.start_calib_button.clicked.connect(self.do_calibration)
+        run_apply_layout.addWidget(self.ui.start_calib_button)
 
 
-        self.graphics_widget = pg.GraphicsLayoutWidget()
-        main_layout.addWidget(self.graphics_widget)
+        # if parent is None:
+            # self.ui.apply_button.hide()
 
-        self.create_plots()
+        self.ui.graphics_widget = pg.GraphicsLayoutWidget()
+        main_layout.addWidget(self.ui.graphics_widget)
+
+        self.create_plots(self.ui.graphics_widget)
         self.create_table(left_layout)
 
         save_layout = QtWidgets.QHBoxLayout()
-        self.save_button = QtWidgets.QPushButton("Save...")
-        self.save_button.clicked.connect(self.save_table_data)  # Connect to the slot for saving
-        save_layout.addWidget(self.save_button)  # Assuming load_layout is your QHBoxLayout
+        self.ui.save_button = QtWidgets.QPushButton("Save...")
+        self.ui.save_button.clicked.connect(self.save_table_data)
+        save_layout.addWidget(self.ui.save_button)
         io_layout.addLayout(save_layout)
 
         self.set_filepath_label(fname)
 
+    def do_calibration(self) -> None:
+        for amplitude, phase_pair0, phase_pair1 in self._iter_rows():
+            self.machine.deflector.set_amplitude(amplitude)
+            self._scan_one_phase_pair(*phase_pair0)
+            self._scan_one_phase_pair(*phase_pair1)
 
-        # if ccalib:
-        #     self._init_gui_from_complete_calib(ccalib, fname)
 
-    def get_amplitude_voltage_mapping(self):
+    def _scan_one_phase_pair(self, low, high) -> None:
+        phases = np.linspace(low, high, num=self.PHASE_COMS_TO_MEASURE)
+        for phase in phases:
+            self.machine.deflector.set_phase(phase)
+            # image = self.machine.screen.get_image_raw() ???
+            com = self.get_com_from_screen()
+
+    def _get_com_from_screen(self) -> tuple[float, float]:
+        pass
+
+    def _iter_rows(self) -> Iterator[tuple[float, tuple[float, float], tuple[float, float]]]:
+        for irow in range(self.ui.table_widget.rowCount()):
+            amplitude = self.ui.table_widget.item(irow, 0)
+            phase_pair0 = self.ui.table_widget.item(irow, 1), self.ui.table_widget.item(irow, 2)
+            phase_pair1 = self.ui.table_widget.item(irow, 3), self.ui.table_widget.item(irow, 4)
+            yield amplitude, phase_pair0, phase_pair1
+
+    def get_amplitude_voltage_mapping(self) -> AmplitudeVoltageMapping:
         amplitudes = []
         voltages = []
-        for irow in range(self.table_widget.rowCount()):
+        for irow in range(self.ui.table_widget.rowCount()):
             try:
                 amplitude = self._get_amplitude_row(irow)
                 voltage = self._get_voltage_row(irow)
@@ -152,26 +193,26 @@ class CalibrationMainWindow(QMainWindow):
 
         return AmplitudeVoltageMapping(DiagnosticRegion.I1, amplitudes, voltages)
 
-    def _init_gui_from_complete_calib(self, calib, fname):
+    def _init_gui_from_complete_calib(self, calib, fname: str) -> None:
         self.set_filepath_label(fname)
-        self.r_3412_spin_box.setValue(calib.r34_from_optics())
+        self.ui.r_3412_spin_box.setValue(calib.r34_from_optics())
         calfactors = calib.cal_factors #* calib.CAL_UM_PER_PS
         self._write_table_contents(calib.amplitudes, calfactors)
 
-    def _write_table_contents(self, amplitudes, cal_factors):
+    def _write_table_contents(self, amplitudes: list[float], cal_factors: list[float]) -> None:
         for i, (amp, cal) in enumerate(zip(amplitudes, cal_factors)):
-            self.table_widget.setItem(i, 0, QTableWidgetItem(str(amp)))
+            self.ui.table_widget.setItem(i, 0, QTableWidgetItem(str(amp)))
             self._set_cal_factor_row(i, cal)
         for j in range(i + 1, self.NROWS):
-            self.table_widget.setItem(j, 0, QTableWidgetItem(""))
-            self.table_widget.setItem(j, 1, QTableWidgetItem(""))
-            self.table_widget.setItem(j, 2, QTableWidgetItem(""))
-            self.table_widget.setItem(j, 3, QTableWidgetItem(""))
-            self.table_widget.setItem(j, 4, QTableWidgetItem(""))
+            self.ui.table_widget.setItem(j, 0, QTableWidgetItem(""))
+            self.ui.table_widget.setItem(j, 1, QTableWidgetItem(""))
+            self.ui.table_widget.setItem(j, 2, QTableWidgetItem(""))
+            self.ui.table_widget.setItem(j, 3, QTableWidgetItem(""))
+            self.ui.table_widget.setItem(j, 4, QTableWidgetItem(""))
 
-    def create_table(self, left_layout):
-        self.table_widget = QtWidgets.QTableWidget(self.NROWS, self.NCOLS)
-        self.table_widget.setHorizontalHeaderLabels(
+    def create_table(self, left_layout: LayoutBaseType) -> None:
+        self.ui.table_widget = QtWidgets.QTableWidget(self.NROWS, self.NCOLS)
+        self.ui.table_widget.setHorizontalHeaderLabels(
             ["Amplitude / %",
              "  𝜙₀₀ / °  ",
              "  𝜙₀₁ / °  ",
@@ -180,42 +221,52 @@ class CalibrationMainWindow(QMainWindow):
              "Calibration Factor µm/ps",
              "Voltage / MV"]
         )
-        self.table_widget.horizontalHeader().setStretchLastSection(True)
-        # self.table_widget.itemChanged.connect(self.update_plots_and_voltage)
-        left_layout.addWidget(self.table_widget)
+        self.ui.table_widget.horizontalHeader().setStretchLastSection(True)
+        # self.ui.table_widget.itemChanged.connect(self.update_plots_and_voltage)
+        left_layout.addWidget(self.ui.table_widget)
 
-        for row in range(self.table_widget.rowCount()):
+        for row in range(self.ui.table_widget.rowCount()):
             item = QtWidgets.QTableWidgetItem()
             item.setFlags(item.flags() ^ QtCore.Qt.ItemIsEditable)
-            self.table_widget.setItem(row, 6, item)
-        self.table_widget.resizeColumnsToContents()
+            self.ui.table_widget.setItem(row, 6, item)
+        self.ui.table_widget.resizeColumnsToContents()
 
-    def create_calibration_group_box(self, layout):
+    def create_area_group_box(self, layout: LayoutBaseType) -> None:
+        group_box = QtWidgets.QGroupBox("Diagnostic Area")
+        group_layout = QtWidgets.QGridLayout(group_box)
+        self.ui.area_control = AreaControl()
+        group_layout.addWidget(self.ui.area_control)
+        layout.addWidget(group_box)
+
+    def create_calibration_group_box(self, layout: LayoutBaseType) -> None:
         group_box = QtWidgets.QGroupBox("Calibration Machine Setpoint")
         # group_layout = QtWidgets.QVBoxLayout(group_box)
         group_layout = QtWidgets.QGridLayout(group_box)
 
-        self.r_3412_spin_box = self.create_double_spin_box(
+        self.ui.r_3412_spin_box = self.create_double_spin_box(
             "<span>R<sub>12(34)</sub> / mrad<sup>-1</sup></span>", group_layout,
             default_value=0.0, min_value=-20.0, max_value=20.0, step=1.0,
             read_function=self.read_r1234_from_machine)
-        self.beam_energy_spin_box = self.create_double_spin_box(
+        self.ui.beam_energy_spin_box = self.create_double_spin_box(
             "Beam Energy / MeV", group_layout, default_value=130,
             min_value=0.0, max_value=sys.float_info.max, step=1.0,
             read_function=self.read_beam_energy_from_machine)
-        self.tds_frequency_spin_box = self.create_double_spin_box(
+        self.ui.tds_frequency_spin_box = self.create_double_spin_box(
             "TDS Frequency / GHz", group_layout, default_value=3.0,
             min_value=0.0, max_value=sys.float_info.max, step=1.0)
 
         layout.addWidget(group_box)
 
-    def read_r1234_from_machine(self):
-        pass
+    def read_r1234_from_machine(self) -> None:
+        screen_name = self.ui.area_control.get_selected_screen_name()
+        r1234 = self.machine.optics.r12_streaking_from_tds_to_point(screen_name)
+        self.ui.r_3412_spin_box.setValue(r1234)
 
-    def read_beam_energy_from_machine(self):
-        pass
+    def read_beam_energy_from_machine(self) -> None:
+        energy_mev = self.machine.optics.get_beam_energy() # MeV is fine here.
+        self.ui.beam_energy_spin_box.setValue(energy_mev)
 
-    def load_yaml_file(self):
+    def load_yaml_file(self) -> None:
         file_path, _ = QtWidgets.QFileDialog.getOpenFileName(
             self, "Load YAML File", "", "YAML Files (*.yaml)")
         # if file_path:
@@ -227,7 +278,7 @@ class CalibrationMainWindow(QMainWindow):
         calibration = load_calibration_from_yaml(file_path)
         self._init_gui_from_complete_calib(calibration, file_path)
 
-    def set_filepath_label(self, file_path: Union[os.PathLike, str]):
+    def set_filepath_label(self, file_path: Union[os.PathLike, str]) -> None:
         if not file_path:
             file_path = "No file selected"
         # try to make file path relative to cwd else just use filepath
@@ -235,11 +286,11 @@ class CalibrationMainWindow(QMainWindow):
             file_path = Path(file_path).relative_to(os.getcwd())
         except ValueError:
             pass
-        self.file_path_label.setText(f"File: {file_path}")
+        self.ui.file_path_label.setText(f"File: {file_path}")
 
-    def create_double_spin_box(self, label, layout, default_value=0.0,
-                               min_value=0.0, max_value=100.0, step=0.1,
-                               read_function=None):
+    def create_double_spin_box(self, label: str, layout: LayoutBaseType, default_value: float = 0.0,
+                               min_value: float = 0.0, max_value: float = 100.0, step: float = 0.1,
+                               read_function: Callable[None, float] | None = None) -> None:
         current_row_count = layout.rowCount()
 
         label_widget = QtWidgets.QLabel(label)
@@ -261,64 +312,59 @@ class CalibrationMainWindow(QMainWindow):
             layout.addWidget(new_button, current_row_count, 2)
         return spin_box
 
-    def create_plots_old(self):
-        self.plot1 = self.graphics_widget.addPlot(title="TDS Calibration Factors")
-        # self.plot1.setLabel('bottom', 'TDS Amplitude')
-        self.plot1.setLabel('left', 'Calibration Factor µm/ps')
-        self.plot_data_item1 = pg.PlotDataItem()
-        self.plot1.addItem(self.plot_data_item1)
+    def create_phase_scan_plot(self, graphics_widget: pg.GraphicsLayoutWidget) -> None:
+        phase_scan_plot = graphics_widget.addPlot(title="Phase Scans", row=1, col=0)
+        phase_scan_plot.setLabel('bottom', 'TDS Phase / °')
+        phase_scan_plot.setLabel('right', 'Centre of Mass / px')
+        self.ui.phase_scan_plot = phase_scan_plot
+        phase_scan_plot_data_item = pg.PlotDataItem()
 
-        self.graphics_widget.nextRow()
+    def create_calibration_plot(self, graphics_widget: pg.GraphicsLayoutWidget) -> None:
+        self.ui.cal_factors_plot = graphics_widget.addPlot(title="TDS Calibration Factors")
+        self.ui.cal_factors_plot.setLabel('bottom', 'TDS Amplitude')
+        self.cal_factor_plot_data_item = pg.PlotDataItem()
+        self.ui.cal_factors_plot.addItem(self.cal_factor_plot_data_item)
 
-        self.plot2 = self.graphics_widget.addPlot(title="TDS Amplitude-Voltage Mapping")
-        self.plot2.setLabel('bottom', 'TDS Amplitude')
-        self.plot2.setLabel('left', 'Voltage / MV')
-        self.plot_data_item2 = pg.PlotDataItem()
-        self.plot2.addItem(self.plot_data_item2)
-
-        self.plot2.setXLink(self.plot1)
-
-    def create_plots(self):
-        self.plot1 = self.graphics_widget.addPlot(title="TDS Calibration Factors")
-        self.plot1.setLabel('bottom', 'TDS Amplitude')
-        self.plot_data_item1 = pg.PlotDataItem()
-        self.plot1.addItem(self.plot_data_item1)
-
-        self.plot1.getAxis('left').setLabel('Calibration Factor µm/ps', color='#00FFFF')
-        # self.plot1.setLabels(left='Calibration Factor µm/ps')
+        self.ui.cal_factors_plot.getAxis('left').setLabel('Calibration Factor µm/ps', color='#00FFFF')
+        # self.ui.cal_factors_plot.setLabels(left='Calibration Factor µm/ps')
 
         ## create a new ViewBox, link the right axis to its coordinate system
-        self.plot2 = pg.ViewBox()
-        self.plot1.showAxis('right')
-        self.plot1.scene().addItem(self.plot2)
-        self.plot1.getAxis('right').linkToView(self.plot2)
-        self.plot2.setXLink(self.plot1)
-        self.plot1.getAxis('right').setLabel('TDS Voltage / MV', color='#FFFF00')
+        self.ui.tds_voltage_plot = pg.ViewBox()
+        self.ui.cal_factors_plot.showAxis('right')
+        self.ui.cal_factors_plot.scene().addItem(self.ui.tds_voltage_plot)
+        self.ui.cal_factors_plot.getAxis('right').linkToView(self.ui.tds_voltage_plot)
+        self.ui.tds_voltage_plot.setXLink(self.ui.cal_factors_plot)
+        self.ui.cal_factors_plot.getAxis('right').setLabel('TDS Voltage / MV', color='#FFFF00')
 
-        self.plot2.setGeometry(self.plot1.vb.sceneBoundingRect())
-        self.plot2.linkedViewChanged(self.plot1.vb, self.plot2.XAxis)
+        self.ui.tds_voltage_plot.setGeometry(self.ui.cal_factors_plot.vb.sceneBoundingRect())
+        self.ui.tds_voltage_plot.linkedViewChanged(self.ui.cal_factors_plot.vb, self.ui.tds_voltage_plot.XAxis)
 
-        self.plot1.plot([1,2,4,8,16,32], pen="#00FFFF")
-        self.plot2.addItem(pg.PlotCurveItem([10,20,40,80,40,20], pen='#FFFF00'))
+        self.ui.cal_factors_plot.plot([1, 2, 4, 8, 16, 32], pen="#00FFFF")
+        self.ui.tds_voltage_plot.addItem(pg.PlotCurveItem([10, 20, 40, 80, 40, 20], pen='#FFFF00'))
 
-        self.plot1.vb.sigResized.connect(self._update_views)
+        self.ui.cal_factors_plot.vb.sigResized.connect(self._update_views)
 
-    def _update_views(self):
-        self.plot2.setGeometry(self.plot1.vb.sceneBoundingRect())
-        self.plot2.linkedViewChanged(self.plot1.vb, self.plot2.XAxis)
+    def create_plots(self, graphics_widget: pg.GraphicsLayoutWidget) -> None:
+        self.create_calibration_plot(graphics_widget)
+        self.create_phase_scan_plot(graphics_widget)
 
-    def update_plots_and_voltage(self, item):
+
+    def _update_views(self) -> None:
+        self.ui.tds_voltage_plot.setGeometry(self.ui.cal_factors_plot.vb.sceneBoundingRect())
+        self.ui.tds_voltage_plot.linkedViewChanged(self.ui.cal_factors_plot.vb, self.ui.tds_voltage_plot.XAxis)
+
+    def update_plots_and_voltage(self, _) -> None:
         if self.updating_table:
             return
         self.updating_table = True
 
-        for row in range(self.table_widget.rowCount()):
+        for row in range(self.ui.table_widget.rowCount()):
             try:
-                calibration_item = self.table_widget.item(row, 1)
+                calibration_item = self.ui.table_widget.item(row, 1)
                 cal_factor = float(calibration_item.text()) / CompleteCalibration.CAL_UM_PER_PS
-                r = self.r_3412_spin_box.value()
-                energy = self.beam_energy_spin_box.value()
-                frequency_ghz = self.tds_frequency_spin_box.value()
+                r = self.ui.r_3412_spin_box.value()
+                energy = self.ui.beam_energy_spin_box.value()
+                frequency_ghz = self.ui.tds_frequency_spin_box.value()
                 frequency_hz = frequency_ghz * 1e9
                 voltage_v = calculate_voltage(slope=cal_factor, r34=r, energy=energy, frequency=frequency_hz)
             except (TypeError, ZeroDivisionError, AttributeError, ValueError):
@@ -326,48 +372,48 @@ class CalibrationMainWindow(QMainWindow):
             else:
                 self._set_voltage_row(row, voltage_v)
                 # voltage_mv = voltage_v * 1e-6
-                # self.table_widget.item(row, 2).setText(f"{voltage_mv:.4g}")
+                # self.ui.table_widget.item(row, 2).setText(f"{voltage_mv:.4g}")
 
         self.update_plots()
         self.updating_table = False
 
-    def apply_calibration(self):
+    def apply_calibration(self) -> None:
         self.avmapping_signal.emit(self.get_amplitude_voltage_mapping())
 
-    def _set_cal_factor_row(self, irow, cal_factor_m_per_s):
+    def _set_cal_factor_row(self, irow: int, cal_factor_m_per_s: float) -> None:
         calfactor = cal_factor_m_per_s * CompleteCalibration.CAL_UM_PER_PS
-        self.table_widget.setItem(irow, 1, QTableWidgetItem(f"{calfactor:.4g}"))
+        self.ui.table_widget.setItem(irow, 1, QTableWidgetItem(f"{calfactor:.4g}"))
 
-    def _set_voltage_row(self, irow, voltage_v):
+    def _set_voltage_row(self, irow: int, voltage_v: float) -> None:
         if voltage_v is None:
             try:
-                self.table_widget.item(irow, 4).setText("")
+                self.ui.table_widget.item(irow, 4).setText("")
             except AttributeError:
                 pass
         else:
             voltage_mv = voltage_v * 1e-6
-            self.table_widget.item(irow, 2).setText(f"{voltage_mv:.4g}")
+            self.ui.table_widget.item(irow, 2).setText(f"{voltage_mv:.4g}")
 
-    def _get_voltage_row(self, irow):
-        voltage_item = self.table_widget.item(irow, 2)
+    def _get_voltage_row(self, irow: int) -> float:
+        voltage_item = self.ui.table_widget.item(irow, 2)
         return float(voltage_item.text()) * 1e6
 
-    def _get_amplitude_row(self, irow):
-        amplitude_item = self.table_widget.item(irow, 0)
+    def _get_amplitude_row(self, irow: int) -> float:
+        amplitude_item = self.ui.table_widget.item(irow, 0)
         return float(amplitude_item.text())
 
-    def update_plots(self):
+    def update_plots(self) -> None:
         amplitudes = []
         calibrations = []
         voltages = []
-        for row in range(self.table_widget.rowCount()):
+        for row in range(self.ui.table_widget.rowCount()):
             try:
-                amplitude = float(self.table_widget.item(row, 0).text())
-                calibration = float(self.table_widget.item(row, 1).text())
-                # amplitude.append(float(self.table_widget.item(row, 0).text()))
-                # calibration.append(float(self.table_widget.item(row, 1).text()))
-                voltage = float(self.table_widget.item(row, 2).text())
-                # voltage.append(float(self.table_widget.item(row, 2).text()))
+                amplitude = float(self.ui.table_widget.item(row, 0).text())
+                calibration = float(self.ui.table_widget.item(row, 1).text())
+                # amplitude.append(float(self.ui.table_widget.item(row, 0).text()))
+                # calibration.append(float(self.ui.table_widget.item(row, 1).text()))
+                voltage = float(self.ui.table_widget.item(row, 2).text())
+                # voltage.append(float(self.ui.table_widget.item(row, 2).text()))
             except (TypeError, ValueError, AttributeError):
                 continue
             else:
@@ -375,26 +421,26 @@ class CalibrationMainWindow(QMainWindow):
                 calibrations.append(calibration)
                 voltages.append(voltage)
 
-        self.plot_data_item1.setData(amplitudes, calibrations)
-        self.plot_data_item2.setData(amplitudes, voltages)
+        self.cal_factor_plot_data_item.setData(amplitudes, calibrations)
+        self.tds_voltage_plot_data_item.setData(amplitudes, voltages)
 
-    def save_table_data(self):
+    def save_table_data(self) -> None:
         file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
             self, "Save Table Data", "", "CSV Files (*.csv)")
         if file_path:
             with open(file_path, 'w', newline='') as file:
                 writer = csv.writer(file)
                 # Write headers
-                headers = [self.table_widget.horizontalHeaderItem(i).text() for i in range(self.table_widget.columnCount())]
+                headers = [self.ui.table_widget.horizontalHeaderItem(i).text() for i in range(self.ui.table_widget.columnCount())]
                 writer.writerow(headers)
                 # Write data rows
-                for row in range(self.table_widget.rowCount()):
+                for row in range(self.ui.table_widget.rowCount()):
                     row_data = []
-                    for column in range(self.table_widget.columnCount()):
-                        item = self.table_widget.item(row, column)
+                    for column in range(self.ui.table_widget.columnCount()):
+                        item = self.ui.table_widget.item(row, column)
                         row_data.append(item.text() if item else "")
                     writer.writerow(row_data)
-    
+
 
 class CalibrationMainWindowOld(QMainWindow):
     avmapping_signal = pyqtSignal(object)
@@ -410,7 +456,7 @@ class CalibrationMainWindowOld(QMainWindow):
 
         self.ui.start_calib_button.clicked.connect(self.do_calibration)
         self.ui.load_calib_button.clicked.connect(self.load_calibration_file)
-        self.ui.apply_calib_button.clicked.connect(self.apply_calibration_button)
+        self.ui.apply_calib_button.clicked.connect(self.ui.apply_calibration_button)
 
         self.image_plot = setup_screen_display_widget(self.ui.processed_image_plot)
 
@@ -531,7 +577,6 @@ class CalibrationMainWindowOld(QMainWindow):
         # ax.legend()
         self.draw()
 
-
     def load_calibration_file(self):
         options = QFileDialog.Options()
         outdir = get_tds_calibration_config_dir() / "i1"
@@ -551,7 +596,7 @@ class CalibrationMainWindowOld(QMainWindow):
 
         self.calibration = load_calibration(fname)
         self.update_calibration_plots()
-        self.apply_calibration_button.click()
+        self.ui.apply_calibration_button.click()
 
     def apply_calibration_button(self):
         if self.calibration is not None:
@@ -612,7 +657,6 @@ class CalibrationWorker(QObject):
         _, rmat, _ = lat.transfer_maps(energy_mev)
         r34 = rmat[2, 3]
 
-        print(f"R34 = {r34}")
         return r34
 
     def calibrate_once(self, zero_crossing, amplitude):
@@ -677,7 +721,7 @@ class CalibrationWorker(QObject):
         # ycoms_m = np.array(ycoms) * 13.7369 * 1e-6
 
         m1, m2 = get_zero_crossing_slopes(phis, ycoms, zero_crossing=zero_crossing)
-        return m1, m2 #XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX JUST USING M1 HERE!!!...
+        return m1, m2 # XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX JUST USING M1 HERE!!!...
 
     def run(self):
         self.calibrate()
@@ -695,7 +739,8 @@ def smooth(phase, com, window):
 
 
 def get_monotonic_intervals(phases, coms):
-    # We want to find where the centres of mass are consistently rising and falling.
+    # We want to find where the centres of mass are consistently
+    # rising and falling.
     deriv = np.diff(coms)
 
     rising_mask = deriv > 0
@@ -815,11 +860,6 @@ def make_pixel_widths_scatter(widget, title, xlabel, xunits, ylabel, yunits):
     return scatter
 
 
-import sys
-from PyQt5 import QtWidgets, QtCore
-import pyqtgraph as pg
-import numpy as np
-import csv
 
 class CalibrationExplorer(QtWidgets.QMainWindow):
     avmapping_signal = pyqtSignal(AmplitudeVoltageMapping)
@@ -833,47 +873,44 @@ class CalibrationExplorer(QtWidgets.QMainWindow):
         self.setWindowTitle('TDS Calibration Explorer')
         self.updating_table = False  # Flag to prevent recursive updates
 
-        self.main_widget = QtWidgets.QWidget()
-        self.setCentralWidget(self.main_widget)
-        main_layout = QtWidgets.QHBoxLayout(self.main_widget)
+        self.ui.main_widget = QtWidgets.QWidget()
+        self.setCentralWidget(self.ui.main_widget)
+        main_layout = QtWidgets.QHBoxLayout(self.ui.main_widget)
 
         left_layout = QtWidgets.QVBoxLayout()
         main_layout.addLayout(left_layout)
 
         self.create_calibration_group_box(left_layout)
 
-        self.file_path_label = QtWidgets.QLabel()
-        self.load_button = QtWidgets.QPushButton("Load...")
-        self.load_button.clicked.connect(self.load_yaml_file)
+        self.ui.file_path_label = QtWidgets.QLabel()
+        self.ui.load_button = QtWidgets.QPushButton("Load...")
+        self.ui.load_button.clicked.connect(self.load_yaml_file)
 
         io_layout = QtWidgets.QHBoxLayout()
         left_layout.addLayout(io_layout)
 
         load_layout = QtWidgets.QHBoxLayout()
-        load_layout.addWidget(self.load_button)
-        load_layout.addWidget(self.file_path_label)
+        load_layout.addWidget(self.ui.load_button)
+        load_layout.addWidget(self.ui.file_path_label)
         io_layout.addLayout(load_layout)
 
-
-        self.apply_button = QtWidgets.QPushButton("Apply")
-        self.apply_button.clicked.connect(self.apply_calibration)
+        self.ui.apply_button = QtWidgets.QPushButton("Apply")
+        self.ui.apply_button.clicked.connect(self.apply_calibration)
         # Add the button underneath the table
-        left_layout.addWidget(self.apply_button)
+        left_layout.addWidget(self.ui.apply_button)
         if parent is None:
-            self.apply_button.hide()
+            self.ui.apply_button.hide()
 
-
-        self.graphics_widget = pg.GraphicsLayoutWidget()
-        main_layout.addWidget(self.graphics_widget)
-
+        self.ui.graphics_widget = pg.GraphicsLayoutWidget()
+        main_layout.addWidget(self.ui.graphics_widget)
 
         self.create_plots()
         self.create_table(left_layout)
 
         save_layout = QtWidgets.QHBoxLayout()
-        self.save_button = QtWidgets.QPushButton("Save...")
-        self.save_button.clicked.connect(self.save_table_data)  # Connect to the slot for saving
-        save_layout.addWidget(self.save_button)  # Assuming load_layout is your QHBoxLayout
+        self.ui.save_button = QtWidgets.QPushButton("Save...")
+        self.ui.save_button.clicked.connect(self.save_table_data)  # Connect to the slot for saving
+        save_layout.addWidget(self.ui.save_button)  # Assuming load_layout is your QHBoxLayout
         io_layout.addLayout(save_layout)
 
         self.set_filepath_label(fname)
@@ -884,7 +921,7 @@ class CalibrationExplorer(QtWidgets.QMainWindow):
     def get_amplitude_voltage_mapping(self):
         amplitudes = []
         voltages = []
-        for irow in range(self.table_widget.rowCount()):
+        for irow in range(self.ui.table_widget.rowCount()):
             try:
                 amplitude = self._get_amplitude_row(irow)
                 voltage = self._get_voltage_row(irow)
@@ -898,43 +935,43 @@ class CalibrationExplorer(QtWidgets.QMainWindow):
 
     def _init_gui_from_complete_calib(self, calib, fname):
         self.set_filepath_label(fname)
-        self.r_3412_spin_box.setValue(calib.r34_from_optics())
+        self.ui.r_3412_spin_box.setValue(calib.r34_from_optics())
         calfactors = calib.cal_factors #* calib.CAL_UM_PER_PS
         self._write_table_contents(calib.amplitudes, calfactors)
 
     def _write_table_contents(self, amplitudes, cal_factors):
         for i, (amp, cal) in enumerate(zip(amplitudes, cal_factors)):
-            self.table_widget.setItem(i, 0, QTableWidgetItem(str(amp)))
+            self.ui.table_widget.setItem(i, 0, QTableWidgetItem(str(amp)))
             self._set_cal_factor_row(i, cal)
         for j in range(i + 1, self.NROWS):
-            self.table_widget.setItem(j, 0, QTableWidgetItem(""))
-            self.table_widget.setItem(j, 1, QTableWidgetItem(""))
+            self.ui.table_widget.setItem(j, 0, QTableWidgetItem(""))
+            self.ui.table_widget.setItem(j, 1, QTableWidgetItem(""))
 
     def create_table(self, left_layout):
-        self.table_widget = QtWidgets.QTableWidget(self.NROWS, 3)
-        self.table_widget.setHorizontalHeaderLabels(
+        self.ui.table_widget = QtWidgets.QTableWidget(self.NROWS, 3)
+        self.ui.table_widget.setHorizontalHeaderLabels(
             ["Amplitude / %", "Calibration Factor µm/ps", "Voltage / MV"])
-        self.table_widget.horizontalHeader().setStretchLastSection(True)
-        self.table_widget.itemChanged.connect(self.update_plots_and_voltage)
-        left_layout.addWidget(self.table_widget)
+        self.ui.table_widget.horizontalHeader().setStretchLastSection(True)
+        self.ui.table_widget.itemChanged.connect(self.update_plots_and_voltage)
+        left_layout.addWidget(self.ui.table_widget)
 
-        for row in range(self.table_widget.rowCount()):
+        for row in range(self.ui.table_widget.rowCount()):
             item = QtWidgets.QTableWidgetItem()
             item.setFlags(item.flags() ^ QtCore.Qt.ItemIsEditable)
-            self.table_widget.setItem(row, 2, item)
-        self.table_widget.resizeColumnsToContents()
+            self.ui.table_widget.setItem(row, 2, item)
+        self.ui.table_widget.resizeColumnsToContents()
 
     def create_calibration_group_box(self, layout):
         group_box = QtWidgets.QGroupBox("Calibration Machine Setpoint")
         group_layout = QtWidgets.QVBoxLayout(group_box)
 
-        self.r_3412_spin_box = self.create_double_spin_box(
+        self.ui.r_3412_spin_box = self.create_double_spin_box(
             "<span>R<sub>12(34)</sub> / mrad<sup>-1</sup></span>", group_layout,
             default_value=0.0, min_value=-20.0, max_value=20.0, step=1.0)
-        self.tds_frequency_spin_box = self.create_double_spin_box(
+        self.ui.tds_frequency_spin_box = self.create_double_spin_box(
             "TDS Frequency / GHz", group_layout, default_value=3.0,
             min_value=0.0, max_value=sys.float_info.max, step=1.0)
-        self.beam_energy_spin_box = self.create_double_spin_box(
+        self.ui.beam_energy_spin_box = self.create_double_spin_box(
             "Beam Energy / MeV", group_layout, default_value=130,
             min_value=0.0, max_value=sys.float_info.max, step=1.0)
 
@@ -960,7 +997,7 @@ class CalibrationExplorer(QtWidgets.QMainWindow):
             file_path = Path(file_path).relative_to(os.getcwd())
         except ValueError:
             pass
-        self.file_path_label.setText(f"File: {file_path}")
+        self.ui.file_path_label.setText(f"File: {file_path}")
 
     def create_double_spin_box(self, label, layout, default_value=0.0,
                                min_value=0.0, max_value=100.0, step=0.1):
@@ -979,34 +1016,34 @@ class CalibrationExplorer(QtWidgets.QMainWindow):
         return spin_box
 
     def create_plots(self):
-        self.plot1 = self.graphics_widget.addPlot(title="TDS Calibration Factors")
-        # self.plot1.setLabel('bottom', 'TDS Amplitude')
-        self.plot1.setLabel('left', 'Calibration Factor µm/ps')
-        self.plot_data_item1 = pg.PlotDataItem()
-        self.plot1.addItem(self.plot_data_item1)
+        self.ui.cal_factors_plot = self.ui.graphics_widget.addPlot(title="TDS Calibration Factors")
+        # self.ui.cal_factors_plot.setLabel('bottom', 'TDS Amplitude')
+        self.ui.cal_factors_plot.setLabel('left', 'Calibration Factor µm/ps')
+        self.cal_factor_plot_data_item = pg.PlotDataItem()
+        self.ui.cal_factors_plot.addItem(self.cal_factor_plot_data_item)
 
-        self.graphics_widget.nextRow()
+        self.ui.graphics_widget.nextRow()
 
-        self.plot2 = self.graphics_widget.addPlot(title="TDS Amplitude-Voltage Mapping")
-        self.plot2.setLabel('bottom', 'TDS Amplitude')
-        self.plot2.setLabel('left', 'Voltage / MV')
-        self.plot_data_item2 = pg.PlotDataItem()
-        self.plot2.addItem(self.plot_data_item2)
+        self.ui.tds_voltage_plot = self.ui.graphics_widget.addPlot(title="TDS Amplitude-Voltage Mapping")
+        self.ui.tds_voltage_plot.setLabel('bottom', 'TDS Amplitude')
+        self.ui.tds_voltage_plot.setLabel('left', 'Voltage / MV')
+        self.tds_voltage_plot_data_item = pg.PlotDataItem()
+        self.ui.tds_voltage_plot.addItem(self.tds_voltage_plot_data_item)
 
-        self.plot2.setXLink(self.plot1)
+        self.ui.tds_voltage_plot.setXLink(self.ui.cal_factors_plot)
 
     def update_plots_and_voltage(self, item):
         if self.updating_table:
             return
         self.updating_table = True
 
-        for row in range(self.table_widget.rowCount()):
+        for row in range(self.ui.table_widget.rowCount()):
             try:
-                calibration_item = self.table_widget.item(row, 1)
+                calibration_item = self.ui.table_widget.item(row, 1)
                 cal_factor = float(calibration_item.text()) / CompleteCalibration.CAL_UM_PER_PS
-                r = self.r_3412_spin_box.value()
-                energy = self.beam_energy_spin_box.value()
-                frequency_ghz = self.tds_frequency_spin_box.value()
+                r = self.ui.r_3412_spin_box.value()
+                energy = self.ui.beam_energy_spin_box.value()
+                frequency_ghz = self.ui.tds_frequency_spin_box.value()
                 frequency_hz = frequency_ghz * 1e9
                 voltage_v = calculate_voltage(slope=cal_factor, r34=r, energy=energy, frequency=frequency_hz)
             except (TypeError, ZeroDivisionError, AttributeError, ValueError):
@@ -1014,7 +1051,7 @@ class CalibrationExplorer(QtWidgets.QMainWindow):
             else:
                 self._set_voltage_row(row, voltage_v)
                 # voltage_mv = voltage_v * 1e-6
-                # self.table_widget.item(row, 2).setText(f"{voltage_mv:.4g}")
+                # self.ui.table_widget.item(row, 2).setText(f"{voltage_mv:.4g}")
 
         self.update_plots()
         self.updating_table = False
@@ -1024,38 +1061,38 @@ class CalibrationExplorer(QtWidgets.QMainWindow):
 
     def _set_cal_factor_row(self, irow, cal_factor_m_per_s):
         calfactor = cal_factor_m_per_s * CompleteCalibration.CAL_UM_PER_PS
-        self.table_widget.setItem(irow, 1, QTableWidgetItem(f"{calfactor:.4g}"))
+        self.ui.table_widget.setItem(irow, 1, QTableWidgetItem(f"{calfactor:.4g}"))
 
     def _set_voltage_row(self, irow, voltage_v):
         if voltage_v is None:
             try:
-                self.table_widget.item(irow, 2).setText("")
+                self.ui.table_widget.item(irow, 2).setText("")
             except AttributeError:
                 pass
         else:
             voltage_mv = voltage_v * 1e-6
-            self.table_widget.item(irow, 2).setText(f"{voltage_mv:.4g}")
+            self.ui.table_widget.item(irow, 2).setText(f"{voltage_mv:.4g}")
 
     def _get_voltage_row(self, irow):
-        voltage_item = self.table_widget.item(irow, 2)
+        voltage_item = self.ui.table_widget.item(irow, 2)
         return float(voltage_item.text()) * 1e6
 
     def _get_amplitude_row(self, irow):
-        amplitude_item = self.table_widget.item(irow, 0)
+        amplitude_item = self.ui.table_widget.item(irow, 0)
         return float(amplitude_item.text())
 
     def update_plots(self):
         amplitudes = []
         calibrations = []
         voltages = []
-        for row in range(self.table_widget.rowCount()):
+        for row in range(self.ui.table_widget.rowCount()):
             try:
-                amplitude = float(self.table_widget.item(row, 0).text())
-                calibration = float(self.table_widget.item(row, 1).text())
-                # amplitude.append(float(self.table_widget.item(row, 0).text()))
-                # calibration.append(float(self.table_widget.item(row, 1).text()))
-                voltage = float(self.table_widget.item(row, 2).text())
-                # voltage.append(float(self.table_widget.item(row, 2).text()))
+                amplitude = float(self.ui.table_widget.item(row, 0).text())
+                calibration = float(self.ui.table_widget.item(row, 1).text())
+                # amplitude.append(float(self.ui.table_widget.item(row, 0).text()))
+                # calibration.append(float(self.ui.table_widget.item(row, 1).text()))
+                voltage = float(self.ui.table_widget.item(row, 2).text())
+                # voltage.append(float(self.ui.table_widget.item(row, 2).text()))
             except (TypeError, ValueError, AttributeError):
                 continue
             else:
@@ -1063,8 +1100,8 @@ class CalibrationExplorer(QtWidgets.QMainWindow):
                 calibrations.append(calibration)
                 voltages.append(voltage)
 
-        self.plot_data_item1.setData(amplitudes, calibrations)
-        self.plot_data_item2.setData(amplitudes, voltages)
+        self.cal_factor_plot_data_item.setData(amplitudes, calibrations)
+        self.tds_voltage_plot_data_item.setData(amplitudes, voltages)
 
     def save_table_data(self):
         file_path, _ = QtWidgets.QFileDialog.getSaveFileName(
@@ -1073,13 +1110,13 @@ class CalibrationExplorer(QtWidgets.QMainWindow):
             with open(file_path, 'w', newline='') as file:
                 writer = csv.writer(file)
                 # Write headers
-                headers = [self.table_widget.horizontalHeaderItem(i).text() for i in range(self.table_widget.columnCount())]
+                headers = [self.ui.table_widget.horizontalHeaderItem(i).text() for i in range(self.ui.table_widget.columnCount())]
                 writer.writerow(headers)
                 # Write data rows
-                for row in range(self.table_widget.rowCount()):
+                for row in range(self.ui.table_widget.rowCount()):
                     row_data = []
-                    for column in range(self.table_widget.columnCount()):
-                        item = self.table_widget.item(row, column)
+                    for column in range(self.ui.table_widget.columnCount()):
+                        item = self.ui.table_widget.item(row, column)
                         row_data.append(item.text() if item else "")
                     writer.writerow(row_data)
 
@@ -1089,7 +1126,7 @@ def start_bolko_tool():
     main_window = CalibrationMainWindow()
     main_window.show()
     sys.exit(app.exec_())
-    
+
 
 def start_calibration_explorer_gui(fname):
     app = QtWidgets.QApplication(sys.argv)
