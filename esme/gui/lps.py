@@ -171,8 +171,6 @@ class LPSMainWindow(QMainWindow):
         """Take background data and cache the result.  The images can
         be used for background subtraction in the main image."""
         # with SnapshotAccumulator
-        return
-
 
 class QPlainTextEditLogger(QObject, logging.Handler):
     log_signal = pyqtSignal(str)
