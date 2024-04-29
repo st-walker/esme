@@ -5,6 +5,7 @@ from PyQt5.QtCore import pyqtSignal, QProcess
 
 from esme.gui.ui import Ui_area_widget
 from esme.gui.widgets.common import make_default_i1_lps_machine, make_default_b2_lps_machine
+from esme.core import DiagnosticRegion
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -85,6 +86,15 @@ class AreaControl(QWidget):
         screen_name = self.ui.select_screen_combobox.currentText()
         self.screen_name_signal.emit(screen_name)
         self.machine.set_kickers_for_screen(screen_name)
+
+    def set_area(self, area: DiagnosticRegion):
+        if area is self.machine.area:
+            return
+
+        if area is self.i1machine.area:
+            self.set_i1()
+        elif area is self.b2machine.area:
+            self.set_b2()
 
     def closeEvent(self, event) -> None:
         self.close_jddd_screen_window()

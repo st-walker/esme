@@ -33,7 +33,7 @@ from esme.image import make_image_processing_pipeline
 from esme.gui.widgets.common import setup_screen_display_widget
 from esme.gui.widgets.scannerpanel import ScanType
 from esme.gui.widgets.result import FullResultWidget
-from esme.gui.tds_calibrator import CalibrationExplorer
+# from esme.gui.tds_calibrator import CalibrationExplorer
 from esme.analysis import true_bunch_length_from_setpoint
 from esme.calibration import AmplitudeVoltageMapping
 

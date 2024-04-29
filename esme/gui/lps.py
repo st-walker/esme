@@ -165,7 +165,7 @@ class LPSMainWindow(QMainWindow):
         # Close screen display widget where we have threads running
         # here explicitly otherwise we have a problem.  Could also
         # emit a closing signal.  This is fine.
-        self.ui.screen_display_widget.close(event)
+        self.ui.screen_display_widget.close()
 
     def accumulate_background(self) -> None:
         """Take background data and cache the result.  The images can

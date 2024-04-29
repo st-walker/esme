@@ -23,7 +23,7 @@ class SliceEmittanceMeasurement:
         self.emit_err = emit_err
 
 
-        
+
     @property
     def nslices(self):
         return len(self.beta)
@@ -85,7 +85,7 @@ def optics_from_measurement_df(df):
 
     twiss52 = get_default_match_point("MATCH.52.I1")
     twiss52.E = 0.13
-    
+
     twiss_after, mlat = lat.calculate_twiss(twiss52, start="MATCH.52.I1", felconfig=conf)
 
     before_match52 = lat.get_sequence(stop="MATCH.52.I1", felconfig=conf)
@@ -148,6 +148,17 @@ def calculate_i1d_r34_from_tds_centre(df, screen_name, energy_mev):
     _, rmat, _ = mlat.transfer_maps(energy_mev * 1e-3) # MeV to GeV
     r34 = rmat[2, 3]
     return r34
+
+def calculate_design_i1_r34_from_tds_centre(screen_name):
+    fel = cat_to_i1d(model_type="real")
+    sequence = fel.get_sequence(start="TDSA.52.I1", stop=screen_name)
+    # Halve the TDS length so we are starting half way through it.
+    sequence[0].l /= 2.0
+    mlat = MagneticLattice(sequence)
+    _, rmat, _ = mlat.transfer_maps(130e-3) # 130MeV in GeV
+    r34 = rmat[2, 3]
+    return r34
+
 
 def dispersions_at_point(fel, felconfig, screen_name):
     twiss, mlat = fel.machine_twiss(stop=screen_name, felconfig=felconfig)

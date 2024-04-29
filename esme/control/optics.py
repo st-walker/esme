@@ -1,7 +1,7 @@
 import pandas as pd
 from oxfel.predefined import cat_to_i1d, cat_to_b2d
 from esme.control.snapshot import SnapshotRequest, Snapshotter
-from esme.optics import calculate_i1d_r34_from_tds_centre, i1d_conf_from_measurement_df, dispersions_at_point, SliceEmittanceMeasurement, track_slice_twiss
+from esme.optics import calculate_i1d_r34_from_tds_centre, i1d_conf_from_measurement_df, dispersions_at_point, SliceEmittanceMeasurement, track_slice_twiss, calculate_design_i1_r34_from_tds_centre
 from esme.control.exceptions import DOOCSReadError
 
 
@@ -59,13 +59,16 @@ class I1toI1DLinearOptics(MachineLinearOptics):
         super().__init__(snapshotter, di=di)
         self.felmodel = cat_to_i1d(model_type="real")
 
-    def r12_streaking_from_tds_to_point(self, screen_or_marker_name):
+    def r12_streaking_from_tds_to_point(self, screen_or_marker_name: str) -> float:
         # Strictly this is r34 not r12, but point is in streaking plane...
         df = pd.DataFrame.from_records([self.snapshotter.snapshot()])
         i1d_conf_from_measurement_df(df)
         return calculate_i1d_r34_from_tds_centre(df, screen_or_marker_name, self.get_beam_energy())
 
-    def dispersions_at_screen(self, screen_or_marker_name) -> tuple[float, float]:
+    def design_r12_streaking_from_tds_to_point(self, screen_or_marker_name: str) -> float:
+        return calculate_design_i1_r34_from_tds_centre(screen_or_marker_name)
+
+    def dispersions_at_screen(self, screen_or_marker_name: str) -> tuple[float, float]:
         df = pd.DataFrame.from_records([self.snapshotter.snapshot()])
         felconfig = i1d_conf_from_measurement_df(df)
         return dispersions_at_point(self.felmodel, felconfig, screen_or_marker_name)
@@ -80,7 +83,7 @@ class I1toI1DLinearOptics(MachineLinearOptics):
 
         raise DOOCSReadError("Unable to read injector beam energy")
 
-    def track_measured_slice_twiss(self, start, stop, stwiss0: SliceEmittanceMeasurement):
+    def track_measured_slice_twiss(self, start: str, stop: str, stwiss0: SliceEmittanceMeasurement):
         df = pd.DataFrame.from_records([self.snapshotter.snapshot()])
         felconfig = i1d_conf_from_measurement_df(df)
         return track_slice_twiss(self.felmodel, felconfig, start=start, stop=stop, stwiss0=stwiss0)
@@ -92,7 +95,7 @@ class I1toB2DLinearOptics(MachineLinearOptics):
         super().__init__(snapshotter, di=di)
         self.felmodel = cat_to_b2d(model_type="real")
 
-    def r12_streaking_from_tds_to_point(self, screen_or_marker_name):
+    def r12_streaking_from_tds_to_point(self, screen_or_marker_name: str) -> float:
         df = pd.DataFrame.from_records([self.snapshotter.snapshot()])
         i1d_conf_from_measurement_df(df)
         return calculate_b2d_r12_from_tds_centre(df,

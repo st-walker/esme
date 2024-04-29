@@ -22,21 +22,37 @@ TDS_WAVENUMBER = 2 * np.pi / TDS_WAVELENGTH
 TDS_LENGTH = 0.7  # metres
 
 
-
 class AmplitudeVoltageMapping:
     def __init__(self, region: DiagnosticRegion, amplitudes, voltages):
         self.region = region
         self._amplitudes = amplitudes
         self._voltages = voltages
 
-        self._amp_to_voltage_popt = self.fit_to_voltage()
-        self._voltage_to_amp_popt = self.fit_to_amplitude()
+        if len(self._amplitudes) != len(self._voltages):
+            raise ValueError("Mismatch in number of amplitudes and voltages")
+
+        # self._is_single_point = len(self._amplitudes) == 1
+        if len(self._amplitudes) > 1:
+            self._amp_to_voltage_popt = self.fit_to_voltage()
+            self._voltage_to_amp_popt = self.fit_to_amplitude()
+            self._is_single_point = False
+        elif len(self._amplitudes) == 1:
+            self._is_single_point = True
+        # else:
+        #     raise
+
 
     def get_voltage(self, amplitude):
+        if self._is_single_point:
+            return amplitude * self._voltages[0] / self._amplitudes[0]
+
         popt, _ = self._voltage_to_amp_popt
         return line(np.array(amplitude), *popt)
 
     def get_amplitude(self, voltage):
+        if self._is_single_point:
+            return voltage * self._amplitudes[0] / self._voltages[0]
+
         popt, _ = self._amp_to_voltage_popt
         return line(np.array(voltage), *popt)
 
@@ -49,7 +65,24 @@ class AmplitudeVoltageMapping:
         return popt, pcov
 
     def __call__(self, amplitude):
-        return self.get_amplitude(amplitude)
+        return self.get_voltage(amplitude)
+
+
+
+class SinglePointVoltageCalibration(AmplitudeVoltageMapping):
+    def __init__(self, region: DiagnosticRegion, amplitude, voltage):
+        self.region = region
+        self._amplitude = amplitude
+        self._voltage = voltage
+
+    # def get_voltage(self, amplitude):
+    #     pass
+
+    # def get_amplitude(self, voltage):
+    #     pass
+
+    def __call__(self, amplitude):
+        from IPython import embed; embed()
 
 
 @dataclass
@@ -85,8 +118,8 @@ class CompleteCalibration:
         if cal_factors is None and voltages is None:
             raise ValueError("")
 
-    def r34_from_optics(self):
-        return -5.5 #XXXXXX??
+    # def r34_from_optics(self):
+    #     return -5.5 #XXXXXX??
 
     def calculate_voltages(self):
         pass
