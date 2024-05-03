@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import QWidget
 from PyQt5.QtCore import pyqtSignal, QProcess
 
 from esme.gui.ui import Ui_area_widget
-from esme.gui.widgets.common import make_default_i1_lps_machine, make_default_b2_lps_machine
+from esme.gui.widgets.common import get_machine_manager_factory
 from esme.core import DiagnosticRegion
 
 LOG = logging.getLogger(__name__)
@@ -25,8 +25,7 @@ class AreaControl(QWidget):
         self.ui.setupUi(self)
 
         # Build two machine interfaces, one for I1 diagnostics and the other for B2 diagnostics.
-        self.i1machine = make_default_i1_lps_machine()
-        self.b2machine = make_default_b2_lps_machine()
+        self.i1machine, self.b2machine = get_machine_manager_factory().make_i1_b2_managers()
         self.machine = self.i1machine # Set initial machine choice to be for I1 diagnostics
 
         self.ui.i1_radio_button.pressed.connect(self.set_i1)
@@ -54,7 +53,7 @@ class AreaControl(QWidget):
         return self.ui.select_screen_combobox.currentText()
 
     def open_jddd_screen_window(self) -> None:
-        self.jddd_camera_window_process = QtCore.QProcess()
+        self.jddd_camera_window_process = QProcess()
         screen = self.get_selected_screen_name()
         command = f"jddd-run -file commonAll_In_One_Camera_Expert.xml -address XFEL.DIAG/CAMERA/{screen}/"
         self.jddd_camera_window_process.start(command)

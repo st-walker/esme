@@ -8,7 +8,7 @@ class DOOCSError(RuntimeError):
 
 class DOOCSReadError(DOOCSError):
     def __str__(self):
-        f"Read Error with channel: {self.channel}"
+        return f"Read Error with channel: {self.address}"
 
 class DOOCSWriteError(DOOCSError):
     def __init__(self, address: str, value: str):
@@ -16,8 +16,15 @@ class DOOCSWriteError(DOOCSError):
         self.value = value
 
     def __str__(self) -> str:
-        return f"Write error with channel: {self.channel=}, {value=}"
+        return f"Write error with channel: {self.address=}, {value=}"
 
+class DOOCSUnexpectedReadValueError(DOOCSError):
+    def __init__(self, address, value):
+        super().__init__(address)
+        self.value = value
+
+    def __str__(self) -> str:
+        return f"Unexpected read value: {self.address=}, {self.value=}"
 
 class EuXFELUserError(RuntimeError):
     """Base class for the user trying to do something wrong"""

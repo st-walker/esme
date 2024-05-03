@@ -12,7 +12,7 @@ from types import SimpleNamespace
 import csv
 import pyqtgraph as pg
 from PyQt5 import QtCore
-from PyQt5.QtCore import QObject, QThread, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QMainWindow, QTableWidgetItem
 from PyQt5 import QtWidgets
 import numpy as np
@@ -25,18 +25,13 @@ from scipy.io import loadmat
 import matplotlib.pyplot as plt
 
 from esme.load import load_calibration_from_yaml
-from esme.gui.ui import calibration
 from esme.gui.widgets.common import (get_tds_calibration_config_dir,
-                             setup_screen_display_widget,
-                             make_default_i1_lps_machine,
-                             make_default_b2_lps_machine,
-                             make_default_injector_espread_machine)
-from esme.control.configs import load_calibration
+                                     get_machine_manager_factory)
 from esme.gui.widgets.area import AreaControl
 from esme.calibration import CompleteCalibration, TDS_FREQUENCY
 from esme.image import filter_image
 from esme.calibration import calculate_voltage, AmplitudeVoltageMapping
-from esme import DiagnosticRegion
+from esme.core import DiagnosticRegion
 
 LayoutBaseType = TypeVar("LayoutBaseType", bound=QtWidgets.QLayout)
 
@@ -115,9 +110,8 @@ class CalibrationMainWindow(QMainWindow):
         super().__init__(parent)
         self.init_ui(parent=parent)
 
-        self.i1machine = make_default_i1_lps_machine()
-        self.b2machine = make_default_b2_lps_machine()
-        self.machine = self.i1machine
+        self.i1machine, self.b2machine = get_machine_manager_factory().make_i1_b2_managers()
+        self.machine = self.i1machine # Set initial machine choice to be for I1 diagnostics
 
     def init_ui(self, fname=None, parent=None):
         self.setWindowTitle('Bolko Redux Mk. II')
@@ -1173,7 +1167,7 @@ class TransformedAxis(pg.AxisItem):
     is for.
 
     """
-    def __init__(self, function: Callable[float, float], *args, **kwargs):
+    def __init__(self, function: Callable[[float], float], *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.function = function or (lambda x: x)
 
@@ -1191,7 +1185,7 @@ class TransformedAxis(pg.AxisItem):
 
 def create_double_spin_box(label: str, layout: LayoutBaseType, default_value: float = 0.0,
                            min_value: float = 0.0, max_value: float = 100.0, step: float = 0.1,
-                           read_function: Callable[None, float] | None = None) -> None:
+                           read_function: Callable[[], float] | None = None) -> None:
     current_row_count = layout.rowCount()
 
     label_widget = QtWidgets.QLabel(label)

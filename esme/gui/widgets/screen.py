@@ -14,7 +14,7 @@ import scipy
 
 
 from esme import DiagnosticRegion
-from .common import make_default_b2_lps_machine, make_default_i1_lps_machine, setup_screen_display_widget, LPSMachine
+from .common import get_machine_manager_factory, setup_screen_display_widget
 from esme.calibration import get_tds_com_slope
 from esme.control.tds import StreakingPlane, UncalibratedTDSError
 from esme.control.exceptions import DOOCSReadError
@@ -60,7 +60,6 @@ class PixelInfo:
     ny: int
 
 
-
 @dataclass
 class ImagePayload:
     image: np.ndarray
@@ -92,9 +91,8 @@ class ScreenDisplayWidget(QWidget):
         self.layout.addWidget(self.glwidget)
         self.image_plot = setup_screen_display_widget(self.glwidget, axes=True)
 
-        self.i1machine = make_default_i1_lps_machine()
-        self.b2machine = make_default_b2_lps_machine()
-        self.machine = self.i1machine
+        self.i1machine, self.b2machine = get_machine_manager_factory().make_i1_b2_managers()
+        self.machine = self.i1machine # Set initial machine choice to be for I1 diagnostics
 
         self.screen_worker, self.screen_thread = self.setup_screen_worker()
         self.calibration_worker, self.calibration_thread = self.setup_calibration_worker()
@@ -113,17 +111,22 @@ class ScreenDisplayWidget(QWidget):
 
     def set_screen(self, screen_name: str) -> None:
         self.calibration_worker.screen_name = screen_name
+        self.screen_worker.screen_name = screen_name
         # Screen dimensions should always be distance (not pixels, not time, not energy).
         dx, dy = self.machine.optics.dispersions_at_screen(screen_name)
 
         screen = self.machine.screens[screen_name]
+        # XXX
+
+        # If the camera is not switched on then these reads will fail.  
+        # but this shouldn't simply kill the whole gui.
         try:
             xpixel_size = screen.get_pixel_xsize()
             ypixel_size = screen.get_pixel_ysize()
 
             nxpixel = screen.get_image_xpixels()
             nypixel = screen.get_image_ypixels()
-        except DOOCSReadError:
+        except DOOCSReadError as e:
             return
 
 
@@ -181,7 +184,7 @@ class ScreenDisplayWidget(QWidget):
         self.screen_name_signal.connect(screen_worker.set_screen_name)
         screen_thread = QThread()
         screen_worker.moveToThread(screen_thread)
-        screen_thread.started.connect(screen_worker.run_offline)
+        screen_thread.started.connect(screen_worker.run)
         screen_thread.start() # XXX Is this important?!!??!?!  Before signal connection?!?
         screen_worker.image_signal.connect(self.post_beam_image)
         screen_worker.image_signal.connect(self.update_projection_plots)
@@ -227,12 +230,11 @@ class CalibrationWatcher(QObject):
 
     # XXX: What if scale factor is 0?
     axis_calibration_signal = pyqtSignal(AxisCalibration)
-    def __init__(self, machine: LPSMachine, screen_name: str):
+    def __init__(self, machine, screen_name: str):
         super().__init__()
 
-        self.i1machine = make_default_i1_lps_machine()
-        self.b2machine = make_default_b2_lps_machine()
-        self.machine = self.i1machine
+        self.i1machine, self.b2machine = get_machine_manager_factory().make_i1_b2_managers()
+        self.machine = self.i1machine # Set initial machine choice to be for I1 diagnostics
 
         self.screen_name = screen_name
         self.kill = False
@@ -399,18 +401,19 @@ class ScreenWatcher(QObject):
                             xproj=xproj,
                             yproj=yproj)
 
-    def run_offline(self):
-        while not self.kill:
-            time.sleep(1)
-            image = self.get_image()
-            if image is None:
-                continue
-            else:
-                self.image_signal.emit(image)
+    # def run_offline(self):
+    #     while not self.kill:
+    #         time.sleep(1)
+    #         image = self.get_image()
+    #         if image is None:
+    #             continue
+    #         else:
+    #             self.image_signal.emit(image)
 
 
     def run(self):
         while not self.kill:
+            time.sleep(1.0)
             image = self.get_image()
             if image is None:
                 continue
@@ -426,7 +429,7 @@ class ScreenWatcher(QObject):
             ysize = screen.get_pixel_ysize()
             nx = screen.get_image_xpixels()
             ny = screen.get_image_ypixels()
-        except DOOCSReadError:
+        except DOOCSReadError as e:
             return
 
         pix = PixelInfo(xsize=xsize, ysize=ysize, nx=nx, ny=ny)

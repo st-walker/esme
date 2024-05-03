@@ -14,11 +14,9 @@ from PyQt5 import QtWidgets
 from PyQt5.QtCore import QTimer, pyqtSignal
 
 from esme.gui.ui.tds import Ui_tds_control_panel
-from .common import (make_default_i1_lps_machine,
-                     make_default_b2_lps_machine,
+from .common import (get_machine_manager_factory,
                      get_tds_calibration_config_dir,
                      set_machine_by_region)
-from esme.control.configs import load_calibration
 from esme import DiagnosticRegion
 from esme.control.machines import LPSMachine
 from esme.core import region_from_screen_name
@@ -62,9 +60,7 @@ class TDSControl(QtWidgets.QWidget):
         self.ui = Ui_tds_control_panel()
         self.ui.setupUi(self)
 
-        # Build two machine interfaces, one for I1 diagnostics and the other for B2 diagnostics.
-        self.i1machine = make_default_i1_lps_machine()
-        self.b2machine = make_default_b2_lps_machine()
+        self.i1machine, self.b2machine = get_machine_manager_factory().make_i1_b2_managers()
         self.machine = self.i1machine # Set initial machine choice to be for I1 diagnostics
 
         # Make the daughter Calibrator window
@@ -79,7 +75,7 @@ class TDSControl(QtWidgets.QWidget):
         self.timer = QTimer()
         self.timer.timeout.connect(lambda: None)
         self.timer.timeout.connect(self.update_ui)
-        self.timer.start(500)
+        self.timer.start(2000)
 
         self.emit_calibrations()
 

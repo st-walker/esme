@@ -18,9 +18,10 @@ from esme import DiagnosticRegion
 #         scale_factor = 1 / com_slope
 #         return 
     
+class MachineManager:
+    pass
 
-
-class HighResolutionEnergySpreadMachine:
+class HighResolutionEnergySpreadMachine(MachineManager):
     """set of high level interfaces to the EuXFEL for measuring the
     slice energy spread with high resolution.
 
@@ -50,8 +51,8 @@ class HighResolutionEnergySpreadMachine:
         return bool(self.di.get_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED"))
         
 
-
-class LPSMachine:
+# What is the point in this class besides bringing other bits together?  Does this really need sbunches etc?
+class LPSMachine(MachineManager):
     def __init__(self, region: DiagnosticRegion,
                  kickerop: FastKickerController,
                  screens: dict[str, Screen],
@@ -59,7 +60,7 @@ class LPSMachine:
                  optics: MachineLinearOptics,
                  sbunches,
                  di=None) -> None:
-        di = di if di else DOOCSInterface()
+        di = di or DOOCSInterface()
         self.region = region
         self.kickerop = kickerop
         self.screens = screens
@@ -67,26 +68,41 @@ class LPSMachine:
         self.optics = optics
         self.sbunches = sbunches
         
+# Interface with the EuXFEL limited to what is necessary for the
+# effective operation of the special bunch midlayer.
+class DiagnosticBunchesManager(MachineManager):
+    """Minimal collection of instances for interacting with the Special Bunch Midlayer effectively.
+    The functionality is basically: Interact with the SBM and also set the kickers for a given screen
+    by name and set the SBM to activate the kickers for said screen.
+    """
+    def __init__(self, *, screens: dict[str, Screen], kickerop: FastKickerController, sbunches: SpecialBunchesControl, di=None):
+        di = di or DOOCSInterface()        
+        self.screens = screens
+        self.kickerop = kickerop
+        self.sbunches = sbunches
+        
     def set_kickers_for_screen(self, screen_name: str) -> None:
+        """For the given screen, set the kicker timings, voltages, etc. 
+        so that when the kickers are fired, they will kick the diagnostic bunch
+        onto the named screen (screen_name)."""
+        # Get the screen instance by name
         screen = self.screens[screen_name]
+        # Try and set the kickers for the screen.  If it's a dump screen,
+        # there will be no kickers for it, so we just do nothing and return.
         try:
+            # We get the kicker setpoints for the screen.
             kicker_setpoints = screen.get_fast_kicker_setpoints()
         except EuXFELUserError: # Then there is no kicker info (e.g. dump screen)
             return
+        # Loop over the setpoints corresponding to the screen and write their settings to the machine.
         for setpoint in kicker_setpoints:
             self.kickerop.apply_fast_kicker_setpoint(setpoint)
-        # self.sbunches.write_kicker
 
-    # def set_use_fast_kickers(self, screen_name):
-    #     screen_name = 
+        # Set the kicker number based on the screen name.  We assume all the setpoints have the same kicker numbers,
+        # Otherwise something is very, very wrong in how the DOOCS server is configured (beyond the responsibility of
+        # this code).  So we only use the last setpoint from the above loop to set the kicker_number here.
+        kmmap = self.sbunches.get_kicker_name_to_kicker_number_map()
+        self.sbunches.kicker_number = kmmap[setpoint.name]
+        
+        
 
-# Interface with the EuXFEL limited to what is necessary for the
-# effective operation of the special bunch midlayer.
-class SpecialBunchLayerInterface:
-    def __init__(self, screens, kickerop, di=None):
-        self.screens = screens
-        self.kickerop = kickerop
-
-    
-
-    

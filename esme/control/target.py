@@ -1,7 +1,6 @@
 import logging
 
 
-
 LOG = logging.getLogger(__name__)
 
 FREQUENCY_COMMAND = "set_frequency_ratio 4;set_count 1 1"
