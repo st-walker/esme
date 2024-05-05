@@ -56,14 +56,17 @@
             </property>
             <layout class="QGridLayout" name="gridLayout_6">
              <item row="0" column="3">
-              <widget class="QPushButton" name="pushButton">
+              <widget class="QPushButton" name="current_profile_button">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
                <property name="text">
                 <string>Current Profile</string>
                </property>
               </widget>
              </item>
              <item row="0" column="1">
-              <widget class="QLabel" name="label">
+              <widget class="QLabel" name="nbg_images_acquired_label">
                <property name="text">
                 <string>Background Images: 0</string>
                </property>
@@ -87,7 +90,7 @@
               </widget>
              </item>
              <item row="0" column="0">
-              <widget class="QPushButton" name="write_to_logbook">
+              <widget class="QPushButton" name="write_to_logbook_button">
                <property name="text">
                 <string>Send to XFEL e-Logbook</string>
                </property>
