@@ -39,6 +39,8 @@ class ScanType(Enum):
     TDS = auto()
     BETA = auto()
 
+    # XXX: class properties are deprecated and removed in 3.13, need to
+    # Fix this and get rid of it when I have time.
     @classmethod
     @property
     def ALT_NAME_MAP(cls):
@@ -74,9 +76,8 @@ class ScannerControl(QtWidgets.QWidget):
         self.ui = Ui_scanner_form()
         self.ui.setupUi(self)
 
-        self.i1machine, self.b2machine = get_machine_manager_factory()
+        self.i1machine, self.b2machine = get_machine_manager_factory().make_i1_b2_managers()
         self.machine = self.i1machine # Set initial machine choice to be for I1 diagnostics
-
 
         ui_defaults = load_scanner_panel_ui_defaults()
         self.initial_read(ui_defaults["ScannerControl"])

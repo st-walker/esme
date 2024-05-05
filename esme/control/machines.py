@@ -1,3 +1,5 @@
+from typing import Any
+
 from .kickers import FastKickerController
 from .dint import DOOCSInterface
 from .screens import Screen
@@ -6,7 +8,8 @@ from .sbunches import SpecialBunchesControl
 from .scanner import Scanner
 from .optics import MachineLinearOptics
 from .exceptions import EuXFELUserError
-from esme import DiagnosticRegion
+from esme.core import DiagnosticRegion
+from esme.control.snapshot import SnapshotRequest, Snapshotter
 
 
 # class StreakingPlaneCalibrationMixin:
@@ -103,6 +106,16 @@ class DiagnosticBunchesManager(MachineManager):
         # this code).  So we only use the last setpoint from the above loop to set the kicker_number here.
         kmmap = self.sbunches.get_kicker_name_to_kicker_number_map()
         self.sbunches.kicker_number = kmmap[setpoint.name]
-        
-        
 
+
+class MachineReadManager:
+    def __init__(self, *, screens: list[Screen], optics: MachineLinearOptics, request: SnapshotRequest):
+        self.screens = screens
+        self.optics = optics
+        self.snapshotter = Snapshotter(request)
+
+    def full_read(self) -> dict[str, Any]:
+        full_optics_read = self.optics.full_read()
+        rest_read = self.snapshotter.snapshot(resolve_wildcards=True)
+        rest_read |= full_optics_read
+        return rest_read

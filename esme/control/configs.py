@@ -10,7 +10,7 @@ import pandas as pd
 
 from esme.control.kickers import FastKicker, FastKickerController, FastKickerSetpoint, PolarityType
 from esme.control.screens import Screen
-from esme.control.machines import HighResolutionEnergySpreadMachine, LPSMachine, MachineManager, DiagnosticBunchesManager
+from esme.control.machines import HighResolutionEnergySpreadMachine, LPSMachine, MachineManager, DiagnosticBunchesManager, MachineReadManager
 from esme.control.tds import TransverseDeflector, StreakingPlane
 from esme.control.sbunches import SpecialBunchesControl
 from esme.control.dint import DOOCSInterfaceABC
@@ -81,9 +81,9 @@ class MachineManagerFactory:
     def __init__(self, yamlf: os.PathLike, default_dint: DOOCSInterfaceABC | None = None):
         with open(yamlf, "r") as f:
             self._config = yaml.full_load(f)
-            self._facade_cache = defaultdict(dict)
-            self._manager_cache = defaultdict(dict)
-            self._default_di = default_dint or DOOCSInterface()
+        self._facade_cache = defaultdict(dict)
+        self._manager_cache = defaultdict(dict)
+        self._default_di = default_dint or DOOCSInterface()
 
     def _get_else_build_from_config(self, name: str, area: DiagnosticRegion, backup_fn: Callable[[dict[str, Any], DiagnosticRegion, DOOCSInterfaceABC], MachineManager]):
         try:
@@ -103,21 +103,24 @@ class MachineManagerFactory:
 
     def _get_screens(self, area: DiagnosticRegion) -> dict[str, Screen]:
         return self._get_else_build_from_config("screens", area, load_screens_from_config)
-    
+
     def _get_kicker_facade(self, area: DiagnosticRegion) -> FastKickerController:
         return self._get_else_build_from_config("kickers", area, load_kickers_from_config)
 
     def _get_deflector(self, area: DiagnosticRegion) -> dict[str, TransverseDeflector]:
         return self._get_else_build_from_config("deflectors", area, load_deflector_from_config)
-    
+
     def _get_optics(self, area: DiagnosticRegion) -> I1toI1DLinearOptics | I1toB2DLinearOptics:
-        return self._get_else_build("optics", area, build_linear_optics)
-    
+        return self._get_else_build_from_config("optics", area, build_linear_optics)
+
     def _get_sbunches(self, area: DiagnosticRegion) -> SpecialBunchesControl:
         return self._get_else_build("sbunches", area, SpecialBunchesControl)
-    
+
     def _get_scanner(self, area: DiagnosticRegion) -> Scanner:
         return self._get_else_build_from_config("scanner", area, load_scanner_from_config)
+
+    def _get_misc_snapshot_request(self, area: DiagnosticRegion) -> SnapshotRequest:
+        return self._get_else_build_from_config("reader", area, load_misc_snapshot_from_config)
 
     def make_diagnostic_bunches_manager(self, area: DiagnosticRegion) -> DiagnosticBunchesManager:
         try:
@@ -128,7 +131,7 @@ class MachineManagerFactory:
                                                sbunches=self._get_sbunches(area))
             self._manager_cache[area]["diagbunches"] = manager
         return manager
-            
+
     def make_hires_injector_energy_spread_manager(self) -> HighResolutionEnergySpreadMachine:
         area = DiagnosticRegion.I1
         try:
@@ -156,13 +159,28 @@ class MachineManagerFactory:
                                  di=self._default_di)
         else:
             self._manager_cache[area]["lps"] = manager
-        
+
         return manager
-    
+
     def make_i1_b2_managers(self) -> tuple[LPSMachine, LPSMachine]:
         return self.make_lps_manager(DiagnosticRegion.I1), self.make_lps_manager(DiagnosticRegion.B2)
 
-        
+    def make_machine_reader_manager(self, area: DiagnosticRegion) -> MachineReadManager:
+        try:
+            manager = deepcopy(self._manager_cache[area]["reader"])
+        except KeyError:
+            manager = MachineReadManager(screens=self._get_screens(area),
+                                         optics=self._get_optics(area),
+                                         request=self._get_misc_snapshot_request(area))
+        else:
+            self._manager_cache[area]["reader"] = manager
+
+        return manager
+
+    def make_i1_b2_read_managers(self) -> tuple[MachineManager, MachineManager]:
+        i1reader = self.make_diagnostic_bunches_manager(DiagnosticRegion.I1)
+        b2reader = self.make_diagnostic_bunches_manager(DiagnosticRegion.B2)
+        return i1reader, b2reader
 
 
 # def build_lps_machine_from_config(yamlf: os.PathLike, area: DiagnosticRegion, di: DOOCSInterfaceABC | None = None) -> LPSMachine:
@@ -202,13 +220,30 @@ def build_area_watcher_from_config(yamlf: os.PathLike, area: DiagnosticRegion, d
  #                      optics=optics,
                        sbunches=sbunches,
                        di=di)
-               
 
-def build_linear_optics(area: DiagnosticRegion, di: DOOCSInterfaceABC | None = None) -> I1toI1DLinearOptics | I1toB2DLinearOptics:
+def load_misc_snapshot_from_config(dconf: dict[str, Any],
+                                   area: DiagnosticRegion,
+                                   di: DOOCSInterfaceABC | None = None) -> SnapshotRequest:
+    misc_channels = dconf["snapshots"][area.name]["channels"]
+    addresses = misc_channels["addresses"]
+    wildcards = misc_channels["wildcards"]
+    return SnapshotRequest(addresses=addresses, wildcards=wildcards, image=None)
+
+def build_linear_optics(dconf: dict[str, Any],
+                        area: DiagnosticRegion,
+                        di: DOOCSInterfaceABC | None = None) -> I1toI1DLinearOptics:
+
+    optics_channels = dconf["snapshots"][area.name]["optics_channels"]
+    optics_addresses = optics_channels["addresses"]
+    optics_wildcards = optics_channels["wildcards"]
+    energy_addresses = optics_channels["try_energy_addresses"]
+
+    request = SnapshotRequest(addresses=optics_addresses, wildcards=optics_wildcards, image=None)
+
     if area is DiagnosticRegion.I1:
-        return I1toI1DLinearOptics(di=di)
+        return I1toI1DLinearOptics(request=request, energy_addresses=energy_addresses, di=di)
     elif area is DiagnosticRegion.B2:
-        return I1toB2DLinearOptics(di=di)
+        return I1toB2DLinearOptics(request=request, energy_addresses=energy_addresses, di=di)
     else:
         raise ValueError(f"Unrecognised area string: {area}")
 

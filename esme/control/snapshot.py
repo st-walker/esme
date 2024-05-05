@@ -81,10 +81,10 @@ class Snapshotter:
 
         return subaddress_full_address_map
 
-    def snapshot(self, image_dir: str | None = None, image: np.ndarray | None = None, **kvps):
+    def snapshot(self, image_dir: str | None = None, image: np.ndarray | None = None, resolve_wildcards: bool = False, **kvps):
         result = {}
         result.update(self.read_addresses())
-        result.update(self.read_wildcards())
+        result.update(self.read_wildcards(resolve_wildcards=resolve_wildcards))
         if self.request.image:
             result.update(self.read_image(image_dir=image_dir, image=image))
         result.update(kvps)
@@ -112,12 +112,14 @@ class Snapshotter:
     def read_addresses(self) -> dict[str, Any]:
         return {addy: self.try_and_read(addy) for addy in self.request.addresses}
 
-    def read_wildcards(self) -> dict:
+    def read_wildcards(self, resolve_wildcards=False) -> dict:
         result = {}
         for wildcard in self.request.wildcards:
-            reads = np.array(self.di.get_value(wildcard))
-            addresses = reads[:, 4]
-            values = reads[:, 1]
+            reads = self.di.get_value(wildcard)
+            addresses = [row[4] for row in reads]
+            values = [row[1] for row in reads]
+            if resolve_wildcards:
+                addresses = DOOCSAddress.from_string(wildcard).filled_wildcard(addresses)
 
             result.update(dict(zip(addresses, values)))
         return result

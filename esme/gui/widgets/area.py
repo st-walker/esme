@@ -16,8 +16,8 @@ class AreaControl(QWidget):
     # These default screen names are from the Bolko tool.  I guess
     # they're the best to use for reasons of phase advance or
     # whatever.
-    I1_DEFAULT_SCREEN = "OTRC.58.I1"
-    B2_DEFAULT_SCREEN = "OTRB.457.B2"
+    I1_INITIAL_SCREEN = "OTRC.58.I1"
+    B2_INITIAL_SCREEN = "OTRB.457.B2"
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -32,12 +32,14 @@ class AreaControl(QWidget):
         self.ui.b2_radio_button.pressed.connect(self.set_b2)
         self.ui.jddd_screen_gui_button.clicked.connect(self.open_jddd_screen_window)
         self.ui.select_screen_combobox.activated.connect(self.select_screen)
+        #self.ui.select_screen_combobox.activated.connect(self.select_screen)
 
-        self._selected_i1_screen = None
+        # If we pick a particular screen in I1, then we click to go to B2, then back to I1,
+        # it remembers which screen we are on.
+        self._selected_i1_screen = self.I1_INITIAL_SCREEN
         self._selected_b2_screen = None
 
-        self.update_screen_combo_box(self.I1_DEFAULT_SCREEN)
-
+        self.update_screen_combo_box(self.I1_INITIAL_SCREEN)
 
     def update_screen_combo_box(self, initial_value=None) -> None:
         self.ui.select_screen_combobox.clear()
@@ -69,22 +71,27 @@ class AreaControl(QWidget):
 
         LOG.debug(f"Setting area in {self} to I1")
         self.machine = self.i1machine
-        screen_name = self._selected_i1_screen or self.I1_DEFAULT_SCREEN
+        screen_name = self._selected_i1_screen or self.I1_INITIAL_SCREEN
         self.update_screen_combo_box(screen_name)
 
     def set_b2(self):
         if self.machine is self.i1machine:
             self._selected_i1_screen = self.get_selected_screen_name()
 
-        LOG.debug(f"Setting area in {self} to B2<")
+        LOG.debug(f"Setting area in {self} to B2")
         self.machine = self.b2machine
-        screen_name = self._selected_b2_screen or self.B2_DEFAULT_SCREEN
+        screen_name = self._selected_b2_screen or self.B2_INITIAL_SCREEN
         self.update_screen_combo_box(screen_name)
 
-    def select_screen(self, _):
-        screen_name = self.ui.select_screen_combobox.currentText()
+    def select_screen(self, index: int) -> None:
+        screen_name: str = self.ui.select_screen_combobox.itemText(index)
+        # Avoid emitting needlessly, if we have just selected the very same screen
+        # as the one we started on, then do nothing.
+        if screen_name == self._selected_i1_screen or screen_name == self._selected_b2_screen:
+            return
+        # Emitting here can be expensive as the rest of the GUI learns from this one signal
+        # Where we are in the machine (the region, I1 or B2, is inferred from the screen name.)
         self.screen_name_signal.emit(screen_name)
-        self.machine.set_kickers_for_screen(screen_name)
 
     def set_area(self, area: DiagnosticRegion):
         if area is self.machine.area:

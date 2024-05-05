@@ -51,6 +51,14 @@ class DOOCSAddress:
         self.device = device
         self.location = location
         self.property = property
+        if "/" in facility:
+            raise ValueError("/ found in facility component")
+        if "/" in device:
+            raise ValueError("/ found in device component")
+        if "/" in location:
+            raise ValueError("/ found in location component")
+        if "/" in property:
+            raise ValueError("/ found in property component")
 
     @classmethod
     def from_string(cls: Type[Self], string: str) -> Self:
@@ -62,13 +70,35 @@ class DOOCSAddress:
     def resolve(self) -> str:
         return f"{self.facility}/{self.device}/{self.location}/{self.property}"
 
-    def filled(self, facility: str = "", device:str = "", location:str = "", property: str= "") -> str:
-        facility = facility if facility else self.facility
-        device = device if device else self.device
-        location = location if location else self.location
-        property = property if property else self.property
+    def filled(self, facility: str = "", device: str = "", location: str = "", property: str= "") -> str:
+        facility = facility or self.facility
+        device = device or self.device
+        location = location or self.location
+        property = property or self.property
         address = f"{facility}/{device}/{location}/{property}"
         return address
+
+    def filled_wildcard(self, substrings: list[str]) -> list[str]:
+        if not self.is_wildcard_address():
+            raise ValueError("Not a wildcard address")
+        result = []
+        facility = self.facility
+        device = self.device
+        location = self.location
+        property = self.property
+        if "*" in self.facility:
+            for ss in substrings:
+                result.append(f"{ss}/{self.device}/{self.location}/{self.property}")
+        elif "*" in self.device:
+            for ss in substrings:
+                result.append(f"{self.facility}/{ss}/{self.location}/{self.property}")
+        elif "*" in self.location:
+            for ss in substrings:
+                result.append(f"{self.facility}/{self.device}/{ss}/{self.property}")
+        else:
+            for ss in substrings:
+                result.append(f"{self.facility}/{self.device}/{self.location}/{ss}")
+        return result
 
     def with_location(self, location: str) -> str:
         return f"{self.facility}/{self.device}/{location}/{self.property}"
