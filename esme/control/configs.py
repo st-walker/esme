@@ -1,30 +1,35 @@
 import yaml
 import os
-from typing import Any
+from typing import Any, Callable
 import toml
 from pathlib import Path
 from collections import defaultdict
-from esme.control.tds import StreakingPlane
+from copy import deepcopy
 
 import pandas as pd
 
-from esme.control.kickers import FastKicker, FastKickerController, PolarityType, FastKickerSetpoint
+from esme.control.kickers import FastKicker, FastKickerController, FastKickerSetpoint, PolarityType
 from esme.control.screens import Screen
-from esme.control.machines import HighResolutionEnergySpreadMachine, LPSMachine
-from esme.control.tds import TransverseDeflector
-from esme.control.sbunches import DiagnosticRegion, SpecialBunchesControl
-from esme.control.vdint import ReadBackAddress, ScanMachineInterface, QualifiedImageAddress, WildcardAddress, ReadOnlyDummyAddress, QualifiedImageAddress
+from esme.control.machines import HighResolutionEnergySpreadMachine, LPSMachine, MachineManager, DiagnosticBunchesManager, MachineReadManager
+from esme.control.tds import TransverseDeflector, StreakingPlane
+from esme.control.sbunches import SpecialBunchesControl
+from esme.control.dint import DOOCSInterfaceABC
+from esme.control.vdint import (ReadBackAddress,
+                               ScanMachineInterface,
+                               QualifiedImageAddress,
+                               WildcardAddress,
+                               ReadOnlyDummyAddress,
+                               QualifiedImageAddress)
 from esme.control.scanner import QuadScanSetpoint, ScanConfig, Scanner, QuadScan, TDSScan
 from esme.control.snapshot import SnapshotRequest
 from esme.control.optics import I1toI1DLinearOptics, I1toB2DLinearOptics
 from esme.control.tds import StreakingPlane
-from esme import DiagnosticRegion
+from esme.core import DiagnosticRegion
 from esme.control.mstate import AreaWatcher
-
 from esme.analysis import OpticsFixedPoints
 
 
-def load_kickers_from_config(dconf: dict[str, Any], di=None) -> FastKickerController:
+def load_kickers_from_config(dconf: dict[str, Any], area: DiagnosticRegion, di: DOOCSInterfaceABC | None = None) -> FastKickerController:
     kicker_defs = dconf["kickers"]
     kickers = []
     for kdef in kicker_defs:
@@ -36,7 +41,7 @@ def load_kickers_from_config(dconf: dict[str, Any], di=None) -> FastKickerContro
     return FastKickerController(kickers, di=di)
 
 
-def load_screens_from_config(dconf: dict[str, Any], di=None) -> dict[str, dict[str, Screen]]:
+def load_screens_from_config(dconf: dict[str, Any], area: DiagnosticRegion, di: DOOCSInterfaceABC | None = None) -> dict[str, Screen]:
     screen_defs = dconf["screens"]
     # Mapping of areas (generally I1 or B2 to a dictionary of screen names to screen instances
     screens = defaultdict(lambda: defaultdict(dict))
@@ -64,65 +69,148 @@ def load_screens_from_config(dconf: dict[str, Any], di=None) -> dict[str, dict[s
     screens = dict(screens)
     screens = {area: dict(screens[area]) for area in screens}
 
-    return screens
+    return screens[area]
 
-def parse_polarity(cdict):
+def parse_polarity(cdict: dict[str, Any]) -> PolarityType:
     try:
         return PolarityType(cdict["polarity"])
     except KeyError:
         return None
 
+class MachineManagerFactory:
+    def __init__(self, yamlf: os.PathLike, default_dint: DOOCSInterfaceABC | None = None):
+        with open(yamlf, "r") as f:
+            self._config = yaml.full_load(f)
+        self._facade_cache = defaultdict(dict)
+        self._manager_cache = defaultdict(dict)
+        self._default_di = default_dint or DOOCSInterface()
 
-def make_hires_injector_energy_spread_machine(yamlf: os.PathLike, di=None) -> LPSMachine:
+    def _get_else_build_from_config(self, name: str, area: DiagnosticRegion, backup_fn: Callable[[dict[str, Any], DiagnosticRegion, DOOCSInterfaceABC], MachineManager]):
+        try:
+            inst = self._facade_cache[area][name]
+        except KeyError:
+            inst = backup_fn(self._config, area, di=self._default_di)
+            self._facade_cache[area][name] = inst
+        return inst
+
+    def _get_else_build(self, name: str, area: DiagnosticRegion, backup_fn): # -> SubsystemFacade
+        try:
+            inst = self._facade_cache[area][name]
+        except KeyError:
+            inst = backup_fn(area)
+            self._facade_cache[area][name] = inst
+        return inst
+
+    def _get_screens(self, area: DiagnosticRegion) -> dict[str, Screen]:
+        return self._get_else_build_from_config("screens", area, load_screens_from_config)
+    
+    def _get_kicker_facade(self, area: DiagnosticRegion) -> FastKickerController:
+        return self._get_else_build_from_config("kickers", area, load_kickers_from_config)
+
+    def _get_deflector(self, area: DiagnosticRegion) -> dict[str, TransverseDeflector]:
+        return self._get_else_build_from_config("deflectors", area, load_deflector_from_config)
+    
+    def _get_optics(self, area: DiagnosticRegion) -> I1toI1DLinearOptics:
+        return self._get_else_build_from_config("optics", area, build_linear_optics)
+    
+    def _get_sbunches(self, area: DiagnosticRegion) -> SpecialBunchesControl:
+        return self._get_else_build("sbunches", area, SpecialBunchesControl)
+    
+    def _get_scanner(self, area: DiagnosticRegion) -> Scanner:
+        return self._get_else_build_from_config("scanner", area, load_scanner_from_config)
+    
+    def _get_misc_snapshot_request(self, area: DiagnosticRegion) -> SnapshotRequest:
+        return self._get_else_build_from_config("reader", area, load_misc_snapshot_from_config)
+
+    def make_diagnostic_bunches_manager(self, area: DiagnosticRegion) -> DiagnosticBunchesManager:
+        try:
+            manager = deepcopy(self._manager_cache[area]["diagbunches"])
+        except KeyError:
+            manager = DiagnosticBunchesManager(screens=self._get_screens(area),
+                                               kickerop=self._get_kicker_facade(area),
+                                               sbunches=self._get_sbunches(area))
+            self._manager_cache[area]["diagbunches"] = manager
+        return manager
+            
+    def make_hires_injector_energy_spread_manager(self) -> HighResolutionEnergySpreadMachine:
+        area = DiagnosticRegion.I1
+        try:
+            manager = deepcopy(self._manager_cache[area]["hires"])
+        except KeyError:
+            manager = HighResolutionEnergySpreadMachine(scanner=self._get_scanner(area),
+                                                        screen=self._get_screens(area)["OTRC.64.I1D"],
+                                                        deflector=self._get_deflector(area),
+                                                        sbunches=self._get_sbunches(area),
+                                                        optics=self._get_optics(area),
+                                                        di=self._default_di)
+            self._manager_cache[area]["hires"] = manager
+        return manager
+
+    def make_lps_manager(self, area: DiagnosticRegion) -> LPSMachine:
+        try:
+            manager = deepcopy(self._manager_cache[area]["lps"])
+        except KeyError:
+            manager = LPSMachine(region=area,
+                                 kickerop=self._get_kicker_facade(area),
+                                 screens=self._get_screens(area),
+                                 tds=self._get_deflector(area),
+                                 optics=self._get_optics(area),
+                                 sbunches=self._get_sbunches(area),
+                                 di=self._default_di)
+        else:
+            self._manager_cache[area]["lps"] = manager
+        
+        return manager
+    
+    def make_i1_b2_managers(self) -> tuple[LPSMachine, LPSMachine]:
+        return self.make_lps_manager(DiagnosticRegion.I1), self.make_lps_manager(DiagnosticRegion.B2)
+    
+    def make_machine_reader_manager(self, area: DiagnosticRegion) -> MachineReadManager:
+        try:
+            manager = deepcopy(self._manager_cache[area]["reader"])
+        except KeyError:
+            manager = MachineReadManager(screens=self._get_screens(area),
+                                         optics=self._get_optics(area),
+                                         request=self._get_misc_snapshot_request(area))
+        else:
+            self._manager_cache[area]["reader"] = manager
+
+        return manager
+    
+    def make_i1_b2_read_managers(self) -> tuple[MachineManager, MachineManager]:
+        i1reader = self.make_diagnostic_bunches_manager(DiagnosticRegion.I1)
+        b2reader = self.make_diagnostic_bunches_manager(DiagnosticRegion.B2)
+        return i1reader, b2reader
+
+
+# def build_lps_machine_from_config(yamlf: os.PathLike, area: DiagnosticRegion, di: DOOCSInterfaceABC | None = None) -> LPSMachine:
+#     with open(yamlf, "r") as f:
+#         config = yaml.full_load(f)
+
+#     all_screens = load_screens_from_config(config, di=di)
+#     section_screens = all_screens[area]
+
+#     kickercontroller = load_kickers_from_config(config, di=di)
+#     tds = load_deflectors_from_config(config, di=di)[area]
+#     optics = build_linear_optics(area, di=di)
+#     sbunches = SpecialBunchesControl(area, di=di)
+
+#     return LPSMachine(region=area,
+#                       kickerop=kickercontroller,
+#                       screens=section_screens,
+#                       tds=tds,
+#                       optics=optics,
+#                       sbunches=sbunches,
+#                       di=di)
+
+def build_area_watcher_from_config(yamlf: os.PathLike, area: DiagnosticRegion, di: DOOCSInterfaceABC | None = None) -> AreaWatcher:
     with open(yamlf, "r") as f:
         config = yaml.full_load(f)
 
-    area = DiagnosticRegion.I1
-    kickercontroller = load_kickers_from_config(config, di=di)
-    screen = load_screens_from_config(config, di=di)[area]["OTRC.64.I1D"]
-    deflector = load_deflectors_from_config(config, di=di)[area]
-    scanner = load_scanner_from_config(config, di=di)
-    optics = build_linear_optics(area, di=di)
-    sbunches = SpecialBunchesControl(area, di=di)
+    section_screens = load_screens_from_config(config, area, di=di)
 
-    return HighResolutionEnergySpreadMachine(scanner=scanner,
-                                             screen=screen,
-                                             deflector=deflector,
-                                             sbunches=sbunches,
-                                             optics=optics,
-                                             di=di)
-
-
-
-def build_lps_machine_from_config(yamlf: os.PathLike, area: DiagnosticRegion, di=None) -> LPSMachine:
-    with open(yamlf, "r") as f:
-        config = yaml.full_load(f)
-
-    all_screens = load_screens_from_config(config, di=di)
-    section_screens = all_screens[area]
-
-    kickercontroller = load_kickers_from_config(config, di=di)
-    tds = load_deflectors_from_config(config, di=di)[area]
-    optics = build_linear_optics(area, di=di)
-    sbunches = SpecialBunchesControl(area, di=di)
-
-    return LPSMachine(region=area,
-                      kickerop=kickercontroller,
-                      screens=section_screens,
-                      tds=tds,
-                      optics=optics,
-                      sbunches=sbunches,
-                      di=di)
-
-def build_area_watcher_from_config(yamlf: os.PathLike, area: DiagnosticRegion, di=None):
-    with open(yamlf, "r") as f:
-        config = yaml.full_load(f)
-
-    all_screens = load_screens_from_config(config, di=di)
-    section_screens = all_screens[area]
-
-    kickercontroller = load_kickers_from_config(config, di=di)
-    tds = load_deflectors_from_config(config, di=di)[area]
+    kickercontroller = load_kickers_from_config(config, area, di=di)
+    tds = load_deflector_from_config(config, area, di=di)
     # optics = build_linear_optics(area, di=di)
     sbunches = SpecialBunchesControl(area, di=di)
 
@@ -132,13 +220,30 @@ def build_area_watcher_from_config(yamlf: os.PathLike, area: DiagnosticRegion, d
  #                      optics=optics,
                        sbunches=sbunches,
                        di=di)
-               
 
-def build_linear_optics(area: DiagnosticRegion, di=None):
+def load_misc_snapshot_from_config(dconf: dict[str, Any],
+                                   area: DiagnosticRegion,
+                                   di: DOOCSInterfaceABC | None = None) -> SnapshotRequest:
+    misc_channels = dconf["snapshots"][area.name]["channels"]
+    addresses = misc_channels["addresses"]
+    wildcards = misc_channels["wildcards"]
+    return SnapshotRequest(addresses=addresses, wildcards=wildcards, image=None)
+
+def build_linear_optics(dconf: dict[str, Any],
+                        area: DiagnosticRegion,
+                        di: DOOCSInterfaceABC | None = None) -> I1toI1DLinearOptics:
+
+    optics_channels = dconf["snapshots"][area.name]["optics_channels"]
+    optics_addresses = optics_channels["addresses"]
+    optics_wildcards = optics_channels["wildcards"]
+    energy_addresses = optics_channels["try_energy_addresses"]
+
+    request = SnapshotRequest(addresses=optics_addresses, wildcards=optics_wildcards, image=None)
+
     if area is DiagnosticRegion.I1:
-        return I1toI1DLinearOptics(di=di)
+        return I1toI1DLinearOptics(request=request, energy_addresses=energy_addresses, di=di)
     elif area is DiagnosticRegion.B2:
-        return I1toB2DLinearOptics(di=di)
+        return I1toB2DLinearOptics(request=request, energy_addresses=energy_addresses, di=di)
     else:
         raise ValueError(f"Unrecognised area string: {area}")
 
@@ -147,7 +252,7 @@ def build_b2_lps_machine_from_config(yamlf):
     pass
 
 
-def load_deflectors_from_config(dconf: dict[str, Any], di=None) -> dict[str, TransverseDeflector]:
+def load_deflector_from_config(dconf: dict[str, Any], area: DiagnosticRegion, di: DOOCSInterfaceABC | None = None) -> TransverseDeflector:
     deflector_defs = dconf["deflectors"]
 
     deflectors = {}
@@ -156,19 +261,18 @@ def load_deflectors_from_config(dconf: dict[str, Any], di=None) -> dict[str, Tra
         sp_fdl = ddef["sp_fdl"]
         rb_fdl = ddef["rb_fdl"]
         plane = StreakingPlane[ddef["streak"].upper()]
-        deflectors[str(area)] = TransverseDeflector(sp_fdl, rb_fdl, plane=plane, di=di)
+        deflectors[area] = TransverseDeflector(sp_fdl, rb_fdl, plane=plane, di=di)
+    return deflectors[area]
 
-    return deflectors
 
-
-def load_calibration(fname):
+def load_calibration(fname: os.PathLike): # -> ???
     with open(fname, "r") as f:
         kvps = toml.load(f)
 
     ctype = kvps["type"]
 
     if ctype == "bolko":
-        return _load_dinimal_bolko_calibration(kvps)
+        return _load_minimal_bolko_calibration(kvps)
     elif ctype == "igor":
         return _load_igor_calibration(kvps)
     elif ctype == "discrete":
@@ -204,20 +308,20 @@ def load_calibration(fname):
 
 #     return BolkoCalibration(area, calibs)
 
-def _load_igor_calibration(dcalib):
+def _load_igor_calibration(dcalib: dict[str, Any]): #-> IgorCalibration:
     dcalib["area"]
     amplitudes = dcalib["amplitudes"]
     voltages = dcalib["voltages"]
     region = DiagnosticRegion(dcalib["area"])
     return IgorCalibration(region, amplitudes, voltages)
 
-def _load_discrete_calibration(dcalib):
+def _load_discrete_calibration(dcalib: dict[str, any]): # -> DiscreteCalibration:
     amplitudes = dcalib["amplitudes"]
     voltages = dcalib["voltages"]
     return DiscreteCalibration(amplitudes, voltages)
 
 
-def load_scanner_from_config(dconf, di=None):
+def load_scanner_from_config(dconf, di: DOOCSInterfaceABC | None = None) -> Scanner:
     scans = []
     for scan in dconf["scanner"]["scans"]:
         quad_setpoints = []
@@ -267,7 +371,7 @@ def load_scanner_from_config(dconf, di=None):
 
     return Scanner(scans[0], di=di)
 
-def load_virtual_machine_interface(dconf):
+def load_virtual_machine_interface(dconf: dict[str, Any]) -> ScanMachineInterface:
     state = dconf["simple"]
 
     readbacks = dconf["readbacks"]
@@ -301,7 +405,7 @@ def load_virtual_machine_interface(dconf):
 
     return ScanMachineInterface(state)
 
-def get_scan_config_for_area(dconf: dict, area: str):
+def get_scan_config_for_area(dconf: dict[str, Any], area: str) -> dict[str, Any]:
     scans = dconf["scanner"]["scans"]
     for scan in scans:
         if scan["area"] == area:

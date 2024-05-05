@@ -7,6 +7,7 @@ import logging
 from collections import defaultdict
 from enum import Enum, auto
 from copy import deepcopy
+from typing import Any
 
 import numpy as np
 from PyQt5 import QtCore, QtWidgets
@@ -23,7 +24,7 @@ from esme.control.snapshot import SnapshotAccumulator
 from esme.gui.widgets.common import (is_in_controlroom,
                                      load_scanner_panel_ui_defaults,
                                      raise_message_box,
-                                     make_default_injector_espread_machine)
+                                     get_machine_manager_factory)
 from esme.calibration import AmplitudeVoltageMapping
 from esme.optics import load_matthias_slice_measurement
 from esme.gui.widgets.result import ScannerResultsDialog
@@ -38,6 +39,8 @@ class ScanType(Enum):
     TDS = auto()
     BETA = auto()
 
+    # XXX: class properties are deprecated and removed in 3.13, need to
+    # Fix this and get rid of it when I have time.
     @classmethod
     @property
     def ALT_NAME_MAP(cls):
@@ -73,11 +76,12 @@ class ScannerControl(QtWidgets.QWidget):
         self.ui = Ui_scanner_form()
         self.ui.setupUi(self)
 
-        self.machine = make_default_injector_espread_machine()
+        self.i1machine, self.b2machine = get_machine_manager_factory().make_i1_b2_managers()
+        self.machine = self.i1machine # Set initial machine choice to be for I1 diagnostics
 
         ui_defaults = load_scanner_panel_ui_defaults()
         self.initial_read(ui_defaults["ScannerControl"])
-        self.settings_dialog = ScannerConfDialog(defaults=ui_defaults["ScannerConfDialog"],
+        self.settings_dialog = ScannerConfDialog(defaults=ui_defaults["ScannerConfDialog"], 
                                                  parent=self)
         self.measured_slice_twiss = None
         self.connect_buttons()
@@ -89,8 +93,7 @@ class ScannerControl(QtWidgets.QWidget):
 
         self.timer = self.build_main_timer(100)
 
-
-    def set_ui_initial_values(self, dic):
+    def set_ui_initial_values(self, dic: dict[str, Any]) -> None:
         self.ui.beam_shots_spinner.setValue(dic["beam_shots_spinner"])
         self.ui.bg_shots_spinner.setValue(dic["bg_shots_spinner"])
 

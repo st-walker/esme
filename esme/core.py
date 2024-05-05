@@ -4,6 +4,7 @@ from enum import Enum
 
 class DiagnosticRegion(str, Enum):
     I1 = "I1"
+    B1 = "B1"
     B2 = "B2"
 
 

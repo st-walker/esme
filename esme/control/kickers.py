@@ -61,6 +61,7 @@ class FastKicker:
         elif polarity is PolarityType.NEGATIVE:
             self.di.set_value(f"{self.adio24_fdl}/{self.NEGATIVE_SET_PROP}", 1)
         else:
+            from IPython import embed; embed()
             raise TypeError(f"Unrecognised Polarity {polarity}")
 
     def set_delay(self, delay: int):

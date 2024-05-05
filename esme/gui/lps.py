@@ -1,29 +1,21 @@
 import sys
 import logging
+from collections import defaultdict
+from functools import partial
 
-from PyQt5 import QtCore
 from PyQt5.QtCore import QObject, QRunnable, QTimer, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QMainWindow
 import pyqtgraph as pg
 import numpy as np
 
 from esme.gui.ui import mainwindow
-from esme.gui.widgets.common import (make_default_i1_lps_machine,
-                                     make_default_b2_lps_machine,
-                                     set_tds_calibration_by_region)
-from collections import defaultdict
-from dataclasses import dataclass
-from functools import partial
+from esme.gui.widgets.common import (get_machine_manager_factory,
+                                    set_tds_calibration_by_region,
+                                     send_widget_to_log)
 
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
-
-from functools import wraps
-import cProfile
-import io
-import pstats
-
 
 def start_lps_gui() -> None:
     app = QApplication(sys.argv)
@@ -68,34 +60,31 @@ class BackgroundCache:
     
 class LPSMainWindow(QMainWindow):
     screen_name_signal = pyqtSignal(str)
-    # image_mode_signal = pyqtSignal(ImageTakingMode)
 
     def __init__(self):
         super().__init__()
         self.ui = mainwindow.Ui_MainWindow()
         self.ui.setupUi(self)
 
-        # self.setup_logger_tab()
-
-        self.i1machine = make_default_i1_lps_machine()
-        self.b2machine = make_default_b2_lps_machine()
-        self.machine = self.i1machine
+        self.i1machine, self.b2machine = get_machine_manager_factory().make_i1_b2_managers()
+        self.machine = self.i1machine # Set initial machine choice to be for I1 diagnostics
 
         # Connect signals for screen name which we select in this
         # widget and have to propagate to the child widgets.
         self.ui.area.screen_name_signal.connect(self.ui.tds_panel.set_region_from_screen_name)
         self.ui.area.screen_name_signal.connect(self.ui.screen_display_widget.set_screen)
         self.ui.area.screen_name_signal.connect(self.ui.machine_state_widget.set_screen)
+        self.ui.area.screen_name_signal.connect(self.ui.special_bunch_panel.set_kickers_for_screen)
 
         # Connect the emission of the TDS panel's TDS voltage calibrations to here.
         self.ui.tds_panel.voltage_calibration_signal.connect(self.update_tds_voltage_calibration)
 
+
         self.connect_buttons()
-        # self.setup_indicators()
 
         self.jddd_camera_window_process = None
 
-        self.timer = self.build_main_timer(period=500)
+        # self.timer = self.build_main_timer(period=1000)
 
         # Get the TDS child panel to emit any TDS calibrations it may
         # have stored, that we we can propagate them from here to
@@ -127,7 +116,7 @@ class LPSMainWindow(QMainWindow):
             raise RuntimeError("either I1 nor B2 selected")
 
     def send_to_logbook(self) -> None:
-        send_widget_to_log(self, author="Longitudinal Diagnostics Utility")
+        send_widget_to_log(self, author="", title="Longitudinal Diagnostics Utility", severity="INFO")
 
     def setup_logger_tab(self) -> None:
         log_handler = QPlainTextEditLogger()

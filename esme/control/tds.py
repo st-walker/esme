@@ -1,4 +1,5 @@
 from enum import Enum
+from math import isclose
 
 from .dint import DOOCSInterface
 
@@ -21,10 +22,16 @@ class TransverseDeflector:
     PHASE_SP_PROP = "SP.PHASE"
     AMPLITUDE_SP_PROP = "SP.AMPL"
 
-    def __init__(self, sp_fdl: str, rb_fdl: str, plane: StreakingPlane,
+    def __init__(self, sp_fdl: str,rb_fdl: str, 
+                 plane: StreakingPlane,
                  calibration=None,
                  zero_crossing: float | None = None,
                  di: DOOCSInterface | None = None) -> None:
+        """fdl arguments must be of the form /facility/device/location/ with leading and trailing
+        forward slashes present."""
+        # Setpoint FDL address stub: Facility, Device, Location (only missing Property):
+        # E.g.:
+        # /XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/
         self.sp_fdl = sp_fdl
         self.rb_fdl = rb_fdl
         self.plane = plane
@@ -33,26 +40,32 @@ class TransverseDeflector:
         self.di = di if di else DOOCSInterface()
 
     def get_phase_rb(self) -> float:
+        """Get the phase readback value."""
         ch = self.rb_fdl + f"{self.PHASE_RB_PROP}"
         return self.di.get_value(ch)
 
     def increment_phase(self, phase_increment: float) -> None:
+        """Increment the phase by the provided amount."""
         phase_increment += self.get_phase_sp()
         self.set_phase(phase_increment)
 
     def get_amplitude_rb(self) -> float:
+        """Get the amplitude readback value."""
         ch = self.rb_fdl + f"{self.AMPLITUDE_RB_PROP}"
         return self.di.get_value(ch)
 
     def get_phase_sp(self) -> float:
+        """Get the phase setpoint value."""
         ch = self.sp_fdl + f"{self.PHASE_SP_PROP}"
         return self.di.get_value(ch)
 
     def get_amplitude_sp(self) -> float:
+        """Get the amplitude setpoint value."""
         ch = self.sp_fdl + f"{self.AMPLITUDE_SP_PROP}"
         return self.di.get_value(ch)
 
     def set_phase(self, value: float) -> None:
+        """Set the TDS phase"""
         ch = self.sp_fdl + f"{self.PHASE_SP_PROP}"
         self.di.set_value(ch, value)
 
@@ -61,6 +74,7 @@ class TransverseDeflector:
         self.di.set_value(ch, value)
 
     def set_voltage(self, voltage: float) -> None:
+        """Set the TDS voltage by using the member calibration."""
         try:
             amplitude = self.calibration.get_amplitude(voltage)
         except AttributeError:
@@ -69,22 +83,29 @@ class TransverseDeflector:
         self.set_amplitude(amplitude)
 
     def get_voltage_rb(self) -> float:
+        """Get the TDS voltage with the use of the calibration"""
         try:
             return self.calibration.get_voltage(self.get_amplitude_rb())
         except AttributeError:
             raise UncalibratedTDSError("Missing TDS Calibration")
 
     def amplitude_rb_matches_sp(self, tol: float = 0.05) -> bool:
+        """Check that the amplitude readback value matches the setpoint within some tolerance.
+        This is for checking that the TDS is functioning.  Most typically, that it has been
+        switched on correctly."""
         rb = self.get_amplitude_sp()
         sp = self.get_amplitude_sp()
-        return abs((rb - sp) / sp) < tol
+        return isclose(rb, sp, abs_tol=tol, rel_tol=tol)
 
-    def set_phase_to_zero_crossing(self):
+    def set_phase_to_zero_crossing(self) -> None:
+        """Set TDS phase to the previously set zero crossing."""
         if self.zero_crossing is None:
-            raise ValueError("Zero Crossing has not been set")
+            raise ValueError("Zero Crossing has not been set.")
         self.set_phase(self.zero_crossing)
 
     def set_zero_crossing(self):
+        """Set the zero crossing.  Convenient for jumping back to the zero crossing and not having
+        to find it repeatedly."""
         phase = self.get_phase_sp()
         if phase < 0:
             phase %= -180

@@ -11,7 +11,7 @@ S.Tomin, 2017
 
 """
 
-from __future__ import absolute_import, print_function
+from __future__ import annotations
 
 import logging
 import os
@@ -20,7 +20,8 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional, Type
+from typing import Any, Optional, Type, Self
+from abc import abstractmethod
 
 import matplotlib
 import numpy as np
@@ -29,69 +30,105 @@ import pandas as pd
 from esme.control.exceptions import DOOCSReadError, DOOCSWriteError
 
 import sys
-sys.path.append("/Users/xfeloper/stwalker/llpydoocs/build")
 
-try:
-    import llpydoocs
-except ImportError:
-    pass
-
+# Import hard coded pydoocs I compiled for Python 3.12
+import importlib.util
+PYDOOCS_SO = "/System/Volumes/Data/home/xfeloper/user/stwalker/pydoocs12/pydoocs-main/pydoocs.cpython-312-darwin.so"
+SPEC = importlib.util.spec_from_file_location("pydoocs", PYDOOCS_SO)
+pydoocs = importlib.util.module_from_spec(SPEC)
 
 LOG = logging.getLogger(__name__)
 
 
-def make_doocs_channel_string(facility="", device="", location="", prop=""):
-    return f"{facility}/{device}/{location}/{prop}"
-
+def make_doocs_channel_string(facility: str = "", device: str = "", location: str = "", property: str = "") -> str:
+    return f"{facility}/{device}/{location}/{property}"
 
 
 class DOOCSAddress:
-    def __init__(self, facility="", device="", location="", prop=""):
+    __slots__ = "facility", "device", "location", "property"
+    def __init__(self, facility: str = "", device: str = "", location: str = "", property: str = ""):
         self.facility = facility
         self.device = device
         self.location = location
-        self.prop = prop
+        self.property = property
+        if "/" in facility:
+            raise ValueError("/ found in facility component")
+        if "/" in device:
+            raise ValueError("/ found in device component")
+        if "/" in location:
+            raise ValueError("/ found in location component")
+        if "/" in property:
+            raise ValueError("/ found in property component")
 
     @classmethod
-    def from_string(cls, string):
+    def from_string(cls: Type[Self], string: str) -> Self:
         components = string.split("/")
         if len(components) > 4:
             raise ValueError(f"Malformed DOOCs address string: {string}")
         return cls(*components)
 
-    def resolve(self):
-        return f"{self.facility}/{self.device}/{self.location}/{self.prop}"
+    def resolve(self) -> str:
+        return f"{self.facility}/{self.device}/{self.location}/{self.property}"
 
-    def filled(self, facility="", device="", location="", prop=""):
-        facility = facility if facility else self.facility
-        device = device if device else self.device
-        location = location if location else self.location
-        prop = prop if prop else self.prop
-        address = f"{facility}/{device}/{location}/{prop}"
+    def filled(self, facility: str = "", device: str = "", location: str = "", property: str= "") -> str:
+        facility = facility or self.facility
+        device = device or self.device
+        location = location or self.location
+        property = property or self.property
+        address = f"{facility}/{device}/{location}/{property}"
         return address
 
-    def with_location(self, location):
-        return f"{self.facility}/{self.device}/{location}/{self.prop}"
+    def filled_wildcard(self, substrings: list[str]) -> list[str]:
+        if not self.is_wildcard_address():
+            raise ValueError("Not a wildcard address")
+        result = []
+        facility = self.facility
+        device = self.device
+        location = self.location
+        property = self.property
+        if "*" in self.facility:
+            for ss in substrings:
+                result.append(f"{ss}/{self.device}/{self.location}/{self.property}")
+        elif "*" in self.device:
+            for ss in substrings:
+                result.append(f"{self.facility}/{ss}/{self.location}/{self.property}")
+        elif "*" in self.location:
+            for ss in substrings:
+                result.append(f"{self.facility}/{self.device}/{ss}/{self.property}")
+        else:
+            for ss in substrings:
+                result.append(f"{self.facility}/{self.device}/{self.location}/{ss}")
+        return result
 
-    def is_wildcard_address(self):
+    def with_location(self, location: str) -> str:
+        return f"{self.facility}/{self.device}/{location}/{self.property}"
+
+    def is_wildcard_address(self) -> bool:
         return "*" in self.resolve()
 
-    def get_wildcard_component(self):
+    def get_wildcard_component(self) -> str:
         if not self.is_wildcard_address():
-            raise ValueErro("Not a wildcard address")
+            raise ValueError("Not a wildcard address")
         if "*" in self.facility:
             return self.facility
         elif "*" in self.device:
             return self.device
         elif "*" in self.location:
             return self.location
-        elif "*" in self.prop:
-            return self.prop
+        elif "*" in self.property:
+            return self.property
 
-    def __str__(self):
+    # def _wildcard_mask(self) -> list[bool]:
+    #     return ["*" in self.facility,
+    #             "*" in self.device,
+    #             "*" in self.location,
+    #             "*" in self.property]
+        
+
+    def __str__(self) -> str:
         return self.resolve()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'<{type(self).__name__} @ {hex(id(self))}: "{self.resolve()}">'
 
 
@@ -107,9 +144,6 @@ class TimestampedImage:
 
     def screen_name(self) -> str:
         return Path(self.channel).parent.name
-
-
-from abc import abstractmethod
 
 
 class DOOCSInterfaceABC:

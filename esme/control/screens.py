@@ -5,7 +5,7 @@ import logging
 
 from .dint import DOOCSInterface
 from .kickers import FastKickerSetpoint
-from .exceptions import EuXFELUserError
+from .exceptions import EuXFELUserError, DOOCSUnexpectedReadValueError, DOOCSReadError
 from .dint import DOOCSInterface
 
 LOG = logging.getLogger(__name__)
@@ -23,7 +23,10 @@ class Screen:
     CAMERA_IS_TAKING_DATA_VALUE = 1
 
     SCREEN_FDP_TEMPLATE = "XFEL.DIAG/CAMERA/{}/IMAGE_EXT"
-    SCREEN_RAW_FDP_TEMPLATE = "XFEL.DIAG/CAMERA/{}/IMAGE_EXT_ZMQ"    
+    SCREEN_RAW_FDP_TEMPLATE = "XFEL.DIAG/CAMERA/{}/IMAGE_EXT_ZMQ"
+
+    POWER_ON_OFF_TEMPLATE = "XFEL.DIAG/CAMERA/{}/POWER.ON.OFF"
+
     def __init__(self, name,
                  fast_kicker_setpoints: Optional[list[FastKickerSetpoint]] = None,
                  di: Optional[DOOCSInterface] = None) -> None:
@@ -94,8 +97,38 @@ class Screen:
             raise EuXFELUserError("Screen has no fast kicker setpoint information")
         LOG.debug(f"Got FastKickerSetpoint for screen {self.name}: {fast_kicker_setpoints}")
         return fast_kicker_setpoints
+    
+    def _power_on_off(self, *, on: bool) -> None:
+        self.di.set_value(self.POWER_ON_OFF_TEMPLATE.format(self.name), int(on))
+
+    def power_on(self) -> None:
+        self._switch_on_off(on=True)
+
+    def power_off(self) -> None:
+        self._switch_on_off(on=False)
+
+    def is_powered(self) -> bool:
+        # If address read is 1 then it's powered, if it's zero then it's off.
+        address = f"XFEL.DIAG/OTR.MOTOR/DOUT.{self.name}/CCD"
+        value = self.di.get_value(address)
+        # This is very defensive, I could just call bool on the return value but it's probably better to be careful.
+        if value == 1:
+            return True
+        elif value == 0:
+            return False
+        else:
+            raise DOOCSUnexpectedReadValueError(address, value)
+        
+    def is_responding(self) -> bool:
+        if not self.is_powered():
+            return False
+        # If we cannot read the camera's image width, then this means the camera is not responding.  This is not necessarily something bad,
+        # for example if the camera is in the process of booting.
+        try:
+            self.get_image_width()
+        except DOOCSReadError:
+            return False
+        return True
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__}: {self.name}>"
-
-

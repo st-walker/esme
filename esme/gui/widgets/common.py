@@ -8,19 +8,18 @@ import pyqtgraph as pg
 from matplotlib import cm
 import numpy as np
 import subprocess
+from typing import Any
 
 from PyQt5.QtCore import QObject, pyqtSignal, QByteArray, QBuffer, QIODevice
 from PyQt5.QtWidgets import QWidget
 from PyQt5.QtWidgets import QMessageBox
+import pandas as pd
 
 from esme.control.configs import (load_virtual_machine_interface,
-                                  build_lps_machine_from_config,
-                                  make_hires_injector_energy_spread_machine, 
                                   build_area_watcher_from_config,
-                                  LPSMachine)
+                                  MachineManagerFactory)
 from esme import DiagnosticRegion
 
-from esme.control.sbunches import SpecialBunchesControl
 from esme.control.dint import DOOCSInterfaceABC, DOOCSInterface
 from esme.control.vdint import DictionaryDOOCSInterface
 
@@ -31,13 +30,20 @@ except ImportError:
 else:
     pg.setConfigOption('useNumba', True)
 
-
-
 DEFAULT_CONFIG_PATH = files("esme.gui.widgets") / "defaultconf.yaml"
 DEFAULT_VCONFIG_PATH = files("esme.gui.widgets") / "vmachine.yaml"
 
+_MACHINE_MANAGER_FACTORY: MachineManagerFactory | None = None
 
-def is_in_controlroom():
+def get_machine_manager_factory() -> MachineManagerFactory:
+    global _MACHINE_MANAGER_FACTORY
+    if _MACHINE_MANAGER_FACTORY:
+        return _MACHINE_MANAGER_FACTORY
+    di = make_default_doocs_interface()
+    _MACHINE_MANAGER_FACTORY = MachineManagerFactory(DEFAULT_CONFIG_PATH, default_dint=di)
+    return _MACHINE_MANAGER_FACTORY
+
+def is_in_controlroom() -> bool:
     name = socket.gethostname()
     reg = re.compile(r"xfelbkr[0-9]\.desy\.de")
     return bool(reg.match(name))
@@ -56,37 +62,18 @@ def make_b2_watcher():
     di = make_default_doocs_interface()
     return build_area_watcher_from_config(DEFAULT_CONFIG_PATH, area=DiagnosticRegion.B2, di=di)
 
-def make_default_injector_espread_machine():
-    di = make_default_doocs_interface()
-    return make_hires_injector_energy_spread_machine(DEFAULT_CONFIG_PATH, di=di)
-
-    
-def make_default_i1_lps_machine() -> LPSMachine:
-    di = make_default_doocs_interface()
-    return build_lps_machine_from_config(DEFAULT_CONFIG_PATH, DiagnosticRegion("I1"), di=di)
-
-def make_default_b2_lps_machine() -> LPSMachine:
-    di = make_default_doocs_interface()
-    return build_lps_machine_from_config(DEFAULT_CONFIG_PATH, DiagnosticRegion("B2"), di=di)
-
 def get_default_virtual_machine_interface() -> DictionaryDOOCSInterface:
     with open(DEFAULT_VCONFIG_PATH, "r") as f:
         doocsdict = yaml.safe_load(f)
         return load_virtual_machine_interface(doocsdict)
 
-def make_default_sbm(location=None):
-    di = make_default_doocs_interface()
-    if location is None:
-        location = DiagnosticRegion.I1
-    return SpecialBunchesControl(location=location, di=di)
-
-def get_config_path():
+def get_config_path() -> Path:
     return Path.home() / ".config" / "lps/"
 
-def get_tds_calibration_config_dir():
+def get_tds_calibration_config_dir() -> Path:
     return get_config_path() / "tds"
 
-def set_machine_by_region(widget, location: DiagnosticRegion):
+def set_machine_by_region(widget: QWidget, location: DiagnosticRegion) -> None:
     if location == "I1":
         widget.machine = widget.i1machine
     elif location == "B2":
@@ -94,7 +81,7 @@ def set_machine_by_region(widget, location: DiagnosticRegion):
     else:
         raise ValueError(f"Unkonwn location string: {location}")
 
-def set_tds_calibration_by_region(widget, calibration: DiagnosticRegion):
+def set_tds_calibration_by_region(widget: QWidget, calibration: DiagnosticRegion) -> None:
     if not hasattr(widget, "i1machine") and not hasattr(widget, "b2machine"):
         raise TypeError("Widget missing i1machine or b2machine instances")
 
@@ -107,7 +94,6 @@ def set_tds_calibration_by_region(widget, calibration: DiagnosticRegion):
         raise ValueError(f"Unkonwn location string: {location}")
     
 
-
 class QPlainTextEditLogger(QObject, logging.Handler):
     log_signal = pyqtSignal(str)
 
@@ -116,11 +102,10 @@ class QPlainTextEditLogger(QObject, logging.Handler):
         self.log_signal.emit(msg)
 
 
-def setup_screen_display_widget(widget, axes=False, units="m"):
+def setup_screen_display_widget(widget: QWidget, axes: bool = False, units: str = "m"):
     image_plot = widget.addPlot()
     image_plot.clear()
     image = pg.ImageItem(border="k")
-    # if not axes:
     image_plot.hideAxis("left")
     image_plot.hideAxis("bottom")
     if axes:
@@ -128,42 +113,36 @@ def setup_screen_display_widget(widget, axes=False, units="m"):
         image_plot.setLabel("right", "<i>&Delta;y</i>", units=units)    
     
     image_plot.addItem(image)
-
     colormap = cm.get_cmap("viridis")
     colormap._init()
     lut = (colormap._lut * 255).view(np.ndarray)
-
     image.setLookupTable(lut)
-    print(lut.shape)
-
-    
     return image_plot
 
-
-
-def load_scanner_panel_ui_defaults():
+def load_scanner_panel_ui_defaults() -> dict[str, Any]:
     with open(DEFAULT_CONFIG_PATH, "r") as f:
         dconf = yaml.safe_load(f)
         uiconf = dconf["scanner"]["gui_defaults"]
         return uiconf
 
-def get_screenshot(window_widget):
+def get_screenshot(window_widget: QWidget): # -> ???
     screenshot_tmp = QByteArray()
     screeshot_buffer = QBuffer(screenshot_tmp)
     screeshot_buffer.open(QIODevice.WriteOnly)
     widget = QWidget.grab(window_widget)
-    widget.save(screeshot_buffert, "png")
+    widget.save(screeshot_buffer, "png")
+    from IPython import embed; embed
     return screenshot_tmp.toBase64().data().decode()
 
 
-def send_to_logbook(author="", title="", severity="", text="", image=None) -> None:
+def send_to_logbook(author: str = "", title: str = "", severity: str = "", text: str = "", image=None) -> None:
     """
     Send information to the electronic logbook.
 
     """
 
     # The DOOCS elog expects an XML string in a particular format. This string
-    # is beeing generated in the following as an initial list of strings.
+    # is being generated in the following as an initial list of strings.
     elogXMLStringList = ['<?xml version="1.0" encoding="ISO-8859-1"?>', '<entry>']
 
     # author information
@@ -184,18 +163,12 @@ def send_to_logbook(author="", title="", severity="", text="", image=None) -> No
     elogXMLStringList.append('</text>')
     # image information
     if image is not None:
-        encodedImage = base64.b64encode(image)
         elogXMLStringList.append('<image>')
-        elogXMLStringList.append(encodedImage.decode())
+        elogXMLStringList.append(image)
         elogXMLStringList.append('</image>')
     elogXMLStringList.append('</entry>')
     # join list to the final string
     elogXMLString = '\n'.join(elogXMLStringList)
-    print(elogXMLStringList)
-    with open("logbook-stuart-attempt.xml", "w") as f:
-        f.write(elogXMLString)
-    # open printer process
-    print(elogXMLString)
     elog = "xfellog"
     lpr = subprocess.Popen(
         ['/usr/bin/lp', '-o', 'raw', '-d', elog],
@@ -205,18 +178,20 @@ def send_to_logbook(author="", title="", severity="", text="", image=None) -> No
     # send printer job
     lpr.communicate(elogXMLString.encode('utf-8'))
 
-def send_widget_to_log(widget, author="", title="", severity="", text=""):
+def send_widget_to_log(widget: QWidget, author="", title="", severity="", text=""):
     image = get_screenshot(widget)
     send_to_logbook(author="", title="", severity="", text="", image=image)
 
 
-def df_to_logbook_table(df):
+def df_to_logbook_table(df: pd.DataFrame) -> str:
+    """Given a pandas DataFrame instance, 
+    return a string of the table formatted correctly for writing in the EuXFEL log book."""
     table_string = df.to_csv(sep="|", lineterminator="\n|")
     table_string = table_string[:-1]
     return table_string
     
 
-def raise_message_box(text, *, informative_text, title, icon=None):
+def raise_message_box(text: str, *, informative_text: str, title: str, icon: str | None = None) -> None:
     """icon: one of {None, "NoIcon", "Question", "Information", "Warning", "Critical"}
     text: something simple like "Error", "Missing config"
     informative_text: the actual detailed message that you read

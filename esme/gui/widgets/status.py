@@ -4,7 +4,7 @@ from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel
 from PyQt5.QtGui import QPainter, QColor, QBrush
 
-from .common import make_default_i1_lps_machine, make_default_b2_lps_machine, make_i1_watcher, make_b2_watcher
+from .common import get_machine_manager_factory, make_i1_watcher, make_b2_watcher
 from esme.control.mstate import AreaWatcher
 from esme.core import region_from_screen_name
 from esme import DiagnosticRegion
@@ -166,7 +166,7 @@ class LPSStateWatcher(IndicatorPanelWidget):
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.check_indicators)
-        self.timer.start(1000)
+        self.timer.start(500)
 
     def _check_screen_state(self) -> tuple[bool, str]:
         return self.mstate.check_screen_state()

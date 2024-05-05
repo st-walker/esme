@@ -4,20 +4,26 @@ from dataclasses import dataclass
 import logging
 from enum import Enum, auto
 import time
+from collections import deque
+import tarfile
+from io import BytesIO
 
 from PyQt5 import QtGui
 from PyQt5.QtWidgets import QGridLayout, QWidget
-from PyQt5.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import QObject, QThread, pyqtSignal, pyqtSlot, QTimer
 import pyqtgraph as pg
 import numpy as np
+import numpy.typing as npt
 import scipy
-
+import pandas as pd
 
 from esme import DiagnosticRegion
-from .common import make_default_b2_lps_machine, make_default_i1_lps_machine, setup_screen_display_widget, LPSMachine
+from .common import get_machine_manager_factory, setup_screen_display_widget
 from esme.calibration import get_tds_com_slope
 from esme.control.tds import StreakingPlane, UncalibratedTDSError
 from esme.control.exceptions import DOOCSReadError
+from esme.control.machines import MachineReadManager
+from esme.control.screens import Screen
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -41,8 +47,7 @@ AXES_KWARGS = {"x": {"text": "<i>&Delta;x</i>", "units": "m"},
 
 class ImageTakingMode(Enum):
     BACKGROUND = auto()
-    BEAM_IMAGE = auto()
-    BEAM_FULL = auto()
+    BEAM = auto()
 
 
 @dataclass
@@ -58,7 +63,6 @@ class PixelInfo:
     ysize: float
     nx: int
     ny: int
-
 
 
 @dataclass
@@ -92,18 +96,19 @@ class ScreenDisplayWidget(QWidget):
         self.layout.addWidget(self.glwidget)
         self.image_plot = setup_screen_display_widget(self.glwidget, axes=True)
 
-        self.i1machine = make_default_i1_lps_machine()
-        self.b2machine = make_default_b2_lps_machine()
-        self.machine = self.i1machine
+        self.i1machine, self.b2machine = get_machine_manager_factory().make_i1_b2_managers()
+        self.machine = self.i1machine # Set initial machine choice to be for I1 diagnostics
 
-        self.screen_worker, self.screen_thread = self.setup_screen_worker()
+        self.data_worker, self.data_thread = self.setup_data_taking_worker()
         self.calibration_worker, self.calibration_thread = self.setup_calibration_worker()
 
         self.tds_calibration_signal.connect(self.calibration_worker.update_tds_voltage_calibration)
 
+        # Add projection axes to the image display daughter widget
         self.add_transverse_projection("x")
         self.add_transverse_projection("y")
 
+        # We have to pick some screen to begin with so it might as well be the first screen.
         self.set_screen("OTRC.55.I1")
 
     def propagate_tds_calibration_signal(self, calib) -> None:
@@ -113,17 +118,22 @@ class ScreenDisplayWidget(QWidget):
 
     def set_screen(self, screen_name: str) -> None:
         self.calibration_worker.screen_name = screen_name
+        self.data_worker.screen_name = screen_name
         # Screen dimensions should always be distance (not pixels, not time, not energy).
         dx, dy = self.machine.optics.dispersions_at_screen(screen_name)
 
         screen = self.machine.screens[screen_name]
+        # XXX
+
+        # If the camera is not switched on then these reads will fail.  
+        # but this shouldn't simply kill the whole gui.
         try:
             xpixel_size = screen.get_pixel_xsize()
             ypixel_size = screen.get_pixel_ysize()
 
             nxpixel = screen.get_image_xpixels()
             nypixel = screen.get_image_ypixels()
-        except DOOCSReadError:
+        except DOOCSReadError as e:
             return
 
 
@@ -175,18 +185,21 @@ class ScreenDisplayWidget(QWidget):
             self.xplot.setMaximumHeight(200)
             self.xplot.setXLink(self.image_plot)
 
-    def setup_screen_worker(self) -> tuple[ScreenWatcher, QThread]:
+    def setup_data_taking_worker(self) -> tuple[DataTakingWorker, QThread]:
         LOG.debug("Initialising screen worker thread")
-        screen_worker = ScreenWatcher(self.machine)
-        self.screen_name_signal.connect(screen_worker.set_screen_name)
-        screen_thread = QThread()
-        screen_worker.moveToThread(screen_thread)
-        screen_thread.started.connect(screen_worker.run_offline)
-        screen_thread.start() # XXX Is this important?!!??!?!  Before signal connection?!?
-        screen_worker.image_signal.connect(self.post_beam_image)
-        screen_worker.image_signal.connect(self.update_projection_plots)
+        data_worker = DataTakingWorker()
+        # Propagate screen name change to data taking worker
+        # responsible for reading from the screen.
+        self.screen_name_signal.connect(data_worker.set_screen)
+        data_thread = QThread()
+        data_thread.started.connect(data_worker.start_timers)
+        data_thread.finished.connect(data_worker.stop_timers)
+        data_worker.display_image_signal.connect(self.post_beam_image)
+        data_worker.display_image_signal.connect(self.update_projection_plots)
+        data_worker.moveToThread(data_thread)
+        data_thread.start()
 
-        return screen_worker, screen_thread
+        return data_worker, data_thread
 
     def setup_calibration_worker(self) -> tuple[CalibrationWatcher, QThread]:
         LOG.debug("Initialising calibration worker thread")
@@ -196,17 +209,18 @@ class ScreenDisplayWidget(QWidget):
         self.screen_name_signal.connect(calib_worker.set_screen_name)
 
         calib_thread = QThread()
-        calib_worker.moveToThread(calib_thread)
-        calib_thread.started.connect(calib_worker.run)
         calib_worker.axis_calibration_signal.connect(self.set_axis_transform_with_label)
-        calib_thread.start()
+        calib_thread.started.connect(calib_worker.run)
+        calib_worker.moveToThread(calib_thread)
+        # NOTE: NOT STARTING THREAD FOR NOW BECAUSE IT IS A HUGE BOTTLENECK AND SLOWS DOWN GUI TOO MUCH!
+        # calib_thread.start()
         return calib_worker, calib_thread
 
     def closeEvent(self, event) -> None:
-        self.screen_worker.kill = True
+        self.data_worker.kill = True
         self.calibration_worker.kill = True
-        self.screen_thread.terminate()
-        self.screen_thread.wait()
+        self.data_thread.terminate()
+        self.data_thread.wait()
         self.calibration_thread.terminate()
         self.calibration_thread.wait()
 
@@ -216,9 +230,6 @@ class ScreenDisplayWidget(QWidget):
         self.xplot.plot(image_payload.x, image_payload.xproj)
         self.yplot.plot(image_payload.yproj, image_payload.y)
 
-    # def accumulate_background(self):
-        
-
 
 
 class CalibrationWatcher(QObject):
@@ -227,12 +238,11 @@ class CalibrationWatcher(QObject):
 
     # XXX: What if scale factor is 0?
     axis_calibration_signal = pyqtSignal(AxisCalibration)
-    def __init__(self, machine: LPSMachine, screen_name: str):
+    def __init__(self, machine, screen_name: str):
         super().__init__()
 
-        self.i1machine = make_default_i1_lps_machine()
-        self.b2machine = make_default_b2_lps_machine()
-        self.machine = self.i1machine
+        self.i1machine, self.b2machine = get_machine_manager_factory().make_i1_b2_managers()
+        self.machine = self.i1machine # Set initial machine choice to be for I1 diagnostics
 
         self.screen_name = screen_name
         self.kill = False
@@ -368,71 +378,150 @@ class CalibrationWatcher(QObject):
         self.screen_name = screen_name
 
 
-
-
-class ScreenWatcher(QObject):
-    image_signal = pyqtSignal(object)
+class DataTakingWorker(QObject):
+    display_image_signal = pyqtSignal(ImagePayload)
     pixels_signal = pyqtSignal(PixelInfo)
-    background_signal = pyqtSignal(object)
 
-    def __init__(self, machine):
+    def __init__(self, initial_screen: str = "OTRC.55.I1"):
         super().__init__()
-        self.machine = machine
-        self.screen_name = "OTRC.55.I1"
-        self.kill = False
-        self.mode = ImageTakingMode.BACKGROUND
-        self.set_screen_name(self.screen_name)
 
-    def get_image(self):
-        image = self.machine.screens[self.screen_name].get_image()
-        # LOG.debug("Reading image from: %s", self.screen_name)
+        mfactory: MachineReadManager = get_machine_manager_factory()
+        self.i1reader: MachineReadManager = mfactory.make_machine_reader_manager(DiagnosticRegion.I1)
+        self.b2reader: MachineReadManager = mfactory.make_machine_reader_manager(DiagnosticRegion.B2)
+        self.mreader = self.i1reader # Set initial machine reader instance choice to be for I1.
+
+        # The background images cache.
+        self.bg_images: deque[npt.ArrayLike] = deque(maxlen=5)
+        # The cache of data we have taken.  We are constantly updating
+        self.beam_images: deque[npt.ArrayLike] = deque(maxlen=20)
+
+        self.mode = ImageTakingMode.BEAM
+        self.screen: Screen | None = None
+        self.pixels: PixelInfo | None = None
+        self.set_screen(initial_screen)
+
+        # Read from the machine regularly, at the rep. rate of the machine.
+        self.beam_images_timer = self.make_screen_read_timer(interval_ms=100)
+        # Emit an image (intended for display) only once ever 1s.  There is no need
+        # for more frequently than that really.
+        self.display_timer = self.make_display_timer(interval_ms=1000)
+
+        # self.new_timer = QTimer()
+        # self.new_timer.setInterval(1)
+        # self.new_timer.timeout.connect(lambda:print("QWWQWEQFDGIERSFDERDFBGTESDFGTEWGSDFGETWGDFSGGETWGSDFGGRTEGSDG______________________"))
+        # self.new_timer.timeout.connect(self.read_from_screen)
+        # self.new_timer.start()
+    
+    def set_region(self, region: DiagnosticRegion):
+        if region is DiagnosticRegion.I1:
+            self.reader = self.i1reader
+        elif region is DiagnosticRegion.B2:
+            self.reader = self.b2reader
+        else:
+            raise ValueError(f"Unknown region enum:, {region}")
+
+    def dump_state_to_file(self, outdir: str) -> None:
+        kvps = self.machine.full_read()
+        kvps = pd.Series(kvps)
+        kvps.index.name = "channel"
+        kvps.reset_index(name="value")
+
+        # with tarfile.open(outdir, "w:gz") as tarball:  # With compression
+        with tarfile.open(outdir, "w") as tarball: # No compression for now
+            # Pickle is about 5x faster but for now prefer np.savez because I
+            # don't know what the long term implications are for using pickle
+            # e.g. will some file still be readable in a few year's time?
+            buffer = BytesIO()
+            np.savez(buffer, 
+                     beam_images=self.beam_images,
+                     bg_images=self.bg_images)
+            buffer.seek(0)
+            images_tarinfo = tarfile.TarInfo(name=f"{outdir}/images.npz")
+            tarball.addfile(images_tarinfo, fileobj=buffer)
+            buffer.seek(0)
+            # Now write all the various DOOCS addresses we've read to file
+            kvps_tarinfo = tarfile.TarInfo(name=f"{outdir}/channels.csv")
+            kvps.to_csv(buffer, index=False)
+            tarball.addfile(kvps_tarinfo, fileobj=buffer)
+
+            # XXX TDS CALIBRATION NEEDS TO SOMEHOW BE INCLUDED HERE !!
+
+    def start_timers(self) -> None:
+        self.beam_images_timer.start()
+        self.display_timer.start()
+
+    def stop_timers(self) -> None:
+        self.beam_images_timer.stop()
+        self.display_timer.stop()
+
+    def make_screen_read_timer(self, interval_ms: int) -> QTimer:
+        timer = QTimer()
+        timer.setInterval(interval_ms)
+        timer.timeout.connect(self.read_from_screen)
+        return timer
+    
+    def make_display_timer(self, interval_ms: int) -> QTimer:
+        timer = QTimer()
+        timer.setInterval(interval_ms)
+        timer.timeout.connect(self.process_and_emit_image_for_display)
+        return timer
+
+    def _clear_caches(self):
+        self.bg_images = deque(maxlen=self.bg_images.maxlen)
+        self.beam_images = deque(maxlen=self.beam_images.maxlen)
+
+    def process_and_emit_image_for_display(self) -> None:
+        # Get most images, which for a deque where we are appending left,
+        # we want the 0th element.
+        try:
+            image = self.beam_images[0]
+        except IndexError:
+            # We haven't acquired any images yet.  Do nothing.
+            return 
+        # Subtract background if we have taken some background.
+        if self.bg_images:
+            mean_bg = np.mean(self.bg_images, axis=0)
+            image -= mean_bg
         minpix = image.min()
         maxpix = image.max()
-
-        xproj = image.sum(axis=1, dtype=np.float64)        
-        xproj = scipy.signal.savgol_filter(xproj, window_length=20, polyorder=2)
-        yproj = image.sum(axis=0, dtype=np.float64)
+        xproj = image.sum(axis=1, dtype=np.float32)
+        # xproj = scipy.signal.savgol_filter(xproj, window_length=20, polyorder=2)
+        yproj = image.sum(axis=0, dtype=np.float32)
         
-        return ImagePayload(image=image,
-                            pixels=self.pixels,
-                            levels=(minpix, maxpix),
-                            xproj=xproj,
-                            yproj=yproj)
+        imp = ImagePayload(image=image,
+                           pixels=self.pixels,
+                           levels=(minpix, maxpix),
+                           xproj=xproj,
+                           yproj=yproj)
+        
+        self.display_image_signal.emit(imp)
 
-    def run_offline(self):
-        while not self.kill:
-            time.sleep(1)
-            image = self.get_image()
-            if image is None:
-                continue
-            else:
-                self.image_signal.emit(image)
+    def read_from_screen(self) -> None:
+        image = self.screen.get_image()
+        print("??????????????????????????????????????????????????????????????????? Reading...........>?", image.sum(), self.mode)
+        if self.mode is ImageTakingMode.BEAM:
+            self.beam_images.appendleft(image)
+        elif self.mode is ImageTakingMode.BACKGROUND:
+            self.bg_images.appendleft(image)
+        else:
+            raise ValueError(f"Unknown image taking mode: {self.mode}")
 
-
-    def run(self):
-        while not self.kill:
-            image = self.get_image()
-            if image is None:
-                continue
-            else:
-                self.image_signal.emit(image)
-
-    def set_screen_name(self, screen_name):
+    def set_screen(self, screen_name: str) -> None:
         LOG.info(f"Setting screen name for Screen Worker thread: {screen_name}")
-        self.screen_name = screen_name
-        screen = self.machine.screens[screen_name]
+        screen = self.mreader.screens[screen_name]
+        self.screen = screen
+        self._clear_caches()
         try:
             xsize = screen.get_pixel_xsize()
             ysize = screen.get_pixel_ysize()
             nx = screen.get_image_xpixels()
             ny = screen.get_image_ypixels()
-        except DOOCSReadError:
+        except DOOCSReadError as e:
             return
 
         pix = PixelInfo(xsize=xsize, ysize=ysize, nx=nx, ny=ny)
         self.pixels_signal.emit(pix)
         self.pixels = pix
-
 
 def axis_calibrations_are_substantially_different(calib1: AxisCalibration, calib2: AxisCalibration) -> bool:
     if (calib1 is None) ^ (calib2 is None):

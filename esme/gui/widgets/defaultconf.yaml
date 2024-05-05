@@ -120,8 +120,176 @@ deflectors:
     sp_fdl: XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSB2/
     rb_fdl: XFEL.RF/LLRF.CONTROLLER/VS.LLTDSB2/
 
+snapshots:
+  I1:
+    optics_channels:
+      # These addresses are read out in order to get the beam energy
+      # in this area of the machine. If beam does not go to I1D then we 
+      # use DL instead.  LH underestimates energy so we don't use
+      # it.  Similarly for B1.  Closest to 130MeV seems to be I1T, which
+      # I assume to be the dogleg.
+      try_energy_addresses:
+        - XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/I1D/ENERGY.ALL
+        - XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/I1T/ENERGY.ALL
+      # Addresses that we need to read to calculate the linear optics.
+      addresses:
+        - XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/AMPL.SAMPLE
+        - XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/PHASE.SAMPLE
+        - XFEL.RF/LLRF.CONTROLLER/VS.AH1.I1/PHASE.SAMPLE
+        - XFEL.RF/LLRF.CONTROLLER/VS.AH1.I1/AMPL.SAMPLE
+      # Wildcard addresses that we need to calculate the linear optics.
+      wildcards:
+        - XFEL.MAGNETS/MAGNET.ML/*.I1/KICK_MRAD.SP
+        - XFEL.MAGNETS/MAGNET.ML/*.I1D/KICK_MRAD.SP
+        # Other addresses that are interesting when we save data but otherwise
+        # probably not directly used.
+    channels:
+      addresses:
+        - XFEL.MAGNETS/MAGNET.ML/SOLB.23.I1/CURRENT.SP
+        - XFEL.DIAG/CHARGE.ML/TORA.25.I1/CHARGE.ALL
 
-    
+        # Gun bits
+        - XFEL.RF/LLRF.CONTROLLER/VS.GUN.I1/PHASE.SAMPLE
+        - XFEL.RF/LLRF.CONTROLLER/CTRL.GUN.I1/SP.PHASE
+        - XFEL.RF/LLRF.CONTROLLER/CTRL.GUN.I1/SP.AMPL
+        - XFEL.RF/LLRF.CONTROLLER/VS.GUN.I1/AMPL.SAMPLE
+
+        # A1 setpoints
+        - XFEL.RF/LLRF.CONTROLLER/CTRL.A1.I1/SP.PHASE
+        - XFEL.RF/LLRF.CONTROLLER/CTRL.A1.I1/SP.AMPL
+
+        # AH1 setpoints
+        - XFEL.RF/LLRF.CONTROLLER/CTRL.AH1.I1/SP.PHASE
+        - XFEL.RF/LLRF.CONTROLLER/CTRL.AH1.I1/SP.AMPL
+
+        # LH Chicane bits
+        - XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/LH/ENERGY.ALL
+        - XFEL.MAGNETS/CHICANE/LH/ANGLE
+        - XFEL.MAGNETS/CHICANE/LH/R_56
+        - XFEL.MAGNETS/CHICANE/LH/R_56_RBV
+        # LH bits
+        - XFEL.UTIL/LASERHEATER.MOTOR/P1X.LHOS0/FPOS
+        - XFEL.UTIL/LASERHEATER.MOTOR/P1Z.LHOS0/FPOS
+        - XFEL.UTIL/LASERHEATER.MOTOR/LAMBDA2.LHOS0/POS
+        - XFEL.UTIL/LASERHEATER.MOTOR/DL.LHLVL5/FPOS
+        - XFEL.UTIL/LASERINT/GUN/SH3_OPEN
+        - XFEL.UTIL/LASERIMNT/GUN/SH4_OPEN
+
+        # TDS Bits
+        - XFEL.RF/LLRF.CONTROLLER/VS.LLTDSI1/AMPL.SAMPLE
+        - XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/SP.AMPL
+        - XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/SP.POWER
+        - XFEL.RF/LLRF.CONTROLLER/VS.LLTDSI1/AMPL.SAMPLE
+      # Other wildcard addresses that are interesting when we save
+      # data but otherwise probably not directly used.
+      wildcards:
+        # Orbit
+        - XFEL.DIAG/ORBIT/*.I1/X.ALL
+        - XFEL.DIAG/ORBIT/*.I1D/X.ALL
+        - XFEL.DIAG/ORBIT/*.I1/Y.ALL
+        - XFEL.DIAG/ORBIT/*.I1D/Y.ALL
+      
+  B2:
+    optics_channels:
+      # These addresses are read out in order to get the beam energy
+      # in this area of the machine. If beam does not go to I1D then we 
+      # use DL instead.  LH underestimates energy so we don't use
+      # it.  Similarly for B1.  Closest to 130MeV seems to be I1T, which
+      # I assume to be the dogleg.
+      try_energy_addresses:
+        - XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/B2/ENERGY.ALL
+      # Addresses that we need to read to calculate the linear optics.
+      addresses:
+        # Cavity amplitudes
+        - XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/AMPL.SAMPLE
+        - XFEL.RF/LLRF.CONTROLLER/VS.AH1.I1/AMPL.SAMPLE
+        - XFEL.RF/LLRF.CONTROLLER/VS.A2.L1/AMPL.SAMPLE
+        - XFEL.RF/LLRF.CONTROLLER/VS.A3.L2/AMPL.SAMPLE
+        - XFEL.RF/LLRF.CONTROLLER/VS.A4.L2/AMPL.SAMPLE
+        - XFEL.RF/LLRF.CONTROLLER/VS.A5.L2/AMPL.SAMPLE
+
+        # Cavity phases.
+        - XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/PHASE.SAMPLE
+        - XFEL.RF/LLRF.CONTROLLER/VS.AH1.I1/PHASE.SAMPLE
+        - XFEL.RF/LLRF.CONTROLLER/VS.A2.L1/PHASE.SAMPLE
+        - XFEL.RF/LLRF.CONTROLLER/VS.A3.L2/PHASE.SAMPLE
+        - XFEL.RF/LLRF.CONTROLLER/VS.A4.L2/PHASE.SAMPLE
+        - XFEL.RF/LLRF.CONTROLLER/VS.A5.L2/PHASE.SAMPLE
+
+
+      # Wildcard addresses that we need to calculate the linear optics.
+      wildcards:
+        - XFEL.MAGNETS/MAGNET.ML/*.I1/KICK_MRAD.SP
+        - XFEL.MAGNETS/MAGNET.ML/*.B1/KICK_MRAD.SP
+        - XFEL.MAGNETS/MAGNET.ML/*.B2/KICK_MRAD.SP
+        # Other addresses that are interesting when we save data but otherwise
+        # probably not directly used.
+    channels:
+      addresses:
+        - XFEL.MAGNETS/MAGNET.ML/SOLB.23.I1/CURRENT.SP
+        - XFEL.DIAG/CHARGE.ML/TORA.25.I1/CHARGE.ALL
+
+        # Gun bits
+        - XFEL.RF/LLRF.CONTROLLER/VS.GUN.I1/PHASE.SAMPLE
+        - XFEL.RF/LLRF.CONTROLLER/CTRL.GUN.I1/SP.PHASE
+        - XFEL.RF/LLRF.CONTROLLER/CTRL.GUN.I1/SP.AMPL
+        - XFEL.RF/LLRF.CONTROLLER/VS.GUN.I1/AMPL.SAMPLE
+
+        # A1 setpoints
+        - XFEL.RF/LLRF.CONTROLLER/CTRL.A1.I1/SP.PHASE
+        - XFEL.RF/LLRF.CONTROLLER/CTRL.A1.I1/SP.AMPL
+
+        # AH1 setpoints
+        - XFEL.RF/LLRF.CONTROLLER/CTRL.AH1.I1/SP.PHASE
+        - XFEL.RF/LLRF.CONTROLLER/CTRL.AH1.I1/SP.AMPL
+
+        # LH bits
+        - XFEL.UTIL/LASERHEATER.MOTOR/P1X.LHOS0/FPOS
+        - XFEL.UTIL/LASERHEATER.MOTOR/P1Z.LHOS0/FPOS
+        - XFEL.UTIL/LASERHEATER.MOTOR/LAMBDA2.LHOS0/POS
+        - XFEL.UTIL/LASERHEATER.MOTOR/DL.LHLVL5/FPOS
+        - XFEL.UTIL/LASERINT/GUN/SH3_OPEN
+        - XFEL.UTIL/LASERIMNT/GUN/SH4_OPEN
+
+        # LH Chicane bits
+        - XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/LH/ENERGY.ALL
+        - XFEL.MAGNETS/CHICANE/LH/ANGLE
+        - XFEL.MAGNETS/CHICANE/LH/R_56
+        - XFEL.MAGNETS/CHICANE/LH/R_56_RBV
+
+        # B0 Chicane Bits
+        - XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/B0/ENERGY.ALL
+        - XFEL.MAGNETS/CHICANE/BC0/ANGLE
+        - XFEL.MAGNETS/CHICANE/BC0/R_56
+        - XFEL.MAGNETS/CHICANE/BC0/R_56_RBV
+        
+        # B1 Chicane Bits
+        - XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/B1/ENERGY.ALL
+        - XFEL.MAGNETS/CHICANE/BC1/ANGLE
+        - XFEL.MAGNETS/CHICANE/BC1/R_56
+        - XFEL.MAGNETS/CHICANE/BC1/R_56_RBV
+        
+        # B2 Chicane Bits
+        # - XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/B2/ENERGY.ALL Already read above.
+        - XFEL.MAGNETS/CHICANE/BC2/ANGLE
+        - XFEL.MAGNETS/CHICANE/BC2/R_56
+        - XFEL.MAGNETS/CHICANE/BC2/R_56_RBV
+
+        # TDS Bits
+        - XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSB2/SP.AMPL
+        - XFEL.RF/LLRF.CONTROLLER/VS.LLTDSB2/AMPL.SAMPLE
+        - XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSB2/SP.PHASE
+        - XFEL.RF/LLRF.CONTROLLER/VS.LLTDSB2/PHASE.SAMPLE
+      # Other wildcard addresses that are interesting when we save
+      # data but otherwise probably not directly used.
+      wildcards:
+        # Orbit
+        - XFEL.DIAG/ORBIT/*.I1/X.ALL
+        - XFEL.DIAG/ORBIT/*.I1D/X.ALL
+        - XFEL.DIAG/ORBIT/*.I1/Y.ALL
+        - XFEL.DIAG/ORBIT/*.I1D/Y.ALL
+      
+
 scanner:
   gui_defaults:
     ScannerControl:
