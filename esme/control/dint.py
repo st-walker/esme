@@ -33,9 +33,15 @@ import sys
 
 # Import hard coded pydoocs I compiled for Python 3.12
 import importlib.util
-PYDOOCS_SO = "/System/Volumes/Data/home/xfeloper/user/stwalker/pydoocs12/pydoocs-main/pydoocs.cpython-312-darwin.so"
-SPEC = importlib.util.spec_from_file_location("pydoocs", PYDOOCS_SO)
-pydoocs = importlib.util.module_from_spec(SPEC)
+
+try:
+    PYDOOCS_SO = "/System/Volumes/Data/home/xfeloper/user/stwalker/pydoocs12/pydoocs-main/pydoocs.cpython-312-darwin.so"
+    SPEC = importlib.util.spec_from_file_location("pydoocs", PYDOOCS_SO)
+    pydoocs = importlib.util.module_from_spec(SPEC)
+except ImportError:
+    import warnings
+    warnings.warn(f"Unable to import pydoocs from {PYDOOCS_SO}")
+
 
 LOG = logging.getLogger(__name__)
 

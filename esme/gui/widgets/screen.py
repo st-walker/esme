@@ -88,6 +88,12 @@ class ScreenDisplayWidget(QWidget):
     screen_name_signal = pyqtSignal(str)
     tds_calibration_signal = pyqtSignal(object)
 
+    # Signals for interacting with the daughter workers in their respective threads.
+    save_to_elog_signal = pyqtSignal()
+    take_background_signal = pyqtSignal()
+    subtract_background_signal = pyqtSignal(bool)
+
+
     def __init__(self, parent=None):
         super().__init__(parent=parent)
 
@@ -194,12 +200,19 @@ class ScreenDisplayWidget(QWidget):
         data_thread = QThread()
         data_thread.started.connect(data_worker.start_timers)
         data_thread.finished.connect(data_worker.stop_timers)
+
+        self.save_to_elog_signal.connect(data_worker.dump_state_to_file)
+        self.take_background_signal.connect(data_worker.take_background)
+        self.subtract_background_signal.connect(data_worker.set_subtract_background)
+ 
         data_worker.display_image_signal.connect(self.post_beam_image)
         data_worker.display_image_signal.connect(self.update_projection_plots)
         data_worker.moveToThread(data_thread)
         data_thread.start()
 
         return data_worker, data_thread
+
+
 
     def setup_calibration_worker(self) -> tuple[CalibrationWatcher, QThread]:
         LOG.debug("Initialising calibration worker thread")
@@ -399,6 +412,10 @@ class DataTakingWorker(QObject):
         self.screen: Screen | None = None
         self.pixels: PixelInfo | None = None
         self.set_screen(initial_screen)
+        self._do_subtract_background: bool = False
+
+        hardcoded_path = "/Users/xfeloper/user/stwalker/lps-dumpage/"
+        self.outdir = hardcoded_path
 
         # Read from the machine regularly, at the rep. rate of the machine.
         self.beam_images_timer = self.make_screen_read_timer(interval_ms=100)
@@ -406,28 +423,30 @@ class DataTakingWorker(QObject):
         # for more frequently than that really.
         self.display_timer = self.make_display_timer(interval_ms=1000)
 
-        # self.new_timer = QTimer()
-        # self.new_timer.setInterval(1)
-        # self.new_timer.timeout.connect(lambda:print("QWWQWEQFDGIERSFDERDFBGTESDFGTEWGSDFGETWGDFSGGETWGSDFGGRTEGSDG______________________"))
-        # self.new_timer.timeout.connect(self.read_from_screen)
-        # self.new_timer.start()
-
-    def set_region(self, region: DiagnosticRegion):
+    def set_region(self, region: DiagnosticRegion) -> None:
         if region is DiagnosticRegion.I1:
-            self.reader = self.i1reader
+            self.mreader = self.i1reader
         elif region is DiagnosticRegion.B2:
-            self.reader = self.b2reader
+            self.mreader = self.b2reader
         else:
             raise ValueError(f"Unknown region enum:, {region}")
 
-    def dump_state_to_file(self, outdir: str) -> None:
+    def take_background(self) -> None:
+        # Set mode to background taking.
+        self.mode = ImageTakingMode.BACKGROUND
+        self._clear_bg_cache()
+
+    def set_subtract_background(self, subtract_bg_state: Qt.CheckState) -> None:
+        self._do_subtract_background = bool(subtract_bg_state)
+
+    def dump_state_to_file(self) -> None:
         kvps = self.machine.full_read()
         kvps = pd.Series(kvps)
         kvps.index.name = "channel"
         kvps.reset_index(name="value")
 
         # with tarfile.open(outdir, "w:gz") as tarball:  # With compression
-        with tarfile.open(outdir, "w") as tarball: # No compression for now
+        with tarfile.open(self.outdir, "w") as tarball: # No compression for now
             # Pickle is about 5x faster but for now prefer np.savez because I
             # don't know what the long term implications are for using pickle
             # e.g. will some file still be readable in a few year's time?
@@ -445,6 +464,8 @@ class DataTakingWorker(QObject):
             tarball.addfile(kvps_tarinfo, fileobj=buffer)
 
             # XXX TDS CALIBRATION NEEDS TO SOMEHOW BE INCLUDED HERE !!
+
+            # XXX ALSO SCREEN NAME!!
 
     def start_timers(self) -> None:
         self.beam_images_timer.start()
@@ -467,9 +488,12 @@ class DataTakingWorker(QObject):
         return timer
 
     def _clear_caches(self):
-        self.bg_images = deque(maxlen=self.bg_images.maxlen)
+        self._clear_bg_cache()
         self.beam_images = deque(maxlen=self.beam_images.maxlen)
 
+    def _clear_bg_cache(self):
+        self.bg_images = deque(maxlen=self.bg_images.maxlen)
+        
     def process_and_emit_image_for_display(self) -> None:
         # Get most images, which for a deque where we are appending left,
         # we want the 0th element.
@@ -478,10 +502,12 @@ class DataTakingWorker(QObject):
         except IndexError:
             # We haven't acquired any images yet.  Do nothing.
             return
-        # Subtract background if we have taken some background.
-        if self.bg_images:
+
+        # Subtract background if we have taken some background and enabled it.
+        if self.bg_images and self._subtract_background:
             mean_bg = np.mean(self.bg_images, axis=0)
             image -= mean_bg
+            
         minpix = image.min()
         maxpix = image.max()
         xproj = image.sum(axis=1, dtype=np.float32)
@@ -498,11 +524,14 @@ class DataTakingWorker(QObject):
 
     def read_from_screen(self) -> None:
         image = self.screen.get_image()
-        print("??????????????????????????????????????????????????????????????????? Reading...........>?", image.sum(), self.mode)
         if self.mode is ImageTakingMode.BEAM:
             self.beam_images.appendleft(image)
         elif self.mode is ImageTakingMode.BACKGROUND:
             self.bg_images.appendleft(image)
+            # Then we've filled the ring buffer of background images and
+            # can go back to taking beam data...
+            if len(self.bg_images) == self.bg_images.maxlen:
+                self.mode = ImageTakingMode.BEAM
         else:
             raise ValueError(f"Unknown image taking mode: {self.mode}")
 

@@ -77,6 +77,7 @@ def parse_polarity(cdict: dict[str, Any]) -> PolarityType:
     except KeyError:
         return None
 
+
 class MachineManagerFactory:
     def __init__(self, yamlf: os.PathLike, default_dint: DOOCSInterfaceABC | None = None):
         with open(yamlf, "r") as f:

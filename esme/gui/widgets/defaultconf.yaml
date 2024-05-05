@@ -1,4 +1,3 @@
-
 kickers:
 - name: KAX.54.I1
   adio24_fdl: XFEL.SDIAG/ADIO24/SD54I1.0
@@ -121,6 +120,8 @@ deflectors:
     rb_fdl: XFEL.RF/LLRF.CONTROLLER/VS.LLTDSB2/
 
 snapshots:
+  # When you press snapshot to elog, etc, where the LPS images etc. go.
+  outdir: /Users/xfeloper/user/stwalker/lps-dumpage/
   I1:
     optics_channels:
       # These addresses are read out in order to get the beam energy
