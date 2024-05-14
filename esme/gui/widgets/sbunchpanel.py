@@ -31,6 +31,8 @@ class SpecialBunchMidLayerPanel(QtWidgets.QWidget):
         self.ui.setupUi(self)
 
         self.ifbb_warning_dialogue = IBFBWarningDialogue(self.dbunch_manager.sbunches, parent=self)
+        self.ifbb_warning_dialogue.fire_signal.connect(self.unsafe_diagnostic_bunch_start)
+        self.ifbb_warning_dialogue.disable_ibfb_aff_signal.connect()
 
         self.connect_buttons()
 
@@ -47,10 +49,19 @@ class SpecialBunchMidLayerPanel(QtWidgets.QWidget):
         self.ui.beamregion_spinbox.setValue(self.dbunch_manager.sbunches.get_beam_region() + 1)
         self.ui.bunch_spinbox.setValue(self.dbunch_manager.sbunches.get_bunch_number())
         self.ui.npulses_spinbox.setValue(self.dbunch_manager.sbunches.get_npulses())
-        self.ui.ibfb_checkbox.setChecked(self.dbunch_manager.sbunches.is_either_ibfb_on())
+        self.ui.ibfb_checkbox.setCheckState(self.get_ibfb_checkstate())
         self.ui.use_tds_checkbox.setChecked(self.dbunch_manager.sbunches.get_use_tds())
         self.ui.use_fast_kickers_checkbox.setChecked(self.check_fast_kickers_state())
         # self.check_start_stop()
+
+    def get_ibfb_checkstate(self) -> Qt.CheckState:
+        xon = self.dbunch_manager.sbunches.ibfb_x_lff_is_on()
+        yon = self.dbunch_manager.sbunches.ibfb_y_lff_is_on()
+        if xon and yon:
+            return Qt.Checked
+        if xon ^ yon:
+            return Qt.PartiallyChecked
+        return Qt.Unchecked
 
     def check_fast_kickers_state(self) -> None:
         print(self.dbunch_manager.sbunches.would_use_kickers())
@@ -115,8 +126,11 @@ class SpecialBunchMidLayerPanel(QtWidgets.QWidget):
     def safe_diagnostic_bunch_start(self) -> None:
         """The diagnostic bunch should not be fired whilst the IBFB LFF is activated, otherwise the IBFB will
         try and counter the impact """
-        if self.sbunches.is_either_ibfb_on():
+        if self.dbunch_manager.sbunches.is_either_ibfb_on():
             self.ifbb_warning_dialogue.show()
+        self.dbunch_manager.sbunches.start_diagnostic_bunch()
+
+    def unsafe_diagnostic_bunch_start(self) -> None:
         self.dbunch_manager.sbunches.start_diagnostic_bunch()
 
     def toggle_kickers(self, state: Qt.CheckState) -> None:
