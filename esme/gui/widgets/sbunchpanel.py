@@ -32,7 +32,7 @@ class SpecialBunchMidLayerPanel(QtWidgets.QWidget):
         self.ui.setupUi(self)
 
         self.ibfb_warning_dialogue = IBFBWarningDialogue(self.dbunch_manager.sbunches, parent=self)
-        self.ibfb_warning_dialogue.fire_signal.connect(self.dbunch_manager.sbunches.start_diagnostic_bunch)
+        self.ibfb_warning_dialogue.fire_signal.connect(self.unsafe_diagnostic_bunch_start)
         self.ibfb_warning_dialogue.disable_ibfb_aff_signal.connect(lambda: self.dbunch_manager.sbunches.set_ibfb_state(on=False))
 
         self.connect_buttons()
@@ -59,13 +59,28 @@ class SpecialBunchMidLayerPanel(QtWidgets.QWidget):
         # of the first beam region being the first, not zeroth.
         self._update_beam_region_and_bunch_ui()
         self.ui.npulses_spinbox.setValue(self.dbunch_manager.sbunches.get_npulses())
-        self.ui.ibfb_checkbox.setChecked(self.dbunch_manager.sbunches.is_either_ibfb_on())
+        self.ui.ibfb_checkbox.setCheckState(self.get_ibfb_checkstate())
         self.ui.use_tds_checkbox.setChecked(self.dbunch_manager.sbunches.get_use_tds())
         self.ui.use_fast_kickers_checkbox.setChecked(self.dbunch_manager.sbunches.would_use_kickers())
 
     def _update_beam_region_and_bunch_ui(self) -> None:
         self.ui.beamregion_spinbox.setValue(self.dbunch_manager.sbunches.get_beam_region() + 1)
         self.ui.bunch_spinbox.setValue(self.dbunch_manager.sbunches.get_bunch_number())
+
+    def get_ibfb_checkstate(self) -> Qt.CheckState:
+        xon = self.dbunch_manager.sbunches.ibfb_x_lff_is_on()
+        yon = self.dbunch_manager.sbunches.ibfb_y_lff_is_on()
+        if xon and yon:
+            return Qt.Checked
+        if xon ^ yon:
+            return Qt.PartiallyChecked
+        return Qt.Unchecked
+
+    def check_fast_kickers_state(self) -> None:
+        print(self.dbunch_manager.sbunches.would_use_kickers())
+        if self.dbunch_manager.sbunches.would_use_kickers():
+            return True
+        return False
 
     def set_bunch_control_enabled(self, enabled: bool) -> None:
         """Enable or disable UI elements based for modification,
@@ -104,6 +119,9 @@ class SpecialBunchMidLayerPanel(QtWidgets.QWidget):
         try and counter the impact """
         if self.sbunches.is_either_ibfb_on():
             self.ibfb_warning_dialogue.show()
+        self.dbunch_manager.sbunches.start_diagnostic_bunch()
+
+    def unsafe_diagnostic_bunch_start():
         self.dbunch_manager.sbunches.start_diagnostic_bunch()
 
     def stop_diagnostic_bunch(self) -> None:

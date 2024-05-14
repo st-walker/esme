@@ -420,6 +420,7 @@ class DataTakingWorker(QObject):
 
         # The background images cache.
         self.bg_images: deque[npt.ArrayLike] = deque(maxlen=5)
+        self.mean_bg = 0.0
         # The cache of data we have taken.  We are constantly updating
         self.beam_images: deque[npt.ArrayLike] = deque(maxlen=20)
 
@@ -454,14 +455,25 @@ class DataTakingWorker(QObject):
     def set_subtract_background(self, subtract_bg_state: Qt.CheckState) -> None:
         self._do_subtract_background = bool(subtract_bg_state)
 
+    def _get_output_path(self, location: str, screen_name: str) -> str:
+        return f"{self.outdir}/{location}/{screen_name}"
+
+    def _get_location(self) -> str:
+        return "B2" if self.mreader is self.b2reader else "I1"
+
     def dump_state_to_file(self) -> None:
-        kvps = self.machine.full_read()
+        screen_name = self.screen.name
+        location = self._get_location()
+        kvps = {"screen": screen_name,
+                "location": location}
+        kvps |= self.mreader.full_read()
         kvps = pd.Series(kvps)
         kvps.index.name = "channel"
         kvps.reset_index(name="value")
 
+        outdir = self._get_output_path(location, screen_name)
         # with tarfile.open(outdir, "w:gz") as tarball:  # With compression
-        with tarfile.open(self.outdir, "w") as tarball: # No compression for now
+        with tarfile.open(outdir, "w") as tarball: # No compression for now
             # Pickle is about 5x faster but for now prefer np.savez because I
             # don't know what the long term implications are for using pickle
             # e.g. will some file still be readable in a few year's time?
@@ -519,9 +531,9 @@ class DataTakingWorker(QObject):
             return
 
         # Subtract background if we have taken some background and enabled it.
-        if self.bg_images and self._subtract_background:
-            mean_bg = np.mean(self.bg_images, axis=0)
-            image -= mean_bg
+        if self.bg_images and self._do_subtract_background:
+            image -= self.mean_bg
+            image = image.clip(min=0, out=image)
 
         minpix = image.min()
         maxpix = image.max()
@@ -547,6 +559,7 @@ class DataTakingWorker(QObject):
             # can go back to taking beam data...
             if len(self.bg_images) == self.bg_images.maxlen:
                 self.mode = ImageTakingMode.BEAM
+                self.mean_bg = np.mean(self.bg_images, axis=0, dtype=image.dtype)
         else:
             raise ValueError(f"Unknown image taking mode: {self.mode}")
 
