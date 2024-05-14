@@ -24,6 +24,7 @@ from esme.control.tds import StreakingPlane, UncalibratedTDSError
 from esme.control.exceptions import DOOCSReadError
 from esme.control.machines import MachineReadManager
 from esme.control.screens import Screen
+from esme.gui.ui.imaging import Ui_imaging_widget
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -84,7 +85,21 @@ class ImagePayload:
         return np.linspace(-sh[1]/2, sh[1]/2, num=len(self.yproj)) * self.pixels.ysize
 
 
-class ScreenDisplayWidget(QWidget):
+class ImagingControlWidget(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+
+        self.ui = Ui_imaging_widget()
+        self.ui.setupUi(self)
+
+        self.connect_buttons()
+
+    def connect_buttons(self):
+        self.ui.take_background_button.clicked.connect(self.take_background)
+        self.ui.subtract_background_checkbox.stateChanged.connect(self.subtract_background)
+        self.ui.save_to_elog_button.clicked.connect(self.save_to_elog)
+
+class ScreenWidget(QWidget):
     screen_name_signal = pyqtSignal(str)
     tds_calibration_signal = pyqtSignal(object)
 
@@ -204,7 +219,7 @@ class ScreenDisplayWidget(QWidget):
         self.save_to_elog_signal.connect(data_worker.dump_state_to_file)
         self.take_background_signal.connect(data_worker.take_background)
         self.subtract_background_signal.connect(data_worker.set_subtract_background)
- 
+
         data_worker.display_image_signal.connect(self.post_beam_image)
         data_worker.display_image_signal.connect(self.update_projection_plots)
         data_worker.moveToThread(data_thread)
@@ -493,7 +508,7 @@ class DataTakingWorker(QObject):
 
     def _clear_bg_cache(self):
         self.bg_images = deque(maxlen=self.bg_images.maxlen)
-        
+
     def process_and_emit_image_for_display(self) -> None:
         # Get most images, which for a deque where we are appending left,
         # we want the 0th element.
@@ -507,7 +522,7 @@ class DataTakingWorker(QObject):
         if self.bg_images and self._subtract_background:
             mean_bg = np.mean(self.bg_images, axis=0)
             image -= mean_bg
-            
+
         minpix = image.min()
         maxpix = image.max()
         xproj = image.sum(axis=1, dtype=np.float32)

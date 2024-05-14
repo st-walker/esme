@@ -20,6 +20,7 @@ class SpecialBunchMidLayerPanel(QtWidgets.QWidget):
     # This can be quite slow because it's very unlikely that the SBM will change much
     # as a result of something from outside of this GUI.
     MAIN_TIMER_PERIOD_MS = 2500
+    IS_FIRING_TIMER = 200
     def __init__(self, parent=None):
         super().__init__(parent=parent)
 
@@ -30,33 +31,41 @@ class SpecialBunchMidLayerPanel(QtWidgets.QWidget):
         self.ui = Ui_special_bunch_panel()
         self.ui.setupUi(self)
 
-        self.ifbb_warning_dialogue = IBFBWarningDialogue(self.dbunch_manager.sbunches, parent=self)
+        self.ibfb_warning_dialogue = IBFBWarningDialogue(self.dbunch_manager.sbunches, parent=self)
+        self.ibfb_warning_dialogue.fire_signal.connect(self.dbunch_manager.sbunches.start_diagnostic_bunch)
+        self.ibfb_warning_dialogue.disable_ibfb_aff_signal.connect(lambda: self.dbunch_manager.sbunches.set_ibfb_state(on=False))
 
         self.connect_buttons()
 
-        self.timer = QTimer()
-        self.timer.timeout.connect(lambda: None)
-        self.timer.timeout.connect(self.update_ui)
-        self.timer.start(self.MAIN_TIMER_PERIOD_MS)
-        self.update_ui()
+        self.slow_timer = QTimer()
+        self.slow_timer.timeout.connect(lambda: None)
+        self.slow_timer.timeout.connect(self.update_ui)
+        self.slow_timer.start(self.MAIN_TIMER_PERIOD_MS)
+
+        self.check_firing_timer = QTimer()
+        self.check_firing_timer.timeout.connect(self.check_bunch_firing_for_ui)
+        self.check_firing_timer.start(self.IS_FIRING_TIMER)
+
+    def check_bunch_firing_for_ui(self) -> None:
+        """Read the state of the SBM to see if the special bunch is
+        firing and update the UI (enable/disable elements only).
+
+        """
+        self.set_bunch_control_enabled(self.dbunch_manager.sbunches.is_diag_bunch_firing())
 
     def update_ui(self) -> None:
         """Read values from the DOOCs server and update the daughter widget states here."""
         # Add 1 because the SBM is zero-counting for the beam regions but we always speak
         # of the first beam region being the first, not zeroth.
-        self.ui.beamregion_spinbox.setValue(self.dbunch_manager.sbunches.get_beam_region() + 1)
-        self.ui.bunch_spinbox.setValue(self.dbunch_manager.sbunches.get_bunch_number())
+        self._update_beam_region_and_bunch_ui()
         self.ui.npulses_spinbox.setValue(self.dbunch_manager.sbunches.get_npulses())
         self.ui.ibfb_checkbox.setChecked(self.dbunch_manager.sbunches.is_either_ibfb_on())
         self.ui.use_tds_checkbox.setChecked(self.dbunch_manager.sbunches.get_use_tds())
-        self.ui.use_fast_kickers_checkbox.setChecked(self.check_fast_kickers_state())
-        # self.check_start_stop()
+        self.ui.use_fast_kickers_checkbox.setChecked(self.dbunch_manager.sbunches.would_use_kickers())
 
-    def check_fast_kickers_state(self) -> None:
-        print(self.dbunch_manager.sbunches.would_use_kickers())
-        if self.dbunch_manager.sbunches.would_use_kickers():
-            return True
-        return False
+    def _update_beam_region_and_bunch_ui(self) -> None:
+        self.ui.beamregion_spinbox.setValue(self.dbunch_manager.sbunches.get_beam_region() + 1)
+        self.ui.bunch_spinbox.setValue(self.dbunch_manager.sbunches.get_bunch_number())
 
     def set_bunch_control_enabled(self, enabled: bool) -> None:
         """Enable or disable UI elements based for modification,
@@ -69,6 +78,8 @@ class SpecialBunchMidLayerPanel(QtWidgets.QWidget):
         self.ui.use_fast_kickers_checkbox.setEnabled(enabled)
         self.ui.use_tds_checkbox.setEnabled(enabled)
         self.ui.npulses_spinbox.setEnabled(enabled)
+        self.ui.start_button.setEnabled(enabled)
+        self.ui.stop_button.setEnabled(not enabled)
 
     def connect_buttons(self) -> None:
         """Just called during __init__ for where UI button callbacks are set."""
@@ -80,44 +91,23 @@ class SpecialBunchMidLayerPanel(QtWidgets.QWidget):
         self.ui.go_to_last_laserpulse_pushbutton.clicked.connect(self.goto_last_bunch_in_machine)
         self.ui.go_to_last_bunch_in_br_pushbutton.clicked.connect(self.goto_last_bunch_in_beam_region)
         self.ui.ibfb_checkbox.stateChanged.connect(self.set_ibfb_state)
-
-        self.ifbb_warning_dialogue.fire_signal.connect(self.dbunch_manager.sbunches.start_diagnostic_bunch)
-        self.ifbb_warning_dialogue.disable_ibfb_aff_signal.connect(lambda: self.dbunch_manager.sbunches.set_ibfb_state(on=False))
-
-        # Connections happen in this method as button is a toggle:
-        self.check_start_stop()
+        self.ui.start_button.clicked.connect(self.safe_diagnostic_bunch_start)
+        self.ui.stop_button.clicked.connect(self.stop_diagnostic_bunch)
 
     def set_ibfb_state(self, state: Qt.CheckState) -> None:
         """Intended as a function to be connected to the IBFB checkbox.
         Writes the desired state to the DOOCS server."""
         self.dbunch_manager.sbunches.set_ibfb_lff(on=bool(state))
 
-    def check_start_stop(self) -> None:
-        """Check whether or not the diagnostic bunch is currently firing."""
-
-        if self.dbunch_manager.sbunches.is_diag_bunch_firing(): # If Firing
-            self.ui.start_button.setText("Stop Diag. Bunch")
-            try: # Disconnect any connections, raises if there are none so we catch and pass
-                self.ui.start_button.clicked.disconnect()
-            except TypeError:
-                pass
-            self.ui.start_button.clicked.connect(self.dbunch_manager.sbunches.stop_diagnostic_bunch)
-            self.set_bunch_control_enabled(False)
-        else:
-            self.ui.start_button.setText("Start Diag. Bunch")
-            try:
-                self.ui.start_button.clicked.disconnect()
-            except TypeError:
-                pass
-            self.ui.start_button.clicked.connect(self.safe_diagnostic_bunch_start)
-            self.set_bunch_control_enabled(True)
-
     def safe_diagnostic_bunch_start(self) -> None:
         """The diagnostic bunch should not be fired whilst the IBFB LFF is activated, otherwise the IBFB will
         try and counter the impact """
         if self.sbunches.is_either_ibfb_on():
-            self.ifbb_warning_dialogue.show()
+            self.ibfb_warning_dialogue.show()
         self.dbunch_manager.sbunches.start_diagnostic_bunch()
+
+    def stop_diagnostic_bunch(self) -> None:
+        self.dbunch_manager.sbunches.stop_diagnostic_bunch()
 
     def toggle_kickers(self, state: Qt.CheckState) -> None:
         # Qt.Unchecked == 0
@@ -163,7 +153,9 @@ class SpecialBunchMidLayerPanel(QtWidgets.QWidget):
         LOG.info(f"Found last bunch in machine: BR = {beam_region_number}, last normal bunch no. = {nbunches}, diagnostic bunch no. = {diagnostic_bunch_number}")
         self.dbunch_manager.sbunches.set_beam_region(beam_region_number - 1)
         self.dbunch_manager.sbunches.set_bunch_number(diagnostic_bunch_number)
-        self.update_ui()
+
+        self.ui.beamregion_spinbox.setValue(beam_region_number_number)
+        self._update_beam_region_and_bunch_ui()
 
     def goto_last_bunch_in_beam_region(self) -> None:
         beam_regions = get_beam_regions(get_bunch_pattern())
@@ -180,28 +172,7 @@ class SpecialBunchMidLayerPanel(QtWidgets.QWidget):
             return
         else:
             self.dbunch_manager.sbunches.set_bunch_number(br.nbunches())
-        self.update_ui()
-
-    # def update_panel_start_stop_state(self):
-    #     is_diag_bunch_firing = self.dbunch_manager.sbunches.is_diag_bunch_firing()
-    #     # print(f"{is_diag_bunch_firing=}")
-    #     # if is_diag_bunch_firing:
-    #     #     self.set_bunch_control_enabled(False)
-    #     #     self.ui.start_button.setEnabled(False)
-    #     #     self.ui.stop_button.setEnabled(True)
-    #     # else:
-    #     #     self.set_bunch_control_enabled(True)
-    #     #     self.ui.start_button.setEnabled(True)
-    #     #     self.ui.stop_button.setEnabled(False)
-
-    #     if is_diag_bunch_firing:
-    #         self.set_bunch_control_enabled(False)
-    #         self.ui.start_button.setEnabled(False)
-    #         self.ui.stop_button.setEnabled(True)
-    #     else:
-    #         self.set_bunch_control_enabled(True)
-    #         self.ui.start_button.setEnabled(True)
-    #         self.ui.stop_button.setEnabled(False)
+        self._update_beam_region_and_bunch_ui()
 
 
 
@@ -234,12 +205,10 @@ class IBFBWarningDialogue(QMessageBox):
         # Connect buttons to functions
         self.buttonClicked.connect(self.on_button_clicked)
 
-    def on_button_clicked(self, button):
+    def on_button_clicked(self, button: QAbstractButton) -> None:
         if button == self.disable_ibfb_lff_button:
-            self.sbinterfaces.set_ibfb_state(on=False)
-            time.sleep(0.1)
-            self.sbinterfaces.start_diagnostic_bunch()
+            self.disable_ibfb_lff_button.emit()
+            self.enable_ibfb_aff_signal.emit()
         elif button == self.ignore_and_go_button:
-            self.sbinterfaces.start_diagnostic_bunch()
-        elif button == self.cancel_button:
-            self.hide()
+            self.fire_signal.emit()
+        self.hide()
