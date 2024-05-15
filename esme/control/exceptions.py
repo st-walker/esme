@@ -16,7 +16,7 @@ class DOOCSWriteError(DOOCSError):
         self.value = value
 
     def __str__(self) -> str:
-        return f"Write error with channel: {self.address=}, {value=}"
+        return f"Write error with channel: {self.address=}, {self.value=}"
 
 class DOOCSUnexpectedReadValueError(DOOCSError):
     def __init__(self, address, value):
