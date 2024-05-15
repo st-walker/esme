@@ -9,9 +9,8 @@ class DiagnosticRegion(str, Enum):
 
 
 def region_from_screen_name(screen_name: str) -> DiagnosticRegion:
-    try:
-        rstring, = re.match(".*([IB][12])D?$", screen_name).groups()
-    except TypeError:
-        raise f"Unable to extract region from screen name: {screen_name}"
-    else:
-        return DiagnosticRegion(rstring)
+    rmatch = re.match(".*([IB][12])D?$", screen_name)
+    if rmatch is None:
+        raise ValueError(f"Unable to extract region from screen name: {screen_name}")
+    rstring, *_ = rmatch.groups()
+    return DiagnosticRegion(rstring)
