@@ -5,10 +5,8 @@ from scipy.optimize import curve_fit
 
 ValueWithErrorT = tuple[float, float]
 
-
 def line(x, a0, a1) -> Any:
     return a0 + a1 * x
-
 
 def linear_fit(
     indep_var, dep_var, dep_var_err
@@ -16,12 +14,9 @@ def linear_fit(
     absolute_sigma = True
     if dep_var_err is None:
         absolute_sigma = False
-    try:
-        popt, pcov = curve_fit(
-            line, indep_var, dep_var, sigma=dep_var_err, absolute_sigma=absolute_sigma
-        )
-    except:
-        import ipdb; ipdb.set_trace()
+    popt, pcov = curve_fit(
+        line, indep_var, dep_var, sigma=dep_var_err, absolute_sigma=absolute_sigma
+    )
     perr = np.sqrt(np.diag(pcov))
 
     # Present as tuples
@@ -30,10 +25,8 @@ def linear_fit(
 
     return a0, a1
 
-
 def gauss(x, a, mu, sigma) -> Any:
     return a * np.exp(-((x - mu) ** 2) / (2.0 * sigma**2))
-
 
 # def parabola(x, a, b, c):
 #     return a*x**2 + b*x + c

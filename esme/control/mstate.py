@@ -1,5 +1,6 @@
 from typing import Optional
 from enum import Enum, auto
+from dataclasses import dataclass
 
 from .dint import DOOCSInterface
 from .screens import Screen
@@ -11,43 +12,69 @@ from .tds import TransverseDeflector
 LH_CLOSED_ADDRESS = "XFEL.UTIL/LASERINT/GUN/SH3_CLOSED"
 LH_OPEN_ADDRESS = "XFEL.UTIL/LASERINT/GUN/SH3_OPEN"
 
-class Status(Enum):
+
+class Health(Enum):
     GOOD = auto()
     WARNING = auto()
     BAD = auto()
     UNKNOWN = auto()
+    SUBJECTIVE = auto()
+
+
+@dataclass
+class Condition:
+    health: Health
+    short: str = ""
+    long: str = ""
 
 
 class AreaWatcher:
-    def __init__(self, screens: Optional[dict[str, dict[str, Screen]]] = None,
-                 kickerop: Optional[FastKickerController] = None,
-                 tds: Optional[TransverseDeflector] = None,
-                 sbunches: Optional[SpecialBunchesControl] = None,
-                watched_screen_name: Optional[str] = None,
-                di : Optional[DOOCSInterface] = None):
+    def __init__(self, screens: dict[str, Screen],
+                 kickerop: FastKickerController,
+                 tds: TransverseDeflector,
+                 sbunches: SpecialBunchesControl,
+                 watched_screen_name: str | None = None,
+                 di : DOOCSInterface | None = None):
         self._screens = screens
         self._kickerop = kickerop
         self._tds = tds
         self._sbunches = sbunches
-        self.watched_screen_name = None
+        self.watched_screen_name = next(iter(self._screens))
         self.di = di if di else DOOCSInterface()
 
-    def is_laser_heater_shutter_open(self) -> bool:
-        is_open = self.di.get_value(LH_OPEN_ADDRESS)
-        is_closed = self.di.get_value(LH_CLOSED_ADDRESS)
-        if is_open and not is_closed:
-            return Status.GOOD
-        return Status.BAD
+    def get_laser_heater_shutter_state(self) -> Condition:
+        try:
+            is_open = self.di.get_value(LH_OPEN_ADDRESS)
+            is_closed = self.di.get_value(LH_CLOSED_ADDRESS)
+        except DOOCSReadError as e:
+            return Condition(Health.BAD,
+                             short="DOOCS ERROR",
+                             long=f"Unable to read {e.address} when checking IBFB")
+
+        if is_open:
+            return Condition(Health.SUBJECTIVE,
+                             short="OPEN",
+                             long="LH shutter is open")
+
+        if is_closed:
+            return Condition(Health.SUBJECTIVE,
+                             short="CLOSED",
+                             long="LH shutter is closed")
+
+        return Condition(Health.BAD,
+                         short="ERROR",
+                         long="Unable to determine LH shutter state")
+
 
     def _get_watched_screen(self) -> Screen:
         return self._screens[self.watched_screen_name]
 
-    def check_screen_state(self) -> tuple[bool, str]:
+    def check_screen_state(self) -> Condition:
         tooltips = []
         try:
             screen = self._get_watched_screen()
-        except:
-            return Status.UNKNOWN, "No Screen Name Set"
+        except KeyError:
+            return Condition(Health.UNKNOWN, long="No Screen Name Set")
         try:
             if not screen.is_online():
                 tooltips.append("• Camera is off")
@@ -63,10 +90,10 @@ class AreaWatcher:
             tooltips.append("Unexpected read error whilst checking\nscreen state.")
 
         tooltip = "\n".join(tooltips)
-        state = Status.GOOD if not bool(tooltips) else Status.BAD
-        return state, tooltip
+        state = Health.GOOD if not bool(tooltips) else Health.BAD
+        return Condition(state, long=tooltip)
 
-    def check_tds_state(self) -> tuple[bool, str]:
+    def check_tds_state(self) -> Condition:
         tooltips = []
         try:
             if not self._sbunches.is_tds_ok():
@@ -78,45 +105,51 @@ class AreaWatcher:
         except DOOCSReadError as e:
             tooltips.append("Unexpected read error whilst checking\nTDS state.")
         tooltip = "\n".join(tooltips)
-        state = Status.GOOD if not bool(tooltips) else Status.BAD
-        return state, tooltip
+        state = Health.GOOD if not bool(tooltips) else Health.BAD
+        return Condition(state, long=tooltip)
 
-    def check_kickers_state(self) -> tuple[bool, str]:
+    def check_kickers_state(self) -> Condition:
         tooltips = []
         try:
             screen = self._get_watched_screen()
         except KeyError:
-            return Status.UNKNOWN, "No screen name set, unable to determine kicker"
+            return Condition(Health.UNKNOWN, long="No screen name set, unable to determine kicker")
 
         kicker_setpoints = screen.get_fast_kicker_setpoints()
         try:
             for kicker_setpoint in kicker_setpoints:
                 name = kicker_setpoint.name
                 kicker = self._kickerop.get_kicker(name)
-                if not kicker.is_operational() or not self.is_kicker_ok():
+                if not kicker.is_operational() or not self._sbunches.is_kicker_ok():
                     tooltips.append(f"• SBM is complaining about {name}")
                 if not kicker.is_hv_on():
                     tooltips.append(f"• HV is not on for kicker {name}")
         except DOOCSReadError as e:
-            tooltips.append(f"Unexpected read: {e.channel} error whilst checking\nkicker state")
+            tooltips.append(f"Unexpected read: {e.address} error whilst checking\nkicker state")
         tooltip = "\n".join(tooltips)
-        state = Status.GOOD if not bool(tooltips) else Status.BAD
-        return state, tooltip
+        state = Health.GOOD if not bool(tooltips) else Health.BAD
+        return Condition(state, long=tooltip)
 
-    def check_ibfb_state(self) -> tuple[Status, str]:
-        tooltips = []
+    def get_ibfb_state(self) -> Condition:
+        # Assume ibfb is off
+        ibfb = False
         try:
-            is_off = self._sbunches.is_either_ibfb_on()
-            if is_off:
-                return Status.GOOD
-
-            if self._sbunches.ibfb_x_lff_is_on():
-                tooltips.append("• IBFB X is on")
-
-            if self._sbunches.ibfb_y_lff_is_on():
-                tooltips.append("• IBFB Y is on")                
+            xon = self._sbunches.ibfb_x_lff_is_on()
+            yon = self._sbunches.ibfb_y_lff_is_on()
         except DOOCSReadError as e:
-            return Status.UNKNOWN, f"Unable to read {e.channel} when checking IBFB"
-        else:
-            return Status.BAD, "\n".join(tooltips)
+            return Condition(Health.SUBJECTIVE,
+                             short="UNKNOWN",
+                             long=f"Unable to read {e.address} when checking IBFB")
 
+        if not (xon or yon):
+            return Condition(Health.SUBJECTIVE, short="OFF",
+                             long="IBFB AFF is off, as it should be when operating the SBM")
+
+        tooltips = []
+        if xon:
+            tooltips.append("• IBFB X is on")
+
+        if yon:
+            tooltips.append("• IBFB Y is on")
+
+        return Condition(Health.SUBJECTIVE, short="ON", long="\n".join(tooltips))

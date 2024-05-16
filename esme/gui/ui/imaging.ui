@@ -45,6 +45,9 @@
       </item>
       <item row="0" column="0">
        <widget class="QPushButton" name="send_to_logbook_button">
+        <property name="styleSheet">
+         <string notr="true">QPushButton { color: blue; }</string>
+        </property>
         <property name="text">
          <string>Send to XFEL e-Logbook</string>
         </property>

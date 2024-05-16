@@ -132,6 +132,7 @@ class SpecialBunchesControl:
     
     @kicker_number.setter
     def kicker_number(self, n: int | None) -> None:
+        # What is this bit of code doing?  Why can None be a possible Kicker number?
         if n is not None and n not in self._kicker_number_area_map()[self.location]:
             raise ValueError(f"Selected kicker number {n} does not correspond to a real kicker.")
         self._kicker_number = n
@@ -186,7 +187,7 @@ class SpecialBunchesControl:
             kicker_numbers_per_area[area].add(kicker_number)
         return kicker_numbers_per_area
     
-    def get_control_list(self) -> list[int, int, int, int]:
+    def get_control_list(self) -> list[int]:
         """Return the control list for the set DiagnosticRegion.  
         The control list is a 4-tuple:
         

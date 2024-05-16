@@ -35,9 +35,11 @@ class AreaControl(QWidget):
         #self.ui.select_screen_combobox.activated.connect(self.select_screen)
 
         # If we pick a particular screen in I1, then we click to go to B2, then back to I1,
-        # it remembers which screen we are on.
+        # it remembers which screen we are on.  Only net for I1 as we start in I1.
         self._selected_i1_screen = self.I1_INITIAL_SCREEN
         self._selected_b2_screen = None
+
+        self.jddd_camera_window_processes: dict[str, QProcess] = {}
 
         self.update_screen_combo_box(self.I1_INITIAL_SCREEN)
 
@@ -55,12 +57,13 @@ class AreaControl(QWidget):
         return self.ui.select_screen_combobox.currentText()
 
     def open_jddd_screen_window(self) -> None:
-        self.jddd_camera_window_process = QProcess()
-        screen = self.get_selected_screen_name()
-        command = f"jddd-run -file commonAll_In_One_Camera_Expert.xml -address XFEL.DIAG/CAMERA/{screen}/"
-        self.jddd_camera_window_process.start(command)
-        self.jddd_camera_window_process.waitForStarted()
-        self.jddd_camera_window_process.finished.connect(self.close_jddd_screen_window)
+        screen_name = self.get_selected_screen_name()
+        process = QProcess()
+        command = f"jddd-run -file commonAll_In_One_Camera_Expert.xml -address XFEL.DIAG/CAMERA/{screen_name}/"
+        process.start(command)
+        process.waitForStarted()
+        process.finished.connect(self.close_jddd_screen_window)
+        self.jddd_camera_window_processes[screen_name] = process
 
     def set_i1(self) -> None:
         # This if loop is just to basically restore state so when we
@@ -93,7 +96,7 @@ class AreaControl(QWidget):
         # Where we are in the machine (the region, I1 or B2, is inferred from the screen name.)
         self.screen_name_signal.emit(screen_name)
 
-    def set_area(self, area: DiagnosticRegion):
+    def set_area(self, area: DiagnosticRegion) -> None:
         if area is self.machine.area:
             return
 
@@ -103,12 +106,8 @@ class AreaControl(QWidget):
             self.set_b2()
 
     def closeEvent(self, event) -> None:
-        self.close_jddd_screen_window()
+        self.close_jddd_screen_windows()
 
-    def close_jddd_screen_window(self) -> None:
-        try:
-            self.jddd_camera_window_process.close()
-        except AttributeError:
-            pass
-        else:
-            self.jddd_camera_window_process = None
+    def close_jddd_screen_windows(self) -> None:
+        for process in self.jddd_camera_window_processes.values():
+            process.close()

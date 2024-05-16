@@ -87,7 +87,7 @@ class Screen:
         LOG.debug(f"Getting raw image from channel: {ch}")
         return self.di.get_value(ch)
 
-    def get_image_raw_address(self) -> npt.ArrayLike:
+    def get_image_raw_address(self) -> str:
         return self.SCREEN_RAW_FDP_TEMPLATE.format(self.name)
     
     def get_fast_kicker_setpoints(self) -> list[FastKickerSetpoint]:
@@ -102,10 +102,10 @@ class Screen:
         self.di.set_value(self.POWER_ON_OFF_TEMPLATE.format(self.name), int(on))
 
     def power_on(self) -> None:
-        self._switch_on_off(on=True)
+        self._power_on_off(on=True)
 
     def power_off(self) -> None:
-        self._switch_on_off(on=False)
+        self._power_on_off(on=False)
 
     def is_powered(self) -> bool:
         # If address read is 1 then it's powered, if it's zero then it's off.

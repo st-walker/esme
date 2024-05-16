@@ -6,8 +6,10 @@ from pathlib import Path
 from dataclasses import dataclass
 import pytz
 from typing import Any, Self
+import os
 
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 
 from esme.control.dint import DOOCSInterface, DOOCSAddress
@@ -18,6 +20,8 @@ LOG = logging.getLogger(__name__)
 
 LOG.setLevel(logging.DEBUG)
 
+PathT = str | os.PathLike
+OptionalPathT =  PathT | None
 
 @dataclass
 class SnapshotRequest:
@@ -27,9 +31,10 @@ class SnapshotRequest:
 
 
 class SnapshotAccumulator:
-    def __init__(self, snapshotter: Snapshotter, filename: str | None = None):
+    def __init__(self, snapshotter: Snapshotter, filename: PathT):
+        # try:
         self.filename = Path(filename)
-        self.records = []
+        self.records: list[dict[str, Any]] = []
         self.snapshotter = snapshotter
 
     @property
@@ -81,7 +86,10 @@ class Snapshotter:
 
         return subaddress_full_address_map
 
-    def snapshot(self, image_dir: str | None = None, image: np.ndarray | None = None, resolve_wildcards: bool = False, **kvps):
+    def snapshot(self, image_dir: OptionalPathT = None,
+                 image: npt.ArrayLike | None = None,
+                 resolve_wildcards: bool = False,
+                 **kvps):
         result = {}
         result.update(self.read_addresses())
         result.update(self.read_wildcards(resolve_wildcards=resolve_wildcards))
@@ -90,7 +98,8 @@ class Snapshotter:
         result.update(kvps)
         return result
 
-    def read_image(self, image_dir: str, image: np.ndarray | None = None) -> dict[str, str]:
+    def read_image(self, image_dir: str | os.PathLike, image: np.ndarray | None = None) -> dict[str, str]:
+        image_dir = Path(image_dir)
         image_address = self.request.image
         if not image_address:
             return {}

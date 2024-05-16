@@ -5,7 +5,7 @@ from functools import partial
 
 from PyQt5.QtCore import QObject, QRunnable, QTimer, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QMainWindow
-import pyqtgraph as pg
+import pyqtgraph as pg # type: ignore
 import numpy as np
 
 from esme.gui.ui import mainwindow
@@ -67,13 +67,6 @@ class LPSMainWindow(QMainWindow):
         # Menu buttons
         self.ui.action_print_to_logbook.triggered.connect(self.send_to_logbook)
         self.ui.action_close.triggered.connect(self.close)
-
-        sdw = self.ui.screen_display_widget
-        # Measurements group box buttons.
-        self.ui.write_to_logbook_button.clicked.connect(sdw.save_to_elog_signal.emit)
-        self.ui.take_background_button.clicked.connect(sdw.take_background_signal.emit)
-        self.ui.subtract_bg_checkbox.stateChanged.connect(sdw.subtract_background_signal.emit)
-        # self.ui.current_profile_button.clicked.connect(sdw.current_profile_button)
         
 
     def closeEvent(self, event) -> None:

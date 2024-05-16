@@ -75,19 +75,15 @@ class TransverseDeflector:
 
     def set_voltage(self, voltage: float) -> None:
         """Set the TDS voltage by using the member calibration."""
-        try:
-            amplitude = self.calibration.get_amplitude(voltage)
-        except AttributeError:
+        if self.calibration is None:
             raise UncalibratedTDSError("Missing TDS Calibration")
-
-        self.set_amplitude(amplitude)
+        self.set_amplitude(self.calibration.get_amplitude(voltage))
 
     def get_voltage_rb(self) -> float:
         """Get the TDS voltage with the use of the calibration"""
-        try:
-            return self.calibration.get_voltage(self.get_amplitude_rb())
-        except AttributeError:
+        if self.calibration is None:
             raise UncalibratedTDSError("Missing TDS Calibration")
+        return self.calibration.get_voltage(self.get_amplitude_rb())
 
     def amplitude_rb_matches_sp(self, tol: float = 0.05) -> bool:
         """Check that the amplitude readback value matches the setpoint within some tolerance.
