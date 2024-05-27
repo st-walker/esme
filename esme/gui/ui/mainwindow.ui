@@ -245,7 +245,7 @@
   <customwidget>
    <class>ImagingControlWidget</class>
    <extends>QWidget</extends>
-   <header location="global">esme.gui.widgets.screen</header>
+   <header location="global">esme.gui.widgets.imaging</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

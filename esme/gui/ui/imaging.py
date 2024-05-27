@@ -18,15 +18,21 @@ class Ui_imaging_widget(object):
         self.verticalLayout = QtWidgets.QVBoxLayout(imaging_widget)
         self.verticalLayout.setObjectName("verticalLayout")
         self.screen_display_widget = ScreenWidget(imaging_widget)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
+        )
         sizePolicy.setHorizontalStretch(1)
         sizePolicy.setVerticalStretch(1)
-        sizePolicy.setHeightForWidth(self.screen_display_widget.sizePolicy().hasHeightForWidth())
+        sizePolicy.setHeightForWidth(
+            self.screen_display_widget.sizePolicy().hasHeightForWidth()
+        )
         self.screen_display_widget.setSizePolicy(sizePolicy)
         self.screen_display_widget.setObjectName("screen_display_widget")
         self.verticalLayout.addWidget(self.screen_display_widget)
         self.groupBox = QtWidgets.QGroupBox(imaging_widget)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred
+        )
         sizePolicy.setHorizontalStretch(1)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.groupBox.sizePolicy().hasHeightForWidth())
@@ -38,6 +44,7 @@ class Ui_imaging_widget(object):
         self.take_background_button.setObjectName("take_background_button")
         self.gridLayout_6.addWidget(self.take_background_button, 1, 0, 1, 1)
         self.send_to_logbook_button = QtWidgets.QPushButton(self.groupBox)
+        self.send_to_logbook_button.setStyleSheet("QPushButton { color: blue; }")
         self.send_to_logbook_button.setObjectName("send_to_logbook_button")
         self.gridLayout_6.addWidget(self.send_to_logbook_button, 0, 0, 1, 1)
         self.line = QtWidgets.QFrame(self.groupBox)
@@ -72,17 +79,29 @@ class Ui_imaging_widget(object):
         _translate = QtCore.QCoreApplication.translate
         imaging_widget.setWindowTitle(_translate("imaging_widget", "Form"))
         self.groupBox.setTitle(_translate("imaging_widget", "Measurements"))
-        self.take_background_button.setText(_translate("imaging_widget", "Accumulate Background"))
-        self.send_to_logbook_button.setText(_translate("imaging_widget", "Send to XFEL e-Logbook"))
-        self.current_profile_button.setText(_translate("imaging_widget", "Current Profile"))
-        self.nbg_images_acquired_label.setText(_translate("imaging_widget", "Background Images: 0"))
-        self.subtract_bg_checkbox.setText(_translate("imaging_widget", "Subtract background"))
+        self.take_background_button.setText(
+            _translate("imaging_widget", "Accumulate Background")
+        )
+        self.send_to_logbook_button.setText(
+            _translate("imaging_widget", "XFEL e-Logbook...")
+        )
+        self.current_profile_button.setText(
+            _translate("imaging_widget", "Current Profile")
+        )
+        self.nbg_images_acquired_label.setText(
+            _translate("imaging_widget", "Background Images: 0")
+        )
+        self.subtract_bg_checkbox.setText(
+            _translate("imaging_widget", "Subtract background")
+        )
         self.pushButton.setText(_translate("imaging_widget", "Slice Emittance"))
-from esme.gui.widgets.screen import ScreenWidget
 
+
+from esme.gui.widgets.screen import ScreenWidget
 
 if __name__ == "__main__":
     import sys
+
     app = QtWidgets.QApplication(sys.argv)
     imaging_widget = QtWidgets.QWidget()
     ui = Ui_imaging_widget()

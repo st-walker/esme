@@ -49,7 +49,7 @@
          <string notr="true">QPushButton { color: blue; }</string>
         </property>
         <property name="text">
-         <string>Send to XFEL e-Logbook</string>
+         <string>XFEL e-Logbook...</string>
         </property>
        </widget>
       </item>
