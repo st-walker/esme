@@ -1,21 +1,15 @@
-import sys
 import logging
-from collections import defaultdict
-from functools import partial
+import sys
 
-from PyQt5.QtCore import QObject, QRunnable, QTimer, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QMainWindow
-import pyqtgraph as pg # type: ignore
-import numpy as np
 
 from esme.gui.ui import mainwindow
-from esme.gui.widgets.common import (get_machine_manager_factory,
-                                    set_tds_calibration_by_region,
-                                     send_widget_to_log)
-
+from esme.gui.widgets.common import send_widget_to_log, set_tds_calibration_by_region
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
+
 
 def start_lps_gui() -> None:
     app = QApplication(sys.argv)
@@ -24,22 +18,31 @@ def start_lps_gui() -> None:
     main_window.raise_()
     sys.exit(app.exec_())
 
-    
+
 class LPSMainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.ui = mainwindow.Ui_MainWindow()
         self.ui.setupUi(self)
 
         # Connect signals for screen name which we select in this
         # widget and have to propagate to the child widgets.
-        self.ui.area.screen_name_signal.connect(self.ui.tds_panel.set_region_from_screen_name)
-        self.ui.area.screen_name_signal.connect(self.ui.screen_display_widget.set_screen)
+        self.ui.area.screen_name_signal.connect(
+            self.ui.tds_panel.set_region_from_screen_name
+        )
+        self.ui.area.screen_name_signal.connect(
+            self.ui.screen_display_widget.set_screen
+        )
         self.ui.area.screen_name_signal.connect(self.ui.machine_state_widget.set_screen)
-        self.ui.area.screen_name_signal.connect(self.ui.special_bunch_panel.set_kickers_for_screen)
+        self.ui.area.screen_name_signal.connect(
+            self.ui.special_bunch_panel.set_kickers_for_screen
+        )
+        self.ui.area.screen_name_signal.connect(self.ui.imaging_widget.set_screen)
 
         # Connect the emission of the TDS panel's TDS voltage calibrations to here.
-        self.ui.tds_panel.voltage_calibration_signal.connect(self.update_tds_voltage_calibration)
+        self.ui.tds_panel.voltage_calibration_signal.connect(
+            self.update_tds_voltage_calibration
+        )
 
         self.connect_buttons()
 
@@ -47,16 +50,20 @@ class LPSMainWindow(QMainWindow):
         # have stored, that we we can propagate them from here to
         # wherever else they need to be.
         self.ui.tds_panel.emit_calibrations()
-        
+
         # Emit initial screen name to any widgets.
         self.ui.area.emit_current_screen_name()
 
     def update_tds_voltage_calibration(self, voltage_calibration) -> None:
         set_tds_calibration_by_region(self, voltage_calibration)
-        self.ui.screen_display_widget.propagate_tds_calibration_signal(voltage_calibration)
+        self.ui.screen_display_widget.propagate_tds_calibration_signal(
+            voltage_calibration
+        )
 
     def send_to_logbook(self) -> None:
-        send_widget_to_log(self, author="", title="Longitudinal Diagnostics Utility", severity="INFO")
+        send_widget_to_log(
+            self, author="", title="Longitudinal Diagnostics Utility", severity="INFO"
+        )
 
     def setup_logger_tab(self) -> None:
         log_handler = QPlainTextEditLogger()
@@ -67,7 +74,6 @@ class LPSMainWindow(QMainWindow):
         # Menu buttons
         self.ui.action_print_to_logbook.triggered.connect(self.send_to_logbook)
         self.ui.action_close.triggered.connect(self.close)
-        
 
     def closeEvent(self, event) -> None:
         self.ui.area.close()
@@ -80,7 +86,7 @@ class LPSMainWindow(QMainWindow):
 class QPlainTextEditLogger(QObject, logging.Handler):
     log_signal = pyqtSignal(str)
 
-    def emit(self, record):
+    def emit(self, record) -> None:
         msg = self.format(record)
         self.log_signal.emit(msg)
 

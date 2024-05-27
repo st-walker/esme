@@ -1,16 +1,16 @@
 from typing import Any
 
-from .kickers import FastKickerController
+from esme.control.snapshot import SnapshotRequest, Snapshotter
+from esme.core import DiagnosticRegion
+
 from .dint import DOOCSInterface
-from .screens import Screen
-from .tds import TransverseDeflector
+from .exceptions import EuXFELUserError
+from .kickers import FastKickerController
+from .optics import MachineLinearOptics
 from .sbunches import SpecialBunchesControl
 from .scanner import Scanner
-from .optics import MachineLinearOptics
-from .exceptions import EuXFELUserError
-from esme.core import DiagnosticRegion
-from esme.control.snapshot import SnapshotRequest, Snapshotter
-
+from .screens import Screen
+from .tds import TransverseDeflector
 
 # class StreakingPlaneCalibrationMixin:
 #     def get_streaking_com_slope(self, screen_name):
@@ -19,24 +19,29 @@ from esme.control.snapshot import SnapshotRequest, Snapshotter
 #         energy_mev = self.machine.optics.get_beam_energy() # MeV is fine here.
 #         com_slope = get_tds_com_slope(r12, energy_mev, voltage)
 #         scale_factor = 1 / com_slope
-#         return 
-    
+#         return
+
+
 class MachineManager:
     pass
+
 
 class HighResolutionEnergySpreadMachine(MachineManager):
     """set of high level interfaces to the EuXFEL for measuring the
     slice energy spread with high resolution.
 
     """
-    def __init__(self,
-                 *,
-                 scanner: Scanner,
-                 screen: Screen,
-                 deflector: TransverseDeflector,
-                 sbunches: SpecialBunchesControl,
-                 optics:MachineLinearOptics,
-                 di=None) -> None:
+
+    def __init__(
+        self,
+        *,
+        scanner: Scanner,
+        screen: Screen,
+        deflector: TransverseDeflector,
+        sbunches: SpecialBunchesControl,
+        optics: MachineLinearOptics,
+        di=None
+    ) -> None:
         self.di = di if di else DOOCSInterface()
         self.scanner = scanner
         self.screen = screen
@@ -52,17 +57,20 @@ class HighResolutionEnergySpreadMachine(MachineManager):
 
     def is_beam_on(self):
         return bool(self.di.get_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED"))
-        
+
 
 # What is the point in this class besides bringing other bits together?  Does this really need sbunches etc?
 class LPSMachine(MachineManager):
-    def __init__(self, region: DiagnosticRegion,
-                 kickerop: FastKickerController,
-                 screens: dict[str, Screen],
-                 tds: TransverseDeflector,
-                 optics: MachineLinearOptics,
-                 sbunches,
-                 di=None) -> None:
+    def __init__(
+        self,
+        region: DiagnosticRegion,
+        kickerop: FastKickerController,
+        screens: dict[str, Screen],
+        tds: TransverseDeflector,
+        optics: MachineLinearOptics,
+        sbunches,
+        di=None,
+    ) -> None:
         di = di or DOOCSInterface()
         self.region = region
         self.kickerop = kickerop
@@ -70,7 +78,8 @@ class LPSMachine(MachineManager):
         self.deflector = tds
         self.optics = optics
         self.sbunches = sbunches
-        
+
+
 # Interface with the EuXFEL limited to what is necessary for the
 # effective operation of the special bunch midlayer.
 class DiagnosticBunchesManager(MachineManager):
@@ -78,14 +87,22 @@ class DiagnosticBunchesManager(MachineManager):
     The functionality is basically: Interact with the SBM and also set the kickers for a given screen
     by name and set the SBM to activate the kickers for said screen.
     """
-    def __init__(self, *, screens: dict[str, Screen], kickerop: FastKickerController, sbunches: SpecialBunchesControl, di=None):
-        di = di or DOOCSInterface()        
+
+    def __init__(
+        self,
+        *,
+        screens: dict[str, Screen],
+        kickerop: FastKickerController,
+        sbunches: SpecialBunchesControl,
+        di=None
+    ):
+        di = di or DOOCSInterface()
         self.screens = screens
         self.kickerop = kickerop
         self.sbunches = sbunches
-        
+
     def set_kickers_for_screen(self, screen_name: str) -> None:
-        """For the given screen, set the kicker timings, voltages, etc. 
+        """For the given screen, set the kicker timings, voltages, etc.
         so that when the kickers are fired, they will kick the diagnostic bunch
         onto the named screen (screen_name)."""
         # Get the screen instance by name
@@ -95,7 +112,7 @@ class DiagnosticBunchesManager(MachineManager):
         try:
             # We get the kicker setpoints for the screen.
             kicker_setpoints = screen.get_fast_kicker_setpoints()
-        except EuXFELUserError: # Then there is no kicker info (e.g. dump screen)
+        except EuXFELUserError:  # Then there is no kicker info (e.g. dump screen)
             return
         # Loop over the setpoints corresponding to the screen and write their settings to the machine.
         for setpoint in kicker_setpoints:
@@ -109,7 +126,13 @@ class DiagnosticBunchesManager(MachineManager):
 
 
 class MachineReadManager:
-    def __init__(self, *, screens: list[Screen], optics: MachineLinearOptics, request: SnapshotRequest):
+    def __init__(
+        self,
+        *,
+        screens: dict[str, Screen],
+        optics: MachineLinearOptics,
+        request: SnapshotRequest
+    ):
         self.screens = screens
         self.optics = optics
         self.snapshotter = Snapshotter(request)

@@ -1,31 +1,51 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import logging
-from enum import Enum, auto
+import queue
+import tarfile
 import time
 from collections import deque
-import tarfile
-from io import BytesIO
+from concurrent.futures import Future, ProcessPoolExecutor
+from dataclasses import dataclass, field
 from datetime import datetime
+from enum import Enum, auto
+from io import BytesIO
+from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
 
-from PyQt5 import QtGui
-from PyQt5.QtWidgets import QGridLayout, QWidget
-from PyQt5.QtCore import QObject, QThread, pyqtSignal, pyqtSlot, QTimer
-import pyqtgraph as pg
 import numpy as np
 import numpy.typing as npt
-import scipy
 import pandas as pd
+import pyqtgraph as pg
+from PyQt5 import QtGui
+from PyQt5.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
+from PyQt5.QtWidgets import (
+    QGridLayout,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QProgressBar,
+    QPushButton,
+    QSpinBox,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 from esme import DiagnosticRegion
-from .common import get_machine_manager_factory, setup_screen_display_widget
 from esme.calibration import get_tds_com_slope
-from esme.control.tds import StreakingPlane, UncalibratedTDSError
 from esme.control.exceptions import DOOCSReadError
 from esme.control.machines import MachineReadManager
-from esme.control.screens import Screen
+from esme.control.screens import Screen, ScreenMetadata
+from esme.control.tds import StreakingPlane, UncalibratedTDSError
 from esme.gui.ui.imaging import Ui_imaging_widget
+
+from .common import (
+    get_machine_manager_factory,
+    send_widget_to_log,
+    setup_screen_display_widget,
+)
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.DEBUG)
@@ -41,36 +61,38 @@ ZERO_DISPERSION_THRESHOLD = 0.1
 AXIS_UPDATE_RELATIVE_TOLERANCE = 0.05
 
 
-AXES_KWARGS = {"x": {"text": "<i>&Delta;x</i>", "units": "m"},
-               "y": {"text": "<i>&Delta;y</i>", "units": "m"},
-               "time": {"text": "<i>&Delta;t</i>", "units": "s"},
-               "energy": {"text": "<i>&Delta;E</i>", "units": "eV"}}
+AXES_KWARGS = {
+    "x": {"text": "<i>&Delta;x</i>", "units": "m"},
+    "y": {"text": "<i>&Delta;y</i>", "units": "m"},
+    "time": {"text": "<i>&Delta;t</i>", "units": "s"},
+    "energy": {"text": "<i>&Delta;E</i>", "units": "eV"},
+}
 
 
-class ImageTakingMode(Enum):
-    BACKGROUND = auto()
-    BEAM = auto()
+class MessageType(Enum):
+    CACHE_BACKGROUND = auto()
+    # TAKE_N_FAST = auto()
+    CHANGE_SCREEN = auto()
+    SUBTRACT_BACKGROUND = auto()
+
+
+@dataclass
+class DataTakingMessage:
+    mtype: MessageType
+    data: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class AxisCalibration:
     scale_factor: float
-    parameter: str # x, y, time, energy
-    axis: str # X or Y
-
-
-@dataclass
-class PixelInfo:
-    xsize: float
-    ysize: float
-    nx: int
-    ny: int
+    parameter: str  # x, y, time, energy
+    axis: str  # X or Y
 
 
 @dataclass
 class ImagePayload:
     image: np.ndarray
-    pixels: PixelInfo
+    screen_md: ScreenMetadata
     levels: tuple[float, float]
     xproj: np.ndarray
     yproj: np.ndarray
@@ -78,210 +100,249 @@ class ImagePayload:
     @property
     def x(self) -> np.ndarray:
         sh = self.image.shape
-        return np.linspace(-sh[0]/2, sh[0]/2, num=len(self.xproj)) * self.pixels.xsize
+        return (
+            np.linspace(-sh[0] / 2, sh[0] / 2, num=len(self.xproj))
+            * self.screen_md.xsize
+        )
 
     @property
     def y(self) -> np.ndarray:
         sh = self.image.shape
-        return np.linspace(-sh[1]/2, sh[1]/2, num=len(self.yproj)) * self.pixels.ysize
+        return (
+            np.linspace(-sh[1] / 2, sh[1] / 2, num=len(self.yproj))
+            * self.screen_md.ysize
+        )
+
+
+class StopImageAcquisition(Exception):
+    pass
 
 
 @dataclass
 class MachineState:
-    beam_images: deque[npt.NDArray]
     bg_images: deque[npt.NDArray]
     kvps: pd.Series
+
 
 class ImagingControlWidget(QWidget):
     """The Image control widget is the widget that gets the image and
     then possibly pushes it to the screen widget.
 
     """
-    def __init__(self, parent=None):
+
+    def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent=parent)
 
         self.ui = Ui_imaging_widget()
         self.ui.setupUi(self)
 
-        # XXX?  QSettings?
-        hardcoded_path = "/Users/xfeloper/user/stwalker/lps-dumpage/"
-        self.outdir = hardcoded_path
+        mfactory = get_machine_manager_factory()
+        self.i1reader: MachineReadManager = mfactory.make_machine_reader_manager(
+            DiagnosticRegion.I1
+        )
+        self.b2reader: MachineReadManager = mfactory.make_machine_reader_manager(
+            DiagnosticRegion.B2
+        )
+        self.mreader = (
+            self.i1reader
+        )  # Set initial machine reader instance choice to be for I1.
+
+        self.screen_name = "OTRC.55.I1"
 
         # Thread that reads the images and others can get from.
         self.producer_worker, self.producer_thread = self.setup_data_taking_worker()
 
+        self.elogger_window = LogBookEntryWriterDialogue(
+            self.mreader.screens[self.screen_name]
+        )
+
         self.connect_buttons()
 
     def connect_buttons(self) -> None:
-        self.ui.subtract_background_checkbox.stateChanged.connect(self.set_subtract_background)
-        self.ui.save_to_elog_button.clicked.connect(self.send_to_xfel_elog)
-        self.ui.take_background_button.clicked.connect(self.production_worker.take_background)
+        self.ui.subtract_bg_checkbox.stateChanged.connect(self.set_subtract_background)
+        self.ui.send_to_logbook_button.clicked.connect(self._open_logbook_writer)
+        self.ui.take_background_button.clicked.connect(self.take_background)
 
-    def set_subtract_background(self, subtract_bg_state: Qt.CheckState) -> None:
-        assert subtract_bg_state != Qt.PartiallyChecked
-        self.production_worker.set_subtract_background(bool(subtract_bg_state))
+    def _open_logbook_writer(self) -> None:
+        self.elogger_window.bg_images = list(self.producer_worker.bg_images)
+        self.elogger_window.show()
 
-    def _get_output_path(self, location: str, screen_name: str) -> str:
-        time = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
-        return f"{self.outdir}/{location}/{screen_name}/{time}.tar"
+    def set_subtract_background(self, subtract_bg_state: Qt.CheckState) -> None:  # type: ignore
+        assert subtract_bg_state != Qt.PartiallyChecked  # type: ignore
+        message = DataTakingMessage(
+            MessageType.SUBTRACT_BACKGROUND, {"state": bool(subtract_bg_state)}
+        )
+        self.producer_worker.submit(message)
 
-    def send_to_xfel_elog(self) -> None:
-        mstate = self.producer_thread.get_state()
-        outdir = self._get_output_path(mstate.kvps["location"], mstate.kvps["screen_name"]) 
-
-        # # with tarfile.open(outdir, "w:gz") as tarball:  # With compression
-        # if i do compress, don't forget .gz at the end.
-        with tarfile.open(outdir, "w") as tarball: # No compression for now
-            # Pickle is about 5x faster but for now prefer np.savez because I
-            # don't know what the long term implications are for using pickle
-            # e.g. will some file still be readable in a few year's time?
-            buffer = BytesIO()
-            np.savez(buffer,
-                     beam_images=self.beam_images,
-                     bg_images=self.bg_images)
-            buffer.seek(0)
-            images_tarinfo = tarfile.TarInfo(name=f"{outdir}/images.npz")
-            tarball.addfile(images_tarinfo, fileobj=buffer)
-            buffer.seek(0)
-            # Now write all the various DOOCS addresses we've read to file
-            kvps_tarinfo = tarfile.TarInfo(name=f"{outdir}/channels.csv")
-            kvps.to_csv(buffer, index=False)
-            tarball.addfile(kvps_tarinfo, fileobj=buffer)
+    def take_background(self) -> None:
+        message = DataTakingMessage(MessageType.CACHE_BACKGROUND, {"number_to_take": 5})
+        self.producer_worker.submit(message)
 
     def setup_data_taking_worker(self) -> tuple[DataTakingWorker, QThread]:
         LOG.debug("Initialising screen worker thread")
-        producer_worker = DataTakingWorker()
+        # self.producer_queue: queue.Queue[DataTakingMessage] = queue.Queue()
+        # self.consumer_queue: queue.Queue[] = queue.Queue()
+        producer_worker = DataTakingWorker(self.mreader.screens[self.screen_name])
         # Propagate screen name change to data taking worker
         # responsible for reading from the screen.
-        self.screen_name_signal.connect(producer_worker.set_screen)
         producer_thread = QThread()
-        producer_thread.started.connect(producer_worker.start_timers)
-        producer_thread.finished.connect(producer_worker.stop_timers)
-
-        producer_worker.display_image_signal.connect(self.ui.screen_display_widget.post_beam_image)
         producer_worker.moveToThread(producer_thread)
+        producer_worker.display_image_signal.connect(
+            self.ui.screen_display_widget.post_beam_image
+        )
         producer_thread.start()
 
         return producer_worker, producer_thread
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
-        self.producer_worker.kill = True
+        self.producer_worker.stop_read_loop()
         self.producer_thread.terminate()
         self.producer_thread.wait()
+
+    def set_screen(self, screen_name: str) -> None:
+        self.screen_name = screen_name
+        screen = self.mreader.screens[screen_name]
+        # Change elogger window screen to the correct screen instance
+        self.elogger_window.set_screen(screen)
+        # Get the worker producing imagees
+        self.producer_worker.change_screen(screen)
+        # Get the daughter Screen widget to also use the relevant screen instance.
+        self.ui.screen_display_widget.set_screen(screen_name)
 
 
 class DataTakingWorker(QObject):
     display_image_signal = pyqtSignal(ImagePayload)
-    # fast_image_signal = pyqtSignal() ???
-    pixels_signal = pyqtSignal(PixelInfo)
+    n_fast_state = pyqtSignal(int)
 
-    def __init__(self, initial_screen: str = "OTRC.55.I1"):
+    def __init__(self, initial_screen: Screen):
         super().__init__()
-
-        mfactory: MachineReadManager = get_machine_manager_factory()
-        self.i1reader: MachineReadManager = mfactory.make_machine_reader_manager(DiagnosticRegion.I1)
-        self.b2reader: MachineReadManager = mfactory.make_machine_reader_manager(DiagnosticRegion.B2)
-        self.mreader = self.i1reader # Set initial machine reader instance choice to be for I1.
-
         # The background images cache.
         self.bg_images: deque[npt.NDArray] = deque(maxlen=5)
         self.mean_bg = 0.0
-        # The cache of data we have taken.  We are constantly updating
-        self.beam_images: deque[npt.NDArray] = deque(maxlen=20)
 
-        self.mode = ImageTakingMode.BEAM
-        self.screen: Screen | None = None
-        self.pixels: PixelInfo | None = None
-        self.set_screen(initial_screen)
+        self.screen: Screen
+        self.screen_md: ScreenMetadata
+        self._set_screen(initial_screen)
+
+        # Flag for when possibly emitting a processed image for
+        # display: Whether we should subtract the background for the
+        # displayed image or not.
         self._do_subtract_background: bool = False
+        self._caching_background = False
 
-        # Read from the machine regularly, at the rep. rate of the machine.
-        # XXX: This is wrong, each read takes 100ms, so should be called basically constantly.
-        self.beam_images_timer = self.make_screen_read_timer(interval_ms=100)
-        # Emit an image (intended for display) only once ever 1s.  There is no need
-        # for more frequently than that really.
-        self.display_timer = self.make_display_timer(interval_ms=1000)
+        # Queue for messages we we receive from
+        self._consumerq: queue.Queue[
+            tuple[DataTakingMessage, Future[Any]]
+        ] = queue.Queue()
+
+        self._is_running = False
 
     def run(self) -> None:
-        # I should actually use this right?  Not timers.  With a counter.  Send every 10th to
-        # the display.
-        pass
+        if self._is_running:
+            raise RuntimeError(
+                "Already running, run should not be called more than once."
+            )
+        self._is_running = True
+        self._slow_loop()
 
-    def set_region(self, region: DiagnosticRegion) -> None:
-        if region is DiagnosticRegion.I1:
-            self.mreader = self.i1reader
-        elif region is DiagnosticRegion.B2:
-            self.mreader = self.b2reader
-        else:
-            raise ValueError(f"Unknown region enum:, {region}")
-        # Changing region so we clear everything.
-        self._clear_caches()
+    def stop_read_loop(self):
+        self._consumerq.put(None)
 
-    def take_background(self) -> None:
-        # Set mode to background taking.
-        # XXX: Race condition
-        self.mode = ImageTakingMode.BACKGROUND
-        self._clear_bg_cache()
+    def _slow_loop(self):
+        """This is the slow loop that is the one that is running by default and acquires images at
+        1Hz.
+        """
+        # i = 0
+        deadline = time.time()
 
-    def set_subtract_background(self, do_it: bool) -> None:
-        self._do_subtract_background = do_it
+        while True:
+            # Check for anything in the message queue
+            try:
+                self._dispatch_from_message_queue()
+            except StopImageAcquisition:
+                break
 
-    def _get_location(self) -> str:
-        return "B2" if self.mreader is self.b2reader else "I1"
+            if time.time() < deadline:
+                continue
 
-    def get_state(self) -> MachineState:
-        screen_name = self.screen.name
-        location = self._get_location()
-        kvps = {"screen": screen_name,
-                "location": location}
-        kvps |= self.mreader.full_read()
-        kvps = pd.Series(kvps)
-        kvps.index.name = "channel"
-        kvps.reset_index(name="value")
+            image = self.screen.get_image()
+            if self._caching_background:
+                self.bg_images.appendleft(image)
+                if len(self.bg_images) == self.bg_images.maxlen:
+                    # Then we've filled the ring buffer of background images and
+                    # can go back to taking beam data, but first cache the mean_bg.
+                    self._caching_background = Fase
+                    self.mean_bg = np.mean(self.bg_images, axis=0, dtype=image.dtype)
 
-        # XXX: TDS CALIBRATION NEEDS TO SOMEHOW BE INCLUDED HERE !!
-        # Or elsewhere?
+            self._process_and_emit_image_for_display(image)
 
-        return MachineState(beam_images=self.beam_images,
-                            bg_images=self.bg_images,
-                            kvps=kvps)
+            deadline = time.time() + 0.9  # add 1-0.1.
 
-    def start_timers(self) -> None:
-        self.beam_images_timer.start()
-        self.display_timer.start()
+    # def _take_n_fast(self, n: int) -> None:
+    #     # This completely blocks the thread in that it is no longer listening
+    #     # For messages.
+    #     out = []
+    #     assert n > 0
+    #     for i in range(n):
+    #         image = self.screen.get_image()
+    #         out.append(image)
+    #         self.n_fast_state.emit(i)
+    #         if (i % 10) == 0:
+    #             self._process_and_emit_image_for_display(image)
+    #     # At least emit one image for display.
+    #     self._process_and_emit_image_for_display(image)
+    #     return out
 
-    def stop_timers(self) -> None:
-        self.beam_images_timer.stop()
-        self.display_timer.stop()
+    def submit(self, message: DataTakingMessage) -> Future[Any]:
+        future: Future[Any] = Future()
+        # Disallow cancellation by the client so immediately set it to running, once
+        # a message is in the queue it will be acted on eventually.
+        future.set_running_or_notify_cancel()
+        self._consumerq.put((message, future))
+        return future
 
-    def make_screen_read_timer(self, interval_ms: int) -> QTimer:
-        timer = QTimer()
-        timer.setInterval(interval_ms)
-        timer.timeout.connect(self.read_from_screen)
-        return timer
+    def _dispatch_from_message_queue(self) -> None:
+        # Check for messages from our parent
+        # Only messages I account for are switching screen name
+        # And switching image taking mode.  We consume all that have been queued
+        # before proceeding with image taking.
+        while True:
+            try:
+                message, future = self._consumerq.get(block=False)
+            except queue.Empty:
+                return
 
-    def make_display_timer(self, interval_ms: int) -> QTimer:
-        timer = QTimer()
-        timer.setInterval(interval_ms)
-        timer.timeout.connect(self.process_and_emit_image_for_display)
-        return timer
+            if message is None:
+                raise StopImageAcquisition("Image Acquisition halt requested.")
 
-    def _clear_caches(self):
-        self._clear_bg_cache()
-        self.beam_images = deque(maxlen=self.beam_images.maxlen)
+            self._handle_message(message, future)
 
-    def _clear_bg_cache(self):
+    def _handle_message(
+        self, message: DataTakingMessage, future: Future[None | list[npt.NDArray]]
+    ) -> None:
+        result = None
+        match message.mtype:
+            # Could improve this pattern matching here by using both args of DataTakingMessage.
+            case MessageType.CACHE_BACKGROUND:
+                self._caching_background = True
+                self._clear_bg_cache()
+            # case MessageType.TAKE_N_FAST:
+            #     result = self._take_n_fast(message.data["n"])
+            case MessageType.CHANGE_SCREEN:
+                self._set_screen(message.data["screen"])
+            case MessageType.SUBTRACT_BACKGROUND:
+                self._do_subtract_background = message.data["state"]
+            case _:
+                raise ValueError(
+                    f"Unexpected message send to Image Producing thread: {message}"
+                )
+        future.set_result(result)
+        self._consumerq.task_done()
+
+    def _clear_bg_cache(self) -> None:
         self.bg_images = deque(maxlen=self.bg_images.maxlen)
 
-    def process_and_emit_image_for_display(self) -> None:
-        # Get most recent image, which for a deque where we are
-        # appending left, we want the 0th element.
-        try:
-            image = self.beam_images[0]
-        except IndexError:
-            # We haven't acquired any images yet.  Do nothing.
-            return
-
+    def _process_and_emit_image_for_display(self, image: npt.NDArray) -> None:
         # Subtract background if we have taken some background and enabled it.
         if self.bg_images and self._do_subtract_background:
             image -= self.mean_bg
@@ -293,50 +354,40 @@ class DataTakingWorker(QObject):
         # xproj = scipy.signal.savgol_filter(xproj, window_length=20, polyorder=2)
         yproj = image.sum(axis=0, dtype=np.float32)
 
-        imp = ImagePayload(image=image,
-                           pixels=self.pixels,
-                           levels=(minpix, maxpix),
-                           xproj=xproj,
-                           yproj=yproj)
+        imp = ImagePayload(
+            image=image,
+            screen_md=self.screen_md,
+            levels=(minpix, maxpix),
+            xproj=xproj,
+            yproj=yproj,
+        )
 
         self.display_image_signal.emit(imp)
 
-    def read_from_screen(self) -> None:
+    def _read_from_screen(self) -> npt.NDArray:
         image = self.screen.get_image()
-        # XXX: Possible RACE CONDITION HERE E.g. if image is got and
-        # then thread is interrupted HERE and main thread sets self.mode to
-        # a different type, we get some data pollution, possibly
-        # putting beam image in bg_images deque or bg image in
-        # beam_images.  I need to stop this.  Maybe for now I guess who cares.
-        if self.mode is ImageTakingMode.BEAM:
-            self.beam_images.appendleft(image)
-        elif self.mode is ImageTakingMode.BACKGROUND:
+        if self._caching_background:
             self.bg_images.appendleft(image)
-            # Then we've filled the ring buffer of background images and
-            # can go back to taking beam data...
             if len(self.bg_images) == self.bg_images.maxlen:
-                self.mode = ImageTakingMode.BEAM
+                # Then we've filled the ring buffer of background images and
+                # can go back to taking beam data, but first cache the mean_bg.
+                self._caching_background = False
                 self.mean_bg = np.mean(self.bg_images, axis=0, dtype=image.dtype)
-        else:
-            raise ValueError(f"Unknown image taking mode: {self.mode}")
+        return image
 
-    def set_screen(self, screen_name: str) -> None:
-        LOG.info(f"Setting screen name for Screen Worker thread: {screen_name}")
-        screen = self.mreader.screens[screen_name]
+    def _set_screen(self, screen: Screen) -> None:
         self.screen = screen
         # XXX: Possible race condition somewhere here if called from other thread?
-        self._clear_caches()
-        try:
-            xsize = screen.get_pixel_xsize()
-            ysize = screen.get_pixel_ysize()
-            nx = screen.get_image_xpixels()
-            ny = screen.get_image_ypixels()
-        except DOOCSReadError as e:
-            return
+        self._clear_bg_cache()
+        self.screen_md = screen.get_screen_metadata()
 
-        pix = PixelInfo(xsize=xsize, ysize=ysize, nx=nx, ny=ny)
-        self.pixels_signal.emit(pix)
-        self.pixels = pix
+    def change_screen(self, new_screen: Screen) -> None:
+        self._consumerq.put(
+            (
+                DataTakingMessage(MessageType.CHANGE_SCREEN, {"screen": new_screen}),
+                Future(),
+            )
+        )
 
 
 class ScreenWidget(QWidget):
@@ -348,12 +399,15 @@ class ScreenWidget(QWidget):
         self.layout.addWidget(self.glwidget)
         self.image_plot = setup_screen_display_widget(self.glwidget, axes=True)
 
-        self.i1machine, self.b2machine = get_machine_manager_factory().make_i1_b2_managers()
-        self.machine = self.i1machine # Set initial machine choice to be for I1 diagnostics
-
+        # fmt: off
+        self.i1machine, self.b2machine, get_machine_manager_factory().make_i1_b2_managers()
+        self.machine = self.i1machine
         self.calibration_worker, self.calibration_thread = self.setup_calibration_worker()
+        # fmt: on
 
-        self.tds_calibration_signal.connect(self.calibration_worker.update_tds_voltage_calibration)
+        self.tds_calibration_signal.connect(
+            self.calibration_worker.update_tds_voltage_calibration
+        )
 
         # Add projection axes to the image display daughter widget
         self.add_transverse_projection("x")
@@ -367,7 +421,6 @@ class ScreenWidget(QWidget):
 
     def set_screen(self, screen_name: str) -> None:
         self.calibration_worker.screen_name = screen_name
-        self.producer_worker.screen_name = screen_name
         # Screen dimensions should always be distance (not pixels, not time, not energy).
         dx, dy = self.machine.optics.dispersions_at_screen(screen_name)
 
@@ -386,9 +439,11 @@ class ScreenWidget(QWidget):
             return
 
         tr = QtGui.QTransform()  # prepare ImageItem transformation:
-        tr.scale(xpixel_size, ypixel_size)       # scale horizontal and vertical axes
-        tr.translate(-nypixel/2, -nxpixel/2) # move 3x3 image to locate center at axis origin
-        self.image_plot.items[0].setTransform(tr) # assign transform
+        tr.scale(xpixel_size, ypixel_size)  # scale horizontal and vertical axes
+        tr.translate(
+            -nypixel / 2, -nxpixel / 2
+        )  # move 3x3 image to locate center at axis origin
+        self.image_plot.items[0].setTransform(tr)  # assign transform
 
     @pyqtSlot(ImagePayload)
     def post_beam_image(self, image_payload: ImagePayload) -> None:
@@ -417,7 +472,11 @@ class ScreenWidget(QWidget):
     def add_transverse_projection(self, dimension: str) -> None:
         win = self.glwidget
         if dimension == "y":
-            axis = {"right": NegatableLabelsAxisItem("right", text="<i>&Delta;y</i>", units="m")}
+            axis = {
+                "right": NegatableLabelsAxisItem(
+                    "right", text="<i>&Delta;y</i>", units="m"
+                )
+            }
             self.yplot = win.addPlot(row=0, col=1, rowspan=1, colspan=1, axisItems=axis)
             self.yplot.hideAxis("left")
             self.yplot.hideAxis("bottom")
@@ -427,7 +486,11 @@ class ScreenWidget(QWidget):
         elif dimension == "x":
             # Another plot area for displaying ROI data
             win.nextRow()
-            axis = {"bottom": NegatableLabelsAxisItem("bottom", text="<i>&Delta;x</i>", units="m")}
+            axis = {
+                "bottom": NegatableLabelsAxisItem(
+                    "bottom", text="<i>&Delta;x</i>", units="m"
+                )
+            }
             self.xplot = win.addPlot(row=1, col=0, colspan=1, axisItems=axis)
             self.xplot.hideAxis("left")
             self.xplot.setMaximumHeight(200)
@@ -438,13 +501,12 @@ class ScreenWidget(QWidget):
         # XXX need to update machine when I1 or B2 is changed!
 
         calib_worker = CalibrationWatcher(self.machine, "OTRC.55.I1")
-        self.screen_name_signal.connect(calib_worker.set_screen_name)
-
         calib_thread = QThread()
+        calib_worker.moveToThread(calib_thread)
         calib_worker.axis_calibration_signal.connect(self.set_axis_transform_with_label)
         calib_thread.started.connect(calib_worker.run)
-        calib_worker.moveToThread(calib_thread)
         # NOTE: NOT STARTING THREAD FOR NOW BECAUSE IT IS A HUGE BOTTLENECK AND SLOWS DOWN GUI TOO MUCH!
+        # XXXXXXXXXXXXXXXX:
         # calib_thread.start()
         return calib_worker, calib_thread
 
@@ -466,11 +528,17 @@ class CalibrationWatcher(QObject):
 
     # XXX: What if scale factor is 0?
     axis_calibration_signal = pyqtSignal(AxisCalibration)
+
     def __init__(self, machine, screen_name: str):
         super().__init__()
 
-        self.i1machine, self.b2machine = get_machine_manager_factory().make_i1_b2_managers()
-        self.machine = self.i1machine # Set initial machine choice to be for I1 diagnostics
+        (
+            self.i1machine,
+            self.b2machine,
+        ) = get_machine_manager_factory().make_i1_b2_managers()
+        self.machine = (
+            self.i1machine
+        )  # Set initial machine choice to be for I1 diagnostics
 
         self.screen_name = screen_name
         self.kill = False
@@ -493,25 +561,25 @@ class CalibrationWatcher(QObject):
         # we assume a streaked beam and we would like to have a time
         # axis:
         # if self.machine.sbunches.get_use_tds():
-        scale_factor = 1
+        scale_factor = 1.0
         parameter = axis
 
         try:
             voltage = self.machine.deflector.get_voltage_rb()
             r12 = self.machine.optics.r12_streaking_from_tds_to_point(self.screen_name)
-            energy_mev = self.machine.optics.get_beam_energy() # MeV is fine here.
+            energy_mev = self.machine.optics.get_beam_energy()  # MeV is fine here.
             com_slope = get_tds_com_slope(r12, energy_mev, voltage)
-            scale_factor = 1 / com_slope
+            scale_factor = 1.0 / com_slope
             parameter = "time"
         except UncalibratedTDSError:
             pass
 
-        return AxisCalibration(scale_factor=scale_factor,
-                               parameter=parameter,
-                               axis=axis)
+        return AxisCalibration(
+            scale_factor=scale_factor, parameter=parameter, axis=axis
+        )
 
     def get_non_streaking_plane_calibration(self) -> AxisCalibration:
-        beam_energy = self.machine.optics.get_beam_energy() * 1e6 # in MeV to eV
+        beam_energy = self.machine.optics.get_beam_energy() * 1e6  # in MeV to eV
 
         axis = self.get_non_streaking_plane()
 
@@ -525,7 +593,9 @@ class CalibrationWatcher(QObject):
             scale_factor = 1
             parameter = axis
 
-        return AxisCalibration(scale_factor=scale_factor, parameter=parameter, axis=axis)
+        return AxisCalibration(
+            scale_factor=scale_factor, parameter=parameter, axis=axis
+        )
 
     def is_dispersive_at_screen(self) -> bool:
         dispersion = self.get_dispersion_at_screen()
@@ -564,8 +634,9 @@ class CalibrationWatcher(QObject):
 
         """
         calib = self.get_non_streaking_plane_calibration()
-        if axis_calibrations_are_substantially_different(calib,
-                                                         self.non_streaking_plane_calibration):
+        if axis_calibrations_are_substantially_different(
+            calib, self.non_streaking_plane_calibration
+        ):
             self.non_streaking_plane_calibration = calib
             self.axis_calibration_signal.emit(calib)
 
@@ -583,8 +654,9 @@ class CalibrationWatcher(QObject):
         """
 
         calib = self.get_streaking_plane_calibration()
-        if axis_calibrations_are_substantially_different(calib,
-                                                         self.streaking_plane_calibration):
+        if axis_calibrations_are_substantially_different(
+            calib, self.streaking_plane_calibration
+        ):
             self.streaking_plane_calibration = calib
             self.axis_calibration_signal.emit(calib)
 
@@ -606,7 +678,9 @@ class CalibrationWatcher(QObject):
         self.screen_name = screen_name
 
 
-def axis_calibrations_are_substantially_different(calib1: AxisCalibration, calib2: AxisCalibration) -> bool:
+def axis_calibrations_are_substantially_different(
+    calib1: AxisCalibration, calib2: AxisCalibration
+) -> bool:
     if (calib1 is None) ^ (calib2 is None):
         return True
 
@@ -615,9 +689,11 @@ def axis_calibrations_are_substantially_different(calib1: AxisCalibration, calib
     are_identical = calib1 is calib2
     parameters_are_different = calib1.parameter != calib2.parameter
     axis_are_different = calib1.axis != calib2.axis
-    scales_are_close_enough = np.isclose(calib1.scale_factor,  # if transformations are close enough (to avoid small updates)
-                                         calib2.scale_factor,
-                                         rtol=AXIS_UPDATE_RELATIVE_TOLERANCE)
+    scales_are_close_enough = np.isclose(
+        calib1.scale_factor,  # if transformations are close enough (to avoid small updates)
+        calib2.scale_factor,
+        rtol=AXIS_UPDATE_RELATIVE_TOLERANCE,
+    )
     if are_identical:
         return False
 
@@ -630,6 +706,8 @@ def axis_calibrations_are_substantially_different(calib1: AxisCalibration, calib
     if not scales_are_close_enough:
         return False
 
+    raise ValueError("Unable to understand what is going on here")
+
 
 class NegatableLabelsAxisItem(pg.AxisItem):
     """This is used for where I flip the positive/negative direction.
@@ -638,6 +716,7 @@ class NegatableLabelsAxisItem(pg.AxisItem):
     is for.
 
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.negate = False
@@ -649,3 +728,151 @@ class NegatableLabelsAxisItem(pg.AxisItem):
         if self.negate:
             strings = [str(-float(s)) for s in strings]
         return strings
+
+
+class LogBookEntryWriterDialogue(QMainWindow):
+    def __init__(
+        self, screen: Screen, bg_images: list[npt.NDArray] | None = None
+    ) -> None:
+        super().__init__()
+        self.ui = self._make_ui()
+
+        mfactory = get_machine_manager_factory()
+        self.i1reader = mfactory.make_machine_reader_manager(DiagnosticRegion.I1)
+        self.b2reader = mfactory.make_machine_reader_manager(DiagnosticRegion.B2)
+        self.mreader = (
+            self.i1reader
+        )  # Set initial machine reader instance choice to be for I1.
+
+        # XXX?  could be this be put in QSettings somehow instead?
+        hardcoded_path = "/Users/xfeloper/user/stwalker/lps-dumpage/"
+        self.outdir = hardcoded_path
+
+        self._screen = screen
+
+        self.bg_images = bg_images
+        self._executor = ProcessPoolExecutor(max_workers=1)
+
+    def set_screen(self, screen: Screen):
+        self._screen = screen
+
+    def _connect_buttons(self):
+        # Connect cancel button to close the window
+        self.ui.cancel_button.clicked.connect(self.close)
+        self.ui.start_button.clicked.connect(self.start)
+
+    def start(self) -> None:
+        self.ui.progress_bar.setMaximum(self.ui.image_spinner.value())
+        # Get images from data taking thread
+        images = self._acquire_n_images_fast_in_subprocess(
+            self.ui.image_spinner.value()
+        )
+
+    def send_to_xfel_elog(self, beam_images: list[npt.NDArray]) -> None:
+        mstate = self.get_machine_state()
+        outpath = self._get_output_path(
+            mstate.kvps["location"], mstate.kvps["screen_name"]
+        )
+
+        # # with tarfile.open(outpath, "w:gz") as tarball:  # With compression
+        # if i do compress, don't forget .gz at the end.
+        with tarfile.open(f"{outpath}.tar", "w") as tarball:  # No compression for now
+            # Pickle is about 5x faster but for now prefer np.savez because I
+            # don't know what the long term implications are for using pickle
+            # e.g. will some file still be readable in a few year's time?
+            buffer = BytesIO()
+            np.savez(buffer, beam_images=beam_images, bg_images=mstate.bg_images)
+            buffer.seek(0)
+            images_tarinfo = tarfile.TarInfo(name=f"{outpath}/images.npz")
+            tarball.addfile(images_tarinfo, fileobj=buffer)
+            buffer.seek(0)
+            # Now write all the various DOOCS addresses we've read to file
+            kvps_tarinfo = tarfile.TarInfo(name=f"{outpath}/channels.csv")
+            mstate.kvps.to_csv(buffer, index=False)
+            tarball.addfile(kvps_tarinfo, fileobj=buffer)
+
+        text = f"{self.ui.text_edit.toPlainText()}\n\n Data written to {outpath}"
+        send_widget_to_log(self.window(), text=text)
+
+    def _get_output_path(self, location: str, screen_name: str) -> Path:
+        time = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+        return Path(self.outdir) / location / screen_name / f"{time}.tar"
+
+    def _get_location(self) -> str:
+        return "B2" if self.mreader is self.b2reader else "I1"
+
+    def _acquire_n_images_fast_in_subprocess(self, n: int) -> list[Future[npt.NDArray]]:
+        fn = self._screen.get_image
+
+        def increment_progress_bar(_):
+            self.ui.progress_bar.setValue(self.ui.progress_bar.value() + 1)
+
+        # Submit jobs to the executor.
+        futures = []
+        for _ in range(n):
+            future = self._executor.submit(_get_from_screen_instance, self._screen)
+            future.add_done_callback(increment_progress_bar)
+            futures.append(future)
+
+        return futures
+
+    def get_machine_state(self) -> pd.Series:
+        screen_name = self._screen.name
+        location = self._get_location()
+        kvps = {"screen": screen_name, "location": location}
+        kvps |= self.mreader.full_read()
+        series = pd.Series(kvps)
+        series.index.name = "channel"
+        series.reset_index(name="value")
+
+        return series
+        # XXX: TDS CALIBRATION NEEDS TO SOMEHOW BE INCLUDED HERE !!
+        # Or elsewhere?
+
+        return MachineState(kvps=series)
+
+    def _make_ui(self) -> SimpleNamespace:
+        ui = SimpleNamespace()
+
+        ui.setWindowTitle("XFEL e-LogBook Writer")
+
+        # Create the QTextEdit (editable text browser) and set placeholder text
+        text_edit = QTextEdit()
+        text_edit.setAcceptRichText(False)
+        text_edit.setPlaceholderText("Logbook entry...")
+        ui.text_edit = text_edit
+
+        # Create the integer spinner with label and progress bar
+        ui.images_label = QLabel("Images")
+        ui.image_spinner = QSpinBox()
+        ui.progress_bar = QProgressBar()
+
+        # Create the buttons
+        ui.start_button = QPushButton("Start and send to XFEL e-LogBook")
+        ui.cancel_button = QPushButton("Cancel")
+
+        # Layouts
+        spinner_layout = QHBoxLayout()
+        spinner_layout.addWidget(ui.images_label)
+        spinner_layout.addWidget(ui.image_spinner)
+        spinner_layout.addWidget(ui.progress_bar)
+
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(ui.start_button)
+        button_layout.addWidget(ui.cancel_button)
+
+        main_layout = QVBoxLayout()
+        main_layout.addWidget(ui.text_edit)
+        main_layout.addLayout(spinner_layout)
+        main_layout.addLayout(button_layout)
+
+        # Create a central widget, set the layout, and set it as the central widget
+        central_widget = QWidget()
+        central_widget.setLayout(main_layout)
+        ui.setCentralWidget(central_widget)
+
+        return ui
+
+
+def _get_from_screen_instance(screen):
+    return screen.get_image()
