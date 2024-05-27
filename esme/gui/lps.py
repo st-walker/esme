@@ -30,9 +30,7 @@ class LPSMainWindow(QMainWindow):
         self.ui.area.screen_name_signal.connect(
             self.ui.tds_panel.set_region_from_screen_name
         )
-        self.ui.area.screen_name_signal.connect(
-            self.ui.screen_display_widget.set_screen
-        )
+        self.ui.area.screen_name_signal.connect(self.ui.imaging_widget.set_screen)
         self.ui.area.screen_name_signal.connect(self.ui.machine_state_widget.set_screen)
         self.ui.area.screen_name_signal.connect(
             self.ui.special_bunch_panel.set_kickers_for_screen
@@ -56,9 +54,7 @@ class LPSMainWindow(QMainWindow):
 
     def update_tds_voltage_calibration(self, voltage_calibration) -> None:
         set_tds_calibration_by_region(self, voltage_calibration)
-        self.ui.screen_display_widget.propagate_tds_calibration_signal(
-            voltage_calibration
-        )
+        self.ui.imaging_widget.set_tds_calibration(voltage_calibration)
 
     def send_to_logbook(self) -> None:
         send_widget_to_log(
@@ -80,7 +76,7 @@ class LPSMainWindow(QMainWindow):
         # Close screen display widget where we have threads running
         # here explicitly otherwise we have a problem.  Could also
         # emit a closing signal.  This is fine.
-        self.ui.screen_display_widget.close()
+        self.ui.imaging_widget.close()
 
 
 class QPlainTextEditLogger(QObject, logging.Handler):

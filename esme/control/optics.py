@@ -56,7 +56,7 @@ class I1toI1DLinearOptics(MachineLinearOptics):
         self.energy_addresses = energy_addresses
         self.felmodel = cat_to_i1d(model_type="real")
 
-    def r12_streaking_from_tds_to_point(self, screen_or_marker_name: str) -> f < loat:
+    def r12_streaking_from_tds_to_point(self, screen_or_marker_name: str) -> float:
         # Strictly this is r34 not r12, but point is in streaking plane...
         df = pd.DataFrame.from_records([self.snapshotter.snapshot()])
         return calculate_i1d_r34_from_tds_centre(

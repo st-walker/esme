@@ -126,7 +126,7 @@ class MachineState:
 
 class ImagingControlWidget(QWidget):
     """The Image control widget is the widget that gets the image and
-    then possibly pushes it to the screen widget.
+    then possibly pushes it to the daughter ScreenWidget.
 
     """
 
@@ -157,6 +157,13 @@ class ImagingControlWidget(QWidget):
         )
 
         self.connect_buttons()
+
+    def set_tds_calibration(self, voltage_calibration):
+        # XXX: I should somehow also send this to the elogger so it's clear which
+        # Calibration we are using or whatever.
+        self.ui.screen_display_widget.propagate_tds_calibration_signal(
+            voltage_calibration
+        )
 
     def connect_buttons(self) -> None:
         self.ui.subtract_bg_checkbox.stateChanged.connect(self.set_subtract_background)
