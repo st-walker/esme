@@ -48,7 +48,7 @@ class SpecialBunchMidLayerPanel(QtWidgets.QWidget):
             self.unsafe_diagnostic_bunch_start
         )
         self.ibfb_warning_dialogue.disable_ibfb_aff_signal.connect(
-            lambda: self.dbunch_manager.sbunches.set_ibfb_state(on=False)
+            lambda: self.dbunch_manager.sbunches.set_ibfb_lff(on=False)
         )
 
         self.connect_buttons()
@@ -67,13 +67,15 @@ class SpecialBunchMidLayerPanel(QtWidgets.QWidget):
         firing and update the UI (enable/disable elements only).
 
         """
+        # If bunch is firing (i.e. True) we disable bunch control, hence we 
+        # flip this bool...
         self.set_bunch_control_enabled(
-            self.dbunch_manager.sbunches.is_diag_bunch_firing()
+            not self.dbunch_manager.sbunches.is_diag_bunch_firing()
         )
 
     def update_ui(self) -> None:
         """Read values from the DOOCs server and update the daughter widget states here."""
-        # Add 1 because the SBM is zero-counting for the beam regions but we always speak
+        # Add 1 because the SBM is zero-counting fofr the beam regions but we always speak
         # of the first beam region being the first, not zeroth.
         self._update_beam_region_and_bunch_ui()
         self.ui.npulses_spinbox.setValue(self.dbunch_manager.sbunches.get_npulses())
@@ -147,7 +149,9 @@ class SpecialBunchMidLayerPanel(QtWidgets.QWidget):
         try and counter the impact"""
         if self.dbunch_manager.sbunches.is_either_ibfb_on():
             self.ibfb_warning_dialogue.show()
-        self.dbunch_manager.sbunches.start_diagnostic_bunch()
+            # XXX: This is wrong, it starts immediately...
+        else:
+            self.dbunch_manager.sbunches.start_diagnostic_bunch()
 
     def unsafe_diagnostic_bunch_start(self):
         self.dbunch_manager.sbunches.start_diagnostic_bunch()
@@ -237,7 +241,7 @@ class IBFBWarningDialogue(QMessageBox):
 
     def on_button_clicked(self, button: QtWidgets.QAbstractButton) -> None:
         if button == self.disable_ibfb_lff_button:
-            self.disable_ibfb_lff_button.emit()
+            self.disable_ibfb_aff_signal.emit()
             self.fire_signal.emit()
         elif button == self.ignore_and_go_button:
             self.fire_signal.emit()
