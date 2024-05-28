@@ -19,7 +19,7 @@ import numpy.typing as npt
 import pandas as pd
 import pyqtgraph as pg
 from PyQt5 import QtGui
-from PyQt5.QtCore import QObject, QThread, pyqtSignal
+from PyQt5.QtCore import QObject, QThread, QTimer, pyqtSignal
 from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -364,6 +364,7 @@ class LogBookEntryWriterDialogue(QMainWindow):
 
         self._bg_images = bg_images
         self._executor = ProcessPoolExecutor(max_workers=1)
+        self._timer = QTimer()
 
         self.connect_buttons()
 
@@ -378,10 +379,23 @@ class LogBookEntryWriterDialogue(QMainWindow):
     def start(self) -> None:
         self.ui.progress_bar.setMaximum(self.ui.image_spinner.value())
         # Get images from data taking thread
-        beam_images = self._acquire_n_images_fast_in_subprocess(
+        beam_image_futures = self._acquire_n_images_fast_in_subprocess(
             self.ui.image_spinner.value()
         )
-        self.send_to_xfel_elog(beam_images)
+        self.send_to_xfel_elog(beam_image_futures)
+        self._timer.timeout.connect(
+            lambda: self._print_to_logbook_when_ready(beam_images)
+        )
+        self._timer.start(250)
+
+    def _print_to_logbook_when_ready(
+        self, beam_image_futures: list[Future[npt.NDArray]]
+    ):
+        if not all([future.completed() for future in beam_image_futures]):
+            return
+        self._timer.stop()
+        beam_images = [future.result() for future in beam_image_futures]
+        self.send_to_xfel_elog(beam_images=beam_images)
 
     def send_to_xfel_elog(self, beam_images: list[npt.NDArray]) -> None:
         mstate = self.get_machine_state()
