@@ -1,33 +1,32 @@
-# from PyQt5.QtCore import QPointF
-# from PyQt5.QtGui import QColor, QPainter, QBrush
-# from PyQt5.QtWidgets import QAbstractButton, QPushButton, QCheckBox,
-from importlib.resources import files
+import logging
 import os
-from pathlib import Path
-from datetime import datetime
-import pytz
 import re
 from dataclasses import dataclass
+from datetime import datetime
+from importlib.resources import files
+from pathlib import Path
 
-import logging
+import pytz
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import QTimer, pyqtSignal
 
-from esme.gui.ui.tds import Ui_tds_control_panel
-from .common import (get_machine_manager_factory,
-                     get_tds_calibration_config_dir,
-                     set_machine_by_region)
 from esme import DiagnosticRegion
 from esme.control.machines import LPSMachine
 from esme.core import region_from_screen_name
+from esme.gui.tds_calibrator import CalibrationMainWindow, TaggedCalibration
+from esme.gui.ui.tds import Ui_tds_control_panel
 from esme.load import load_calibration_from_yaml
 
-from esme.gui.tds_calibrator import CalibrationMainWindow, TaggedCalibration
+from .common import (
+    get_machine_manager_factory,
+    get_tds_calibration_config_dir,
+    set_machine_by_region,
+)
 
 DEFAULT_CONFIG_PATH = files("esme.gui") / "defaultconf.yml"
 
 LOG = logging.getLogger(__name__)
-LOG.setLevel(logging.DEBUG)
+LOG.setLevel(logging.INFO)
 
 # The way this panel works is that it has two machine interfaces, one
 # for doing stuff in I1 and one for doing stuff in B2, stored under
@@ -55,13 +54,19 @@ class CalibrationMetadata:
 
 class TDSControl(QtWidgets.QWidget):
     voltage_calibration_signal = pyqtSignal(object)
+
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self.ui = Ui_tds_control_panel()
         self.ui.setupUi(self)
 
-        self.i1machine, self.b2machine = get_machine_manager_factory().make_i1_b2_managers()
-        self.machine = self.i1machine # Set initial machine choice to be for I1 diagnostics
+        (
+            self.i1machine,
+            self.b2machine,
+        ) = get_machine_manager_factory().make_i1_b2_managers()
+        self.machine = (
+            self.i1machine
+        )  # Set initial machine choice to be for I1 diagnostics
 
         # Make the daughter Calibrator window
         self.calibration_window = CalibrationMainWindow(self)
@@ -94,16 +99,24 @@ class TDSControl(QtWidgets.QWidget):
     def update_region(self, region: DiagnosticRegion) -> None:
         # Changing between state for using I1 or B2 diagnostics
         LOG.info(f"Setting region for TDSControl panel: {region=}")
-        set_machine_by_region(self, region) # Update self.machine.
-        self.ui.go_to_zero_crossing_button.setEnabled(self.machine.deflector.zero_crossing is not None)
+        set_machine_by_region(self, region)  # Update self.machine.
+        self.ui.go_to_zero_crossing_button.setEnabled(
+            self.machine.deflector.zero_crossing is not None
+        )
 
     def update_ui(self) -> None:
         """Update the various readback values and so on."""
         self.set_calibration_info_strings()
-        self.ui.tds_phase_readback.setText(f"{(self.machine.deflector.get_phase_rb()):.2f}")
-        self.ui.tds_amplitude_readback.setText(f"{self.machine.deflector.get_amplitude_rb():.2f}")
+        self.ui.tds_phase_readback.setText(
+            f"{(self.machine.deflector.get_phase_rb()):.2f}"
+        )
+        self.ui.tds_amplitude_readback.setText(
+            f"{self.machine.deflector.get_amplitude_rb():.2f}"
+        )
         self.ui.tds_phase_spinbox.setValue(self.machine.deflector.get_phase_sp())
-        self.ui.tds_amplitude_spinbox.setValue(self.machine.deflector.get_amplitude_sp())
+        self.ui.tds_amplitude_spinbox.setValue(
+            self.machine.deflector.get_amplitude_sp()
+        )
 
     def connect_buttons(self) -> None:
         self.ui.tds_phase_spinbox.valueChanged.connect(self.set_phase)
@@ -112,7 +125,7 @@ class TDSControl(QtWidgets.QWidget):
         self.ui.set_zero_crossing_button.clicked.connect(self.set_zero_crossing)
         self.ui.go_to_zero_crossing_button.clicked.connect(self.go_to_zero_crossing)
         self.ui.subtract_180deg_button.clicked.connect(self.subtract_180_deg)
-        self.ui.subtract_180deg_button.clicked.connect(self.add_180_deg)        
+        self.ui.subtract_180deg_button.clicked.connect(self.add_180_deg)
 
     def subtract_180_deg(self) -> None:
         phase = self.machine.deflector.get_phase_sp()
@@ -172,8 +185,9 @@ class TDSControl(QtWidgets.QWidget):
             i1md = None
         else:
             self.i1machine.deflector.calibration = i1tagged_calib.calibration
-            i1md = CalibrationMetadata(filename=i1tagged_calib.filename,
-                                       datetime=i1tagged_calib.datetime)
+            i1md = CalibrationMetadata(
+                filename=i1tagged_calib.filename, datetime=i1tagged_calib.datetime
+            )
 
         try:
             b2tagged_calib = load_most_recent_calibration(DiagnosticRegion.B2)
@@ -181,8 +195,9 @@ class TDSControl(QtWidgets.QWidget):
             b2md = None
         else:
             self.b2machine.deflector.calibration = i1tagged_calib.calibration
-            b2md = CalibrationMetadata(filename=b2tagged_calib.filename,
-                                       datetime=b2tagged_calib.datetime)
+            b2md = CalibrationMetadata(
+                filename=b2tagged_calib.filename, datetime=b2tagged_calib.datetime
+            )
 
         return {DiagnosticRegion.I1: i1md, DiagnosticRegion.B2: b2md}
 
@@ -190,9 +205,10 @@ class TDSControl(QtWidgets.QWidget):
 def load_calibration_file(calibration_filename: str) -> TaggedCalibration:
     calibration = load_calibration_from_yaml(calibration_filename)
     file_birthday = datetime.fromtimestamp(os.path.getmtime(calibration_filename))
-    return TaggedCalibration(calibration=calibration,
-                             filename=calibration_filename,
-                             datetime=file_birthday)
+    return TaggedCalibration(
+        calibration=calibration, filename=calibration_filename, datetime=file_birthday
+    )
+
 
 def load_most_recent_calibration(section: DiagnosticRegion) -> TaggedCalibration:
     cdir = get_tds_calibration_config_dir() / DiagnosticRegion(section).name.lower()

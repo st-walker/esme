@@ -1,28 +1,27 @@
+import logging
+from collections import defaultdict
 from pathlib import Path
 from textwrap import dedent
-from collections import defaultdict
 
+import numpy as np
+import pyqtgraph as pg
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QFileDialog, QHBoxLayout, QLabel, QTableWidgetItem, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import QHBoxLayout, QLabel, QTableWidgetItem, QVBoxLayout, QWidget
 
-import pyqtgraph as pg
-import numpy as np
-
-from esme.plot import formatted_parameter_dfs
-from esme.gui.widgets.common import df_to_logbook_table, send_to_logbook
 from esme.analysis import DerivedBeamParameters, OpticsFixedPoints
 from esme.gui.ui import Ui_results_box_dialog
-import logging
+from esme.gui.widgets.common import df_to_logbook_table, send_to_logbook
+from esme.plot import formatted_parameter_dfs
 
 LOG = logging.getLogger(__name__)
-LOG.setLevel(logging.DEBUG)
-
+LOG.setLevel(logging.INFO)
 
 
 class ScannerResultsDialog(QtWidgets.QDialog):
     DEFAULT_AUTHOR = "High Resolution Slice Energy Measurer"
     DEFAULT_TITLE = "Slice Energy Spread @ OTRC.64.I1D"
+
     def __init__(self, parent=None):
         super().__init__(parent=parent)
         self.ui = Ui_results_box_dialog()
@@ -43,7 +42,8 @@ class ScannerResultsDialog(QtWidgets.QDialog):
         fit_string = df_to_logbook_table(fit_df)
         beam_string = df_to_logbook_table(beam_df)
 
-        text = dedent(f"""\
+        text = dedent(
+            f"""\
         {text}
 
         !!Derived Beam Parameters
@@ -51,7 +51,8 @@ class ScannerResultsDialog(QtWidgets.QDialog):
 
         !!Fit Parameters
         {fit_string}
-        """)
+        """
+        )
 
         # # C
         # with (Path(self.online_measurement_result) / "notes.txt").open("w") as f:
@@ -59,13 +60,18 @@ class ScannerResultsDialog(QtWidgets.QDialog):
 
         # shutil.copy(DEFAULT_CONFIG_PATH, self.online_measurement_result)
 
-        send_to_logbook(title=self.DEFAULT_TITLE,
-                        author=self.DEFAULT_AUTHOR,
-                        severity="MEASURE",
-                        text=text)
+        send_to_logbook(
+            title=self.DEFAULT_TITLE,
+            author=self.DEFAULT_AUTHOR,
+            severity="MEASURE",
+            text=text,
+        )
 
-
-    def post_measurement_result(self, measurement_parameters: DerivedBeamParameters, output_directory: Path=None):
+    def post_measurement_result(
+        self,
+        measurement_parameters: DerivedBeamParameters,
+        output_directory: Path = None,
+    ):
         message = ""
         if output_directory is not None:
             message = f"Written files to {output_directory}\n\n"
@@ -86,17 +92,18 @@ class ScannerResultsDialog(QtWidgets.QDialog):
         # Yes this method is hideous.
         header = ["Variable", "Values", "Alt. Values", "     Units     "]
 
-        row_labels = ["<i>σ</i><sub>E</sub>",
-                      "<i>σ</i><sub>I</sub>",
-                      "<i>σ</i><sub>E</sub><sup>TDS</sup>",
-                      "<i>σ</i><sub>B</sub>",
-                      "<i>σ</i><sub>R</sub>",
-                      "<i>ε</i><sub><i>x</i></sub>",
-                      "<i>σ</i><sub><i>z</i></sub><sup>Gaus.</sup>",
-                      "<i>σ</i><sub><i>t</i></sub><sup>Gaus.</sup>",
-                      "<i>σ</i><sub><i>z</i></sub><sup>RMS</sup>",
-                      "<i>σ</i><sub><i>t</i></sub><sup>RMS</sup>",                      
-                      ]
+        row_labels = [
+            "<i>σ</i><sub>E</sub>",
+            "<i>σ</i><sub>I</sub>",
+            "<i>σ</i><sub>E</sub><sup>TDS</sup>",
+            "<i>σ</i><sub>B</sub>",
+            "<i>σ</i><sub>R</sub>",
+            "<i>ε</i><sub><i>x</i></sub>",
+            "<i>σ</i><sub><i>z</i></sub><sup>Gaus.</sup>",
+            "<i>σ</i><sub><i>t</i></sub><sup>Gaus.</sup>",
+            "<i>σ</i><sub><i>z</i></sub><sup>RMS</sup>",
+            "<i>σ</i><sub><i>t</i></sub><sup>RMS</sup>",
+        ]
 
         row_units = ["keV", "μm", "keV", "μm", "μm", "mm·mrad", "mm", "ps", "mm", "ps"]
 
@@ -112,7 +119,7 @@ class ScannerResultsDialog(QtWidgets.QDialog):
             set_richtext_widget(bt, i, 3, units)
 
             widget = QtWidgets.QWidget()
-            widgetText =  QtWidgets.QLabel(label)
+            widgetText = QtWidgets.QLabel(label)
             widgetText.setWordWrap(True)
             widgetLayout = QtWidgets.QHBoxLayout()
             widgetLayout.addWidget(widgetText)
@@ -131,25 +138,29 @@ class ScannerResultsDialog(QtWidgets.QDialog):
             # units_item = QTableWidgetItem(units)
             # bt.setItem(i, 3, units_item)
 
-        labels2 = {"V_0": "<i>V</i><sub>0</sub>",
-                   "D_0": "<i>D</i><sub>0</sub>",
-                   "E_0": "<i>E</i><sub>0</sub>",
-                   "A_V": "<i>A</i><sub><i>V</i></sub>",
-                   "B_V": "<i>B</i><sub><i>V</i></sub>",
-                   "A_D": "<i>A</i><sub><i>D</i></sub>",
-                   "B_D": "<i>B</i><sub><i>D</i></sub>",
-                   "A_beta": "<i>A</i><sub><i>β</i></sub>",
-                   "B_beta": "<i>B</i><sub><i>β</i></sub>"}
+        labels2 = {
+            "V_0": "<i>V</i><sub>0</sub>",
+            "D_0": "<i>D</i><sub>0</sub>",
+            "E_0": "<i>E</i><sub>0</sub>",
+            "A_V": "<i>A</i><sub><i>V</i></sub>",
+            "B_V": "<i>B</i><sub><i>V</i></sub>",
+            "A_D": "<i>A</i><sub><i>D</i></sub>",
+            "B_D": "<i>B</i><sub><i>D</i></sub>",
+            "A_beta": "<i>A</i><sub><i>β</i></sub>",
+            "B_beta": "<i>B</i><sub><i>β</i></sub>",
+        }
 
-        units2 = {"V_0": "MV",
-                  "D_0": "m",
-                  "E_0": "MeV",
-                  "A_V": "m<sup>2</sup>",
-                  "B_V": "m<sup>2</sup>V<sup>-2</sup>",
-                  "A_D": "m<sup>2</sup>",
-                  "B_D": "",
-                  "A_beta": "m<sup>2</sup>",
-                  "B_beta": "m"}
+        units2 = {
+            "V_0": "MV",
+            "D_0": "m",
+            "E_0": "MeV",
+            "A_V": "m<sup>2</sup>",
+            "B_V": "m<sup>2</sup>V<sup>-2</sup>",
+            "A_D": "m<sup>2</sup>",
+            "B_D": "",
+            "A_beta": "m<sup>2</sup>",
+            "B_beta": "m",
+        }
 
         for i, tup in enumerate(df2.itertuples(), start=i + 1):
             label = labels2[tup.Index]
@@ -163,14 +174,11 @@ class ScannerResultsDialog(QtWidgets.QDialog):
             bt.setItem(i, 1, value_item)
             set_richtext_widget(bt, i, 3, units)
 
-
-        bt.setSizeAdjustPolicy(
-            QtWidgets.QAbstractScrollArea.AdjustToContents)
+        bt.setSizeAdjustPolicy(QtWidgets.QAbstractScrollArea.AdjustToContents)
 
         bt.setHorizontalHeaderLabels(header)
         bt.resizeRowsToContents()
         bt.resizeColumnsToContents()
-
 
 
 class WidthsPlotWidget(QWidget):
@@ -181,7 +189,6 @@ class WidthsPlotWidget(QWidget):
         self.init_ui()
         self.skip_timestamps = set()
         self.plot_items_to_timestamps = defaultdict(dict)
-
 
     def init_ui(self):
         # Main layout
@@ -198,18 +205,24 @@ class WidthsPlotWidget(QWidget):
         # Add plots to the GraphicsLayoutWidget and make them easily
         # accessibly by making them members of the class
 
-        self.dscan_widths_plot = self.create_plot("Dispersion Scan", "Dispersion", "Widths", xunits="m", yunits="px")
+        self.dscan_widths_plot = self.create_plot(
+            "Dispersion Scan", "Dispersion", "Widths", xunits="m", yunits="px"
+        )
         self.widths_layout.nextColumn()
-        self.tscan_widths_plot = self.create_plot("Voltage Scan", "Voltage", "Widths", xunits="V", yunits="px")
+        self.tscan_widths_plot = self.create_plot(
+            "Voltage Scan", "Voltage", "Widths", xunits="V", yunits="px"
+        )
         self.widths_layout.nextColumn()
-        self.bscan_widths_plot = self.create_plot("Beta Scan", "Beta", "Widths", xunits="m", yunits="px")
+        self.bscan_widths_plot = self.create_plot(
+            "Beta Scan", "Beta", "Widths", xunits="m", yunits="px"
+        )
 
         # Widgets to layout
         main_layout.addWidget(self.widths_layout)
 
         # Slider layout
         slider_layout = QHBoxLayout()
-        slider_label = QLabel('Image Processing Step')
+        slider_label = QLabel("Image Processing Step")
         slider_layout.addWidget(slider_label)
         self.slider = QtWidgets.QSlider(Qt.Horizontal)
         slider_layout.addWidget(self.slider)
@@ -218,12 +231,12 @@ class WidthsPlotWidget(QWidget):
         self.setLayout(main_layout)
 
     def create_plot(self, title, xlabel, ylabel, xunits=None, yunits=None):
-        plotDataItem = pg.PlotDataItem(pen=None, symbol='o')
+        plotDataItem = pg.PlotDataItem(pen=None, symbol="o")
         plotDataItem.sigPointsClicked.connect(self.on_point_clicked)
         plot = self.widths_layout.addPlot(title=title)
         plot.addItem(plotDataItem)
-        plot.setLabel('bottom', xlabel, units=xunits)
-        plot.setLabel('left', ylabel, units=yunits)
+        plot.setLabel("bottom", xlabel, units=xunits)
+        plot.setLabel("left", ylabel, units=yunits)
         return plotDataItem
 
     def on_point_clicked(self, plot, spots):
@@ -268,8 +281,15 @@ class WidthsPlotWidget(QWidget):
             print(x_, y_)
             self.plot_items_to_timestamps[plot_item][(x_, y_)] = t
 
-        plot_item.setData(x, y, pen=None, symbol='o', symbolPen=None,
-                          symbolSize=10, symbolBrush=(100, 100, 255, 200))
+        plot_item.setData(
+            x,
+            y,
+            pen=None,
+            symbol="o",
+            symbolPen=None,
+            symbolSize=10,
+            symbolBrush=(100, 100, 255, 200),
+        )
 
     def plot_measurement(self, measurement, avmapping):
         dispersion = measurement.dscan.dispersions()
@@ -285,10 +305,9 @@ class WidthsPlotWidget(QWidget):
         self._plot_scan(beta, measurement.bscan, self.bscan_widths_plot)
 
 
-
-
 class FullResultWidget(QWidget):
     timestamp_signal = pyqtSignal(float)
+
     def __init__(self):
         super().__init__()
         self.init_ui()
@@ -341,21 +360,24 @@ class FullResultWidget(QWidget):
             return
 
         result = self.measurement.get_derived_beam_parameters(
-            slice_width=3, skip_timestamps=self.skip_timestamps,
-            avmapping=self.avmapping
+            slice_width=3,
+            skip_timestamps=self.skip_timestamps,
+            avmapping=self.avmapping,
         )
 
         try:
             self.result_dialog.post_measurement_result(result)
         except ValueError:
-            from IPython import embed; embed()
+            from IPython import embed
+
+            embed()
 
         self.widths_plot.plot_measurement(self.measurement, avmapping=self.avmapping)
 
 
 def set_richtext_widget(table, row, column, text):
     widget = QtWidgets.QWidget()
-    widgetText =  QtWidgets.QLabel(text)
+    widgetText = QtWidgets.QLabel(text)
     widgetText.setWordWrap(True)
     widgetLayout = QtWidgets.QHBoxLayout()
     widgetLayout.addWidget(widgetText)

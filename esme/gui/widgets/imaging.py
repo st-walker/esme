@@ -23,7 +23,6 @@ from PyQt5.QtCore import QObject, QThread, QTimer, pyqtSignal
 from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
-    QMainWindow,
     QProgressBar,
     QPushButton,
     QSpinBox,
@@ -41,7 +40,7 @@ from esme.gui.widgets.screen import ImagePayload
 from .common import get_machine_manager_factory, send_widget_to_log
 
 LOG = logging.getLogger(__name__)
-LOG.setLevel(logging.DEBUG)
+LOG.setLevel(logging.INFO)
 
 pg.setConfigOption("useNumba", True)
 
@@ -98,9 +97,7 @@ class ImagingControlWidget(QWidget):
         self.producer_worker, self.producer_thread = self.setup_data_taking_worker()
 
         self.elogger_window = LogBookEntryWriterDialogue(
-            self.mreader.screens[self.screen_name],
-            bg_images=None,
-            lps_window=self
+            self.mreader.screens[self.screen_name], bg_images=None, lps_window=self
         )
 
         self._connect_buttons()
@@ -168,6 +165,7 @@ class ImagingControlWidget(QWidget):
 
 class DataTakingWorker(QObject):
     display_image_signal = pyqtSignal(ImagePayload)
+
     def __init__(self, initial_screen: Screen):
         super().__init__()
         # The background images cache.
@@ -219,7 +217,7 @@ class DataTakingWorker(QObject):
                 self._dispatch_from_message_queue()
             except StopImageAcquisition:
                 break
-            
+
             image = self.screen.get_image()
             if self._caching_background:
                 self.bg_images.appendleft(image)
@@ -347,8 +345,10 @@ class DataTakingWorker(QObject):
 
 class LogBookEntryWriterDialogue(QWidget):
     def __init__(
-        self, screen: Screen, bg_images: list[npt.NDArray] | None = None,
-        lps_window = None
+        self,
+        screen: Screen,
+        bg_images: list[npt.NDArray] | None = None,
+        lps_window=None,
     ) -> None:
         super().__init__()
         self.ui = self._make_ui()
@@ -370,7 +370,6 @@ class LogBookEntryWriterDialogue(QWidget):
         self._executor = ProcessPoolExecutor(max_workers=1)
         self._timer = QTimer()
         self._lps_window = lps_window
-
 
         self._connect_buttons()
 
@@ -430,7 +429,9 @@ class LogBookEntryWriterDialogue(QWidget):
             kvps.to_csv(buffer, index=False)
             tarball.addfile(kvps_tarinfo, fileobj=buffer)
 
-        text = f"{self.ui.text_edit.toPlainText()}\n\n Data written to {full_output_path}"
+        text = (
+            f"{self.ui.text_edit.toPlainText()}\n\n Data written to {full_output_path}"
+        )
         # XXX: THIS NEEDS TO correctly get the top level window!
         send_widget_to_log(self._lps_window, text=text)
 

@@ -36,7 +36,7 @@ AXES_KWARGS = {
 
 
 LOG = logging.getLogger(__name__)
-LOG.setLevel(logging.DEBUG)
+LOG.setLevel(logging.INFO)
 
 
 @dataclass

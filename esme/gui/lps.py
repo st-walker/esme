@@ -5,13 +5,18 @@ from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QMainWindow
 
 from esme.gui.ui import mainwindow
-from esme.gui.widgets.common import send_widget_to_log, set_tds_calibration_by_region
+from esme.gui.widgets.common import (
+    make_exception_hook,
+    send_widget_to_log,
+    set_tds_calibration_by_region,
+)
 
 LOG = logging.getLogger(__name__)
-LOG.setLevel(logging.DEBUG)
+LOG.setLevel(logging.INFO)
 
 
 def start_lps_gui() -> None:
+    sys.excepthook = make_exception_hook("Tanı")
     app = QApplication(sys.argv)
     main_window = LPSMainWindow()
     main_window.show()

@@ -1,14 +1,14 @@
 import logging
 
+from PyQt5.QtCore import QProcess, pyqtSignal
 from PyQt5.QtWidgets import QWidget
-from PyQt5.QtCore import pyqtSignal, QProcess
 
+from esme.core import DiagnosticRegion
 from esme.gui.ui import Ui_area_widget
 from esme.gui.widgets.common import get_machine_manager_factory
-from esme.core import DiagnosticRegion
 
 LOG = logging.getLogger(__name__)
-LOG.setLevel(logging.DEBUG)
+LOG.setLevel(logging.INFO)
 
 
 class AreaControl(QWidget):
@@ -25,14 +25,19 @@ class AreaControl(QWidget):
         self.ui.setupUi(self)
 
         # Build two machine interfaces, one for I1 diagnostics and the other for B2 diagnostics.
-        self.i1machine, self.b2machine = get_machine_manager_factory().make_i1_b2_managers()
-        self.machine = self.i1machine # Set initial machine choice to be for I1 diagnostics
+        (
+            self.i1machine,
+            self.b2machine,
+        ) = get_machine_manager_factory().make_i1_b2_managers()
+        self.machine = (
+            self.i1machine
+        )  # Set initial machine choice to be for I1 diagnostics
 
         self.ui.i1_radio_button.pressed.connect(self.set_i1)
         self.ui.b2_radio_button.pressed.connect(self.set_b2)
         self.ui.jddd_screen_gui_button.clicked.connect(self.open_jddd_screen_window)
         self.ui.select_screen_combobox.activated.connect(self.select_screen)
-        #self.ui.select_screen_combobox.activated.connect(self.select_screen)
+        # self.ui.select_screen_combobox.activated.connect(self.select_screen)
 
         # If we pick a particular screen in I1, then we click to go to B2, then back to I1,
         # it remembers which screen we are on.  Only net for I1 as we start in I1.
@@ -69,7 +74,9 @@ class AreaControl(QWidget):
         # This if loop is just to basically restore state so when we
         # click on I1 after being on B2, the screen name from before
         # is remembered rather than reset to some default value every time.
-        if self.machine is self.b2machine: # Keep track of selected screen if moving from B2 to I1
+        if (
+            self.machine is self.b2machine
+        ):  # Keep track of selected screen if moving from B2 to I1
             self._selected_b2_screen = self.get_selected_screen_name()
 
         LOG.debug(f"Setting area in {self} to I1")
@@ -90,7 +97,10 @@ class AreaControl(QWidget):
         screen_name: str = self.ui.select_screen_combobox.itemText(index)
         # Avoid emitting needlessly, if we have just selected the very same screen
         # as the one we started on, then do nothing.
-        if screen_name == self._selected_i1_screen or screen_name == self._selected_b2_screen:
+        if (
+            screen_name == self._selected_i1_screen
+            or screen_name == self._selected_b2_screen
+        ):
             return
         # Emitting here can be expensive as the rest of the GUI learns from this one signal
         # Where we are in the machine (the region, I1 or B2, is inferred from the screen name.)
