@@ -205,7 +205,9 @@ def send_to_logbook(
 
 def send_widget_to_log(widget: QWidget, author="", title="", severity="", text=""):
     image = get_screenshot(widget)
-    send_to_logbook(author="", title="", severity="", text="", image=image)
+    send_to_logbook(
+        author=author, title=title, severity=severity, text=text, image=image
+    )
 
 
 def df_to_logbook_table(df: pd.DataFrame) -> str:
