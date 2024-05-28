@@ -1,3 +1,7 @@
+1. I need to handle a screen being switched off correctly.
+2. add troubleshooting help, what if kickers don't kick onto screen?
+   then need to update defaultconf.yaml..
+
 # LPS Main GUI
 
 ## Minimal feature set todolist (Highest Priority)

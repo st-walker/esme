@@ -47,7 +47,7 @@ screens:
 - name: OTRC.59.I1
   area: I1
   kickers:
-    KAX.54.I1:
+    KAX.56.I1:
       polarity: -1
       voltage: 8000
       delay: 28
@@ -125,7 +125,7 @@ snapshots:
   I1:
     optics_channels:
       # These addresses are read out in order to get the beam energy
-      # in this area of the machine. If beam does not go to I1D then we 
+      # in this area of the machine. If beam does not go to I1D then we
       # use DL instead.  LH underestimates energy so we don't use
       # it.  Similarly for B1.  Closest to 130MeV seems to be I1T, which
       # I assume to be the dogleg.
@@ -189,11 +189,11 @@ snapshots:
         - XFEL.DIAG/ORBIT/*.I1D/X.ALL
         - XFEL.DIAG/ORBIT/*.I1/Y.ALL
         - XFEL.DIAG/ORBIT/*.I1D/Y.ALL
-      
+
   B2:
     optics_channels:
       # These addresses are read out in order to get the beam energy
-      # in this area of the machine. If beam does not go to I1D then we 
+      # in this area of the machine. If beam does not go to I1D then we
       # use DL instead.  LH underestimates energy so we don't use
       # it.  Similarly for B1.  Closest to 130MeV seems to be I1T, which
       # I assume to be the dogleg.
@@ -263,13 +263,13 @@ snapshots:
         - XFEL.MAGNETS/CHICANE/BC0/ANGLE
         - XFEL.MAGNETS/CHICANE/BC0/R_56
         - XFEL.MAGNETS/CHICANE/BC0/R_56_RBV
-        
+
         # B1 Chicane Bits
         - XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/B1/ENERGY.ALL
         - XFEL.MAGNETS/CHICANE/BC1/ANGLE
         - XFEL.MAGNETS/CHICANE/BC1/R_56
         - XFEL.MAGNETS/CHICANE/BC1/R_56_RBV
-        
+
         # B2 Chicane Bits
         # - XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/B2/ENERGY.ALL Already read above.
         - XFEL.MAGNETS/CHICANE/BC2/ANGLE
@@ -289,7 +289,7 @@ snapshots:
         - XFEL.DIAG/ORBIT/*.I1D/X.ALL
         - XFEL.DIAG/ORBIT/*.I1/Y.ALL
         - XFEL.DIAG/ORBIT/*.I1D/Y.ALL
-      
+
 
 scanner:
   gui_defaults:
@@ -352,9 +352,9 @@ scanner:
       channels:
         image: XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ
         energy_at_screen: XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/I1D/ENERGY.ALL
-        amplitude_sp: XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/SP.AMPL  
+        amplitude_sp: XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/SP.AMPL
         amplitude_rb: XFEL.RF/LLRF.CONTROLLER/VS.LLTDSI1/AMPL.SAMPLE
-        power_sp: XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/SP.POWER 
+        power_sp: XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/SP.POWER
         addresses:
           - XFEL.MAGNETS/MAGNET.ML/SOLB.23.I1/CURRENT.SP
           - XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED
