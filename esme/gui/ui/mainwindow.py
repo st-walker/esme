@@ -11,12 +11,12 @@
 from PyQt5 import QtCore, QtWidgets
 
 
-class Ui_MainWindow(object):
-    def setupUi(self, MainWindow):
-        MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(1400, 785)
-        MainWindow.setDocumentMode(False)
-        self.centralwidget = QtWidgets.QWidget(MainWindow)
+class Ui_tan1_mainwindow(object):
+    def setupUi(self, tan1_mainwindow):
+        tan1_mainwindow.setObjectName("tan1_mainwindow")
+        tan1_mainwindow.resize(1400, 785)
+        tan1_mainwindow.setDocumentMode(False)
+        self.centralwidget = QtWidgets.QWidget(tan1_mainwindow)
         self.centralwidget.setAutoFillBackground(False)
         self.centralwidget.setObjectName("centralwidget")
         self.gridLayout_9 = QtWidgets.QGridLayout(self.centralwidget)
@@ -112,6 +112,15 @@ class Ui_MainWindow(object):
         self.verticalLayout_4.addWidget(self.groupBox_4)
         self.gridLayout_3.addLayout(self.verticalLayout_4, 0, 1, 1, 1)
         self.imaging_widget = ImagingControlWidget(self.maintab)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred
+        )
+        sizePolicy.setHorizontalStretch(1)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(
+            self.imaging_widget.sizePolicy().hasHeightForWidth()
+        )
+        self.imaging_widget.setSizePolicy(sizePolicy)
         self.imaging_widget.setObjectName("imaging_widget")
         self.gridLayout_3.addWidget(self.imaging_widget, 0, 0, 1, 1)
         self.tabWidget.addTab(self.maintab, "")
@@ -124,11 +133,11 @@ class Ui_MainWindow(object):
         self.gridLayout.addWidget(self.measurement_log_browser, 0, 0, 1, 1)
         self.tabWidget.addTab(self.logtab, "")
         self.gridLayout_9.addWidget(self.tabWidget, 0, 0, 1, 1)
-        MainWindow.setCentralWidget(self.centralwidget)
-        self.statusbar = QtWidgets.QStatusBar(MainWindow)
+        tan1_mainwindow.setCentralWidget(self.centralwidget)
+        self.statusbar = QtWidgets.QStatusBar(tan1_mainwindow)
         self.statusbar.setObjectName("statusbar")
-        MainWindow.setStatusBar(self.statusbar)
-        self.menubar = QtWidgets.QMenuBar(MainWindow)
+        tan1_mainwindow.setStatusBar(self.statusbar)
+        self.menubar = QtWidgets.QMenuBar(tan1_mainwindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 1400, 24))
         self.menubar.setNativeMenuBar(False)
         self.menubar.setObjectName("menubar")
@@ -136,62 +145,70 @@ class Ui_MainWindow(object):
         self.menuMenu.setObjectName("menuMenu")
         self.menuOptics = QtWidgets.QMenu(self.menubar)
         self.menuOptics.setObjectName("menuOptics")
-        MainWindow.setMenuBar(self.menubar)
-        self.action_close = QtWidgets.QAction(MainWindow)
+        tan1_mainwindow.setMenuBar(self.menubar)
+        self.action_close = QtWidgets.QAction(tan1_mainwindow)
         self.action_close.setObjectName("action_close")
-        self.action_print_to_logbook = QtWidgets.QAction(MainWindow)
+        self.action_print_to_logbook = QtWidgets.QAction(tan1_mainwindow)
         self.action_print_to_logbook.setObjectName("action_print_to_logbook")
-        self.actionBunch_Length = QtWidgets.QAction(MainWindow)
+        self.actionBunch_Length = QtWidgets.QAction(tan1_mainwindow)
         self.actionBunch_Length.setObjectName("actionBunch_Length")
-        self.actionLongitudinal_Phase_Space = QtWidgets.QAction(MainWindow)
+        self.actionLongitudinal_Phase_Space = QtWidgets.QAction(tan1_mainwindow)
         self.actionLongitudinal_Phase_Space.setObjectName(
             "actionLongitudinal_Phase_Space"
         )
-        self.actionEmittance = QtWidgets.QAction(MainWindow)
+        self.actionEmittance = QtWidgets.QAction(tan1_mainwindow)
         self.actionEmittance.setObjectName("actionEmittance")
-        self.actionEmail_Maintainer = QtWidgets.QAction(MainWindow)
+        self.actionEmail_Maintainer = QtWidgets.QAction(tan1_mainwindow)
         self.actionEmail_Maintainer.setObjectName("actionEmail_Maintainer")
         self.menuMenu.addAction(self.action_print_to_logbook)
         self.menuMenu.addAction(self.action_close)
         self.menubar.addAction(self.menuMenu.menuAction())
         self.menubar.addAction(self.menuOptics.menuAction())
 
-        self.retranslateUi(MainWindow)
-        self.tabWidget.setCurrentIndex(0)
-        QtCore.QMetaObject.connectSlotsByName(MainWindow)
+        self.retranslateUi(tan1_mainwindow)
+        self.tabWidget.setCurrentIndex(1)
+        QtCore.QMetaObject.connectSlotsByName(tan1_mainwindow)
 
-    def retranslateUi(self, MainWindow):
+    def retranslateUi(self, tan1_mainwindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(
-            _translate("MainWindow", "Diagnostic Sections Utility")
+        tan1_mainwindow.setWindowTitle(
+            _translate("tan1_mainwindow", "Diagnostic Sections Utility")
         )
-        self.controls_group_box.setTitle(_translate("MainWindow", "Diagnostic Area"))
-        self.groupBox_3.setTitle(_translate("MainWindow", "Special Bunch Midlayer"))
+        self.controls_group_box.setTitle(
+            _translate("tan1_mainwindow", "Diagnostic Area")
+        )
+        self.groupBox_3.setTitle(
+            _translate("tan1_mainwindow", "Special Bunch Midlayer")
+        )
         self.groupBox_2.setTitle(
-            _translate("MainWindow", "Transverse Deflecting Structure")
+            _translate("tan1_mainwindow", "Transverse Deflecting Structure")
         )
-        self.groupBox_4.setTitle(_translate("MainWindow", "Machine State"))
+        self.groupBox_4.setTitle(_translate("tan1_mainwindow", "Machine State"))
         self.tabWidget.setTabText(
-            self.tabWidget.indexOf(self.maintab), _translate("MainWindow", "Main")
+            self.tabWidget.indexOf(self.maintab), _translate("tan1_mainwindow", "Main")
         )
         self.tabWidget.setTabText(
-            self.tabWidget.indexOf(self.logtab), _translate("MainWindow", "Log")
+            self.tabWidget.indexOf(self.logtab), _translate("tan1_mainwindow", "Log")
         )
-        self.menuMenu.setTitle(_translate("MainWindow", "Menu"))
-        self.menuOptics.setTitle(_translate("MainWindow", "Optics"))
-        self.action_close.setText(_translate("MainWindow", "Close"))
-        self.action_close.setShortcut(_translate("MainWindow", "Ctrl+Q"))
+        self.menuMenu.setTitle(_translate("tan1_mainwindow", "Menu"))
+        self.menuOptics.setTitle(_translate("tan1_mainwindow", "Optics"))
+        self.action_close.setText(_translate("tan1_mainwindow", "Close"))
+        self.action_close.setShortcut(_translate("tan1_mainwindow", "Ctrl+Q"))
         self.action_print_to_logbook.setText(
-            _translate("MainWindow", "Print to Logbook")
+            _translate("tan1_mainwindow", "Print to Logbook")
         )
-        self.action_print_to_logbook.setShortcut(_translate("MainWindow", "Ctrl+P"))
-        self.actionBunch_Length.setText(_translate("MainWindow", "Bunch Length..."))
+        self.action_print_to_logbook.setShortcut(
+            _translate("tan1_mainwindow", "Ctrl+P")
+        )
+        self.actionBunch_Length.setText(
+            _translate("tan1_mainwindow", "Bunch Length...")
+        )
         self.actionLongitudinal_Phase_Space.setText(
-            _translate("MainWindow", "Longitudinal Phase Space...")
+            _translate("tan1_mainwindow", "Longitudinal Phase Space...")
         )
-        self.actionEmittance.setText(_translate("MainWindow", "Emittance..."))
+        self.actionEmittance.setText(_translate("tan1_mainwindow", "Emittance..."))
         self.actionEmail_Maintainer.setText(
-            _translate("MainWindow", "Email Maintainer")
+            _translate("tan1_mainwindow", "Email Maintainer")
         )
 
 
@@ -205,8 +222,8 @@ if __name__ == "__main__":
     import sys
 
     app = QtWidgets.QApplication(sys.argv)
-    MainWindow = QtWidgets.QMainWindow()
-    ui = Ui_MainWindow()
-    ui.setupUi(MainWindow)
-    MainWindow.show()
+    tan1_mainwindow = QtWidgets.QMainWindow()
+    ui = Ui_tan1_mainwindow()
+    ui.setupUi(tan1_mainwindow)
+    tan1_mainwindow.show()
     sys.exit(app.exec_())

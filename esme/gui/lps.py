@@ -4,7 +4,6 @@ import sys
 from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QMainWindow
 
-from esme.gui.ui import mainwindow
 from esme.gui.widgets.common import (
     make_exception_hook,
     send_widget_to_log,
@@ -27,7 +26,7 @@ def start_lps_gui() -> None:
 class LPSMainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.ui = mainwindow.Ui_MainWindow()
+        self.ui = mainwindow.Ui_tan1_mainwindow()
         self.ui.setupUi(self)
 
         # Connect signals for screen name which we select in this
