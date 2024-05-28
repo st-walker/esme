@@ -429,9 +429,7 @@ class LogBookEntryWriterDialogue(QWidget):
             kvps.to_csv(buffer, index=False)
             tarball.addfile(kvps_tarinfo, fileobj=buffer)
 
-        text = (
-            f"{self.ui.text_edit.toPlainText()}\n\n Data written to {full_output_path}"
-        )
+        text = f"{self.ui.text_edit.toPlainText()}\n----\nData written to {full_output_path}"
         # XXX: THIS NEEDS TO correctly get the top level window!
         send_widget_to_log(self._lps_window, text=text)
 
@@ -511,10 +509,6 @@ class LogBookEntryWriterDialogue(QWidget):
         main_layout.addLayout(button_layout)
 
         self.setLayout(main_layout)
-        # Create a central widget, set the layout, and set it as the central widget
-        # central_widget = QWidget()
-        # central_widget.setLayout(main_layout)
-        # self.setCentralWidget(central_widget)
 
         return ui
 
