@@ -15,8 +15,12 @@ LOG.setLevel(logging.INFO)
 
 
 def start_lps_gui() -> None:
-    sys.excepthook = make_exception_hook("Tanı")
+    app_name = "Tedious"
+    sys.excepthook = make_exception_hook(app_name)
     app = QApplication(sys.argv)
+    app.setOrganizationName("lps-tools")
+    app.setApplicationName(app_name)
+
     main_window = LPSMainWindow()
     main_window.show()
     main_window.raise_()

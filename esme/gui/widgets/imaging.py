@@ -218,7 +218,7 @@ class DataTakingWorker(QObject):
             except StopImageAcquisition:
                 break
 
-            image = self.screen.get_image()
+            image = self.screen.get_image_raw()
             if self._caching_background:
                 self.bg_images.appendleft(image)
                 if len(self.bg_images) == self.bg_images.maxlen:
@@ -237,7 +237,7 @@ class DataTakingWorker(QObject):
     #     out = []
     #     assert n > 0
     #     for i in range(n):
-    #         image = self.screen.get_image()
+    #         image = self.screen.get_image_raw()
     #         out.append(image)
     #         self.n_fast_state.emit(i)
     #         if (i % 10) == 0:
@@ -318,7 +318,7 @@ class DataTakingWorker(QObject):
         self.display_image_signal.emit(imp)
 
     def _read_from_screen(self) -> npt.NDArray:
-        image = self.screen.get_image()
+        image = self.screen.get_image_raw()
         if self._caching_background:
             self.bg_images.appendleft(image)
             if len(self.bg_images) == self.bg_images.maxlen:
@@ -445,14 +445,14 @@ class LogBookEntryWriterDialogue(QWidget):
     def _acquire_n_images_fast_in_subprocess(self, n: int) -> list[Future[npt.NDArray]]:
         fn = self._screen.get_image_raw
 
-        def increment_progress_bar(_):
-            self.ui.progress_bar.setValue(self.ui.progress_bar.value() + 1)
+        # def increment_progress_bar(_):
+        #    MmMm self.ui.progress_bar.setValue(self.ui.progress_bar.value() + 1)
 
         # Submit jobs to the executor.
         futures = []
         for _ in range(n):
             future = self._executor.submit(_get_from_screen_instance, self._screen)
-            future.add_done_callback(increment_progress_bar)
+            # future.add_done_callback(increment_progress_bar)
             futures.append(future)
 
         return futures

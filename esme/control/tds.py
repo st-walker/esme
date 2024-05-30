@@ -3,13 +3,16 @@ from math import isclose
 
 from .dint import DOOCSInterface
 
+
 class UncalibratedTDSError(RuntimeError):
     pass
+
 
 # XFEL.RF/TDS.MODULATOR/TDSA.52.I1.MODULATOR/CHARGE_VOLTAGE.SP
 
 
 # XFEL.RF/TDS.MODULATOR/TDSB.428.B2/CCPS_UREAD
+
 
 class StreakingPlane(str, Enum):
     HORIZONTAL = "HORIZONTAL"
@@ -22,11 +25,15 @@ class TransverseDeflector:
     PHASE_SP_PROP = "SP.PHASE"
     AMPLITUDE_SP_PROP = "SP.AMPL"
 
-    def __init__(self, sp_fdl: str,rb_fdl: str, 
-                 plane: StreakingPlane,
-                 calibration=None,
-                 zero_crossing: float | None = None,
-                 di: DOOCSInterface | None = None) -> None:
+    def __init__(
+        self,
+        sp_fdl: str,
+        rb_fdl: str,
+        plane: StreakingPlane,
+        calibration=None,
+        zero_crossing: float | None = None,
+        di: DOOCSInterface | None = None,
+    ) -> None:
         """fdl arguments must be of the form /facility/device/location/ with leading and trailing
         forward slashes present."""
         # Setpoint FDL address stub: Facility, Device, Location (only missing Property):
@@ -106,5 +113,5 @@ class TransverseDeflector:
         if phase < 0:
             phase %= -180
         else:
-            phase %= 180            
-        self.zero_crossing =  phase
+            phase %= 180
+        self.zero_crossing = phase

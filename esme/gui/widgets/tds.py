@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytz
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import QTimer, pyqtSignal
+from PyQt5.QtCore import QSettings, QTimer, pyqtSignal
 
 from esme import DiagnosticRegion
 from esme.control.machines import LPSMachine
@@ -82,7 +82,16 @@ class TDSControl(QtWidgets.QWidget):
         self.timer.timeout.connect(self.update_ui)
         self.timer.start(2000)
 
+        self._init_state_from_settings()
+
         self.emit_calibrations()
+
+    def _init_state_from_settings(self) -> None:
+        s = QSettings()
+        if zc := s.value("i1/tds/zero-crossing") is not None:
+            self.i1machine.deflector = zc
+        if zc := s.value("b2/tds/zero-crossing") is not None:
+            self.b2machine.deflector = zc
 
     def emit_calibrations(self) -> None:
         i1c = self.i1machine.deflector.calibration

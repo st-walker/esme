@@ -1,32 +1,29 @@
-1. I need to handle a screen being switched off correctly.
-2. add troubleshooting help, what if kickers don't kick onto screen?
-   then need to update defaultconf.yaml..
 
 # LPS Main GUI
 
 ## Minimal feature set todolist (Highest Priority)
 
 1. [ ] Use Bolko Calibrations.
-2. [ ] Use new python12 pydoocs without GIL.
-3. [ ] Be able to take data.
+2. [x] Use new python12 pydoocs without GIL.
+3. [x] Be able to take data.
 
 
 ## High Priortiy
 
 1. [ ] Find phase.
 2. [ ] Reconstruct current profile using both crossings.
-3. [ ] Subtract background buton
+3. [x] Subtract background buton
 3. [x] Get transverse projections working.
 4. [x] Get time projection working.
 5. [x] Get energy projection working.
-6. [ ] Subtract background button.
-7. [ ] ensure SBP behaves itself when stopping
+6. [x] Subtract background button.
+7. [x] ensure SBP behaves itself when stopping
 8. [x] IBFP Check
 
 
 ## Middle Priority
 
-1. [ ] Get plain data taking working.
+1. [x] Get plain data taking working.
 2. [ ] bunch pattern to and from I1D or B2D.
 3. [ ] Design kick server, to and from 200m optics, to and from I1D.
 4. [ ] Automatically Calibrate TDS.
@@ -38,6 +35,8 @@
 1. [x] Get indiciators working.
 2. [ ] Dispersion measurement.
 3. [ ] Use Kickers to steer onto screen automatically (i.e. before TDS is ever switched on).
+4. [x] Handle screens being on/off properly (including turning off afterwards if we turned them on)
+5. [ ] add some sort of help, e.g., remember to update teh timings in the config file...
 
 
 # High Resolution Slice Energy Spread
