@@ -101,7 +101,7 @@ def main(debug, profile):
 
 
 @main.command()
-def bolko():
+def calib():
     from esme.gui.tds_calibrator import start_bolko_tool
     start_bolko_tool()
 

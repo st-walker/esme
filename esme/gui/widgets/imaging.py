@@ -9,26 +9,29 @@ from concurrent.futures import Future, ProcessPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, auto
-from io import BytesIO
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
+import pickle
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import pyqtgraph as pg
 from PyQt5 import QtGui
-from PyQt5.QtCore import QObject, QThread, QTimer, pyqtSignal
+from PyQt5.QtCore import QObject, QThread, QTimer, pyqtSignal, Qt
 from PyQt5.QtWidgets import (
     QHBoxLayout,
     QLabel,
+    QDialog,
     QProgressBar,
     QPushButton,
     QSpinBox,
     QTextEdit,
     QVBoxLayout,
     QWidget,
+    QLineEdit,
+    QApplication
 )
 
 from esme import DiagnosticRegion
@@ -36,6 +39,7 @@ from esme.control.machines import MachineReadManager
 from esme.control.screens import Screen, ScreenMetadata
 from esme.gui.ui.imaging import Ui_imaging_widget
 from esme.gui.widgets.screen import ImagePayload
+from esme.control.exceptions import DOOCSReadError
 
 from .common import get_machine_manager_factory, send_widget_to_log
 
@@ -96,8 +100,8 @@ class ImagingControlWidget(QWidget):
         # Thread that reads the images and others can get from.
         self.producer_worker, self.producer_thread = self.setup_data_taking_worker()
 
-        self.elogger_window = LogBookEntryWriterDialogue(
-            self.mreader.screens[self.screen_name], bg_images=None, lps_window=self
+        self.elogger = LogBookEntryWriterDialogue(
+            self.mreader.screens[self.screen_name], bg_images=None, parent=self
         )
 
         self._connect_buttons()
@@ -115,8 +119,11 @@ class ImagingControlWidget(QWidget):
         self.ui.take_background_button.clicked.connect(self.take_background)
 
     def _open_logbook_writer(self) -> None:
-        self.elogger_window.bg_images = list(self.producer_worker.bg_images)
-        self.elogger_window.show()
+        screen = self.mreader.screens[self.screen_name]
+        self.elogger.show_as_new_modal_dialogue(
+            screen, 
+            list(self.producer_worker.bg_images)
+        )
 
     def set_subtract_background(self, subtract_bg_state: Qt.CheckState) -> None:  # type: ignore
         assert subtract_bg_state != Qt.PartiallyChecked  # type: ignore
@@ -141,11 +148,16 @@ class ImagingControlWidget(QWidget):
         producer_worker.display_image_signal.connect(
             self.ui.screen_display_widget.post_beam_image
         )
+        producer_worker.nbackground_taken.connect(self._set_nbg_images_acquired_textbox)
         producer_thread.started.connect(producer_worker.run)
 
         producer_thread.start()
 
         return producer_worker, producer_thread
+
+    def _set_nbg_images_acquired_textbox(self, nbg: int) -> None:
+        label = f"Background Images: {nbg}"
+        self.ui.nbg_images_acquired_label.setText(label)
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         self.producer_worker.stop_read_loop()
@@ -156,7 +168,7 @@ class ImagingControlWidget(QWidget):
         self.screen_name = screen_name
         screen = self.mreader.screens[screen_name]
         # Change elogger window screen to the correct screen instance
-        self.elogger_window.set_screen(screen)
+        self.elogger.set_screen(screen)
         # Get the worker producing imagees
         self.producer_worker.change_screen(screen)
         # Get the daughter Screen widget to also use the relevant screen instance.
@@ -165,6 +177,7 @@ class ImagingControlWidget(QWidget):
 
 class DataTakingWorker(QObject):
     display_image_signal = pyqtSignal(ImagePayload)
+    nbackground_taken = pyqtSignal(int)
 
     def __init__(self, initial_screen: Screen):
         super().__init__()
@@ -184,7 +197,7 @@ class DataTakingWorker(QObject):
 
         # Queue for messages we we receive from
         self._consumerq: queue.Queue[
-            tuple[DataTakingMessage, Future[Any]]
+            tuple[DataTakingMessage]
         ] = queue.Queue()
 
         self._is_running = False
@@ -198,20 +211,23 @@ class DataTakingWorker(QObject):
         self._slow_loop()
 
     def stop_read_loop(self):
-        self._consumerq.put((None, None))
+        self._consumerq.put(None)
 
     def _slow_loop(self):
         """This is a slow loop that is the one that is running by default and acquires images at a rate of
         1Hz.
         """
-        deadline = time.time()
+        deadline = time.time() + 0.9
         while True:
             # Only do this event loop about once a second
             wait = deadline - time.time()
             if wait > 0:
                 time.sleep(wait)
-                continue
 
+            # set deadline for next read.  we want to update the screen at a rate of 1Hz.
+            # We subtract 0.1s from 1s to get 0.9, because each read takes about 0.1s.
+            deadline += 0.9
+                            
             # Check for anything in the message queue
             try:
                 self._dispatch_from_message_queue()
@@ -219,17 +235,24 @@ class DataTakingWorker(QObject):
                 break
 
             image = self.screen.get_image_raw()
+            if image is None:
+                # this can happen sometimes, sometimes when switching cameras
+                # get_image_raw can for a moment start returning None, of course
+                # we need to account for this possibility and go next.
+                continue 
+
             if self._caching_background:
                 self.bg_images.appendleft(image)
-                if len(self.bg_images) == self.bg_images.maxlen:
+                nbg_taken = len(self.bg_images)
+                self.nbackground_taken.emit(nbg_taken)
+
+                if nbg_taken == self.bg_images.maxlen:
                     # Then we've filled the ring buffer of background images and
                     # can go back to taking beam data, but first cache the mean_bg.
                     self._caching_background = False
                     self.mean_bg = np.mean(self.bg_images, axis=0, dtype=image.dtype)
+
             self._process_and_emit_image_for_display(image)
-            # set deadline for next read.  we want to update the screen at a rate of 1Hz.
-            # We subtract 0.1s from 1s to get 0.9, because each read takes about 0.1s.
-            deadline = time.time() + 0.9
 
     # def _take_n_fast(self, n: int) -> None:
     #     # This completely blocks the thread in that it is no longer listening
@@ -246,13 +269,8 @@ class DataTakingWorker(QObject):
     #     self._process_and_emit_image_for_display(image)
     #     return out
 
-    def submit(self, message: DataTakingMessage) -> Future[Any]:
-        future: Future[Any] = Future()
-        # Disallow cancellation by the client so immediately set it to running, once
-        # a message is in the queue it will be acted on eventually.
-        future.set_running_or_notify_cancel()
-        self._consumerq.put((message, future))
-        return future
+    def submit(self, message: DataTakingMessage) -> None:
+        self._consumerq.put(message)
 
     def _dispatch_from_message_queue(self) -> None:
         # Check for messages from our parent
@@ -261,18 +279,17 @@ class DataTakingWorker(QObject):
         # before proceeding with image taking.
         while True:
             try:
-                message, future = self._consumerq.get(block=False)
+                message = self._consumerq.get(block=False)
             except queue.Empty:
                 return
 
             if message is None:
+                LOG.critical("%s received request to stop image acquisition", type(self).__name__)
                 raise StopImageAcquisition("Image Acquisition halt requested.")
 
-            self._handle_message(message, future)
+            self._handle_message(message)
 
-    def _handle_message(
-        self, message: DataTakingMessage, future: Future[None | list[npt.NDArray]]
-    ) -> None:
+    def _handle_message(self, message: DataTakingMessage) -> None:
         result = None
         match message.mtype:
             # Could improve this pattern matching here by using both args of DataTakingMessage.
@@ -286,21 +303,20 @@ class DataTakingWorker(QObject):
             case MessageType.SUBTRACT_BACKGROUND:
                 self._do_subtract_background = message.data["state"]
             case _:
-                raise ValueError(
-                    f"Unexpected message send to Image Producing thread: {message}"
-                )
-        future.set_result(result)
+                message = f"Unexpected message send to {type(self).__name__}: {message}"
+                LOG.critical(message)
+                raise ValueError(message)
         self._consumerq.task_done()
 
     def _clear_bg_cache(self) -> None:
         self.bg_images = deque(maxlen=self.bg_images.maxlen)
+        self.nbackground_taken.emit(0)
 
     def _process_and_emit_image_for_display(self, image: npt.NDArray) -> None:
         # Subtract background if we have taken some background and enabled it.
         if self.bg_images and self._do_subtract_background:
             image -= self.mean_bg
             image = image.clip(min=0, out=image)
-
         minpix = np.min(image)
         maxpix = np.max(image)
         xproj = image.sum(axis=1, dtype=np.float32)
@@ -332,33 +348,41 @@ class DataTakingWorker(QObject):
         self.screen = screen
         # XXX: Possible race condition somewhere here if called from other thread?
         self._clear_bg_cache()
-        self.screen_md = screen.get_screen_metadata()
+        self._try_and_set_screen_metadata()
+
+    def _try_and_set_screen_metadata(self):
+        # if the screen is not powered, then getting the metadata will fail.
+        # We will have to just try to get it in the future, hoping that at some
+        # point some other part of the program will switch the screen on.
+        # So we punt this into the long grass, so to speak.
+        try:
+            self.screen_md = self.screen.get_screen_metadata()
+        except DOOCSReadError:
+            timeout = 500
+            LOG.warning("Unable to acquire screen metadata, will try again in %ss", timeout / 1000)
+            QTimer.singleShot(timeout, self._try_and_set_screen_metadata)
 
     def change_screen(self, new_screen: Screen) -> None:
-        self._consumerq.put(
-            (
-                DataTakingMessage(MessageType.CHANGE_SCREEN, {"screen": new_screen}),
-                Future(),
-            )
-        )
+        message = DataTakingMessage(MessageType.CHANGE_SCREEN, {"screen": new_screen})
+        self._consumerq.put(message)
 
 
-class LogBookEntryWriterDialogue(QWidget):
+class LogBookEntryWriterDialogue(QDialog):
+    DEFAULT_AUTHOR = "xfeloper"
     def __init__(
         self,
         screen: Screen,
         bg_images: list[npt.NDArray] | None = None,
-        lps_window=None,
+        parent = None
     ) -> None:
-        super().__init__()
+        super().__init__(parent=parent)
         self.ui = self._make_ui()
 
         mfactory = get_machine_manager_factory()
         self.i1reader = mfactory.make_machine_reader_manager(DiagnosticRegion.I1)
         self.b2reader = mfactory.make_machine_reader_manager(DiagnosticRegion.B2)
-        self.mreader = (
-            self.i1reader
-        )  # Set initial machine reader instance choice to be for I1.
+        # Set initial machine reader instance choice to be for I1.:
+        self.mreader = self.i1reader
 
         # XXX?  could be this be put in QSettings somehow instead?
         hardcoded_path = "/Users/xfeloper/user/stwalker/lps-dumpage/"
@@ -368,10 +392,18 @@ class LogBookEntryWriterDialogue(QWidget):
 
         self._bg_images = bg_images
         self._executor = ProcessPoolExecutor(max_workers=1)
-        self._timer = QTimer()
-        self._lps_window = lps_window
+        # Send a dummy job so that the worker has imported ocelot (slow) etc.
+        # and can start taking data straight away if we ask it to later.
+        self._executor.submit(lambda: None)
 
         self._connect_buttons()
+
+    def show_as_new_modal_dialogue(self, screen: Screen, bg_images: list[npt.NDArray]) -> None:
+        self._screen = screen
+        self.bg_images = bg_images
+        self.ui.nbg_label.setText(f"Background Images: {len(self.bg_images)}")
+        self.setModal(True)
+        self.show()
 
     def set_screen(self, screen: Screen):
         self._screen = screen
@@ -381,78 +413,104 @@ class LogBookEntryWriterDialogue(QWidget):
         self.ui.cancel_button.clicked.connect(self.hide)
         self.ui.start_button.clicked.connect(self.start)
 
+    def _set_ui_enabled(self, enable: bool) -> None:
+        self.ui.author_edit.setEnabled(enable)
+        self.ui.text_edit.setEnabled(enable)
+        self.ui.start_button.setEnabled(enable)
+        self.ui.image_spinner.setEnabled(enable)
+
     def start(self) -> None:
-        self.ui.progress_bar.setMaximum(self.ui.image_spinner.value())
+        self._set_ui_enabled(False)
+        nimages_to_take = self.ui.image_spinner.value()
+        self.ui.progress_bar.setMaximum(nimages_to_take)
         # Get images from data taking thread
         beam_image_futures = self._acquire_n_images_fast_in_subprocess(
-            self.ui.image_spinner.value()
+            nimages_to_take
         )
-        self._timer.timeout.connect(
-            lambda: self._print_to_logbook_when_done_taking_images(beam_image_futures)
-        )
-        self._timer.start(250)
+        self._print_to_logbook_when_done_taking_images(beam_image_futures)
 
     def _print_to_logbook_when_done_taking_images(
         self, beam_image_futures: list[Future[npt.NDArray]]
     ):
-        # XXX: What if a future raises for some reason?
-        if not all([future.done() for future in beam_image_futures]):
-            return
-        self._timer.stop()
-        beam_images = [future.result() for future in beam_image_futures]
-        self.send_to_xfel_elog(beam_images=beam_images)
+        # We take images at a rate of 10Hz, so if we take 10 images, we expect it to take 1second.
+        # so we want our timer to be at somewhere between 10Hz and 1Hz.  
+        check_period = int((len(beam_image_futures) / 10 / 10) * 1000) # to milliseconds
 
-    def send_to_xfel_elog(self, beam_images: list[npt.NDArray]) -> None:
+        def try_and_print_to_logbook():
+            # XXX: What if a future raises for some reason?
+            # Count number of futures that are finished and update the progress bar
+            ndone = sum([future.done() for future in beam_image_futures])
+            self.ui.progress_bar.setValue(ndone)
+
+            # Check if we are done, if we aren't, then we try again in $check_period milliseconds
+            if ndone != len(beam_image_futures):
+                QTimer.singleShot(check_period, try_and_print_to_logbook)
+                return
+
+            # OK all our jobs are done, now we can get the results, and print to logbook
+            beam_data = [future.result() for future in beam_image_futures]
+            self.send_to_xfel_elog(beam_data=beam_data)
+            # Turn the UI back on, reset the progress bar and clear the text box...
+            self._set_ui_enabled(True)
+            self._reset_ui()
+            self.hide()
+        # Start trying to print to logbook.
+        try_and_print_to_logbook()
+
+    def _reset_ui(self):
+        # Deliberately do not clear author.
+        # And also choose to leave image_spinner value
+        # to what it was, as probably repeated use 
+        # will want the same number of images each time.
+        # We also for now deliberately do not clear the log entry either...
+        # self.ui.text_edit.clear()
+        self.ui.progress_bar.setValue(0)
+
+
+    def send_to_xfel_elog(self, beam_data: list[dict[str, Any]]) -> None:
         kvps = self.get_machine_state()
-
-        outdir = self._get_output_dir(kvps["location"], kvps["screen"])
-        output_name = self._get_output_name()
-
+        screen_name = kvps["screen"]
+        outdir = self._get_output_dir(screen_name)
         outdir.mkdir(parents=True, exist_ok=True)
-        full_output_path = f"{outdir}/{output_name}.tar"
-        # # with tarfile.open(outpath, "w:gz") as tarball:  # With compression
-        # if i do compress, don't forget .gz at the end.
-        with tarfile.open(full_output_path, "w") as tarball:  # No compression for now
-            # Pickle is about 5x faster but for now prefer np.savez because I
-            # don't know what the long term implications are for using pickle
-            # e.g. will some file still be readable in a few year's time?
-            buffer = BytesIO()
-            print(beam_images)
-            print(self._bg_images)
-            np.savez(buffer, beam_images=beam_images, bg_images=self._bg_images)
-            buffer.seek(0)
-            images_tarinfo = tarfile.TarInfo(name=f"{full_output_path}/images.npz")
-            tarball.addfile(images_tarinfo, fileobj=buffer)
-            buffer.seek(0)
-            # Now write all the various DOOCS addresses we've read to file
-            kvps_tarinfo = tarfile.TarInfo(name=f"{full_output_path}/channels.csv")
-            kvps.to_csv(buffer, index=False)
-            tarball.addfile(kvps_tarinfo, fileobj=buffer)
 
-        text = f"{self.ui.text_edit.toPlainText()}\n----\nData written to {full_output_path}"
-        # XXX: THIS NEEDS TO correctly get the top level window!
-        send_widget_to_log(self._lps_window, text=text)
+        # Save background and beam images, if there are any.
+        if beam_data:
+            with (outdir / "beam_images.pkl").open("wb") as f:
+                pickle.dump(beam_data, f)
 
-    def _get_output_name(self) -> str:
-        return datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+        if self._bg_images:
+            np.savez(outdir / "bg_images.npz", self._bg_images)
 
-    def _get_output_dir(self, location: str, screen_name: str) -> Path:
-        return Path(self.outdir) / location / screen_name
+        kvps.to_csv(outdir / "channels.csv")
+
+        log_text = self.ui.text_edit.toPlainText()
+        screen_info = f"Screen: {screen_name}"
+        outdir_info_string = f"Data written to {outdir}"
+        "----\n"
+        text = "\n----\n".join([log_text, screen_info, outdir_info_string])
+        author = self.ui.author_edit.text() or self.DEFAULT_AUTHOR
+
+        # Go all the way to the top of the widget heirarchy for printing.
+        parent = self.parent()
+        while widget := parent.parent():
+            parent = widget
+        send_widget_to_log(parent, text=text, author=author, severity="MEASURE", title="TDSChum")
+
+    def _get_output_dir(self, screen_name: str) -> Path:
+        nowstr = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+        location = self._get_location()
+        return Path(self.outdir) / location / screen_name / nowstr
 
     def _get_location(self) -> str:
         return "B2" if self.mreader is self.b2reader else "I1"
 
     def _acquire_n_images_fast_in_subprocess(self, n: int) -> list[Future[npt.NDArray]]:
-        fn = self._screen.get_image_raw
-
-        # def increment_progress_bar(_):
-        #    MmMm self.ui.progress_bar.setValue(self.ui.progress_bar.value() + 1)
+        fn = self._screen.get_image_raw_full
 
         # Submit jobs to the executor.
         futures = []
         for _ in range(n):
             future = self._executor.submit(_get_from_screen_instance, self._screen)
-            # future.add_done_callback(increment_progress_bar)
             futures.append(future)
 
         return futures
@@ -481,7 +539,12 @@ class LogBookEntryWriterDialogue(QWidget):
         text_edit = QTextEdit()
         text_edit.setAcceptRichText(False)
         text_edit.setPlaceholderText("Logbook entry...")
+        text_edit.setTabChangesFocus(True)
         ui.text_edit = text_edit
+
+        ui.author_label = QLabel("Author")
+        ui.author_edit = QLineEdit()
+        ui.author_edit.setPlaceholderText("xfeloper")
 
         # Create the integer spinner with label and progress bar
         ui.images_label = QLabel("Images")
@@ -489,23 +552,36 @@ class LogBookEntryWriterDialogue(QWidget):
         ui.image_spinner.setValue(10)
         ui.progress_bar = QProgressBar()
 
+        ui.nbg_label = QLabel("Background Images: 0")
+
         # Create the buttons
         ui.start_button = QPushButton("Start and send to XFEL e-LogBook")
         ui.cancel_button = QPushButton("Cancel")
 
         # Layouts
+
+        # Author entry
+        author_layout = QHBoxLayout()
+        author_layout.addWidget(ui.author_label)
+        author_layout.addWidget(ui.author_edit)
+
+        # NImages label, nimages spinner, progress bar
         spinner_layout = QHBoxLayout()
         spinner_layout.addWidget(ui.images_label)
         spinner_layout.addWidget(ui.image_spinner)
         spinner_layout.addWidget(ui.progress_bar)
-
+        
+        # Start stop buttons layout
         button_layout = QHBoxLayout()
         button_layout.addWidget(ui.start_button)
         button_layout.addWidget(ui.cancel_button)
 
+        # Putting it all together vertically.
         main_layout = QVBoxLayout()
         main_layout.addWidget(ui.text_edit)
+        main_layout.addLayout(author_layout)
         main_layout.addLayout(spinner_layout)
+        main_layout.addWidget(ui.nbg_label)
         main_layout.addLayout(button_layout)
 
         self.setLayout(main_layout)
@@ -514,4 +590,4 @@ class LogBookEntryWriterDialogue(QWidget):
 
 
 def _get_from_screen_instance(screen: Screen) -> npt.NDArray:
-    return screen.get_image_raw()
+    return screen.get_image_raw_full()

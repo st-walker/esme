@@ -8,7 +8,7 @@ import numpy as np
 import numpy.typing as npt
 import pyqtgraph as pg
 from PyQt5 import QtGui
-from PyQt5.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
+from PyQt5.QtCore import QObject, QThread, pyqtSignal, pyqtSlot, QTimer
 from PyQt5.QtWidgets import QGridLayout, QWidget
 
 from esme import DiagnosticRegion
@@ -104,27 +104,39 @@ class ScreenWidget(QWidget):
         self.calibration_worker.screen_name = screen_name
         # Screen dimensions should always be distance (not pixels, not time, not energy).
         dx, dy = self.machine.optics.dispersions_at_screen(screen_name)
+        screen = self.machine.screens[screen_name]
+        self.clear_image()
+        self.set_image_transform(screen_name)
+
+    def set_image_transform(self, screen_name: str):
+        """This will set the transform for the image based on the image metadata, namely
+        scaling the image by the size of the pixels and putting putting the origin in
+        the middle of the axes.  If we try to do this whilst the screen is unpowered,
+        then these reads can fail, so to protect against this, if we fail, we 
+        try again in a second or so with QTimer.singleShot."""
 
         screen = self.machine.screens[screen_name]
-        # XXX
+        def try_it():
+            try:
+                xpixel_size = screen.get_pixel_xsize()
+                ypixel_size = screen.get_pixel_ysize()
+                nxpixel = screen.get_image_xpixels()
+                nypixel = screen.get_image_ypixels()
+            except DOOCSReadError as e:
+                # Try again in a bit 
+                QTimer.singleShot(1000, try_it)
+            else:
+                tr = QtGui.QTransform()  # prepare ImageItem transformation:
+                tr.scale(xpixel_size, ypixel_size)  # scale horizontal and vertical axes
+                tr.translate(
+                    -nypixel / 2, -nxpixel / 2
+                )  # move image to locate center at axis origin
+                self.image_plot.items[0].setTransform(tr)  # assign transform
 
-        # If the camera is not switched on then these reads will fail.
-        # but this shouldn't simply kill the whole gui.
-        try:
-            xpixel_size = screen.get_pixel_xsize()
-            ypixel_size = screen.get_pixel_ysize()
+        try_it()
 
-            nxpixel = screen.get_image_xpixels()
-            nypixel = screen.get_image_ypixels()
-        except DOOCSReadError as e:
-            return
-
-        tr = QtGui.QTransform()  # prepare ImageItem transformation:
-        tr.scale(xpixel_size, ypixel_size)  # scale horizontal and vertical axes
-        tr.translate(
-            -nypixel / 2, -nxpixel / 2
-        )  # move 3x3 image to locate center at axis origin
-        self.image_plot.items[0].setTransform(tr)  # assign transform
+    def clear_image(self) -> None:
+        self.image_plot.items[0].clear()
 
     @pyqtSlot(ImagePayload)
     def post_beam_image(self, image_payload: ImagePayload) -> None:
@@ -136,6 +148,7 @@ class ScreenWidget(QWidget):
         # one requires the other to also change...
         image_item.setLevels(image_payload.levels)
         image_item.setImage(image_payload.image)
+        self.update_projection_plots(image_payload)
 
     def set_axis_transform_with_label(self, axis_calib: AxisCalibration) -> None:
         if axis_calib.axis == "x":

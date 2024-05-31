@@ -1,10 +1,12 @@
+import sys
 import logging
 import re
 import socket
 import subprocess
 from importlib.resources import files
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
+import traceback
 
 import numpy as np
 import pandas as pd
@@ -253,7 +255,6 @@ def make_exception_hook(program_name: str) -> Callable[[], None]:
         error_message = "".join(
             traceback.format_exception(exc_type, exc_value, exc_traceback)
         )
-        app = QApplication.instance() or QApplication(sys.argv)
         msg_box = QMessageBox()
         msg_box.setIcon(QMessageBox.Critical)
         msg_box.setWindowTitle("Unhandled Exception")

@@ -182,13 +182,18 @@ class DOOCSInterface(DOOCSInterfaceABC):
         :param channel: (str) String of the devices name used in doocs
         :return: Data from pydoocs.read(), variable data type depending on channel
         """
-        LOG.debug("get_value: channel", channel)
         try:
             val = pydoocs.read(channel)
         except pydoocs.DoocsException as e:
             raise DOOCSReadError(channel) from e
         return val["data"]
-
+    
+    def read_full(self, channel: str) -> dict[str, Any]:
+        try:
+            return pydoocs.read(channel)
+        except pydoocs.DocosException as e:
+            raise DOOCSReadError(channel) from e
+        
     def set_value(self, channel: str, val: Any) -> None:
         """
         Method to set value to a channel

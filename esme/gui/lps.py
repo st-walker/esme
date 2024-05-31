@@ -10,14 +10,16 @@ from esme.gui.widgets.common import (
     send_widget_to_log,
     set_tds_calibration_by_region,
 )
+from esme.gui.ui import mainwindow
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
 
 
 def start_lps_gui() -> None:
-    app_name = "Tedious"
-    sys.excepthook = make_exception_hook(app_name)
+    app_name = "StuartTool"
+    # this somehow causes big problems...
+    # sys.excepthook = make_exception_hook(app_name)
     app = QApplication(sys.argv)
     app.setOrganizationName("lps-tools")
     app.setApplicationName(app_name)
@@ -71,9 +73,7 @@ class LPSMainWindow(QMainWindow):
         self.ui.imaging_widget.set_tds_calibration(voltage_calibration)
 
     def send_to_logbook(self) -> None:
-        send_widget_to_log(
-            self, author="", title="Longitudinal Diagnostics Utility", severity="INFO"
-        )
+        send_widget_to_log(self, author="xfeloper")
 
     def setup_logger_tab(self) -> None:
         log_handler = QPlainTextEditLogger()

@@ -5,7 +5,7 @@ from .dint import DOOCSInterface
 from .exceptions import DOOCSReadError
 from .kickers import FastKickerController
 from .sbunches import SpecialBunchesControl
-from .screens import Screen
+from .screens import Screen, Position
 from .tds import TransverseDeflector
 
 LH_CLOSED_ADDRESS = "XFEL.UTIL/LASERINT/GUN/SH3_CLOSED"
@@ -79,16 +79,15 @@ class AreaWatcher:
         try:
             if not screen.is_powered():
                 tooltips.append("• Camera is off")
-            if screen.is_offaxis():
-                tooltips.append("• Camera is out")
-            if screen.is_acquiring_images():
+            if not screen.is_acquiring_images():
                 tooltips.append("• Camera is not taking data")
             if not self._sbunches.is_screen_ok():
                 tooltips.append("• SBM is unhappy with the screen")
-            if (
-                tooltips
-            ):  # If something's wrong then read camera status to try to help perhaps.
-                tooltips.append(f'• Camera status: "{screen.read_camera_status()}"')
+            pos = screen.get_position()
+            if pos is Position.OUT:
+                tooltips.append("• Camera is out")
+            elif pos is Position.UNKNOWN:
+                tooltips.append("• Camera position unknown")                
         except DOOCSReadError as e:
             tooltips.append("Unexpected read error whilst checking\nscreen state.")
 
@@ -102,10 +101,8 @@ class AreaWatcher:
             if not self._sbunches.is_tds_ok():
                 tooltips.append("• SBM is unhappy with the TDS")
             if not self._tds.amplitude_rb_matches_sp():
-                rb = self._tds.get_amplitude_rb()
-                sp = self._tds.get_amplitude_sp()
                 tooltips.append(
-                    f"• TDS amp. failing to reach setpoint: SP={sp}, RB={rb}"
+                    f"• TDS amplitude. failing to reach setpoint"
                 )
         except DOOCSReadError as e:
             tooltips.append("Unexpected read error whilst checking\nTDS state.")

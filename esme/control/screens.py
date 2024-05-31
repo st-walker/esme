@@ -30,6 +30,7 @@ import logging
 from dataclasses import dataclass
 from enum import Enum, auto
 from functools import cache
+from typing import Any
 
 import numpy.typing as npt
 
@@ -52,6 +53,20 @@ class PoweringState(Enum):
     STATIC = auto()
     UP = auto()
     DOWN = auto()
+
+class Position(Enum):
+    ONAXIS = auto()
+    OFFAXIS = auto()
+    OUT = auto()
+    UNKNOWN = auto()
+
+    @classmethod
+    def from_doocs():
+        return self
+
+_DOOCS_STRING_TO_POSITION = {"OFFAXIS_LYSO": Position.OFFAXIS,
+                             "ONAXIS_LYSO": Position.ONAXIS,
+                             "OUT": Position.OUT}
 
 
 class Screen:
@@ -78,15 +93,15 @@ class Screen:
         # useful, the camera may indeed be online but it doesn't tell
         # you if the camera is actually taking data for example.
         return self.di.get_value(self.CAMERA_FD.format(self.name, "CAM.STATUS"))
-
-    def is_offaxis(self) -> bool:
-        value = self.di.get_value(self.SCREEN_ML_FD.format(self.name, "STATUS.STR"))
-        return value == "OFFAXIS_LYSO"
-
-    def is_onaxis(self) -> bool:
-        value = self.di.get_value(self.SCREEN_ML_FD.format(self.name, "STATUS.STR"))
-        return value == "ONAXIS_LYSO"
-
+    
+    def get_position(self) -> Position:
+        pos = self.di.get_value(self.SCREEN_ML_FD.format(self.name, "STATUS.STR"))
+        try:
+            return _DOOCS_STRING_TO_POSITION[pos]
+        except KeyError:
+            LOG.critical("Position of screen %s is unknown, pos = %s", self.name, pos)
+            return Position.UNKNOWN
+    
     def get_pixel_xsize(self) -> float:
         addy = f"XFEL.DIAG/CAMERA/{self.name}/X.POLY_SCALE"  # mm
         return abs(self.di.get_value(addy)[2] * 1e-3)  # mm to m
@@ -111,17 +126,18 @@ class Screen:
 
     def get_image_compressed(self) -> npt.NDArray:
         """Not necessarily compressed, depends on
-        XFEL.DIAG/CAMERA/OTRC.55.I1/COMP_MODE state
+        XFEL.DIAG/CAMERA/{camera_name}/COMP_MODE state
 
         """
-        ch = self.SCREEN_FDP_TEMPLATE.format(self.name)
-        LOG.debug(f"Getting image from channel: {ch}")
-        return self.di.get_value(ch)
+        return self.di.get_value(self.SCREEN_FDP_TEMPLATE.format(self.name))
 
-    def get_image_raw(self) -> npt.NDArray:
-        ch = self.get_image_raw_address()
-        LOG.debug(f"Getting raw image from channel: {ch}")
-        return self.di.get_value(ch)
+    def get_image_raw(self) -> npt.NDArray | None:
+        # Sometimes getting on the address doesn't fail, but just returns None
+        # I don't know why.  It only happened once.
+        return self.di.get_value(self.get_image_raw_address())
+    
+    def get_image_raw_full(self) -> dict[str, Any]:
+        return self.di.read_full(self.get_image_raw_address())
 
     def get_image_raw_address(self) -> str:
         return self.SCREEN_RAW_FDP_TEMPLATE.format(self.name)
@@ -207,7 +223,7 @@ def screen_is_fully_operational(screen: Screen) -> bool:
 #         screen.power_on_off(on=True)
 #     else:
 #         screen.start_stop_image_acquisition(acquire=True)
-async def try_and_boot_screen(screen: Screen, int: ntries = 1) -> None:
+async def try_and_boot_screen(screen: Screen, ntries: int = 1) -> None:
     for _ in range(ntries):
         await _try_and_boot_screen()
         is_all_good = screen_is_fully_operational(screen)

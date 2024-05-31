@@ -153,7 +153,7 @@ class LPSStateWatcher(IndicatorPanelWidget):
         return self.mstate.check_tds_state()
 
     def _check_kickers_state(self) -> Condition:
-        return self.mstate.check_tds_state()
+        return self.mstate.check_kickers_state()
 
     def set_screen(self, screen: str) -> None:
         region = region_from_screen_name(screen)

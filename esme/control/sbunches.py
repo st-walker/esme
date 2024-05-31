@@ -100,7 +100,6 @@ from .dint import DOOCSInterface
 from esme.core import DiagnosticRegion
 
 LOG = logging.getLogger(__name__)
-LOG.setLevel(logging.DEBUG)
 
 
 class SpecialBunchesControl:
