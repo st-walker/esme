@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 
 from PyQt5.QtCore import QObject, pyqtSignal
@@ -20,6 +21,11 @@ def start_lps_gui() -> None:
     app = QApplication(sys.argv)
     app.setOrganizationName("lps-tools")
     app.setApplicationName(app_name)
+
+    os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "1"
+    QApplication.setHighDpiScaleFactorRoundingPolicy(
+        QtCore.Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+    )
 
     main_window = LPSMainWindow()
     main_window.show()

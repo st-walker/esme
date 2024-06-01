@@ -151,9 +151,6 @@ def get_screenshot(window_widget: QWidget):  # -> ???
     screeshot_buffer.open(QIODevice.WriteOnly)
     widget = QWidget.grab(window_widget)
     widget.save(screeshot_buffer, "png")
-    from IPython import embed
-
-    embed
     return screenshot_tmp.toBase64().data().decode()
 
 
@@ -233,12 +230,12 @@ def raise_message_box(
 
     icon = {
         None: QMessageBox.NoIcon,
-        "NoIcon": QMessageBox.NoIcon,
-        "Question": QMessageBox.Question,
-        "Information": QMessageBox.Information,
-        "Warning": QMessageBox.Warning,
-        "Critical": QMessageBox.Critical,
-    }[icon]
+        "noicon": QMessageBox.NoIcon,
+        "question": QMessageBox.Question,
+        "information": QMessageBox.Information,
+        "warning": QMessageBox.Warning,
+        "critical": QMessageBox.Critical,
+    }[icon.lower()]
 
     msg.setIcon(icon)
     msg.setText(text)
