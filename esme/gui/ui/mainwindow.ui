@@ -182,7 +182,7 @@
     <addaction name="action_print_to_logbook"/>
     <addaction name="action_close"/>
    </widget>
-   <widget class="QMenu" name="menuExternal">
+   <widget class="QMenu" name="menu_external">
     <property name="title">
      <string>External</string>
     </property>
@@ -190,30 +190,30 @@
      <property name="title">
       <string>Expert</string>
      </property>
-     <widget class="QMenu" name="menuI1_3">
+     <widget class="QMenu" name="menu_i1">
       <property name="title">
        <string>I1</string>
       </property>
-      <addaction name="actionLLRF_4"/>
-      <addaction name="actionSpecial_Bunch_Midlayer"/>
+      <addaction name="actionLLRF_i1"/>
+      <addaction name="actionSpecial_Bunch_Midlayer_i1"/>
      </widget>
-     <widget class="QMenu" name="menuB2_3">
+     <widget class="QMenu" name="menu_b2">
       <property name="title">
        <string>B2</string>
       </property>
-      <addaction name="actionLLRF_5"/>
-      <addaction name="actionSpecial_Bunch_Midlayer_2"/>
+      <addaction name="actionLLRF_b2"/>
+      <addaction name="actionSpecial_Bunch_Midlayer_b2"/>
      </widget>
-     <addaction name="actionImage_Analysis_Server_2"/>
-     <addaction name="menuI1_3"/>
-     <addaction name="menuB2_3"/>
+     <addaction name="action_image_analysis_server"/>
+     <addaction name="menu_i1"/>
+     <addaction name="menu_b2"/>
     </widget>
-    <addaction name="actionTDS"/>
-    <addaction name="actionCamera_Status"/>
+    <addaction name="action_pattern_builder"/>
+    <addaction name="action_camera_status"/>
     <addaction name="menuExpert"/>
    </widget>
    <addaction name="menuMenu"/>
-   <addaction name="menuExternal"/>
+   <addaction name="menu_external"/>
   </widget>
   <action name="action_close">
    <property name="text">
@@ -227,108 +227,67 @@
    <property name="text">
     <string>Print to Logbook</string>
    </property>
+   <property name="toolTip">
+    <string>Send Screenshot of Window to e-LogBook</string>
+   </property>
    <property name="shortcut">
     <string>Ctrl+P</string>
    </property>
   </action>
-  <action name="actionBunch_Length">
-   <property name="text">
-    <string>Bunch Length...</string>
-   </property>
-  </action>
-  <action name="actionLongitudinal_Phase_Space">
-   <property name="text">
-    <string>Longitudinal Phase Space...</string>
-   </property>
-  </action>
-  <action name="actionEmittance">
-   <property name="text">
-    <string>Emittance...</string>
-   </property>
-  </action>
-  <action name="actionEmail_Maintainer">
-   <property name="text">
-    <string>Email Maintainer</string>
-   </property>
-  </action>
-  <action name="actionTDS">
+  <action name="action_pattern_builder">
    <property name="text">
     <string>Pattern Builder</string>
    </property>
+   <property name="toolTip">
+    <string>Open Pattern Builder</string>
+   </property>
   </action>
-  <action name="actionCamera_Status">
+  <action name="action_camera_status">
    <property name="text">
     <string>Camera Status</string>
    </property>
-  </action>
-  <action name="actionSBM">
-   <property name="text">
-    <string>SBM</string>
+   <property name="toolTip">
+    <string>Open Camera Status Window</string>
    </property>
   </action>
-  <action name="actionLLRF">
-   <property name="text">
-    <string>LLRF</string>
-   </property>
-  </action>
-  <action name="actionSBM_2">
-   <property name="text">
-    <string>SBM</string>
-   </property>
-  </action>
-  <action name="actionLLRF_2">
-   <property name="text">
-    <string>LLRF</string>
-   </property>
-  </action>
-  <action name="actionImage_Analysis_Server">
+  <action name="action_image_analysis_server">
    <property name="text">
     <string>Image Analysis Server</string>
    </property>
-  </action>
-  <action name="actionImage_Analysis_Server_2">
-   <property name="text">
-    <string>Image Analysis Server</string>
+   <property name="toolTip">
+    <string>Open the Image Analysis Server Expert Panel</string>
    </property>
   </action>
-  <action name="actionLLRLF">
-   <property name="text">
-    <string>LLRLF</string>
-   </property>
-  </action>
-  <action name="actionSBM_3">
-   <property name="text">
-    <string>SBM</string>
-   </property>
-  </action>
-  <action name="actionLLRF_3">
-   <property name="text">
-    <string>LLRF</string>
-   </property>
-  </action>
-  <action name="actionSBM_4">
-   <property name="text">
-    <string>SBM</string>
-   </property>
-  </action>
-  <action name="actionLLRF_4">
-   <property name="text">
-    <string>LLRF</string>
-   </property>
-  </action>
-  <action name="actionSpecial_Bunch_Midlayer">
+  <action name="actionSpecial_Bunch_Midlayer_i1">
    <property name="text">
     <string>Special Bunch Midlayer</string>
    </property>
+   <property name="toolTip">
+    <string>Open Special Bunch Midlayer Panel for I1</string>
+   </property>
   </action>
-  <action name="actionLLRF_5">
+  <action name="actionLLRF_b2">
    <property name="text">
     <string>LLRF</string>
    </property>
+   <property name="toolTip">
+    <string>Open LLRF Panel for the B2 TDS</string>
+   </property>
   </action>
-  <action name="actionSpecial_Bunch_Midlayer_2">
+  <action name="actionSpecial_Bunch_Midlayer_b2">
    <property name="text">
     <string>Special Bunch Midlayer</string>
+   </property>
+   <property name="toolTip">
+    <string>Open Special Bunch Midlayer Panel for B2</string>
+   </property>
+  </action>
+  <action name="actionLLRF_i1">
+   <property name="text">
+    <string>LLRF</string>
+   </property>
+   <property name="toolTip">
+    <string>Open LLRF Panel for the I1 TDS</string>
    </property>
   </action>
  </widget>

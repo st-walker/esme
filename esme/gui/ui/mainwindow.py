@@ -22,6 +22,7 @@ class Ui_tdsfriend_mainwindow(object):
         self.gridLayout_9 = QtWidgets.QGridLayout(self.centralwidget)
         self.gridLayout_9.setObjectName("gridLayout_9")
         self.tabWidget = QtWidgets.QTabWidget(self.centralwidget)
+        self.tabWidget.setTabBarAutoHide(True)
         self.tabWidget.setObjectName("tabWidget")
         self.maintab = QtWidgets.QWidget()
         self.maintab.setObjectName("maintab")
@@ -143,79 +144,51 @@ class Ui_tdsfriend_mainwindow(object):
         self.menubar.setObjectName("menubar")
         self.menuMenu = QtWidgets.QMenu(self.menubar)
         self.menuMenu.setObjectName("menuMenu")
-        self.menuExternal = QtWidgets.QMenu(self.menubar)
-        self.menuExternal.setObjectName("menuExternal")
-        self.menuExpert = QtWidgets.QMenu(self.menuExternal)
+        self.menu_external = QtWidgets.QMenu(self.menubar)
+        self.menu_external.setObjectName("menu_external")
+        self.menuExpert = QtWidgets.QMenu(self.menu_external)
         self.menuExpert.setObjectName("menuExpert")
-        self.menuI1_3 = QtWidgets.QMenu(self.menuExpert)
-        self.menuI1_3.setObjectName("menuI1_3")
-        self.menuB2_3 = QtWidgets.QMenu(self.menuExpert)
-        self.menuB2_3.setObjectName("menuB2_3")
+        self.menu_i1 = QtWidgets.QMenu(self.menuExpert)
+        self.menu_i1.setObjectName("menu_i1")
+        self.menu_b2 = QtWidgets.QMenu(self.menuExpert)
+        self.menu_b2.setObjectName("menu_b2")
         tdsfriend_mainwindow.setMenuBar(self.menubar)
         self.action_close = QtWidgets.QAction(tdsfriend_mainwindow)
         self.action_close.setObjectName("action_close")
         self.action_print_to_logbook = QtWidgets.QAction(tdsfriend_mainwindow)
         self.action_print_to_logbook.setObjectName("action_print_to_logbook")
-        self.actionBunch_Length = QtWidgets.QAction(tdsfriend_mainwindow)
-        self.actionBunch_Length.setObjectName("actionBunch_Length")
-        self.actionLongitudinal_Phase_Space = QtWidgets.QAction(tdsfriend_mainwindow)
-        self.actionLongitudinal_Phase_Space.setObjectName(
-            "actionLongitudinal_Phase_Space"
+        self.action_pattern_builder = QtWidgets.QAction(tdsfriend_mainwindow)
+        self.action_pattern_builder.setObjectName("action_pattern_builder")
+        self.action_camera_status = QtWidgets.QAction(tdsfriend_mainwindow)
+        self.action_camera_status.setObjectName("action_camera_status")
+        self.action_image_analysis_server = QtWidgets.QAction(tdsfriend_mainwindow)
+        self.action_image_analysis_server.setObjectName("action_image_analysis_server")
+        self.actionSpecial_Bunch_Midlayer_i1 = QtWidgets.QAction(tdsfriend_mainwindow)
+        self.actionSpecial_Bunch_Midlayer_i1.setObjectName(
+            "actionSpecial_Bunch_Midlayer_i1"
         )
-        self.actionEmittance = QtWidgets.QAction(tdsfriend_mainwindow)
-        self.actionEmittance.setObjectName("actionEmittance")
-        self.actionEmail_Maintainer = QtWidgets.QAction(tdsfriend_mainwindow)
-        self.actionEmail_Maintainer.setObjectName("actionEmail_Maintainer")
-        self.actionTDS = QtWidgets.QAction(tdsfriend_mainwindow)
-        self.actionTDS.setObjectName("actionTDS")
-        self.actionCamera_Status = QtWidgets.QAction(tdsfriend_mainwindow)
-        self.actionCamera_Status.setObjectName("actionCamera_Status")
-        self.actionSBM = QtWidgets.QAction(tdsfriend_mainwindow)
-        self.actionSBM.setObjectName("actionSBM")
-        self.actionLLRF = QtWidgets.QAction(tdsfriend_mainwindow)
-        self.actionLLRF.setObjectName("actionLLRF")
-        self.actionSBM_2 = QtWidgets.QAction(tdsfriend_mainwindow)
-        self.actionSBM_2.setObjectName("actionSBM_2")
-        self.actionLLRF_2 = QtWidgets.QAction(tdsfriend_mainwindow)
-        self.actionLLRF_2.setObjectName("actionLLRF_2")
-        self.actionImage_Analysis_Server = QtWidgets.QAction(tdsfriend_mainwindow)
-        self.actionImage_Analysis_Server.setObjectName("actionImage_Analysis_Server")
-        self.actionImage_Analysis_Server_2 = QtWidgets.QAction(tdsfriend_mainwindow)
-        self.actionImage_Analysis_Server_2.setObjectName(
-            "actionImage_Analysis_Server_2"
+        self.actionLLRF_b2 = QtWidgets.QAction(tdsfriend_mainwindow)
+        self.actionLLRF_b2.setObjectName("actionLLRF_b2")
+        self.actionSpecial_Bunch_Midlayer_b2 = QtWidgets.QAction(tdsfriend_mainwindow)
+        self.actionSpecial_Bunch_Midlayer_b2.setObjectName(
+            "actionSpecial_Bunch_Midlayer_b2"
         )
-        self.actionLLRLF = QtWidgets.QAction(tdsfriend_mainwindow)
-        self.actionLLRLF.setObjectName("actionLLRLF")
-        self.actionSBM_3 = QtWidgets.QAction(tdsfriend_mainwindow)
-        self.actionSBM_3.setObjectName("actionSBM_3")
-        self.actionLLRF_3 = QtWidgets.QAction(tdsfriend_mainwindow)
-        self.actionLLRF_3.setObjectName("actionLLRF_3")
-        self.actionSBM_4 = QtWidgets.QAction(tdsfriend_mainwindow)
-        self.actionSBM_4.setObjectName("actionSBM_4")
-        self.actionLLRF_4 = QtWidgets.QAction(tdsfriend_mainwindow)
-        self.actionLLRF_4.setObjectName("actionLLRF_4")
-        self.actionSpecial_Bunch_Midlayer = QtWidgets.QAction(tdsfriend_mainwindow)
-        self.actionSpecial_Bunch_Midlayer.setObjectName("actionSpecial_Bunch_Midlayer")
-        self.actionLLRF_5 = QtWidgets.QAction(tdsfriend_mainwindow)
-        self.actionLLRF_5.setObjectName("actionLLRF_5")
-        self.actionSpecial_Bunch_Midlayer_2 = QtWidgets.QAction(tdsfriend_mainwindow)
-        self.actionSpecial_Bunch_Midlayer_2.setObjectName(
-            "actionSpecial_Bunch_Midlayer_2"
-        )
+        self.actionLLRF_i1 = QtWidgets.QAction(tdsfriend_mainwindow)
+        self.actionLLRF_i1.setObjectName("actionLLRF_i1")
         self.menuMenu.addAction(self.action_print_to_logbook)
         self.menuMenu.addAction(self.action_close)
-        self.menuI1_3.addAction(self.actionLLRF_4)
-        self.menuI1_3.addAction(self.actionSpecial_Bunch_Midlayer)
-        self.menuB2_3.addAction(self.actionLLRF_5)
-        self.menuB2_3.addAction(self.actionSpecial_Bunch_Midlayer_2)
-        self.menuExpert.addAction(self.actionImage_Analysis_Server_2)
-        self.menuExpert.addAction(self.menuI1_3.menuAction())
-        self.menuExpert.addAction(self.menuB2_3.menuAction())
-        self.menuExternal.addAction(self.actionTDS)
-        self.menuExternal.addAction(self.actionCamera_Status)
-        self.menuExternal.addAction(self.menuExpert.menuAction())
+        self.menu_i1.addAction(self.actionLLRF_i1)
+        self.menu_i1.addAction(self.actionSpecial_Bunch_Midlayer_i1)
+        self.menu_b2.addAction(self.actionLLRF_b2)
+        self.menu_b2.addAction(self.actionSpecial_Bunch_Midlayer_b2)
+        self.menuExpert.addAction(self.action_image_analysis_server)
+        self.menuExpert.addAction(self.menu_i1.menuAction())
+        self.menuExpert.addAction(self.menu_b2.menuAction())
+        self.menu_external.addAction(self.action_pattern_builder)
+        self.menu_external.addAction(self.action_camera_status)
+        self.menu_external.addAction(self.menuExpert.menuAction())
         self.menubar.addAction(self.menuMenu.menuAction())
-        self.menubar.addAction(self.menuExternal.menuAction())
+        self.menubar.addAction(self.menu_external.menuAction())
 
         self.retranslateUi(tdsfriend_mainwindow)
         self.tabWidget.setCurrentIndex(0)
@@ -245,53 +218,64 @@ class Ui_tdsfriend_mainwindow(object):
             _translate("tdsfriend_mainwindow", "Log"),
         )
         self.menuMenu.setTitle(_translate("tdsfriend_mainwindow", "Menu"))
-        self.menuExternal.setTitle(_translate("tdsfriend_mainwindow", "External"))
+        self.menu_external.setTitle(_translate("tdsfriend_mainwindow", "External"))
         self.menuExpert.setTitle(_translate("tdsfriend_mainwindow", "Expert"))
-        self.menuI1_3.setTitle(_translate("tdsfriend_mainwindow", "I1"))
-        self.menuB2_3.setTitle(_translate("tdsfriend_mainwindow", "B2"))
+        self.menu_i1.setTitle(_translate("tdsfriend_mainwindow", "I1"))
+        self.menu_b2.setTitle(_translate("tdsfriend_mainwindow", "B2"))
         self.action_close.setText(_translate("tdsfriend_mainwindow", "Close"))
         self.action_close.setShortcut(_translate("tdsfriend_mainwindow", "Ctrl+Q"))
         self.action_print_to_logbook.setText(
             _translate("tdsfriend_mainwindow", "Print to Logbook")
         )
+        self.action_print_to_logbook.setToolTip(
+            _translate("tdsfriend_mainwindow", "Send Screenshot of Window to e-LogBook")
+        )
         self.action_print_to_logbook.setShortcut(
             _translate("tdsfriend_mainwindow", "Ctrl+P")
         )
-        self.actionBunch_Length.setText(
-            _translate("tdsfriend_mainwindow", "Bunch Length...")
+        self.action_pattern_builder.setText(
+            _translate("tdsfriend_mainwindow", "Pattern Builder")
         )
-        self.actionLongitudinal_Phase_Space.setText(
-            _translate("tdsfriend_mainwindow", "Longitudinal Phase Space...")
+        self.action_pattern_builder.setToolTip(
+            _translate("tdsfriend_mainwindow", "Open Pattern Builder")
         )
-        self.actionEmittance.setText(_translate("tdsfriend_mainwindow", "Emittance..."))
-        self.actionEmail_Maintainer.setText(
-            _translate("tdsfriend_mainwindow", "Email Maintainer")
-        )
-        self.actionTDS.setText(_translate("tdsfriend_mainwindow", "Pattern Builder"))
-        self.actionCamera_Status.setText(
+        self.action_camera_status.setText(
             _translate("tdsfriend_mainwindow", "Camera Status")
         )
-        self.actionSBM.setText(_translate("tdsfriend_mainwindow", "SBM"))
-        self.actionLLRF.setText(_translate("tdsfriend_mainwindow", "LLRF"))
-        self.actionSBM_2.setText(_translate("tdsfriend_mainwindow", "SBM"))
-        self.actionLLRF_2.setText(_translate("tdsfriend_mainwindow", "LLRF"))
-        self.actionImage_Analysis_Server.setText(
+        self.action_camera_status.setToolTip(
+            _translate("tdsfriend_mainwindow", "Open Camera Status Window")
+        )
+        self.action_image_analysis_server.setText(
             _translate("tdsfriend_mainwindow", "Image Analysis Server")
         )
-        self.actionImage_Analysis_Server_2.setText(
-            _translate("tdsfriend_mainwindow", "Image Analysis Server")
+        self.action_image_analysis_server.setToolTip(
+            _translate(
+                "tdsfriend_mainwindow", "Open the Image Analysis Server Expert Panel"
+            )
         )
-        self.actionLLRLF.setText(_translate("tdsfriend_mainwindow", "LLRLF"))
-        self.actionSBM_3.setText(_translate("tdsfriend_mainwindow", "SBM"))
-        self.actionLLRF_3.setText(_translate("tdsfriend_mainwindow", "LLRF"))
-        self.actionSBM_4.setText(_translate("tdsfriend_mainwindow", "SBM"))
-        self.actionLLRF_4.setText(_translate("tdsfriend_mainwindow", "LLRF"))
-        self.actionSpecial_Bunch_Midlayer.setText(
+        self.actionSpecial_Bunch_Midlayer_i1.setText(
             _translate("tdsfriend_mainwindow", "Special Bunch Midlayer")
         )
-        self.actionLLRF_5.setText(_translate("tdsfriend_mainwindow", "LLRF"))
-        self.actionSpecial_Bunch_Midlayer_2.setText(
+        self.actionSpecial_Bunch_Midlayer_i1.setToolTip(
+            _translate(
+                "tdsfriend_mainwindow", "Open Special Bunch Midlayer Panel for I1"
+            )
+        )
+        self.actionLLRF_b2.setText(_translate("tdsfriend_mainwindow", "LLRF"))
+        self.actionLLRF_b2.setToolTip(
+            _translate("tdsfriend_mainwindow", "Open LLRF Panel for the B2 TDS")
+        )
+        self.actionSpecial_Bunch_Midlayer_b2.setText(
             _translate("tdsfriend_mainwindow", "Special Bunch Midlayer")
+        )
+        self.actionSpecial_Bunch_Midlayer_b2.setToolTip(
+            _translate(
+                "tdsfriend_mainwindow", "Open Special Bunch Midlayer Panel for B2"
+            )
+        )
+        self.actionLLRF_i1.setText(_translate("tdsfriend_mainwindow", "LLRF"))
+        self.actionLLRF_i1.setToolTip(
+            _translate("tdsfriend_mainwindow", "Open LLRF Panel for the I1 TDS")
         )
 
 
