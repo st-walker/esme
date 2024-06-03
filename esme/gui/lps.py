@@ -34,7 +34,7 @@ def start_lps_gui() -> None:
 class LPSMainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.ui = mainwindow.Ui_tan1_mainwindow()
+        self.ui = mainwindow.Ui_tdsfriend_mainwindow()
         self.ui.setupUi(self)
 
         # Connect signals for screen name which we select in this
