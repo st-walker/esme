@@ -222,7 +222,7 @@
   <customwidget>
    <class>PlayPauseButton</class>
    <extends>QPushButton</extends>
-   <header>esme.gui.common</header>
+   <header>esme.gui.widgets.common</header>
   </customwidget>
  </customwidgets>
  <resources/>

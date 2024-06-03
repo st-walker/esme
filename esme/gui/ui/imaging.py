@@ -157,7 +157,7 @@ class Ui_imaging_widget(object):
         self.play_pause_button.setText(_translate("imaging_widget", "play"))
 
 
-from esme.gui.common import PlayPauseButton
+from esme.gui.widgets.common import PlayPauseButton
 from esme.gui.widgets.screen import ScreenWidget
 
 if __name__ == "__main__":
