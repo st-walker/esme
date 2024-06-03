@@ -154,7 +154,7 @@ class Ui_imaging_widget(object):
         )
         self.label_2.setText(_translate("imaging_widget", "Read Rate"))
         self.read_rate_spinner.setSuffix(_translate("imaging_widget", "Hz"))
-        self.play_pause_button.setText(_translate("imaging_widget", "play"))
+        self.play_pause_button.setText(_translate("imaging_widget", "Pause"))
 
 
 from esme.gui.widgets.common import PlayPauseButton
