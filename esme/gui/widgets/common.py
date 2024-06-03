@@ -15,7 +15,8 @@ import pyqtgraph as pg
 import yaml
 from matplotlib import cm
 from PyQt5.QtCore import QBuffer, QByteArray, QIODevice, QObject, pyqtSignal
-from PyQt5.QtWidgets import QMessageBox, QWidget
+from PyQt5.QtWidgets import QMessageBox, QWidget, QPushButton
+from PyQt5.QtGui import QIcon
 
 from esme import DiagnosticRegion
 from esme.control.configs import (

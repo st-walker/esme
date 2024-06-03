@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal, Qt
 from PyQt5.QtWidgets import QApplication, QMainWindow
 
 from esme.gui.ui import mainwindow
@@ -22,7 +22,7 @@ def start_lps_gui() -> None:
 
     os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "1"
     QApplication.setHighDpiScaleFactorRoundingPolicy(
-        QtCore.Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+        Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
     )
 
     main_window = LPSMainWindow()
