@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>tan1_mainwindow</class>
- <widget class="QMainWindow" name="tan1_mainwindow">
+ <class>tdsfriend_mainwindow</class>
+ <widget class="QMainWindow" name="tdsfriend_mainwindow">
   <property name="geometry">
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1400</width>
-    <height>785</height>
+    <width>2100</width>
+    <height>1350</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -24,7 +24,7 @@
     <item row="0" column="0">
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="maintab">
        <attribute name="title">
@@ -165,7 +165,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1400</width>
+     <width>2100</width>
      <height>24</height>
     </rect>
    </property>
@@ -179,13 +179,38 @@
     <addaction name="action_print_to_logbook"/>
     <addaction name="action_close"/>
    </widget>
-   <widget class="QMenu" name="menuOptics">
+   <widget class="QMenu" name="menuExternal">
     <property name="title">
-     <string>Optics</string>
+     <string>External</string>
     </property>
+    <widget class="QMenu" name="menuExpert">
+     <property name="title">
+      <string>Expert</string>
+     </property>
+     <widget class="QMenu" name="menuI1_3">
+      <property name="title">
+       <string>I1</string>
+      </property>
+      <addaction name="actionLLRF_4"/>
+      <addaction name="actionSpecial_Bunch_Midlayer"/>
+     </widget>
+     <widget class="QMenu" name="menuB2_3">
+      <property name="title">
+       <string>B2</string>
+      </property>
+      <addaction name="actionLLRF_5"/>
+      <addaction name="actionSpecial_Bunch_Midlayer_2"/>
+     </widget>
+     <addaction name="actionImage_Analysis_Server_2"/>
+     <addaction name="menuI1_3"/>
+     <addaction name="menuB2_3"/>
+    </widget>
+    <addaction name="actionTDS"/>
+    <addaction name="actionCamera_Status"/>
+    <addaction name="menuExpert"/>
    </widget>
    <addaction name="menuMenu"/>
-   <addaction name="menuOptics"/>
+   <addaction name="menuExternal"/>
   </widget>
   <action name="action_close">
    <property name="text">
@@ -221,6 +246,86 @@
   <action name="actionEmail_Maintainer">
    <property name="text">
     <string>Email Maintainer</string>
+   </property>
+  </action>
+  <action name="actionTDS">
+   <property name="text">
+    <string>Pattern Builder</string>
+   </property>
+  </action>
+  <action name="actionCamera_Status">
+   <property name="text">
+    <string>Camera Status</string>
+   </property>
+  </action>
+  <action name="actionSBM">
+   <property name="text">
+    <string>SBM</string>
+   </property>
+  </action>
+  <action name="actionLLRF">
+   <property name="text">
+    <string>LLRF</string>
+   </property>
+  </action>
+  <action name="actionSBM_2">
+   <property name="text">
+    <string>SBM</string>
+   </property>
+  </action>
+  <action name="actionLLRF_2">
+   <property name="text">
+    <string>LLRF</string>
+   </property>
+  </action>
+  <action name="actionImage_Analysis_Server">
+   <property name="text">
+    <string>Image Analysis Server</string>
+   </property>
+  </action>
+  <action name="actionImage_Analysis_Server_2">
+   <property name="text">
+    <string>Image Analysis Server</string>
+   </property>
+  </action>
+  <action name="actionLLRLF">
+   <property name="text">
+    <string>LLRLF</string>
+   </property>
+  </action>
+  <action name="actionSBM_3">
+   <property name="text">
+    <string>SBM</string>
+   </property>
+  </action>
+  <action name="actionLLRF_3">
+   <property name="text">
+    <string>LLRF</string>
+   </property>
+  </action>
+  <action name="actionSBM_4">
+   <property name="text">
+    <string>SBM</string>
+   </property>
+  </action>
+  <action name="actionLLRF_4">
+   <property name="text">
+    <string>LLRF</string>
+   </property>
+  </action>
+  <action name="actionSpecial_Bunch_Midlayer">
+   <property name="text">
+    <string>Special Bunch Midlayer</string>
+   </property>
+  </action>
+  <action name="actionLLRF_5">
+   <property name="text">
+    <string>LLRF</string>
+   </property>
+  </action>
+  <action name="actionSpecial_Bunch_Midlayer_2">
+   <property name="text">
+    <string>Special Bunch Midlayer</string>
    </property>
   </action>
  </widget>

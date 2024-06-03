@@ -6,15 +6,15 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>780</width>
-    <height>661</height>
+    <width>893</width>
+    <height>849</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
-   <item>
+  <layout class="QGridLayout" name="gridLayout">
+   <item row="0" column="0" colspan="2">
     <widget class="ScreenWidget" name="screen_display_widget" native="true">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -24,7 +24,7 @@
      </property>
     </widget>
    </item>
-   <item>
+   <item row="1" column="0" rowspan="2">
     <widget class="QGroupBox" name="groupBox">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -36,30 +36,6 @@
       <string>Measurements</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_6">
-      <item row="1" column="0">
-       <widget class="QPushButton" name="take_background_button">
-        <property name="text">
-         <string>Accumulate Background</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="0">
-       <widget class="QPushButton" name="send_to_logbook_button">
-        <property name="styleSheet">
-         <string notr="true">QPushButton { color: blue; }</string>
-        </property>
-        <property name="text">
-         <string>XFEL e-Logbook...</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="2" rowspan="2">
-       <widget class="Line" name="line">
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
-        </property>
-       </widget>
-      </item>
       <item row="0" column="3">
        <widget class="QPushButton" name="current_profile_button">
         <property name="enabled">
@@ -70,7 +46,31 @@
         </property>
        </widget>
       </item>
-      <item row="0" column="1">
+      <item row="1" column="3">
+       <widget class="QPushButton" name="pushButton">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="text">
+         <string>Slice Emittance</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2" rowspan="2">
+       <widget class="Line" name="line">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QPushButton" name="take_background_button">
+        <property name="text">
+         <string>Accumulate Background</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
        <widget class="QLabel" name="nbg_images_acquired_label">
         <property name="font">
          <font>
@@ -82,7 +82,92 @@
         </property>
        </widget>
       </item>
+      <item row="0" column="0" colspan="2">
+       <widget class="QPushButton" name="send_to_logbook_button">
+        <property name="styleSheet">
+         <string notr="true">QPushButton { color: blue; }</string>
+        </property>
+        <property name="text">
+         <string>Write to XFEL e-Logbook...</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="1" column="1" rowspan="2">
+    <widget class="QGroupBox" name="groupBox_2">
+     <property name="title">
+      <string>Display</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_2">
+      <item row="0" column="0">
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <item>
+         <widget class="QLabel" name="label">
+          <property name="text">
+           <string>Dispersion</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QDoubleSpinBox" name="dispersion_spinner">
+          <property name="wrapping">
+           <bool>false</bool>
+          </property>
+          <property name="frame">
+           <bool>true</bool>
+          </property>
+          <property name="showGroupSeparator" stdset="0">
+           <bool>false</bool>
+          </property>
+          <property name="suffix">
+           <string>m</string>
+          </property>
+          <property name="decimals">
+           <number>2</number>
+          </property>
+          <property name="minimum">
+           <double>-100.000000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>100.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.100000000000000</double>
+          </property>
+          <property name="stepType">
+           <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="0" column="2" rowspan="2">
+       <widget class="Line" name="line_2">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+       </widget>
+      </item>
       <item row="1" column="1">
+       <widget class="QPushButton" name="regenerate_axes_button">
+        <property name="text">
+         <string>Regenerate Axes</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QPushButton" name="calculate_dispersion_button">
+        <property name="text">
+         <string>Calculate Dispersion</string>
+        </property>
+        <property name="flat">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
        <widget class="QCheckBox" name="subtract_bg_checkbox">
         <property name="enabled">
          <bool>true</bool>
@@ -93,12 +178,32 @@
        </widget>
       </item>
       <item row="1" column="3">
-       <widget class="QPushButton" name="pushButton">
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
+       <widget class="QLabel" name="label_2">
         <property name="text">
-         <string>Slice Emittance</string>
+         <string>Read Rate</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="4">
+       <widget class="QSpinBox" name="read_rate_spinner">
+        <property name="buttonSymbols">
+         <enum>QAbstractSpinBox::UpDownArrows</enum>
+        </property>
+        <property name="suffix">
+         <string>Hz</string>
+        </property>
+        <property name="minimum">
+         <number>1</number>
+        </property>
+        <property name="maximum">
+         <number>10</number>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="3" colspan="2">
+       <widget class="PlayPauseButton" name="play_pause_button">
+        <property name="text">
+         <string>play</string>
         </property>
        </widget>
       </item>
@@ -113,6 +218,11 @@
    <extends>QWidget</extends>
    <header location="global">esme.gui.widgets.screen</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>PlayPauseButton</class>
+   <extends>QPushButton</extends>
+   <header>esme.gui.common</header>
   </customwidget>
  </customwidgets>
  <resources/>

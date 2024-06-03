@@ -166,7 +166,7 @@ class Ui_tan1_mainwindow(object):
         self.menubar.addAction(self.menuOptics.menuAction())
 
         self.retranslateUi(tan1_mainwindow)
-        self.tabWidget.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(1)
         QtCore.QMetaObject.connectSlotsByName(tan1_mainwindow)
 
     def retranslateUi(self, tan1_mainwindow):
