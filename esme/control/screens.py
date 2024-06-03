@@ -30,7 +30,7 @@ import logging
 from dataclasses import dataclass
 from enum import Enum, auto
 from functools import cache
-from typing import Any
+from typing import Any, Self
 
 import numpy.typing as npt
 
@@ -54,6 +54,7 @@ class PoweringState(Enum):
     UP = auto()
     DOWN = auto()
 
+
 class Position(Enum):
     ONAXIS = auto()
     OFFAXIS = auto()
@@ -61,12 +62,15 @@ class Position(Enum):
     UNKNOWN = auto()
 
     @classmethod
-    def from_doocs():
+    def from_doocs() -> Self:
         return self
 
-_DOOCS_STRING_TO_POSITION = {"OFFAXIS_LYSO": Position.OFFAXIS,
-                             "ONAXIS_LYSO": Position.ONAXIS,
-                             "OUT": Position.OUT}
+
+_DOOCS_STRING_TO_POSITION: dict[str, Position] = {
+    "OFFAXIS_LYSO": Position.OFFAXIS,
+    "ONAXIS_LYSO": Position.ONAXIS,
+    "OUT": Position.OUT,
+}
 
 
 class Screen:
@@ -93,7 +97,7 @@ class Screen:
         # useful, the camera may indeed be online but it doesn't tell
         # you if the camera is actually taking data for example.
         return self.di.get_value(self.CAMERA_FD.format(self.name, "CAM.STATUS"))
-    
+
     def get_position(self) -> Position:
         pos = self.di.get_value(self.SCREEN_ML_FD.format(self.name, "STATUS.STR"))
         try:
@@ -101,7 +105,7 @@ class Screen:
         except KeyError:
             LOG.critical("Position of screen %s is unknown, pos = %s", self.name, pos)
             return Position.UNKNOWN
-    
+
     def get_pixel_xsize(self) -> float:
         addy = f"XFEL.DIAG/CAMERA/{self.name}/X.POLY_SCALE"  # mm
         return abs(self.di.get_value(addy)[2] * 1e-3)  # mm to m
@@ -135,7 +139,7 @@ class Screen:
         # Sometimes getting on the address doesn't fail, but just returns None
         # I don't know why.  It only happened once.
         return self.di.get_value(self.get_image_raw_address())
-    
+
     def get_image_raw_full(self) -> dict[str, Any]:
         return self.di.read_full(self.get_image_raw_address())
 

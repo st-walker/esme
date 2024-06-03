@@ -1,12 +1,12 @@
-import sys
 import logging
 import re
 import socket
 import subprocess
+import sys
+import traceback
 from importlib.resources import files
 from pathlib import Path
 from typing import Any, Callable
-import traceback
 
 import numpy as np
 import pandas as pd
@@ -147,17 +147,28 @@ def load_scanner_panel_ui_defaults() -> dict[str, Any]:
         return uiconf
 
 
-def get_screenshot(window_widget: QWidget):  # -> ???
+def get_screenshot(widget: QWidget) -> str:
+    # Create byte array with buffer for writing to the array and open
+    # it.
     screenshot_tmp = QByteArray()
-    screeshot_buffer = QBuffer(screenshot_tmp)
-    screeshot_buffer.open(QIODevice.WriteOnly)
-    widget = QWidget.grab(window_widget)
-    widget.save(screeshot_buffer, "png")
+    screenshot_buffer = QBuffer(screenshot_tmp)
+    screenshot_buffer.open(QIODevice.WriteOnly)
+    # Get QPixmap of the widget
+    pixmap = QWidget.grab(widget)
+    # Write the pixmap to the byte array via the buffer as png.
+    pixmap.save(screenshot_buffer, "png")
+    # convert bytes to to base64 (i.e. printable characters)
+    # Then get the underlying bytes object, but we want
+    # a str, so we call decode on it.
     return screenshot_tmp.toBase64().data().decode()
 
 
 def send_to_logbook(
-    author: str = "", title: str = "", severity: str = "", text: str = "", image=None
+    author: str = "",
+    title: str = "",
+    severity: str = "",
+    text: str = "",
+    image: str | None = None,
 ) -> None:
     """
     Send information to the electronic logbook.
@@ -169,32 +180,31 @@ def send_to_logbook(
     elogXMLStringList = ['<?xml version="1.0" encoding="ISO-8859-1"?>', "<entry>"]
 
     # author information
-    elogXMLStringList.append("<author>")
-    elogXMLStringList.append(author)
-    elogXMLStringList.append("</author>")
-    # title information
-    elogXMLStringList.append("<title>")
-    elogXMLStringList.append(title)
-    elogXMLStringList.append("</title>")
-    # severity information
-    elogXMLStringList.append("<severity>")
-    elogXMLStringList.append(severity)
-    elogXMLStringList.append("</severity>")
-    # text information
-    elogXMLStringList.append("<text>")
-    elogXMLStringList.append(text)
-    elogXMLStringList.append("</text>")
+    elogXMLStringList.extend(
+        [
+            "<author>",
+            author,
+            "</author>",
+            "<title>",
+            title,
+            "</title>",
+            "<severity>",
+            severity,
+            "</severity>",
+            "<text>",
+            text,
+            "</text>",
+        ]
+    )
     # image information
     if image is not None:
-        elogXMLStringList.append("<image>")
-        elogXMLStringList.append(image)
-        elogXMLStringList.append("</image>")
+        elogXMLStringList.extend(["<image>", image, "</image>"])
+
     elogXMLStringList.append("</entry>")
     # join list to the final string
     elogXMLString = "\n".join(elogXMLStringList)
-    elog = "xfellog"
     lpr = subprocess.Popen(
-        ["/usr/bin/lp", "-o", "raw", "-d", elog],
+        ["/usr/bin/lp", "-o", "raw", "-d", "xfellog"],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
     )
@@ -202,10 +212,19 @@ def send_to_logbook(
     lpr.communicate(elogXMLString.encode("utf-8"))
 
 
-def send_widget_to_log(widget: QWidget, author="", title="", severity="", text=""):
-    image = get_screenshot(widget)
+def send_widget_to_log(
+    widget: QWidget,
+    author: str = "",
+    title: str = "",
+    severity: str = "",
+    text: str = "",
+) -> None:
     send_to_logbook(
-        author=author, title=title, severity=severity, text=text, image=image
+        author=author,
+        title=title,
+        severity=severity,
+        text=text,
+        image=get_screenshot(widget),
     )
 
 
@@ -219,7 +238,7 @@ def df_to_logbook_table(df: pd.DataFrame) -> str:
 
 
 def raise_message_box(
-    text: str, *, informative_text: str, title: str, icon: str | None = None
+    text: str, *, informative_text: str, title: str, icon: str = "NoIcon"
 ) -> None:
     """icon: one of {None, "NoIcon", "Question", "Information", "Warning", "Critical"}
     text: something simple like "Error", "Missing config"
@@ -268,3 +287,61 @@ def make_exception_hook(program_name: str) -> Callable[[], None]:
         sys.exit(1)
 
     return hook
+
+
+class PlayPauseButton(QPushButton):
+    play_signal = pyqtSignal()
+    pause_signal = pyqtSignal()
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent=parent)
+
+        self._play_icon = self.create_play_icon()
+        self._pause_icon = self.create_pause_icon()
+
+        self.clicked.connect(self.toggle_action)
+        self.is_playing = False
+        self.update_button_icon()
+
+    @staticmethod
+    def create_play_icon() -> QIcon:
+        pixmap = QPixmap(50, 50)
+        pixmap.fill(QColor(0, 0, 0, 0))  # Transparent background
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # Draw play triangle
+        painter.setBrush(QColor(0, 0, 0))  # Black color for contrast
+        triangle = QPolygon([QPoint(15, 10), QPoint(35, 25), QPoint(15, 40)])
+        painter.drawPolygon(triangle)
+        painter.end()
+
+        return QIcon(pixmap)
+
+    @staticmethod
+    def create_pause_icon() -> QIcon:
+        pixmap = QPixmap(50, 50)
+        pixmap.fill(QColor(0, 0, 0, 0))  # Transparent background
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.Antialiasing)
+        # Draw pause bars
+        painter.setBrush(QColor(0, 0, 0))  # Black color for contrast
+        painter.drawRect(12, 10, 8, 30)
+        painter.drawRect(30, 10, 8, 30)
+        painter.end()
+
+        return QIcon(pixmap)
+
+    def update_button_icon(self) -> None:
+        if self.is_playing:
+            self.play_signal.emit()
+            self.setIcon(self._play_icon)
+            self.setText("Play")
+        else:
+            self.pause_signal.emit()
+            self.setIcon(self._pause_icon)
+            self.setText("Pause")
+
+    def toggle_action(self) -> None:
+        self.is_playing = not self.is_playing
+        self.update_button_icon()

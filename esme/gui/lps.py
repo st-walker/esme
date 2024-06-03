@@ -5,19 +5,15 @@ import sys
 from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QMainWindow
 
-from esme.gui.widgets.common import (
-    make_exception_hook,
-    send_widget_to_log,
-    set_tds_calibration_by_region,
-)
 from esme.gui.ui import mainwindow
+from esme.gui.widgets.common import send_widget_to_log, set_tds_calibration_by_region
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
 
 
 def start_lps_gui() -> None:
-    app_name = "StuartTool"
+    app_name = "TDSFriend"
     # this somehow causes big problems...
     # sys.excepthook = make_exception_hook(app_name)
     app = QApplication(sys.argv)
