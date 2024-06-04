@@ -49,7 +49,7 @@ set roi manually?wh
 6. [x] add author string to print to logbook.
 7. [ ] figure out levels stuff so images look good.
 8. [ ] add external panels to top menu, camera status, pattern builder, tds monitor, special bunch diagnostic?
-9. [ ] play / pause / set rate data acquisition
+9. [x] play / pause / set rate data acquisition
 10. [ ] ROI.
 
 ## Low Priority
@@ -59,10 +59,10 @@ set roi manually?wh
 3. [ ] Use Kickers to steer onto screen automatically (i.e. before TDS is ever switched on).
 4. [x] Handle screens being on/off properly (including turning off afterwards if we turned them on)
 5. [ ] add some sort of help, e.g., remember to update the timings in the config file...
-6. [ ] make initial size 50% bigger
+6. [x] make initial size 50% bigger
 7. [ ] get rid of logging tab somehow.
 8. [ ] reduce spacing between control boxes a little bit.
-9. [ ] Change JDDD... to Open JDDD panel
+9. [x] Change JDDD... to Open JDDD panel
 
 
 # High Resolution Slice Energy Spread

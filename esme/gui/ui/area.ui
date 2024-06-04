@@ -90,7 +90,7 @@
           <string>Open the corresponding JDDD camera control panel for the selected screen</string>
          </property>
          <property name="text">
-          <string>JDDD...</string>
+          <string>Open Camera Expert</string>
          </property>
         </widget>
        </item>
