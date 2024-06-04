@@ -117,6 +117,7 @@ class Ui_imaging_widget(object):
         self.gridLayout_2.addWidget(self.read_rate_spinner, 1, 4, 1, 1)
         self.play_pause_button = PlayPauseButton(self.groupBox_2)
         self.play_pause_button.setObjectName("play_pause_button")
+        self.play_pause_button.setProperty("is_playing", True)
         self.gridLayout_2.addWidget(self.play_pause_button, 0, 3, 1, 2)
         self.gridLayout.addWidget(self.groupBox_2, 1, 1, 2, 1)
 

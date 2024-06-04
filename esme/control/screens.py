@@ -103,8 +103,8 @@ class Screen:
         di: DOOCSInterface | None = None,
     ) -> None:
         self.name = name
-        self.fast_kicker_setpoints = fast_kicker_setpoints
-        self.di = di if di else DOOCSInterface()
+        self.fast_kicker_setpoints = fast_kicker_setpoints or []
+        self.di = di or DOOCSInterface()
 
     def read_camera_status(self) -> str:
         # I don't use this generally because I find it not very
@@ -162,13 +162,7 @@ class Screen:
 
     def get_fast_kicker_setpoints(self) -> list[FastKickerSetpoint]:
         LOG.debug(f"Trying to get FastKickerSetpoint for screen: {self.name}")
-        fast_kicker_setpoints = self.fast_kicker_setpoints
-        if fast_kicker_setpoints is None:
-            raise EuXFELUserError("Screen has no fast kicker setpoint information")
-        LOG.debug(
-            f"Got FastKickerSetpoint for screen {self.name}: {fast_kicker_setpoints}"
-        )
-        return fast_kicker_setpoints
+        return self.fast_kicker_setpoints
 
     def get_powering_state(self) -> PoweringState:
         """Returns whether the screen is powering up, powering down, or neither"""
@@ -213,6 +207,12 @@ class Screen:
 
     def is_acquiring_images(self) -> bool:
         return bool(self.di.get_value(self._image_acquisition_address()))
+    
+    def get_hflip(self) -> bool:
+        return bool(self.CAMERA_FD.format(self.name, "DOOCS.HFLIP"))
+    
+    def get_vflip(self) -> bool:
+        return bool(self.CAMERA_FD.format(self.name, "DOOCS.VFLIP"))
 
     def __repr__(self) -> str:
         return f"<{type(self).__name__}: {self.name}>"

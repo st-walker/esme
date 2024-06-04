@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 
-from PyQt5.QtCore import QObject, pyqtSignal, Qt
+from PyQt5.QtCore import QObject, pyqtSignal, Qt, QProcess
 from PyQt5.QtWidgets import QApplication, QMainWindow
 
 from esme.gui.ui import mainwindow
@@ -10,6 +10,18 @@ from esme.gui.widgets.common import send_widget_to_log, set_tds_calibration_by_r
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
+
+_JDDD_RUN_ARGS = {"camera_status": "-file XFEL_Camera_Overview.xml -address",
+                          "pattern_builder": "-file bunch_pattern_server_pattern_builder.xml -address",
+                          "main_timing": "-file XFEL_MainTiming.xml",
+                          "b2_llrf": "-file Main_TDS_LLRF_Operation.xml -address XFEL.RF/LLRF.CONTROLLER/LLTDSB2/",
+                          "i1_llrf": "-file Main_TDS_LLRF_Operation.xml -address XFEL.RF/LLRF.CONTROLLER/LLTDSI1/",
+                          "b2_sbm": "-file XFEL_B2_Diag_bunches.xml -address XFEL.RF//LLTDSI1/",
+                          "i1_sbm": "-file XFEL_I1_Diag_bunches.xml -address XFEL.RF//LLTDSI1/"
+                          }
+_OPEN_IMAGE_ANALYSIS_CONFIG_LINE = ("cd /home/xfeloper/released_software/ImageAnalysisConfigurator"
+                                    " ; bash /home/xfeloper/released_software/ImageAnalysisConfigurator"
+                                    "/start_imageanalysis_configurator")
 
 
 def start_lps_gui() -> None:
@@ -55,6 +67,7 @@ class LPSMainWindow(QMainWindow):
         )
 
         self.connect_buttons()
+        self._processes: dict[str, QProcess] = {}
 
         # Get the TDS child panel to emit any TDS calibrations it may
         # have stored, that we we can propagate them from here to
@@ -81,12 +94,34 @@ class LPSMainWindow(QMainWindow):
         self.ui.action_print_to_logbook.triggered.connect(self.send_to_logbook)
         self.ui.action_close.triggered.connect(self.close)
 
+        
+        jddd = _JDDD_RUN_ARGS
+        self.ui.actionSpecial_Bunch_Midlayer_b2.triggered.connect(lambda: self._run_jddd_process("b2_sbm"))
+        self.ui.actionSpecial_Bunch_Midlayer_i1.triggered.connect(lambda: self._run_jddd_process("i1_sbm"))
+        self.ui.actionLLRF_i1.triggered.connect(lambda: self._run_jddd_process("i1_llrf"))
+        self.ui.actionLLRF_b2.triggered.connect(lambda: self._run_jddd_process("b2_llrf"))
+        self.ui.action_pattern_builder.triggered.connect(lambda: self._run_jddd_process("pattern_builder"))
+        self.ui.action_camera_status.triggered.connect(lambda: self._run_jddd_process("camera_status"))
+        # def open_image_analysis_server():
+        #     qproc = QProcess()
+        #     qproc.start(_OPEN_IMAGE_ANALYSIS_CONFIG_LINE)
+        #     qproc.waitForStarted()
+        #     return qproc
+            
+        # self.ui.action_image_analysis_server.triggered.connect(open_image_analysis_server)
+
     def closeEvent(self, event) -> None:
         self.ui.area.close()
         # Close screen display widget where we have threads running
         # here explicitly otherwise we have a problem.  Could also
         # emit a closing signal.  This is fine.
         self.ui.imaging_widget.close()
+
+    def _run_jddd_process(self, name):
+        process = QProcess()
+        process.start(f"jddd-run {_JDDD_RUN_ARGS[name]}")
+        process.waitForStarted()
+        self._processes[name] = process
 
 
 class QPlainTextEditLogger(QObject, logging.Handler):

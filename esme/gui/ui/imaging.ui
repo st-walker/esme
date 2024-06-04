@@ -205,6 +205,9 @@
         <property name="text">
          <string>Pause</string>
         </property>
+        <property name="is_playing" stdset="0">
+        <bool>true</bool>
+        </property>
        </widget>
       </item>
      </layout>

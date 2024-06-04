@@ -118,8 +118,11 @@ class AreaWatcher:
             return Condition(
                 Health.UNKNOWN, long="No screen name set, unable to determine kicker"
             )
-
+    
         kicker_setpoints = screen.get_fast_kicker_setpoints()
+        if not kicker_setpoints:
+            return Condition(Health.GOOD, long="No kickers associated with watched screen")
+
         try:
             for kicker_setpoint in kicker_setpoints:
                 name = kicker_setpoint.name
