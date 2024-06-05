@@ -14,11 +14,12 @@ from esme.control.mstate import Health, Condition
 
 
 class CircleIndicator(QWidget):
-    COLOUR_MAPPING = {Health.GOOD: QColor(148, 255, 67),
-                      Health.WARNING: QColor(220, 152, 56),
-                      Health.BAD: QColor(227, 49, 30),
-                      Health.UNKNOWN: QColor(63, 63, 63),
-                      Health.SUBJECTIVE: QColor(63, 63, 63)}
+    COLOUR_MAPPING = {Health.GOOD: QColor(148, 255, 67), # Green
+                      Health.WARNING: QColor(220, 152, 56), # Orange
+                      Health.BAD: QColor(227, 49, 30), # Red
+                      Health.UNKNOWN: QColor(63, 63, 63), # Grey
+                      Health.SUBJECTIVE: QColor(16, 62, 180) # Blue
+                      }
 
     def __init__(self, diameter: int = 20, tooltip_text: str | None = None, parent: QWidget | None = None) -> None:
         super().__init__(parent)

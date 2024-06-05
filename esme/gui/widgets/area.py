@@ -24,7 +24,6 @@ LOG.setLevel(logging.INFO)
 
 _CAMERA_DIALOGUE = None
 
-
 class AreaControl(QWidget):
     screen_name_signal = pyqtSignal(str)
     # These default screen names are from the Bolko tool.  I guess
@@ -51,10 +50,6 @@ class AreaControl(QWidget):
         self.ui.select_screen_combobox.activated.connect(self.select_screen)
         # self.ui.select_screen_combobox.activated.connect(self.select_screen)
 
-        # If we pick a particular screen in I1, then we click to go to B2, then back to I1,
-        # it remembers which screen we are on.  Only net for I1 as we start in I1.
-        self._selected_i1_screen = self.I1_INITIAL_SCREEN
-        self._selected_b2_screen = None
         self._screens_we_powered: set[Screen] = set()
         self._screens_we_set_to_take_data: set[Screen] = set()
 
@@ -131,6 +126,7 @@ class AreaControl(QWidget):
                 title="Unreachable Screen",
                 icon="Critical",
             )
+            return
 
         if is_powered and is_taking_data:
             return
@@ -158,14 +154,7 @@ class AreaControl(QWidget):
                 self._screens_we_powered.add(screen)
     
     def select_screen(self, index: int) -> None:
-        screen_name: str = self.ui.select_screen_combobox.itemText(index)
-
-        # Avoid emitting needlessly, if we are just selecting the
-        # screen we are already on, then do nothing.
-        if screen_name == self._selected_i1_screen:
-            return
-        if screen_name == self._selected_b2_screen:
-            return
+        screen_name: str = self.ui.select_screen_combobox.itemText(index)        
 
         self._setup_screen(screen_name)
         # Emitting here can be expensive as the rest of the GUI learns from this one signal

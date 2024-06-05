@@ -202,10 +202,10 @@ class DOOCSInterface(DOOCSInterfaceABC):
         :param val: value
         :return: None
         """
-        LOG.debug(f"pydoocs.write: {channel} -> {val}")
         try:
             pydoocs.write(channel, val)
         except pydoocs.DoocsException as e:
+            LOG.warning("Unable to write %s to write to %s", val, channel)
             raise DOOCSWriteError(channel, val) from e
 
     def get_charge(self) -> float:

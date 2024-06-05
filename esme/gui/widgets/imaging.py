@@ -34,10 +34,10 @@ from PyQt5.QtWidgets import (
 
 from esme import DiagnosticRegion
 from esme.control.exceptions import DOOCSReadError
-from esme.control.machines import MachineReadManager
 from esme.control.screens import Screen, ScreenMetadata
+from esme.control.tds import StreakingPlane
 from esme.gui.ui.imaging import Ui_imaging_widget
-from esme.gui.widgets.screen import ImagePayload
+from esme.gui.widgets.screen import AxesCalibration, ImagePayload
 
 from .common import get_machine_manager_factory, send_widget_to_log
 
@@ -52,6 +52,9 @@ class MessageType(Enum):
     # TAKE_N_FAST = auto()
     CHANGE_SCREEN = auto()
     SUBTRACT_BACKGROUND = auto()
+    PLAY_SCREEN = auto()
+    PAUSE_SCREEN = auto()
+    SET_FREQUENCY = auto()
 
 
 @dataclass
@@ -70,7 +73,20 @@ class MachineState:
     kvps: pd.Series
 
 
-class ImagingControlWidget(QWidget):
+class DiagnosticSectionWidget(QWidget):
+    def get_section(self) -> DiagnosticRegion:
+        if self.i1 is self.mreader:
+            return DiagnosticRegion.I1
+        elif self.b2 is self.mreader:
+            return DiagnosticRegion.B2
+        else:
+            raise ValueError("Unknown section: %s", self.mreader)
+
+    def get_streaking_plane(self) -> StreakingPlane:
+        return self.mreader.deflector.plane
+
+
+class ImagingControlWidget(DiagnosticSectionWidget):
     """The Image control widget is the widget that gets the image and
     then possibly pushes it to the daughter ScreenWidget.
 
@@ -83,15 +99,8 @@ class ImagingControlWidget(QWidget):
         self.ui.setupUi(self)
 
         mfactory = get_machine_manager_factory()
-        self.i1reader: MachineReadManager = mfactory.make_machine_reader_manager(
-            DiagnosticRegion.I1
-        )
-        self.b2reader: MachineReadManager = mfactory.make_machine_reader_manager(
-            DiagnosticRegion.B2
-        )
-        self.mreader = (
-            self.i1reader
-        )  # Set initial machine reader instance choice to be for I1.
+        self.i1, self.b2 = mfactory.make_i1_b2_imaging_managers()
+        self.mreader = self.i1
 
         self.screen = self.mreader.screens["OTRC.55.I1"]
 
@@ -125,12 +134,36 @@ class ImagingControlWidget(QWidget):
             screen.get_position() is Position.OFFAXIS
         )
 
+    def _calculate_dispersion(self) -> None:
+        dx, dy = self.mreader.optics.dispersions_at_screen(self.screen_name)
+        section = self.get_section()
+        if section is DiagnosticRegion.I1:
+            self.ui.dispersion_spinner.setValue(dx)
+        elif section is DiagnosticRegion.B2:
+            self.ui.dispersion_spinner.setValue(dy)
+        else:
+            raise ValueError("Unknown diagnostic section: %s", section)
+
+    def _generate_axes_calibrations(self) -> None:
+        dispersion = self.ui.dispersion_spinner.value()
+        axescalib = AxesCalibration(
+            energy_ev=self.mreader.optics.get_beam_energy() * 1e6,
+            dispersion=dispersion,
+            streaking_plane=self.mreader.deflector.plane,
+        )
+        self.ui.screen_display_widget.calibrate_axes(axescalib)
+
     def _connect_buttons(self) -> None:
         self.ui.subtract_bg_checkbox.stateChanged.connect(self.set_subtract_background)
         self.ui.send_to_logbook_button.clicked.connect(self._open_logbook_writer)
         self.ui.take_background_button.clicked.connect(self.take_background)
         self.ui.autogain_button.clicked.connect(self._activate_auto_gain)
         self.ui.clip_offaxis_checkbox.clicked.connect(self._clip_offaxis)
+        self.ui.play_pause_button.play_signal.connect(self._play_screen)
+        self.ui.play_pause_button.pause_signal.connect(self._pause_screen)
+        self.ui.read_rate_spinner.valueChanged.connect(self._set_read_frequency)
+        self.ui.calculate_dispersion_button.clicked.connect(self._calculate_dispersion)
+        self.ui.regenerate_axes_button.clicked.connect(self._generate_axes_calibrations)
 
     def _activate_auto_gain(self) -> None:
         # We assume the server is inactive here, because we disable the button otherwise...
@@ -152,6 +185,21 @@ class ImagingControlWidget(QWidget):
     def take_background(self) -> None:
         message = DataTakingMessage(MessageType.CACHE_BACKGROUND, {"number_to_take": 5})
         self.producer_worker.submit(message)
+
+    def _play_screen(self) -> None:
+        self.producer_worker.submit(DataTakingMessage(MessageType.PLAY_SCREEN))
+
+    def _pause_screen(self) -> None:
+        self.producer_worker.submit(DataTakingMessage(MessageType.PAUSE_SCREEN))
+
+    def _set_read_frequency(self) -> None:
+        # TODO: debounce this so only is set after not being touched for a few seconds.
+        self.producer_worker.submit(
+            DataTakingMessage(
+                MessageType.SET_FREQUENCY,
+                {"frequency": self.ui.read_rate_spinner.value()},
+            )
+        )
 
     def setup_data_taking_worker(self) -> tuple[DataTakingWorker, QThread]:
         LOG.debug("Initialising screen worker thread")
@@ -189,6 +237,8 @@ class ImagingControlWidget(QWidget):
         self.producer_worker.change_screen(self.screen)
         # Get the daughter Screen widget to also use the relevant screen instance.
         self.ui.screen_display_widget.set_screen(self.screen.name)
+        self._calculate_dispersion()
+        self._generate_axes_calibrations()
 
 
 class DataTakingWorker(QObject):
@@ -202,6 +252,7 @@ class DataTakingWorker(QObject):
         self.mean_bg = 0.0
 
         self.screen: Screen = initial_screen
+        # This clearly assumes the screen is already powered etc..  no catching here!
         self.screen_md: ScreenMetadata = initial_screen.get_screen_metadata()
         self._set_screen(initial_screen)
 
@@ -210,6 +261,8 @@ class DataTakingWorker(QObject):
         # displayed image or not.
         self._do_subtract_background: bool = False
         self._caching_background = False
+        self._pause = False
+        self._read_period = 1.0
 
         # Queue for messages we we receive from
         self._consumerq: queue.Queue[tuple[DataTakingMessage]] = queue.Queue()
@@ -231,22 +284,26 @@ class DataTakingWorker(QObject):
         """This is a slow loop that is the one that is running by default and acquires images at a rate of
         1Hz.
         """
-        deadline = time.time() + 0.9
+        deadline = time.time() + self._read_period
         while True:
             # Only do this event loop about once a second
             wait = deadline - time.time()
             if wait > 0:
                 time.sleep(wait)
 
-            # set deadline for next read.  we want to update the screen at a rate of 1Hz.
-            # We subtract 0.1s from 1s to get 0.9, because each read takes about 0.1s.
-            deadline += 0.9
+            # set deadline for next read.
+            deadline += self._read_period
 
             # Check for anything in the message queue
             try:
                 self._dispatch_from_message_queue()
             except StopImageAcquisition:
                 break
+
+            # Do not even read if paused, unless we are caching the background, then
+            # we still want to read.
+            if self._pause and not self._caching_background:
+                continue
 
             image = self.screen.get_image_raw()
             if image is None:
@@ -266,7 +323,8 @@ class DataTakingWorker(QObject):
                     self._caching_background = False
                     self.mean_bg = np.mean(self.bg_images, axis=0, dtype=image.dtype)
 
-            self._process_and_emit_image_for_display(image)
+            if not self._pause:
+                self._process_and_emit_image_for_display(image)
 
     # def _take_n_fast(self, n: int) -> None:
     #     # This completely blocks the thread in that it is no longer listening
@@ -318,6 +376,12 @@ class DataTakingWorker(QObject):
                 self._set_screen(message.data["screen"])
             case MessageType.SUBTRACT_BACKGROUND:
                 self._do_subtract_background = message.data["state"]
+            case MessageType.PAUSE_SCREEN:
+                self._pause = True
+            case MessageType.PLAY_SCREEN:
+                self._pause = False
+            case MessageType.SET_FREQUENCY:
+                self._read_period = 1 / message.data["frequency"]
             case _:
                 message = f"Unexpected message send to {type(self).__name__}: {message}"
                 LOG.critical(message)
@@ -330,19 +394,23 @@ class DataTakingWorker(QObject):
 
     def _process_and_emit_image_for_display(self, image: npt.NDArray) -> None:
         # Subtract background if we have taken some background and enabled it.
+        # In case this affects the background caching?
+
+        if self._caching_background:
+            # If we are also using the images we get for caching then
+            # We copy so that out image processing here doesn't affect our data.
+            image = image.copy()
+
         if self.bg_images and self._do_subtract_background:
             image -= self.mean_bg
             image = image.clip(min=0, out=image)
-        minpix = np.min(image)
-        maxpix = np.max(image)
-        xproj = image.sum(axis=1, dtype=np.float32)
-        # xproj = scipy.signal.savgol_filter(xproj, window_length=20, polyorder=2)
-        yproj = image.sum(axis=0, dtype=np.float32)
+
+        xproj = image.sum(axis=1)
+        yproj = image.sum(axis=0)
 
         imp = ImagePayload(
             image=image,
             screen_md=self.screen_md,
-            levels=(minpix, maxpix),
             xproj=xproj,
             yproj=yproj,
         )

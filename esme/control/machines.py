@@ -109,11 +109,15 @@ class DiagnosticBunchesManager(MachineManager):
         screen = self.screens[screen_name]
         # Try and set the kickers for the screen.  If it's a dump screen,
         # there will be no kickers for it, so we just do nothing and return.
-        try:
-            # We get the kicker setpoints for the screen.
-            kicker_setpoints = screen.get_fast_kicker_setpoints()
-        except EuXFELUserError:  # Then there is no kicker info (e.g. dump screen)
+        # We get the kicker setpoints for the screen.
+        kicker_setpoints = screen.get_fast_kicker_setpoints()
+
+        # If there are no kickers for this screen then we need to disable kicker activation,
+        # Other
+        if not kicker_setpoints:
+            self.sbunches.dont_use_kickers()
             return
+
         # Loop over the setpoints corresponding to the screen and write their settings to the machine.
         for setpoint in kicker_setpoints:
             self.kickerop.apply_fast_kicker_setpoint(setpoint)
@@ -142,3 +146,15 @@ class MachineReadManager:
         rest_read = self.snapshotter.snapshot(resolve_wildcards=True)
         rest_read |= full_optics_read
         return rest_read
+
+
+class ImagingManager(MachineReadManager):
+    def __init__(self,
+                 *,
+                 screens: dict[str, Screen],
+                 optics: MachineLinearOptics,
+                 request: SnapshotRequest,
+                 deflector: TransverseDeflector
+                 ):
+        super().__init__(screens=screens, optics=optics, request=request)
+        self.deflector = deflector

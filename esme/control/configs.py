@@ -10,7 +10,7 @@ import pandas as pd
 
 from esme.control.kickers import FastKicker, FastKickerController, FastKickerSetpoint, PolarityType
 from esme.control.screens import Screen
-from esme.control.machines import HighResolutionEnergySpreadMachine, LPSMachine, MachineManager, DiagnosticBunchesManager, MachineReadManager
+from esme.control.machines import HighResolutionEnergySpreadMachine, LPSMachine, MachineManager, DiagnosticBunchesManager, MachineReadManager, ImagingManager
 from esme.control.tds import TransverseDeflector, StreakingPlane
 from esme.control.sbunches import SpecialBunchesControl
 from esme.control.dint import DOOCSInterfaceABC
@@ -182,6 +182,25 @@ class MachineManagerFactory:
         i1reader = self.make_diagnostic_bunches_manager(DiagnosticRegion.I1)
         b2reader = self.make_diagnostic_bunches_manager(DiagnosticRegion.B2)
         return i1reader, b2reader
+    
+    def make_imaging_manager(self, area: DiagnosticRegion) -> ImagingManager:
+        try:
+            manager = deepcopy(self._manager_cache[area]["imaging"])
+        except KeyError:
+            manager = ImagingManager(screens=self._get_screens(area),
+                                     optics=self._get_optics(area),
+                                     request=self._get_misc_snapshot_request(area),
+                                     deflector=self._get_deflector(area)
+                                     )
+        else:
+            self._manager_cache[area]["imaging"]
+        return manager
+
+    def make_i1_b2_imaging_managers(self) -> tuple[ImagingManager, ImagingManager]:
+        i1 = self.make_imaging_manager(DiagnosticRegion.I1)
+        b2 = self.make_imaging_manager(DiagnosticRegion.B2)
+        return i1, b2
+
 
 
 # def build_lps_machine_from_config(yamlf: os.PathLike, area: DiagnosticRegion, di: DOOCSInterfaceABC | None = None) -> LPSMachine:

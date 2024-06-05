@@ -1,3 +1,4 @@
+import sys
 import logging
 import re
 import socket
@@ -12,9 +13,10 @@ import numpy as np
 import pandas as pd
 import pyqtgraph as pg
 import yaml
-from matplotlib import cm
-from PyQt5.QtCore import QBuffer, QByteArray, QIODevice, QObject, pyqtSignal
-from PyQt5.QtWidgets import QMessageBox, QWidget
+import matplotlib
+from PyQt5.QtCore import QBuffer, QByteArray, QIODevice, QObject, pyqtSignal, QPoint, pyqtProperty
+from PyQt5.QtWidgets import QMessageBox, QWidget, QPushButton
+from PyQt5.QtGui import QIcon, QPixmap, QColor, QPainter, QPolygon
 
 from esme import DiagnosticRegion
 from esme.control.configs import (
@@ -122,22 +124,26 @@ class QPlainTextEditLogger(QObject, logging.Handler):
         self.log_signal.emit(msg)
 
 
-def setup_screen_display_widget(widget: QWidget, axes: bool = False, units: str = "m"):
-    image_plot = widget.addPlot()
-    image_plot.clear()
+def setup_screen_display_widget(widget: pg.GraphicsLayoutWidget, axes: bool = False, units: str = "m") -> pg.PlotItem:
+    # We add a plot to the pg.GraphicsLayoutWidget  
+    main_plot = widget.addPlot()
+    # Clear it in case it has something in it already.
+    main_plot.clear()
+    main_plot.setAspectLocked(True)
+    # Make an ImageItem
     image = pg.ImageItem(border="k")
-    image_plot.hideAxis("left")
-    image_plot.hideAxis("bottom")
+    main_plot.hideAxis("left")
+    main_plot.hideAxis("bottom")
     if axes:
-        image_plot.setLabel("bottom", "<i>&Delta;x</i>", units=units)
-        image_plot.setLabel("right", "<i>&Delta;y</i>", units=units)
-
-    image_plot.addItem(image)
-    colormap = cm.get_cmap("viridis")
-    colormap._init()
-    lut = (colormap._lut * 255).view(np.ndarray)
+        main_plot.setLabel("bottom", "<i>&Delta;x</i>", units=units)
+        main_plot.setLabel("right", "<i>&Delta;y</i>", units=units)
+    # add the image item to the plot
+    main_plot.addItem(image)
+    cmap = matplotlib.colormaps["viridis"]
+    cmap._init()
+    lut = (cmap._lut * (255)).view(np.ndarray)
     image.setLookupTable(lut)
-    return image_plot
+    return main_plot
 
 
 def load_scanner_panel_ui_defaults() -> dict[str, Any]:
@@ -301,7 +307,19 @@ class PlayPauseButton(QPushButton):
 
         self.clicked.connect(self.toggle_action)
         self.is_playing = False
-        self.update_button_icon()
+
+    @pyqtProperty(bool)
+    def is_playing(self) -> bool:
+        return self._is_playing
+    
+    @is_playing.setter
+    def is_playing(self, value: bool) -> None:
+        self._is_playing = bool(value)
+        if value:
+            self.play_signal.emit()
+        else:
+            self.pause_signal.emit()
+        self._update_button_icon()
 
     @staticmethod
     def create_play_icon() -> QIcon:
@@ -332,16 +350,15 @@ class PlayPauseButton(QPushButton):
 
         return QIcon(pixmap)
 
-    def update_button_icon(self) -> None:
+    def _update_button_icon(self) -> None:
+        # This method should only set the visuals,
+        # and should not emit anything.
         if self.is_playing:
-            self.play_signal.emit()
-            self.setIcon(self._play_icon)
-            self.setText("Play")
-        else:
-            self.pause_signal.emit()
             self.setIcon(self._pause_icon)
             self.setText("Pause")
+        else:
+            self.setIcon(self._play_icon)
+            self.setText("Play")
 
     def toggle_action(self) -> None:
         self.is_playing = not self.is_playing
-        self.update_button_icon()

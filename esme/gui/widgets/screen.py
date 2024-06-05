@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -21,13 +22,12 @@ from .common import get_machine_manager_factory, setup_screen_display_widget
 
 # Below this dispersion we take the dispersion to be 0.
 # Used for deciding whether to apply an energy axis to the screen or not.
-ZERO_DISPERSION_THRESHOLD = 0.1
+ZERO_DISPERSION_THRESHOLD = 0.01
 
 # If axis changed by 5% or less then don't propagate a new axis to save unnecessary updates.
 AXIS_UPDATE_RELATIVE_TOLERANCE = 0.05
 
-
-AXES_KWARGS = {
+AXES_KWARGS: dict[str: dict[str, Any]] = {
     "x": {"text": "<i>&Delta;x</i>", "units": "m"},
     "y": {"text": "<i>&Delta;y</i>", "units": "m"},
     "time": {"text": "<i>&Delta;t</i>", "units": "s"},
@@ -43,7 +43,6 @@ LOG.setLevel(logging.INFO)
 class ImagePayload:
     image: npt.NDArray
     screen_md: ScreenMetadata
-    levels: tuple[float, float]
     xproj: npt.NDArray
     yproj: npt.NDArray
 
@@ -65,11 +64,11 @@ class ImagePayload:
 
 
 @dataclass
-class AxisCalibration:
-    scale_factor: float
-    parameter: str  # x, y, time, energy
-    axis: str  # X or Y
-
+class AxesCalibration:
+    energy_ev: float
+    dispersion: float
+    streaking_plane: StreakingPlane
+    
 
 class ScreenWidget(QWidget):
     def __init__(self, parent=None):
@@ -83,37 +82,32 @@ class ScreenWidget(QWidget):
         # fmt: off
         self.i1machine, self.b2machine = get_machine_manager_factory().make_i1_b2_managers()
         self.machine = self.i1machine
-        self.calibration_worker, self.calibration_thread = self.setup_calibration_worker()
         # fmt: on
-
-        # self.tds_calibration_signal.connect(
-        #     self.calibration_worker.update_tds_voltage_calibration
-        # )
+        self.xyflip: tuple[bool, bool] = False, False
 
         # Add projection axes to the image display daughter widget
-        self.add_transverse_projection("x")
-        self.add_transverse_projection("y")
+        self.xplot, self.yplot = self._make_transverse_projections()
 
         # We have to pick some screen to begin with so it might as well be the first screen.
         self.set_screen("OTRC.55.I1")
 
-    def propagate_tds_calibration_signal(self, calib) -> None:
-        self.calibration_worker.update_tds_voltage_calibration(calib)
-
     def set_screen(self, screen_name: str) -> None:
-        self.calibration_worker.screen_name = screen_name
         # Screen dimensions should always be distance (not pixels, not time, not energy).
-        dx, dy = self.machine.optics.dispersions_at_screen(screen_name)
+        # dx, dy = self.machine.optics.dispersions_at_screen(screen_name)
         screen = self.machine.screens[screen_name]
         self.clear_image()
         self.set_image_transform(screen_name)
-
-    def set_image_transform(self, screen_name: str):
+        self.xyflip = screen.get_hflip(), screen.get_vflip()
+    
+    def set_image_transform(self, screen_name: str) -> None:
         """This will set the transform for the image based on the image metadata, namely
         scaling the image by the size of the pixels and putting putting the origin in
         the middle of the axes.  If we try to do this whilst the screen is unpowered,
         then these reads can fail, so to protect against this, if we fail, we 
         try again in a second or so with QTimer.singleShot."""
+
+        # this functions is only responsible for transforming from pixel units to distance units
+        # i.e. basically scaling 
 
         screen = self.machine.screens[screen_name]
         def try_it():
@@ -135,6 +129,37 @@ class ScreenWidget(QWidget):
 
         try_it()
 
+    def calibrate_axes(self, axescalib: AxesCalibration):
+        self._calibrate_dispersive_axes(axescalib)
+
+    def _calibrate_dispersive_axes(self, axescalib: AxesCalibration) -> None:
+        # The dispersive axis the the other axis to the streaking axis.
+        if axescalib.streaking_plane is StreakingPlane.HORIZONTAL:
+            axis = self.xplot.getAxis("bottom")
+            dim = "x"
+        elif axescalib.streaking_plane is StreakingPlane.VERTICAL:
+            axis = self.yplot.getAxis("right")
+            dim = "y"
+        else:
+            raise TypeError(f"Unknown streaking plane: {axescalib.streaking_plane}")
+
+        if abs(axescalib.dispersion) < ZERO_DISPERSION_THRESHOLD:
+            self.set_axis_transform_with_label(axis, 1.0, AXES_KWARGS[dim])
+        else:
+            # Dispersion relation is D = x / (delta_P / P0).
+            # We delta_P, we have dispersion and we have x (the physics positions on the screen)
+            # delta_P = x * reference_energy 
+            scale_factor = axescalib.energy_ev / axescalib.dispersion
+            
+            self.set_axis_transform_with_label(axis, scale_factor, AXES_KWARGS["energy"])
+
+    def set_axis_transform_with_label(self, axis: NegatableLabelsAxisItem, 
+                                      scale_factor: float,
+                                      axis_kwargs: dict[str, dict[str, Any]]) -> None:
+        axis.setLabel(**axis_kwargs)
+        axis.negate = scale_factor < 0
+        axis.setScale(abs(scale_factor))
+
     def clear_image(self) -> None:
         self.image_plot.items[0].clear()
 
@@ -143,71 +168,42 @@ class ScreenWidget(QWidget):
         items = self.image_plot.items
         assert len(items) == 1
         image_item = items[0]
-        # Flip lr is necessary to make it look good, this goes in
-        # combination with the imageAxisOrder of pyqtgraph!  Changing
-        # one requires the other to also change...
-        image_item.setLevels(image_payload.levels)
+        image = image_payload.image
+        if self.xyflip[0]:
+            image_payload.image = np.fliplr(image)
+        if self.xyflip[1]:
+            image_payload.image = np.flipud(image)
+
         image_item.setImage(image_payload.image)
+
+
         self.update_projection_plots(image_payload)
 
-    def set_axis_transform_with_label(self, axis_calib: AxisCalibration) -> None:
-        if axis_calib.axis == "x":
-            axis = self.xplot.getAxis("bottom")
-        elif axis_calib.axis == "y":
-            axis = self.yplot.getAxis("right")
-        # Could be x, y or time in streaking plane.
-        # or x, y or energy in non streaking plane.
-        axis.setLabel(**AXES_KWARGS[axis_calib.parameter])
-        axis.negate = axis_calib.scale_factor < 0
-        axis.setScale(abs(axis_calib.scale_factor))
-
-        self.xplot.update()
-
-    def add_transverse_projection(self, dimension: str) -> None:
+    def _make_transverse_projections(self) -> None:
         win = self.glwidget
-        if dimension == "y":
-            axis = {
-                "right": NegatableLabelsAxisItem(
-                    "right", text="<i>&Delta;y</i>", units="m"
-                )
-            }
-            self.yplot = win.addPlot(row=0, col=1, rowspan=1, colspan=1, axisItems=axis)
-            self.yplot.hideAxis("left")
-            self.yplot.hideAxis("bottom")
-            self.yplot.getViewBox().invertX(True)
-            self.yplot.setMaximumWidth(200)
-            self.yplot.setYLink(self.image_plot)
-        elif dimension == "x":
-            # Another plot area for displaying ROI data
-            win.nextRow()
-            axis = {
-                "bottom": NegatableLabelsAxisItem(
-                    "bottom", text="<i>&Delta;x</i>", units="m"
-                )
-            }
-            self.xplot = win.addPlot(row=1, col=0, colspan=1, axisItems=axis)
-            self.xplot.hideAxis("left")
-            self.xplot.setMaximumHeight(200)
-            self.xplot.setXLink(self.image_plot)
-
-    def setup_calibration_worker(self) -> tuple[CalibrationWatcher, QThread]:
-        LOG.debug("Initialising calibration worker thread")
-        # XXX need to update machine when I1 or B2 is changed!
-
-        calib_worker = CalibrationWatcher(self.machine, "OTRC.55.I1")
-        calib_thread = QThread()
-        calib_worker.moveToThread(calib_thread)
-        calib_worker.axis_calibration_signal.connect(self.set_axis_transform_with_label)
-        calib_thread.started.connect(calib_worker.run)
-        # NOTE: NOT STARTING THREAD FOR NOW BECAUSE IT IS A HUGE BOTTLENECK AND SLOWS DOWN GUI TOO MUCH!
-        # XXXXXXXXXXXXXXXX:
-        # calib_thread.start()
-        return calib_worker, calib_thread
-
-    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
-        self.calibration_worker.kill = True
-        self.calibration_thread.terminate()
-        self.calibration_thread.wait()
+        axis = {
+            "right": NegatableLabelsAxisItem(
+                "right", text="<i>&Delta;y</i>", units="m"
+            )
+        }
+        yplot = win.addPlot(row=0, col=1, rowspan=1, colspan=1, axisItems=axis)
+        yplot.hideAxis("left")
+        yplot.hideAxis("bottom")
+        yplot.getViewBox().invertX(True)
+        yplot.setMaximumWidth(200)
+        yplot.setYLink(self.image_plot)
+        # Another plot area for displaying ROI data
+        win.nextRow()
+        axis = {
+            "bottom": NegatableLabelsAxisItem(
+                "bottom", text="<i>&Delta;x</i>", units="m"
+            )
+        }
+        xplot = win.addPlot(row=1, col=0, colspan=1, axisItems=axis)
+        xplot.hideAxis("left")
+        xplot.setMaximumHeight(200)
+        xplot.setXLink(self.image_plot)
+        return xplot, yplot
 
     def update_projection_plots(self, image_payload: ImagePayload) -> None:
         self.xplot.clear()
@@ -215,13 +211,12 @@ class ScreenWidget(QWidget):
         self.xplot.plot(image_payload.x, image_payload.xproj)
         self.yplot.plot(image_payload.yproj, image_payload.y)
 
-
 class CalibrationWatcher(QObject):
     # This is necessary in case the calibrations change at all at the
     # screen.  E.g. energy changes, position changes, dispersion changes..  etc.
 
     # XXX: What if scale factor is 0?
-    axis_calibration_signal = pyqtSignal(AxisCalibration)
+    # axis_calibration_signal = pyqtSignal(AxisCalibration)
 
     def __init__(self, machine, screen_name: str):
         super().__init__()
@@ -416,9 +411,9 @@ class NegatableLabelsAxisItem(pg.AxisItem):
         self.negate = False
 
     def tickStrings(self, values, scale, spacing):
-        # should probably do this in tickValues instead, but this is waye easier.
-        # Zero ends up signed which I don't like but oh well.
+        # should probably do this in tickValues instead, but this is way easier.
         strings = super().tickStrings(values, scale, spacing)
         if self.negate:
-            strings = [str(-float(s)) for s in strings]
+            # Add zero actually converts -0.0 to +0.0 whilst not doing anything else.
+            strings = [str(-float(s) + 0.0) for s in strings]
         return strings
