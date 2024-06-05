@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import logging
+import pickle
 import queue
-import tarfile
 import time
 from collections import deque
 from concurrent.futures import Future, ProcessPoolExecutor
@@ -12,34 +12,32 @@ from enum import Enum, auto
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
-import pickle
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import pyqtgraph as pg
 from PyQt5 import QtGui
-from PyQt5.QtCore import QObject, QThread, QTimer, pyqtSignal, Qt
+from PyQt5.QtCore import QObject, Qt, QThread, QTimer, pyqtSignal
 from PyQt5.QtWidgets import (
+    QDialog,
     QHBoxLayout,
     QLabel,
-    QDialog,
+    QLineEdit,
     QProgressBar,
     QPushButton,
     QSpinBox,
     QTextEdit,
     QVBoxLayout,
     QWidget,
-    QLineEdit,
-    QApplication
 )
 
 from esme import DiagnosticRegion
+from esme.control.exceptions import DOOCSReadError
 from esme.control.machines import MachineReadManager
 from esme.control.screens import Screen, ScreenMetadata
 from esme.gui.ui.imaging import Ui_imaging_widget
 from esme.gui.widgets.screen import ImagePayload
-from esme.control.exceptions import DOOCSReadError
 
 from .common import get_machine_manager_factory, send_widget_to_log
 
@@ -95,14 +93,18 @@ class ImagingControlWidget(QWidget):
             self.i1reader
         )  # Set initial machine reader instance choice to be for I1.
 
-        self.screen_name = "OTRC.55.I1"
+        self.screen = self.mreader.screens["OTRC.55.I1"]
 
         # Thread that reads the images and others can get from.
         self.producer_worker, self.producer_thread = self.setup_data_taking_worker()
 
         self.elogger = LogBookEntryWriterDialogue(
-            self.mreader.screens[self.screen_name], bg_images=None, parent=self
+            self.screen, bg_images=None, parent=self
         )
+
+        self.timer = QTimer()
+        self.timer.timeout.connect(self._update_ui)
+        self.timer.start(1000)
 
         self._connect_buttons()
 
@@ -113,16 +115,31 @@ class ImagingControlWidget(QWidget):
             voltage_calibration
         )
 
+    def _update_ui(self):
+        screen = self.screen
+        # The button should be active only if the analysis server is not active, i.e.
+        # Not doing something already.
+        self.ui.autogain_button.setEnabled(not screen.analysis.is_active())
+        # We only allow for clipping if the screen is off axis
+        self.ui.clip_offaxis_checkbox.setEnabled(
+            screen.get_position() is Position.OFFAXIS
+        )
+
     def _connect_buttons(self) -> None:
         self.ui.subtract_bg_checkbox.stateChanged.connect(self.set_subtract_background)
         self.ui.send_to_logbook_button.clicked.connect(self._open_logbook_writer)
         self.ui.take_background_button.clicked.connect(self.take_background)
+        self.ui.autogain_button.clicked.connect(self._activate_auto_gain)
+        self.ui.clip_offaxis_checkbox.clicked.connect(self._clip_offaxis)
+
+    def _activate_auto_gain(self) -> None:
+        # We assume the server is inactive here, because we disable the button otherwise...
+        self.screen.analysis.activate_gain_control()
+        self.ui.autogain_button.setEnabled(False)
 
     def _open_logbook_writer(self) -> None:
-        screen = self.mreader.screens[self.screen_name]
         self.elogger.show_as_new_modal_dialogue(
-            screen, 
-            list(self.producer_worker.bg_images)
+            self.screen, list(self.producer_worker.bg_images)
         )
 
     def set_subtract_background(self, subtract_bg_state: Qt.CheckState) -> None:  # type: ignore
@@ -165,14 +182,13 @@ class ImagingControlWidget(QWidget):
         self.producer_thread.wait()
 
     def set_screen(self, screen_name: str) -> None:
-        self.screen_name = screen_name
-        screen = self.mreader.screens[screen_name]
+        self.screen = self.mreader.screens[screen_name]
         # Change elogger window screen to the correct screen instance
-        self.elogger.set_screen(screen)
+        self.elogger.set_screen(self.screen)
         # Get the worker producing imagees
-        self.producer_worker.change_screen(screen)
+        self.producer_worker.change_screen(self.screen)
         # Get the daughter Screen widget to also use the relevant screen instance.
-        self.ui.screen_display_widget.set_screen(screen_name)
+        self.ui.screen_display_widget.set_screen(self.screen.name)
 
 
 class DataTakingWorker(QObject):
@@ -196,9 +212,7 @@ class DataTakingWorker(QObject):
         self._caching_background = False
 
         # Queue for messages we we receive from
-        self._consumerq: queue.Queue[
-            tuple[DataTakingMessage]
-        ] = queue.Queue()
+        self._consumerq: queue.Queue[tuple[DataTakingMessage]] = queue.Queue()
 
         self._is_running = False
 
@@ -227,7 +241,7 @@ class DataTakingWorker(QObject):
             # set deadline for next read.  we want to update the screen at a rate of 1Hz.
             # We subtract 0.1s from 1s to get 0.9, because each read takes about 0.1s.
             deadline += 0.9
-                            
+
             # Check for anything in the message queue
             try:
                 self._dispatch_from_message_queue()
@@ -239,7 +253,7 @@ class DataTakingWorker(QObject):
                 # this can happen sometimes, sometimes when switching cameras
                 # get_image_raw can for a moment start returning None, of course
                 # we need to account for this possibility and go next.
-                continue 
+                continue
 
             if self._caching_background:
                 self.bg_images.appendleft(image)
@@ -284,7 +298,9 @@ class DataTakingWorker(QObject):
                 return
 
             if message is None:
-                LOG.critical("%s received request to stop image acquisition", type(self).__name__)
+                LOG.critical(
+                    "%s received request to stop image acquisition", type(self).__name__
+                )
                 raise StopImageAcquisition("Image Acquisition halt requested.")
 
             self._handle_message(message)
@@ -359,7 +375,10 @@ class DataTakingWorker(QObject):
             self.screen_md = self.screen.get_screen_metadata()
         except DOOCSReadError:
             timeout = 500
-            LOG.warning("Unable to acquire screen metadata, will try again in %ss", timeout / 1000)
+            LOG.warning(
+                "Unable to acquire screen metadata, will try again in %ss",
+                timeout / 1000,
+            )
             QTimer.singleShot(timeout, self._try_and_set_screen_metadata)
 
     def change_screen(self, new_screen: Screen) -> None:
@@ -369,11 +388,9 @@ class DataTakingWorker(QObject):
 
 class LogBookEntryWriterDialogue(QDialog):
     DEFAULT_AUTHOR = "xfeloper"
+
     def __init__(
-        self,
-        screen: Screen,
-        bg_images: list[npt.NDArray] | None = None,
-        parent = None
+        self, screen: Screen, bg_images: list[npt.NDArray] | None = None, parent=None
     ) -> None:
         super().__init__(parent=parent)
         self.ui = self._make_ui()
@@ -398,7 +415,9 @@ class LogBookEntryWriterDialogue(QDialog):
 
         self._connect_buttons()
 
-    def show_as_new_modal_dialogue(self, screen: Screen, bg_images: list[npt.NDArray]) -> None:
+    def show_as_new_modal_dialogue(
+        self, screen: Screen, bg_images: list[npt.NDArray]
+    ) -> None:
         self._screen = screen
         self.bg_images = bg_images
         self.ui.nbg_label.setText(f"Background Images: {len(self.bg_images)}")
@@ -424,17 +443,17 @@ class LogBookEntryWriterDialogue(QDialog):
         nimages_to_take = self.ui.image_spinner.value()
         self.ui.progress_bar.setMaximum(nimages_to_take)
         # Get images from data taking thread
-        beam_image_futures = self._acquire_n_images_fast_in_subprocess(
-            nimages_to_take
-        )
+        beam_image_futures = self._acquire_n_images_fast_in_subprocess(nimages_to_take)
         self._print_to_logbook_when_done_taking_images(beam_image_futures)
 
     def _print_to_logbook_when_done_taking_images(
         self, beam_image_futures: list[Future[npt.NDArray]]
     ):
         # We take images at a rate of 10Hz, so if we take 10 images, we expect it to take 1second.
-        # so we want our timer to be at somewhere between 10Hz and 1Hz.  
-        check_period = int((len(beam_image_futures) / 10 / 10) * 1000) # to milliseconds
+        # so we want our timer to be at somewhere between 10Hz and 1Hz.
+        check_period = int(
+            (len(beam_image_futures) / 10 / 10) * 1000
+        )  # to milliseconds
 
         def try_and_print_to_logbook():
             # XXX: What if a future raises for some reason?
@@ -454,18 +473,18 @@ class LogBookEntryWriterDialogue(QDialog):
             self._set_ui_enabled(True)
             self._reset_ui()
             self.hide()
+
         # Start trying to print to logbook.
         try_and_print_to_logbook()
 
     def _reset_ui(self):
         # Deliberately do not clear author.
         # And also choose to leave image_spinner value
-        # to what it was, as probably repeated use 
+        # to what it was, as probably repeated use
         # will want the same number of images each time.
         # We also for now deliberately do not clear the log entry either...
         # self.ui.text_edit.clear()
         self.ui.progress_bar.setValue(0)
-
 
     def send_to_xfel_elog(self, beam_data: list[dict[str, Any]]) -> None:
         kvps = self.get_machine_state()
@@ -494,7 +513,9 @@ class LogBookEntryWriterDialogue(QDialog):
         parent = self.parent()
         while widget := parent.parent():
             parent = widget
-        send_widget_to_log(parent, text=text, author=author, severity="MEASURE", title="TDSChum")
+        send_widget_to_log(
+            parent, text=text, author=author, severity="MEASURE", title="TDSChum"
+        )
 
     def _get_output_dir(self, screen_name: str) -> Path:
         nowstr = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
@@ -570,7 +591,7 @@ class LogBookEntryWriterDialogue(QDialog):
         spinner_layout.addWidget(ui.images_label)
         spinner_layout.addWidget(ui.image_spinner)
         spinner_layout.addWidget(ui.progress_bar)
-        
+
         # Start stop buttons layout
         button_layout = QHBoxLayout()
         button_layout.addWidget(ui.start_button)

@@ -1,19 +1,16 @@
 questions for bolko:
 
 
-
 what are in bolko's .mat files from his calib?
-
-what can image analysis server actually do?
-can we make the image analysis server easier to use?
-
+do i need them at all?
+Let's do a really quick calibration using the bolko tool.
 
 I didn't fix the problem with the kickers being set properly...
 i need to do it via the machine so that the screen is set,
 i got rid of this at some point.
 
 save roi info but also raw data?
-set roi manually?wh
+set roi manually?
 
 # LPS Main GUI
 
@@ -37,8 +34,6 @@ set roi manually?wh
 8. [x] IBFP Check
 
 
-
-
 ## Middle Priority
 
 1. [x] Get plain data taking working.
@@ -46,11 +41,13 @@ set roi manually?wh
 3. [ ] Design kick server, to and from 200m optics, to and from I1D.
 4. [ ] Automatically Calibrate TDS.
 5. [X] Get negative axis working.
+6. [x] get dispersion axes calibration working.s
 6. [x] add author string to print to logbook.
-7. [ ] figure out levels stuff so images look good.
+7. [x] figure out levels stuff so images look good.
 8. [ ] add external panels to top menu, camera status, pattern builder, tds monitor, special bunch diagnostic?
 9. [x] play / pause / set rate data acquisition
 10. [ ] ROI.
+11. [ ] add gain or gain control.
 
 ## Low Priority
 
@@ -61,7 +58,7 @@ set roi manually?wh
 5. [ ] add some sort of help, e.g., remember to update the timings in the config file...
 6. [x] make initial size 50% bigger
 7. [ ] get rid of logging tab somehow.
-8. [ ] reduce spacing between control boxes a little bit.
+8. [x] reduce spacing between control boxes a little bit.
 9. [x] Change JDDD... to Open JDDD panel
 
 

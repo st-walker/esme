@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>893</width>
+    <width>1042</width>
     <height>849</height>
    </rect>
   </property>
@@ -101,6 +101,34 @@
       <string>Display</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_2">
+      <item row="1" column="0" colspan="3">
+       <widget class="QPushButton" name="regenerate_axes_button">
+        <property name="text">
+         <string>Regenerate Axes</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="4" rowspan="2">
+       <widget class="Line" name="line_3">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="9" rowspan="2">
+       <widget class="Line" name="line_2">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="10">
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>Read Rate</string>
+        </property>
+       </widget>
+      </item>
       <item row="0" column="0">
        <layout class="QHBoxLayout" name="horizontalLayout">
         <item>
@@ -143,48 +171,7 @@
         </item>
        </layout>
       </item>
-      <item row="0" column="2" rowspan="2">
-       <widget class="Line" name="line_2">
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="1">
-       <widget class="QPushButton" name="regenerate_axes_button">
-        <property name="text">
-         <string>Regenerate Axes</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
-       <widget class="QPushButton" name="calculate_dispersion_button">
-        <property name="text">
-         <string>Calculate Dispersion</string>
-        </property>
-        <property name="flat">
-         <bool>false</bool>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
-       <widget class="QCheckBox" name="subtract_bg_checkbox">
-        <property name="enabled">
-         <bool>true</bool>
-        </property>
-        <property name="text">
-         <string>Subtract background</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="3">
-       <widget class="QLabel" name="label_2">
-        <property name="text">
-         <string>Read Rate</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="4">
+      <item row="1" column="11">
        <widget class="QSpinBox" name="read_rate_spinner">
         <property name="buttonSymbols">
          <enum>QAbstractSpinBox::UpDownArrows</enum>
@@ -200,7 +187,41 @@
         </property>
        </widget>
       </item>
-      <item row="0" column="3" colspan="2">
+      <item row="1" column="6">
+       <widget class="QCheckBox" name="clip_offaxis_checkbox">
+        <property name="text">
+         <string>Clip Offaxis Features</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2">
+       <widget class="QPushButton" name="calculate_dispersion_button">
+        <property name="text">
+         <string>Calculate Dispersion</string>
+        </property>
+        <property name="flat">
+         <bool>false</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="8">
+       <widget class="QCheckBox" name="subtract_bg_checkbox">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="text">
+         <string>Subtract background</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="6" colspan="3">
+       <widget class="QPushButton" name="autogain_button">
+        <property name="text">
+         <string>Auto Gain Control</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="10" colspan="2">
        <widget class="PlayPauseButton" name="play_pause_button">
         <property name="text">
          <string>Pause</string>

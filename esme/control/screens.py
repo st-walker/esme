@@ -30,7 +30,7 @@ import logging
 from dataclasses import dataclass
 from enum import Enum, auto
 from functools import cache
-from typing import Any, Self
+from typing import Any
 
 import numpy.typing as npt
 
@@ -61,10 +61,6 @@ class Position(Enum):
     OUT = auto()
     UNKNOWN = auto()
 
-    @classmethod
-    def from_doocs() -> Self:
-        return self
-
 
 _DOOCS_STRING_TO_POSITION: dict[str, Position] = {
     "OFFAXIS_LYSO": Position.OFFAXIS,
@@ -91,6 +87,10 @@ class Screen:
         self.name = name
         self.fast_kicker_setpoints = fast_kicker_setpoints
         self.di = di if di else DOOCSInterface()
+        self.analysis = ImageAnalysisServerFacade(name, di=self.di)
+
+    def _image_analysis_screen_names(self) -> list[str]:
+        return self.di.get("XFEL.DIAG/IMAGEANALYSIS/*//")
 
     def read_camera_status(self) -> str:
         # I don't use this generally because I find it not very
