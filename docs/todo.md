@@ -1,3 +1,11 @@
+# TEST TOMORROW MORNING:
+
+ - LASER HEATER OPEN/CLOSED
+ - ALL SCREENS CAN BE REACHED!
+ - play with ibfb button?
+ - That's it?
+
+
 questions for bolko:
 
 
@@ -11,8 +19,23 @@ i got rid of this at some point.
 
 save roi info but also raw data?
 set roi manually?
+SBML needs to be B2 aware.
+
+What if screen is switched off by someone/something else?
+what if kickers are depowered by someone?
+then i should try in a loop to power them, right?
+
+i need an icon
+
+self.screen masks self.screen()
+make it self._screen?
 
 # LPS Main GUI
+
+# BEFORE I LEAVE TODAY:
+
+ - don't let user put in fake beam regions or fake bunch numbers
+ - save roi info if off axis.
 
 ## Minimal feature set todolist (Highest Priority)
 
@@ -41,25 +64,26 @@ set roi manually?
 3. [ ] Design kick server, to and from 200m optics, to and from I1D.
 4. [ ] Automatically Calibrate TDS.
 5. [X] Get negative axis working.
-6. [x] get dispersion axes calibration working.s
+6. [x] get dispersion axes calibration working.
 6. [x] add author string to print to logbook.
 7. [x] figure out levels stuff so images look good.
-8. [ ] add external panels to top menu, camera status, pattern builder, tds monitor, special bunch diagnostic?
+8. [x] add external panels to top menu, camera status, pattern builder, tds monitor, special bunch diagnostic?
 9. [x] play / pause / set rate data acquisition
 10. [ ] ROI.
-11. [ ] add gain or gain control.
+11. [x] add gain or gain control.
 
 ## Low Priority
 
 1. [x] Get indiciators working.
 2. [ ] Dispersion measurement.
+3. [ ] If kicker would not fire because bunch number is too big, then complain/say something...
 3. [ ] Use Kickers to steer onto screen automatically (i.e. before TDS is ever switched on).
-4. [x] Handle screens being on/off properly (including turning off afterwards if we turned them on)
-5. [ ] add some sort of help, e.g., remember to update the timings in the config file...
-6. [x] make initial size 50% bigger
-7. [ ] get rid of logging tab somehow.
-8. [x] reduce spacing between control boxes a little bit.
-9. [x] Change JDDD... to Open JDDD panel
+4. [x] Handle screens being on/off properly (including turning off afterwards if we turned them on).
+5. [ ] Add some sort of help, e.g., remember to update the timings in the config file...
+6. [x] Make initial size 50% bigger.
+7. [ ] Get rid of logging tab somehow.
+8. [x] Reduce spacing between control boxes a little bit.
+9. [x] Change JDDD... to Open JDDD panel.
 
 
 # High Resolution Slice Energy Spread

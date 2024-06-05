@@ -217,7 +217,7 @@
   </widget>
   <action name="action_close">
    <property name="text">
-    <string>Close</string>
+    <string>Quit TDSChum</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Q</string>
