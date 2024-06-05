@@ -9,7 +9,7 @@ import numpy as np
 import numpy.typing as npt
 import pyqtgraph as pg
 from PyQt5 import QtGui
-from PyQt5.QtCore import QObject, QThread, pyqtSignal, pyqtSlot, QTimer
+from PyQt5.QtCore import QObject, QTimer, pyqtSlot
 from PyQt5.QtWidgets import QGridLayout, QWidget
 
 from esme import DiagnosticRegion
@@ -27,7 +27,7 @@ ZERO_DISPERSION_THRESHOLD = 0.01
 # If axis changed by 5% or less then don't propagate a new axis to save unnecessary updates.
 AXIS_UPDATE_RELATIVE_TOLERANCE = 0.05
 
-AXES_KWARGS: dict[str: dict[str, Any]] = {
+AXES_KWARGS: dict[str : dict[str, Any]] = {
     "x": {"text": "<i>&Delta;x</i>", "units": "m"},
     "y": {"text": "<i>&Delta;y</i>", "units": "m"},
     "time": {"text": "<i>&Delta;t</i>", "units": "s"},
@@ -68,7 +68,7 @@ class AxesCalibration:
     energy_ev: float
     dispersion: float
     streaking_plane: StreakingPlane
-    
+
 
 class ScreenWidget(QWidget):
     def __init__(self, parent=None):
@@ -98,18 +98,19 @@ class ScreenWidget(QWidget):
         self.clear_image()
         self.set_image_transform(screen_name)
         self.xyflip = screen.get_hflip(), screen.get_vflip()
-    
+
     def set_image_transform(self, screen_name: str) -> None:
         """This will set the transform for the image based on the image metadata, namely
         scaling the image by the size of the pixels and putting putting the origin in
         the middle of the axes.  If we try to do this whilst the screen is unpowered,
-        then these reads can fail, so to protect against this, if we fail, we 
+        then these reads can fail, so to protect against this, if we fail, we
         try again in a second or so with QTimer.singleShot."""
 
         # this functions is only responsible for transforming from pixel units to distance units
-        # i.e. basically scaling 
+        # i.e. basically scaling
 
         screen = self.machine.screens[screen_name]
+
         def try_it():
             try:
                 xpixel_size = screen.get_pixel_xsize()
@@ -117,7 +118,7 @@ class ScreenWidget(QWidget):
                 nxpixel = screen.get_image_xpixels()
                 nypixel = screen.get_image_ypixels()
             except DOOCSReadError as e:
-                # Try again in a bit 
+                # Try again in a bit
                 QTimer.singleShot(1000, try_it)
             else:
                 tr = QtGui.QTransform()  # prepare ImageItem transformation:
@@ -148,14 +149,19 @@ class ScreenWidget(QWidget):
         else:
             # Dispersion relation is D = x / (delta_P / P0).
             # We delta_P, we have dispersion and we have x (the physics positions on the screen)
-            # delta_P = x * reference_energy 
+            # delta_P = x * reference_energy
             scale_factor = axescalib.energy_ev / axescalib.dispersion
-            
-            self.set_axis_transform_with_label(axis, scale_factor, AXES_KWARGS["energy"])
 
-    def set_axis_transform_with_label(self, axis: NegatableLabelsAxisItem, 
-                                      scale_factor: float,
-                                      axis_kwargs: dict[str, dict[str, Any]]) -> None:
+            self.set_axis_transform_with_label(
+                axis, scale_factor, AXES_KWARGS["energy"]
+            )
+
+    def set_axis_transform_with_label(
+        self,
+        axis: NegatableLabelsAxisItem,
+        scale_factor: float,
+        axis_kwargs: dict[str, dict[str, Any]],
+    ) -> None:
         axis.setLabel(**axis_kwargs)
         axis.negate = scale_factor < 0
         axis.setScale(abs(scale_factor))
@@ -176,15 +182,12 @@ class ScreenWidget(QWidget):
 
         image_item.setImage(image_payload.image)
 
-
         self.update_projection_plots(image_payload)
 
     def _make_transverse_projections(self) -> None:
         win = self.glwidget
         axis = {
-            "right": NegatableLabelsAxisItem(
-                "right", text="<i>&Delta;y</i>", units="m"
-            )
+            "right": NegatableLabelsAxisItem("right", text="<i>&Delta;y</i>", units="m")
         }
         yplot = win.addPlot(row=0, col=1, rowspan=1, colspan=1, axisItems=axis)
         yplot.hideAxis("left")
@@ -210,6 +213,7 @@ class ScreenWidget(QWidget):
         self.yplot.clear()
         self.xplot.plot(image_payload.x, image_payload.xproj)
         self.yplot.plot(image_payload.yproj, image_payload.y)
+
 
 class CalibrationWatcher(QObject):
     # This is necessary in case the calibrations change at all at the

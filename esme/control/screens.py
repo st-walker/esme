@@ -61,10 +61,6 @@ class Position(Enum):
     OUT = auto()
     UNKNOWN = auto()
 
-    @classmethod
-    def from_doocs():
-        return self
-
 
 _DOOCS_STRING_TO_POSITION = {
     "OFFAXIS_LYSO": Position.OFFAXIS,

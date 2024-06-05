@@ -9,6 +9,7 @@ from concurrent.futures import Future, ProcessPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, auto
+from functools import cache
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -55,6 +56,7 @@ class MessageType(Enum):
     PLAY_SCREEN = auto()
     PAUSE_SCREEN = auto()
     SET_FREQUENCY = auto()
+    CLIP_OFFAXIS = auto()
 
 
 @dataclass
@@ -130,9 +132,15 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         # Not doing something already.
         self.ui.autogain_button.setEnabled(not screen.analysis.is_active())
         # We only allow for clipping if the screen is off axis
-        self.ui.clip_offaxis_checkbox.setEnabled(
-            screen.get_position() is Position.OFFAXIS
-        )
+        is_offaxis = screen.get_position() is Position.OFFAXIS
+        self.ui.clip_offaxis_checkbox.setEnabled(is_offaxis)
+        if is_offaxis:
+            # This is a bit crap but if the position is not off axis then
+            # We repeatedly send a message to the thread telling it to
+            # disable clipping..
+            self.consumerq.put(
+                DataTakingMessage(MessageType.CLIP_OFFAXIS, data={"state": False})
+            )
 
     def _calculate_dispersion(self) -> None:
         dx, dy = self.mreader.optics.dispersions_at_screen(self.screen_name)
@@ -154,16 +162,26 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         self.ui.screen_display_widget.calibrate_axes(axescalib)
 
     def _connect_buttons(self) -> None:
-        self.ui.subtract_bg_checkbox.stateChanged.connect(self.set_subtract_background)
         self.ui.send_to_logbook_button.clicked.connect(self._open_logbook_writer)
         self.ui.take_background_button.clicked.connect(self.take_background)
+
         self.ui.autogain_button.clicked.connect(self._activate_auto_gain)
         self.ui.clip_offaxis_checkbox.clicked.connect(self._clip_offaxis)
+        self.ui.subtract_bg_checkbox.stateChanged.connect(self.set_subtract_background)
+
         self.ui.play_pause_button.play_signal.connect(self._play_screen)
         self.ui.play_pause_button.pause_signal.connect(self._pause_screen)
         self.ui.read_rate_spinner.valueChanged.connect(self._set_read_frequency)
+
         self.ui.calculate_dispersion_button.clicked.connect(self._calculate_dispersion)
         self.ui.regenerate_axes_button.clicked.connect(self._generate_axes_calibrations)
+
+    def _set_clip_offaxis(self, state: Qt.CheckState) -> None:
+        self._consumerq.put(
+            DataTakingMessage(
+                MessageType.CLIP_OFFAXIS, data={"state": state == Qt.Checked}
+            )
+        )
 
     def _activate_auto_gain(self) -> None:
         # We assume the server is inactive here, because we disable the button otherwise...
@@ -263,9 +281,10 @@ class DataTakingWorker(QObject):
         self._caching_background = False
         self._pause = False
         self._read_period = 1.0
+        self._clip_offaxis = False
 
         # Queue for messages we we receive from
-        self._consumerq: queue.Queue[tuple[DataTakingMessage]] = queue.Queue()
+        self._consumerq: queue.Queue[DataTakingMessage | None] = queue.Queue()
 
         self._is_running = False
 
@@ -382,6 +401,9 @@ class DataTakingWorker(QObject):
                 self._pause = False
             case MessageType.SET_FREQUENCY:
                 self._read_period = 1 / message.data["frequency"]
+            case MessageType.CLIP_OFFAXIS:
+                self._clip_offaxis = message.data["state"]
+
             case _:
                 message = f"Unexpected message send to {type(self).__name__}: {message}"
                 LOG.critical(message)
@@ -405,6 +427,9 @@ class DataTakingWorker(QObject):
             image -= self.mean_bg
             image = image.clip(min=0, out=image)
 
+        if self._clip_offaxis:
+            image[self._clipping_slice] *= 0.0
+
         xproj = image.sum(axis=1)
         yproj = image.sum(axis=0)
 
@@ -416,6 +441,10 @@ class DataTakingWorker(QObject):
         )
 
         self.display_image_signal.emit(imp)
+
+    @cache
+    def _clipping_slice(self):
+        self.screen.analysis.get_roi_slice()
 
     def _read_from_screen(self) -> npt.NDArray:
         image = self.screen.get_image_raw()
@@ -430,7 +459,7 @@ class DataTakingWorker(QObject):
 
     def _set_screen(self, screen: Screen) -> None:
         self.screen = screen
-        # XXX: Possible race condition somewhere here if called from other thread?
+        self._clipping_slice.cache_clear()
         self._clear_bg_cache()
         self._try_and_set_screen_metadata()
 
