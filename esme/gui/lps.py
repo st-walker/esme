@@ -11,21 +11,19 @@ from esme.gui.widgets.common import send_widget_to_log, set_tds_calibration_by_r
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
 
-_JDDD_RUN_ARGS = {"camera_status": "-file XFEL_Camera_Overview.xml -address",
-                          "pattern_builder": "-file bunch_pattern_server_pattern_builder.xml -address",
-                          "main_timing": "-file XFEL_MainTiming.xml",
+_JDDD_RUN_ARGS = {"camera_status": "-file XFEL_Camera_Overview.xml -address ////",
+                          "pattern_builder": "-file bunch_pattern_server_pattern_builder.xml -address XFEL.UTIL/BUNCH_PATTERN/PATTERN_BUILDER/PULSE_TYPE_0",
+                          "main_timing": "-file XFEL_MainTiming.xml -address XFEL.DIAG/TIMER.CENTRAL/MASER/SASE",
                           "b2_llrf": "-file Main_TDS_LLRF_Operation.xml -address XFEL.RF/LLRF.CONTROLLER/LLTDSB2/",
                           "i1_llrf": "-file Main_TDS_LLRF_Operation.xml -address XFEL.RF/LLRF.CONTROLLER/LLTDSI1/",
                           "b2_sbm": "-file XFEL_B2_Diag_bunches.xml -address XFEL.RF//LLTDSI1/",
                           "i1_sbm": "-file XFEL_I1_Diag_bunches.xml -address XFEL.RF//LLTDSI1/"
                           }
-_OPEN_IMAGE_ANALYSIS_CONFIG_LINE = ("cd /home/xfeloper/released_software/ImageAnalysisConfigurator"
-                                    " ; bash /home/xfeloper/released_software/ImageAnalysisConfigurator"
-                                    "/start_imageanalysis_configurator")
+
 
 
 def start_lps_gui() -> None:
-    app_name = "TDSFriend"
+    app_name = "TDSChum"
     # this somehow causes big problems...
     # sys.excepthook = make_exception_hook(app_name)
     app = QApplication(sys.argv)
@@ -102,14 +100,16 @@ class LPSMainWindow(QMainWindow):
         self.ui.actionLLRF_b2.triggered.connect(lambda: self._run_jddd_process("b2_llrf"))
         self.ui.action_pattern_builder.triggered.connect(lambda: self._run_jddd_process("pattern_builder"))
         self.ui.action_camera_status.triggered.connect(lambda: self._run_jddd_process("camera_status"))
-        # def open_image_analysis_server():
-        #     qproc = QProcess()
-        #     qproc.start(_OPEN_IMAGE_ANALYSIS_CONFIG_LINE)
-        #     qproc.waitForStarted()
-        #     return qproc
             
-        # self.ui.action_image_analysis_server.triggered.connect(open_image_analysis_server)
+        self.ui.action_image_analysis_server.triggered.connect(self._open_image_analysis_server)
 
+    def _open_image_analysis_server(self):
+        qproc = QProcess()
+        qproc.setWorkingDirectory("/home/xfeloper/released_software/ImageAnalysisConfigurator")
+        qproc.start("bash", ["/home/xfeloper/released_software/ImageAnalysisConfigurator/start_imageanalysis_configurator"])
+        # qproc.waitForStarted()
+        self._processes["image_analysis_server"] = qproc
+    
     def closeEvent(self, event) -> None:
         self.ui.area.close()
         # Close screen display widget where we have threads running

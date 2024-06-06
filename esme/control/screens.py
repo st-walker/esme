@@ -37,6 +37,7 @@ import numpy.typing as npt
 from .dint import DOOCSInterface
 from .exceptions import DOOCSReadError, DOOCSUnexpectedReadValueError
 from .kickers import FastKickerSetpoint
+from .imanal import ImageAnalysisServerFacade
 
 LOG = logging.getLogger(__name__)
 
@@ -81,6 +82,18 @@ _DOOCS_STRING_TO_POSITION: dict[str, Position] = {
     "ONAXIS_LYSO": Position.ONAXIS,
     "OUT": Position.OUT,
 }
+
+INTERESTING_SCREEN_ML_LOCATIONS = ["STATUS.STR"]
+INTERESTING_CAMERA_LOCATIONS = ["CAM.STATUS",
+                                "X.POLY_SCALE",
+                                "Y.POLY_SCALE",
+                                "POWER.ON.OFF",
+                                "WIDTH",
+                                "HEIGHT",
+                                "DOOCS.HFLIP",
+                                "DOOCS.VFLIP"
+
+                ]   
 
 
 class Screen:
@@ -227,6 +240,9 @@ class Screen:
             ) from e
         pix = ScreenMetadata(xsize=xsize, ysize=ysize, nx=nx, ny=ny)
         return pix
+    
+    def dump(self) -> dict[str, Any]:
+        pass
 
 
 def screen_is_fully_operational(screen: Screen) -> bool:

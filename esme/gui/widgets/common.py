@@ -130,8 +130,8 @@ def setup_screen_display_widget(widget: pg.GraphicsLayoutWidget, axes: bool = Fa
     # Clear it in case it has something in it already.
     main_plot.clear()
     main_plot.setAspectLocked(True)
-    # Make an ImageItem
-    image = pg.ImageItem(border="k")
+    # Row-major is apparently faster.
+    image = pg.ImageItem(border="k", axisOrder="row-major")
     main_plot.hideAxis("left")
     main_plot.hideAxis("bottom")
     if axes:

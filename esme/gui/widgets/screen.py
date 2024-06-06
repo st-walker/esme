@@ -50,7 +50,7 @@ class ImagePayload:
     def x(self) -> np.ndarray:
         sh = self.image.shape
         return (
-            np.linspace(-sh[0] / 2, sh[0] / 2, num=len(self.xproj))
+            np.linspace(-sh[1] / 2, sh[1] / 2, num=len(self.xproj))
             * self.screen_md.xsize
         )
 
@@ -58,7 +58,7 @@ class ImagePayload:
     def y(self) -> np.ndarray:
         sh = self.image.shape
         return (
-            np.linspace(-sh[1] / 2, sh[1] / 2, num=len(self.yproj))
+            np.linspace(-sh[0] / 2, sh[0] / 2, num=len(self.yproj))
             * self.screen_md.ysize
         )
 
@@ -83,7 +83,6 @@ class ScreenWidget(QWidget):
         self.i1machine, self.b2machine = get_machine_manager_factory().make_i1_b2_managers()
         self.machine = self.i1machine
         # fmt: on
-        self.xyflip: tuple[bool, bool] = False, False
 
         # Add projection axes to the image display daughter widget
         self.xplot, self.yplot = self._make_transverse_projections()
@@ -97,7 +96,6 @@ class ScreenWidget(QWidget):
         screen = self.machine.screens[screen_name]
         self.clear_image()
         self.set_image_transform(screen_name)
-        self.xyflip = screen.get_hflip(), screen.get_vflip()
 
     def set_image_transform(self, screen_name: str) -> None:
         """This will set the transform for the image based on the image metadata, namely
@@ -174,14 +172,7 @@ class ScreenWidget(QWidget):
         items = self.image_plot.items
         assert len(items) == 1
         image_item = items[0]
-        image = image_payload.image
-        if self.xyflip[0]:
-            image_payload.image = np.fliplr(image)
-        if self.xyflip[1]:
-            image_payload.image = np.flipud(image)
-
         image_item.setImage(image_payload.image)
-
         self.update_projection_plots(image_payload)
 
     def _make_transverse_projections(self) -> None:

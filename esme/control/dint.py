@@ -21,9 +21,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Self, Type
-
 import numpy.typing as npt
-
+import re
 from esme.control.exceptions import DOOCSReadError, DOOCSWriteError
 
 PYDOOCS_SO = "/System/Volumes/Data/home/xfeloper/user/stwalker/pydoocs12/pydoocs-main/pydoocs.cpython-312-darwin.so"
@@ -39,6 +38,7 @@ if SPEC is not None:
 
 LOG = logging.getLogger(__name__)
 
+DOOCS_RE = re.compile(r'^/?(?:[A-Z0-9._]+/)*[A-Z0-9._]*\*?[A-Z0-9._]*(?:/[A-Z0-9._]+)*/*$')
 
 # This matches a full DOOCS address, with 4 fields, each field can
 # contain caps, numbers, full stops and underscores.
@@ -267,3 +267,26 @@ class DOOCSInterface(DOOCSInterfaceABC):
 
     def get_charge(self) -> float:
         return self.get_value("XFEL.DIAG/CHARGE.ML/TORA.25.I1/CHARGE.SA1")
+
+def dump(stub: str, filter_arrays=True) -> dict[str, Any]:
+    # Stub = something usable in pydoocs.names, e.g.
+    # XFEL.DIAG/IMAGEANALYSIS/OTRC.58.I1/*/
+    # The asterisk part HAS to be the property.
+    if stub.count("*") != 1:
+        raise ValueError("Malformed stub, must contain one '*'.")
+
+    formattable_address = stub.replace("*", "{}")
+    addresses = []
+    values = []
+    for name in pydoocs.names(stub):
+        address_part, *_ = name.split()
+        address = formattable_address.format(address_part)
+    try:
+        ddata = pydoocs.read(address)
+    except pydoocs.DoocsException:
+        pass
+    is_array_type = ddata["TYPE"].startswith("A_") or ddata["TYPE"] == "SPECTUM"
+    if is_array_type and filter_arrays:
+        addresses.append(address)
+        values.append(ddata["data"])
+    return dict(zip(addresses, values))

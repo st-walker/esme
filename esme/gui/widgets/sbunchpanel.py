@@ -1,4 +1,5 @@
 import logging
+import time
 
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
@@ -7,13 +8,14 @@ from PyQt5.QtWidgets import QMessageBox
 from esme.control.pattern import get_beam_regions, get_bunch_pattern
 from esme.core import DiagnosticRegion
 from esme.gui.ui.special_bunch_panel import Ui_special_bunch_panel
+from esme.control.sbunches import SpecialBunchesControl
 
 from .common import get_machine_manager_factory
 
 LOG = logging.getLogger(__name__)
 
 # SpecialBunchControl doesn't know much/anything about screens, only kickers.
-
+# XXX: This doesn't change for B2...!
 
 class SpecialBunchMidLayerPanel(QtWidgets.QWidget):
     # This can be quite slow because it's very unlikely that the SBM will change much
@@ -37,6 +39,9 @@ class SpecialBunchMidLayerPanel(QtWidgets.QWidget):
         self.dbunch_manager = (
             self.i1dbmanager
         )  # Set sbm choice to be for I1 diagnostics
+        # Let's immediately start to try to power the kickers (does nothing if they alared)
+
+        _try_and_power_kickers(self.i1dbmanager.sbunches)
 
         self.ui = Ui_special_bunch_panel()
         self.ui.setupUi(self)
@@ -50,6 +55,7 @@ class SpecialBunchMidLayerPanel(QtWidgets.QWidget):
         self.ibfb_warning_dialogue.disable_ibfb_aff_signal.connect(
             lambda: self.dbunch_manager.sbunches.set_ibfb_lff(on=False)
         )
+
 
         self.connect_buttons()
 
@@ -246,3 +252,23 @@ class IBFBWarningDialogue(QMessageBox):
         elif button == self.ignore_and_go_button:
             self.fire_signal.emit()
         self.hide()
+
+def _try_and_power_kickers(sbml: SpecialBunchesControl, timeout: float = 10.0):
+    deadline = time.time() + timeout
+
+    def try_it() -> None:
+        if time.time() > deadline:
+            LOG.critical("giving up trying to power the kickers in %s after %ss", 
+                        sbml.location, 
+                        timeout)
+            QMessageBox.critical(None, "Error", f"Unable to power kickers in {sbml.location}")
+        
+        punt_time = 1000
+        # XXX What is the sbml itself is not responsive?
+        if sbml.are_kickers_powered_up():
+            return
+        sbml.power_up_kickers()
+
+        QTimer.singleShot(punt_time, try_it)
+
+    try_it()
