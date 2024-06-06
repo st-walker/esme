@@ -1,4 +1,3 @@
-
 # PYBIND11: /Users/xfeloper/.conda/envs/esme/bin/pybind11-config
 # PKG_CONFIG: export PKG_CONFIG_PATH=/local/Darwin-x86_64/lib/pkgconfig
 
@@ -13,27 +12,19 @@ S.Tomin, 2017
 
 from __future__ import annotations
 
+# Import hard coded pydoocs I compiled for Python 3.12
+import importlib.util
 import logging
-import os
-import pickle
-import time
+import re
+from abc import abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional, Type, Self
-from abc import abstractmethod
+from typing import Any, Self, Type
 
-import matplotlib
-import numpy as np
 import numpy.typing as npt
-import pandas as pd
 
 from esme.control.exceptions import DOOCSReadError, DOOCSWriteError
-
-import sys
-
-# Import hard coded pydoocs I compiled for Python 3.12
-import importlib.util
 
 PYDOOCS_SO = "/System/Volumes/Data/home/xfeloper/user/stwalker/pydoocs12/pydoocs-main/pydoocs.cpython-312-darwin.so"
 SPEC = importlib.util.spec_from_file_location("pydoocs", PYDOOCS_SO)
@@ -42,19 +33,78 @@ if SPEC is not None:
         pydoocs = importlib.util.module_from_spec(SPEC)
     except ImportError:
         import warnings
+
         warnings.warn(f"Unable to import pydoocs from {PYDOOCS_SO}")
 
 
 LOG = logging.getLogger(__name__)
 
 
-def make_doocs_channel_string(facility: str = "", device: str = "", location: str = "", property: str = "") -> str:
+# This matches a full DOOCS address, with 4 fields, each field can
+# contain caps, numbers, full stops and underscores.
+DOOCS_FULL_ADDRESS_REGEX = re.compile(
+    r"""
+    ^                          # Start of string
+    # /?                       # Possible leading slash
+
+    # Facility:
+    (?P<facility>              # Capture group for facility
+    [0-9A-Z._]*                # Facility name, caps, numbers, full stops and underscores
+    \*?                        # Optional wildcard character, at most once within the facility name
+    [0-9A-Z._]*                # After the wildcard, more facility name characters
+    )                          # End of facility capture group
+
+    /                          # Separator between facility and device
+
+    # Device:
+    (?P<device>                # Capture group for device
+    [0-9A-Z._]*                # Device name, caps, numbers, full stops and underscores
+    \*?                        # Optional wildcard character, at most once within the device name
+    [0-9A-Z._]*                # After the wildcard, more device name characters
+    )                          # End of device capture group
+
+    /                          # Separator between device and location
+
+    # Location:
+    (?P<location>              # Capture group for location
+    [0-9A-Z._]*                # Location name, caps, numbers, full stops and underscores
+    \*?                        # Optional wildcard character, at most once within the location name
+    [0-9A-Z._]*                # After the wildcard, more location name characters
+    )                          # End of location capture group
+
+    /                          # Separator between location and property
+
+    # Property:
+    (?P<property>              # Capture group for property
+    [0-9A-Z._]*                # Property name, caps, numbers, full stops and underscores
+    \*?                        # Optional wildcard character, at most once within the property name
+    [0-9A-Z._]*                # After the wildcard, more property name characters
+    )                          # End of property capture group
+
+    /?                         # Optional trailing slash
+    $                          # End of string
+
+""",
+    re.VERBOSE,
+)
+
+
+def make_doocs_channel_string(
+    facility: str = "", device: str = "", location: str = "", property: str = ""
+) -> str:
     return f"{facility}/{device}/{location}/{property}"
 
 
 class DOOCSAddress:
     __slots__ = "facility", "device", "location", "property"
-    def __init__(self, facility: str = "", device: str = "", location: str = "", property: str = ""):
+
+    def __init__(
+        self,
+        facility: str = "",
+        device: str = "",
+        location: str = "",
+        property: str = "",
+    ):
         self.facility = facility
         self.device = device
         self.location = location
@@ -70,15 +120,21 @@ class DOOCSAddress:
 
     @classmethod
     def from_string(cls: Type[Self], string: str) -> Self:
-        components = string.split("/")
-        if len(components) > 4:
+        m = DOOCS_FULL_ADDRESS_REGEX.match(string)
+        if m is None:
             raise ValueError(f"Malformed DOOCs address string: {string}")
-        return cls(*components)
+        return cls(**m.groups())
 
     def resolve(self) -> str:
         return f"{self.facility}/{self.device}/{self.location}/{self.property}"
 
-    def filled(self, facility: str = "", device: str = "", location: str = "", property: str= "") -> str:
+    def filled(
+        self,
+        facility: str = "",
+        device: str = "",
+        location: str = "",
+        property: str = "",
+    ) -> str:
         facility = facility or self.facility
         device = device or self.device
         location = location or self.location
@@ -166,6 +222,7 @@ class DOOCSInterface(DOOCSInterfaceABC):
     """
     Machine Interface for European XFEL
     """
+
     def __init__(self):
         # # Just fail immediately if there's no pydoocs...
         # try:
@@ -187,13 +244,13 @@ class DOOCSInterface(DOOCSInterfaceABC):
         except pydoocs.DoocsException as e:
             raise DOOCSReadError(channel) from e
         return val["data"]
-    
+
     def read_full(self, channel: str) -> dict[str, Any]:
         try:
             return pydoocs.read(channel)
         except pydoocs.DocosException as e:
             raise DOOCSReadError(channel) from e
-        
+
     def set_value(self, channel: str, val: Any) -> None:
         """
         Method to set value to a channel

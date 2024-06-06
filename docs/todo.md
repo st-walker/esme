@@ -8,18 +8,16 @@
 
 questions for bolko:
 
-
 what are in bolko's .mat files from his calib?
 do i need them at all?
 Let's do a really quick calibration using the bolko tool.
 
-I didn't fix the problem with the kickers being set properly...
-i need to do it via the machine so that the screen is set,
-i got rid of this at some point.
-
-save roi info but also raw data?
-set roi manually?
+save roi info.
+save screen position.
 SBML needs to be B2 aware.
+also everything needs to be checked for b2 really.
+we need correct r12 calculationf for b2.
+check all orientations are correct.
 
 What if screen is switched off by someone/something else?
 what if kickers are depowered by someone?
@@ -69,7 +67,6 @@ make it self._screen?
 7. [x] figure out levels stuff so images look good.
 8. [x] add external panels to top menu, camera status, pattern builder, tds monitor, special bunch diagnostic?
 9. [x] play / pause / set rate data acquisition
-10. [ ] ROI.
 11. [x] add gain or gain control.
 
 ## Low Priority
