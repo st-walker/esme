@@ -34,7 +34,7 @@ from typing import Any
 
 import numpy.typing as npt
 
-from .dint import DOOCSInterface
+from .dint import DOOCSInterface, dump_fdl
 from .exceptions import DOOCSReadError, DOOCSUnexpectedReadValueError
 from .kickers import FastKickerSetpoint
 from .imanal import ImageAnalysisServerFacade
@@ -115,6 +115,8 @@ class Screen:
         self.fast_kicker_setpoints = fast_kicker_setpoints or []
         self.di = di or DOOCSInterface()
         self.analysis = ImageAnalysisServerFacade(name, di=self.di)
+        self._screen_fdl = self.SCREEN_ML_FD.format(self.name, "{}")
+        self._camera_fdl = self.CAMERA_FD.format(self.name, "{}")
 
     def read_camera_status(self) -> str:
         # I don't use this generally because I find it not very
@@ -242,7 +244,8 @@ class Screen:
         return pix
     
     def dump(self) -> dict[str, Any]:
-        pass
+        return (dump_fdl(self._screen_fdl.format("*")) 
+                | dump_fdl(self._camera_fdl.format("*")))
 
 
 def screen_is_fully_operational(screen: Screen) -> bool:

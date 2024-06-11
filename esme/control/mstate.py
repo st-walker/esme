@@ -8,9 +8,7 @@ from .sbunches import SpecialBunchesControl
 from .screens import Screen, Position
 from .tds import TransverseDeflector
 
-LH_CLOSED_ADDRESS = "XFEL.UTIL/LASERINT/GUN/SH3_CLOSED"
-LH_OPEN_ADDRESS = "XFEL.UTIL/LASERINT/GUN/SH3_OPEN"
-
+LH_SHUTTER_ADDRESS = "XFEL.UTIL/LASERHEATER.MOTOR/DIGOUT.LHLVL5/DOUT.1"
 
 class Health(Enum):
     GOOD = auto()
@@ -46,8 +44,7 @@ class AreaWatcher:
 
     def get_laser_heater_shutter_state(self) -> Condition:
         try:
-            is_open = self.di.get_value(LH_OPEN_ADDRESS)
-            is_closed = self.di.get_value(LH_CLOSED_ADDRESS)
+            shutter_state = self.di.get_value(LH_SHUTTER_ADDRESS)
         except DOOCSReadError as e:
             return Condition(
                 Health.BAD,
@@ -55,10 +52,10 @@ class AreaWatcher:
                 long=f"Unable to read {e.address} when checking IBFB",
             )
 
-        if is_open:
+        if shutter_state == 1:
             return Condition(Health.SUBJECTIVE, short="OPEN", long="LH shutter is open")
 
-        if is_closed:
+        if shutter_state == 0:
             return Condition(
                 Health.SUBJECTIVE, short="CLOSED", long="LH shutter is closed"
             )

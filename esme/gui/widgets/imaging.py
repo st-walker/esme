@@ -50,6 +50,7 @@ pg.setConfigOption("useNumba", True)
 
 class MessageType(Enum):
     CACHE_BACKGROUND = auto()
+    CLEAR_BACKGROUND = auto()
     # TAKE_N_FAST = auto()
     CHANGE_SCREEN = auto()
     SUBTRACT_BACKGROUND = auto()
@@ -192,6 +193,11 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         # whilst doing the autogain on the roi, then we might have a problem.  so just avoid
         # Doing that by disabling this checkbox.
         self.ui.clip_offaxis_checkbox.setEnabled(False)
+        # We have to clear the background cache when adjusting the gain because we risk
+        # subtracting a background at a much higher / lower gain that the beam image, which
+        # is basically meaningless.
+        message = DataTakingMessage(MessageType.CLEAR_BACKGROUND)
+        self.producer_worker.submit(message)
 
     def _open_logbook_writer(self) -> None:
         self.elogger.show_as_new_modal_dialogue(
@@ -394,6 +400,8 @@ class DataTakingWorker(QObject):
             # Could improve this pattern matching here by using both args of DataTakingMessage.
             case MessageType.CACHE_BACKGROUND:
                 self._caching_background = True
+                self._clear_bg_cache()
+            case MessageType.CLEAR_BACKGROUND:
                 self._clear_bg_cache()
             # case MessageType.TAKE_N_FAST:
             #     result = self._take_n_fast(message.data["n"])
@@ -657,6 +665,8 @@ class LogBookEntryWriterDialogue(QDialog):
         location = self._get_location()
         kvps = {"screen": screen_name, "location": location}
         kvps |= self.mreader.full_read()
+        # kvps |= self._screen.dump()
+        # kvps |= self._screen.analysis.dump()
         series = pd.Series(kvps)
         series.index.name = "channel"
         series.reset_index(name="value")

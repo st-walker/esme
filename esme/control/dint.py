@@ -123,7 +123,7 @@ class DOOCSAddress:
         m = DOOCS_FULL_ADDRESS_REGEX.match(string)
         if m is None:
             raise ValueError(f"Malformed DOOCs address string: {string}")
-        return cls(**m.groups())
+        return cls(**m.groupdict())
 
     def resolve(self) -> str:
         return f"{self.facility}/{self.device}/{self.location}/{self.property}"
@@ -268,25 +268,48 @@ class DOOCSInterface(DOOCSInterfaceABC):
     def get_charge(self) -> float:
         return self.get_value("XFEL.DIAG/CHARGE.ML/TORA.25.I1/CHARGE.SA1")
 
-def dump(stub: str, filter_arrays=True) -> dict[str, Any]:
+def dump_fdl(stub: str, skip_types: set[str] | None = None, filter_regexes: list[str] | None = None) -> dict[str, Any]:
+    skip_types = skip_types or {"TEXT", "SPECTRUM", "GSPECTRUM", "XML", "A_FLOAT", "A_INT", "IMAGE"}
+    filter_regexes = filter_regexes or []
+    if filter_regexes:
+        pass
+        # Compile into one mega regex..
+
     # Stub = something usable in pydoocs.names, e.g.
     # XFEL.DIAG/IMAGEANALYSIS/OTRC.58.I1/*/
     # The asterisk part HAS to be the property.
-    if stub.count("*") != 1:
-        raise ValueError("Malformed stub, must contain one '*'.")
+    addy = DOOCSAddress.from_string(stub)
+    if "*" not in addy.property:
+        raise ValueError("Malformed stub, property must be a wildcard")
 
     formattable_address = stub.replace("*", "{}")
     addresses = []
     values = []
-    for name in pydoocs.names(stub):
+    names = pydoocs.names(stub)
+    if names[0] == "NAME = location":
+        names = names[1:]
+
+    for name in names:
         address_part, *_ = name.split()
+        if address_part.endswith("DESC") and skip_disc:
+            continue
+        # if address_part.endswitih("CATEG") and skip_categ
         address = formattable_address.format(address_part)
-    try:
-        ddata = pydoocs.read(address)
-    except pydoocs.DoocsException:
-        pass
-    is_array_type = ddata["TYPE"].startswith("A_") or ddata["TYPE"] == "SPECTUM"
-    if is_array_type and filter_arrays:
+
+        try:
+            ddata = pydoocs.read(address)
+        except pydoocs.DoocsException:
+            continue
+
+        dtype = ddata["type"]
+        if ddata["type"] in skip_types:
+            continue
+        # Always skip images...
+        if dtype == "image":
+            continue
+
+
         addresses.append(address)
         values.append(ddata["data"])
+
     return dict(zip(addresses, values))
