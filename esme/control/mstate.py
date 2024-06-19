@@ -5,7 +5,7 @@ from .dint import DOOCSInterface
 from .exceptions import DOOCSReadError
 from .kickers import FastKickerController
 from .sbunches import SpecialBunchesControl
-from .screens import Screen, Position
+from .screens import Position, Screen
 from .tds import TransverseDeflector
 
 LH_CLOSED_ADDRESS = "XFEL.UTIL/LASERINT/GUN/SH3_CLOSED"
@@ -87,7 +87,7 @@ class AreaWatcher:
             if pos is Position.OUT:
                 tooltips.append("• Camera is out")
             elif pos is Position.UNKNOWN:
-                tooltips.append("• Camera position unknown")                
+                tooltips.append("• Camera position unknown")
         except DOOCSReadError as e:
             tooltips.append("Unexpected read error whilst checking\nscreen state.")
 
@@ -101,9 +101,7 @@ class AreaWatcher:
             if not self._sbunches.is_tds_ok():
                 tooltips.append("• SBM is unhappy with the TDS")
             if not self._tds.amplitude_rb_matches_sp():
-                tooltips.append(
-                    f"• TDS amplitude. failing to reach setpoint"
-                )
+                tooltips.append(f"• TDS amplitude. failing to reach setpoint")
         except DOOCSReadError as e:
             tooltips.append("Unexpected read error whilst checking\nTDS state.")
         tooltip = "\n".join(tooltips)
@@ -118,10 +116,12 @@ class AreaWatcher:
             return Condition(
                 Health.UNKNOWN, long="No screen name set, unable to determine kicker"
             )
-    
+
         kicker_setpoints = screen.get_fast_kicker_setpoints()
         if not kicker_setpoints:
-            return Condition(Health.GOOD, long="No kickers associated with watched screen")
+            return Condition(
+                Health.GOOD, long="No kickers associated with watched screen"
+            )
 
         try:
             for kicker_setpoint in kicker_setpoints:

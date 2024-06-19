@@ -2,38 +2,36 @@
 
 import logging
 from pathlib import Path
-import numpy as np
 
+import numpy as np
 import pandas as pd
 from click import Option
 from click import Path as CPath
 from click import UsageError, argument, echo, group, option
 
 import esme.analysis as ana
-from esme.analysis import SetpointDataFrame
-from esme.plot import pretty_parameter_table
 import esme.plot as plot
-from esme.load import load_result_directory
+from esme.analysis import SetpointDataFrame
 from esme.gui.explorer import start_explorer_gui
 from esme.gui.tds_calibrator import start_calibration_explorer_gui
+from esme.load import load_result_directory
+from esme.plot import pretty_parameter_table
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 LOG = logging.getLogger(__name__)
 
 
-
-
 class MutuallyExclusiveOption(Option):
     # From https://stackoverflow.com/a/37491504
     def __init__(self, *args, **kwargs):
-        self.mutually_exclusive = set(kwargs.pop('mutually_exclusive', []))
-        help = kwargs.get('help', '')
+        self.mutually_exclusive = set(kwargs.pop("mutually_exclusive", []))
+        help = kwargs.get("help", "")
         if self.mutually_exclusive:
-            ex_str = ', '.join(self.mutually_exclusive)
-            kwargs['help'] = help + (
-                ' NOTE: This argument is mutually exclusive with '
-                f' arguments: [{ex_str}].'
+            ex_str = ", ".join(self.mutually_exclusive)
+            kwargs["help"] = help + (
+                " NOTE: This argument is mutually exclusive with "
+                f" arguments: [{ex_str}]."
             )
         super(MutuallyExclusiveOption, self).__init__(*args, **kwargs)
 
@@ -41,17 +39,15 @@ class MutuallyExclusiveOption(Option):
         if self.mutually_exclusive.intersection(opts) and self.name in opts:
             raise UsageError(
                 "Illegal usage: `{}` is mutually exclusive with "
-                "arguments `{}`.".format(self.name, ', '.join(self.mutually_exclusive))
+                "arguments `{}`.".format(self.name, ", ".join(self.mutually_exclusive))
             )
 
         return super(MutuallyExclusiveOption, self).handle_parse_result(ctx, opts, args)
 
 
-
 def calculate_bunch_length(setpoint: SetpointDataFrame):
     bunch_length = ana.true_bunch_length_from_df(setpoint)
     return bunch_length
-
 
 
 @group()
@@ -75,16 +71,15 @@ def main(debug, profile):
         logging.getLogger("esme.measurement").setLevel(logging.DEBUG)
         logging.getLogger("esme.sim").setLevel(logging.DEBUG)
         logging.getLogger("esme.simplot").setLevel(logging.DEBUG)
-        logging.getLogger("esme.explorer").setLevel(logging.DEBUG)        
+        logging.getLogger("esme.explorer").setLevel(logging.DEBUG)
 
         logging.getLogger("ocelot.utils.fel_track").setLevel(logging.DEBUG)
-        
 
     if profile:
-        import cProfile
-        import pstats
-        import io
         import atexit
+        import cProfile
+        import io
+        import pstats
 
         print("Profiling...")
         pr = cProfile.Profile()
@@ -103,6 +98,7 @@ def main(debug, profile):
 @main.command()
 def calib():
     from esme.gui.tds_calibrator import start_bolko_tool
+
     start_bolko_tool()
 
 
@@ -124,9 +120,31 @@ def debug(dirname, analysis, widths, window, parabolic):
         dispersion = measurement.dscan.dispersions()
         beta = measurement.bscan.betas()
 
-        plot.break_scan_down(measurement.tscan, image_outdir, voltage, plot.VOLTAGE_LABEL, "tscan", window=window, parabolic=parabolic)
-        plot.break_scan_down(measurement.dscan, image_outdir, dispersion, plot.ETA_LABEL, "dscan", window=window)
-        plot.break_scan_down(measurement.bscan, image_outdir, beta, plot.BETA_LABEL, "bscan", window=window)
+        plot.break_scan_down(
+            measurement.tscan,
+            image_outdir,
+            voltage,
+            plot.VOLTAGE_LABEL,
+            "tscan",
+            window=window,
+            parabolic=parabolic,
+        )
+        plot.break_scan_down(
+            measurement.dscan,
+            image_outdir,
+            dispersion,
+            plot.ETA_LABEL,
+            "dscan",
+            window=window,
+        )
+        plot.break_scan_down(
+            measurement.bscan,
+            image_outdir,
+            beta,
+            plot.BETA_LABEL,
+            "bscan",
+            window=window,
+        )
 
     # plot.plot_tds_voltages(measurement, outdir)
     # plot.plot_amplitude_setpoints_with_readbacks(measurement, outdir)
@@ -135,21 +153,31 @@ def debug(dirname, analysis, widths, window, parabolic):
     # plot.plot_streaking_plane_beamsizes(measurement, outdir)
     plot.plot_slice_length(measurement, outdir)
     # plot.plot_apparent_bunch_lengths(measurement, outdir)
-    plot.plot_true_bunch_lengths(measurement, outdir)    
+    plot.plot_true_bunch_lengths(measurement, outdir)
 
     import matplotlib.pyplot as plt
+
     plt.show()
 
 
 @main.command()
-@option("--calibration", required=False, nargs=1, type=CPath(exists=True, dir_okay=False, path_type=Path))
-@argument("dirname", required=False, type=CPath(exists=True, file_okay=False, path_type=Path))
+@option(
+    "--calibration",
+    required=False,
+    nargs=1,
+    type=CPath(exists=True, dir_okay=False, path_type=Path),
+)
+@argument(
+    "dirname", required=False, type=CPath(exists=True, file_okay=False, path_type=Path)
+)
 def explorer(dirname, calibration):
     start_explorer_gui(dirname, calibration)
+
 
 # @main.command()
 # @argument("calib_file", required=True)
 # # def calibration(calib_file):
+
 
 @main.command()
 @argument("calib_file", required=True)
@@ -165,15 +193,16 @@ def calibration(calib_file):
 @option("--simple", is_flag=True)
 def process(dirname, with_sigr, with_en, derr, simple):
     # Calculate bunch length for maximum streaking case.
-    measurement = load_result_directory("./")# list(dirname.glob("*m.pkl")),
-                                             #  image_dir=dirname,
-                                             #  image_address=image_address,
-                                             #  energy_address=energy_address)
+    measurement = load_result_directory("./")  # list(dirname.glob("*m.pkl")),
+    #  image_dir=dirname,
+    #  image_address=image_address,
+    #  energy_address=energy_address)
     calib = load_calibration_from_result_directory("./")
     avmapping = calib.mapping()
     fit_df, beam_df = ana.process_measurment_dfs(measurement, avmapping)
-    
+
     print(pretty_parameter_table(fit_df, beam_df))
+
 
 def _simple_calc(setpoint, sigma_r=28e-6):
     mean_width = ana.pixel_widths_from_setpoint(setpoint)
@@ -185,11 +214,13 @@ def _simple_calc(setpoint, sigma_r=28e-6):
     sigma_r2 = sigma_r**2
     from uncertainties import ufloat
     from uncertainties.umath import sqrt as usqrt
+
     unc_width_m2 = ufloat(width_m2, error_m2)
 
     dispersion = setpoint.dispersion
     energy = setpoint.energy * 1e6
     from ocelot.common.globals import m_e_GeV
+
     emit = 0.43e-6
     beta = 0.6
     egamma = energy / (m_e_GeV * 1e9)
@@ -202,7 +233,6 @@ def _simple_calc(setpoint, sigma_r=28e-6):
     return sigma_e
 
 
-
 @main.command()
 @argument("dirname")
 def show(dirname):
@@ -211,14 +241,14 @@ def show(dirname):
         for path in setpoint.image_full_paths:
             np.load
 
-            
+
 # @main.command()
 # @argument("pcl", nargs=1)
 # def display(pcl):
 #     from esme.gui.scannerpanel import display
 #     display(pcl)
 
-    # from IPython import embed; embed()
+# from IPython import embed; embed()
 
 
 @main.command(no_args_is_help=True)
@@ -246,6 +276,7 @@ def rm(pcl_files, imname, dry_run):
 def gui():
     """Start the measurement GUI"""
     from esme.gui import start_lps_gui
+
     start_lps_gui()
 
 
@@ -254,9 +285,10 @@ def gui():
 def optics(dirname):
     # Assuming matching at MATCH.52.I1, we track and backtrack from
     # that point to get the full optics...
+    import matplotlib.pyplot as plt
+
     from esme.optics import optics_from_measurement_df
 
-    import matplotlib.pyplot as plt
     fig, ax = plt.subplots()
     for fpkl in dirname.glob("*.pkl"):
         df = pd.read_pickle(fpkl)
@@ -266,10 +298,15 @@ def optics(dirname):
         outdir.mkdir(exist_ok=True)
         twiss.to_pickle(outdir / outname)
 
-
     #     ax.plot(twiss.s, twiss.beta_x)
     # plt.show()
-        # from IPython import embed; embed()
+    # from IPython import embed; embed()
+
+
+@main.command()
+@arugment("seqname", nargs=1)
+def taskomat(seqname):
+    pass
 
 
 if __name__ == "__main__":

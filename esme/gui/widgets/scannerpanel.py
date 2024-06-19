@@ -853,7 +853,7 @@ class ScannerConfDialog(QtWidgets.QDialog):
         self.ui.beam_on_wait_spinbox.setValue(beam_on_wait)
 
         outdir = Path(uiconf["output_directory_lineedit"])
-        outdir = str(Path(outdir.resolve()))
+        outdir = str(Path(str(outdir)))
 
         self.ui.output_directory_lineedit.setText(outdir)
         self.state = deepcopy(self.defaults)

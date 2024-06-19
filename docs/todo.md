@@ -1,9 +1,10 @@
-# TEST TOMORROW MORNING:
+# HAS TO BE WORKING BY JULY:
 
- - LASER HEATER OPEN/CLOSED
- - ALL SCREENS CAN BE REACHED!
- - play with ibfb button?
- - That's it?
+	- The slice energy spread measurement
+	- Calibration
+	- TDS data taking (do not need online analysis...)
+
+# TEST TOMORROW MORNING:
 
 
 questions for bolko:
@@ -52,7 +53,8 @@ make it self._screen?
 5. [x] Get energy projection working.
 6. [x] Subtract background button.
 7. [x] ensure SBP behaves itself when stopping
-8. [x] IBFP Check
+8. [x] IBFP Check.
+9. [ ] get logging working finally!
 
 
 ## Middle Priority
@@ -68,6 +70,7 @@ make it self._screen?
 8. [x] add external panels to top menu, camera status, pattern builder, tds monitor, special bunch diagnostic?
 9. [x] play / pause / set rate data acquisition
 11. [x] add gain or gain control.
+12. [ ] don't power cameras off at the end, instead disable cameras each time when changing screen.
 
 ## Low Priority
 
@@ -81,6 +84,10 @@ make it self._screen?
 7. [ ] Get rid of logging tab somehow.
 8. [x] Reduce spacing between control boxes a little bit.
 9. [x] Change JDDD... to Open JDDD panel.
+10. [ ] reset image view when changing screen.
+11. [x] laser heater status working.
+12.
+11.
 
 
 # High Resolution Slice Energy Spread

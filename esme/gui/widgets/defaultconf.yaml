@@ -119,6 +119,14 @@ deflectors:
     sp_fdl: XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSB2/
     rb_fdl: XFEL.RF/LLRF.CONTROLLER/VS.LLTDSB2/
 
+dumps:
+  - area: I1
+    forward_taskomat_location: SeparateInjectorFromXtl
+    backward_taskomat_location: JoinInjectorAndXtl
+  - area: B2
+    taskomat_location: null
+    backward_taskomat_location: null
+
 snapshots:
   # When you press snapshot to elog, etc, where the LPS images etc. go.
   outdir: /Users/xfeloper/user/stwalker/lps-dumpage/

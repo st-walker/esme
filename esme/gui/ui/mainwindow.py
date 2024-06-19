@@ -26,36 +26,39 @@ class Ui_tdsfriend_mainwindow(object):
         self.tabWidget.setObjectName("tabWidget")
         self.maintab = QtWidgets.QWidget()
         self.maintab.setObjectName("maintab")
-        self.gridLayout_3 = QtWidgets.QGridLayout(self.maintab)
-        self.gridLayout_3.setObjectName("gridLayout_3")
-        self.verticalLayout_4 = QtWidgets.QVBoxLayout()
-        self.verticalLayout_4.setObjectName("verticalLayout_4")
-        self.controls_group_box = QtWidgets.QGroupBox(self.maintab)
+        self.imaging_widget = ImagingControlWidget(self.maintab)
+        self.imaging_widget.setGeometry(QtCore.QRect(20, 12, 1809, 1220))
         sizePolicy = QtWidgets.QSizePolicy(
-            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred
         )
-        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setHorizontalStretch(1)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(
-            self.controls_group_box.sizePolicy().hasHeightForWidth()
+            self.imaging_widget.sizePolicy().hasHeightForWidth()
         )
-        self.controls_group_box.setSizePolicy(sizePolicy)
-        self.controls_group_box.setMaximumSize(QtCore.QSize(16777215, 16777215))
-        self.controls_group_box.setObjectName("controls_group_box")
-        self.gridLayout_2 = QtWidgets.QGridLayout(self.controls_group_box)
-        self.gridLayout_2.setObjectName("gridLayout_2")
-        self.area = AreaControl(self.controls_group_box)
+        self.imaging_widget.setSizePolicy(sizePolicy)
+        self.imaging_widget.setObjectName("imaging_widget")
+        self.groupBox = QtWidgets.QGroupBox(self.maintab)
+        self.groupBox.setGeometry(QtCore.QRect(1840, 240, 171, 80))
+        self.groupBox.setObjectName("groupBox")
+        self.groupBox_2 = QtWidgets.QGroupBox(self.maintab)
+        self.groupBox_2.setGeometry(QtCore.QRect(1840, 180, 171, 59))
         sizePolicy = QtWidgets.QSizePolicy(
             QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum
         )
         sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.area.sizePolicy().hasHeightForWidth())
-        self.area.setSizePolicy(sizePolicy)
-        self.area.setObjectName("area")
-        self.gridLayout_2.addWidget(self.area, 0, 0, 1, 1)
-        self.verticalLayout_4.addWidget(self.controls_group_box)
+        sizePolicy.setVerticalStretch(1)
+        sizePolicy.setHeightForWidth(self.groupBox_2.sizePolicy().hasHeightForWidth())
+        self.groupBox_2.setSizePolicy(sizePolicy)
+        self.groupBox_2.setCheckable(False)
+        self.groupBox_2.setObjectName("groupBox_2")
+        self.gridLayout_4 = QtWidgets.QGridLayout(self.groupBox_2)
+        self.gridLayout_4.setObjectName("gridLayout_4")
+        self.tds_panel = TDSControl(self.groupBox_2)
+        self.tds_panel.setObjectName("tds_panel")
+        self.gridLayout_4.addWidget(self.tds_panel, 0, 0, 1, 1)
         self.groupBox_3 = QtWidgets.QGroupBox(self.maintab)
+        self.groupBox_3.setGeometry(QtCore.QRect(1840, 65, 171, 101))
         sizePolicy = QtWidgets.QSizePolicy(
             QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred
         )
@@ -79,24 +82,8 @@ class Ui_tdsfriend_mainwindow(object):
         self.special_bunch_panel.setSizePolicy(sizePolicy)
         self.special_bunch_panel.setObjectName("special_bunch_panel")
         self.verticalLayout.addWidget(self.special_bunch_panel)
-        self.verticalLayout_4.addWidget(self.groupBox_3)
-        self.groupBox_2 = QtWidgets.QGroupBox(self.maintab)
-        sizePolicy = QtWidgets.QSizePolicy(
-            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum
-        )
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(1)
-        sizePolicy.setHeightForWidth(self.groupBox_2.sizePolicy().hasHeightForWidth())
-        self.groupBox_2.setSizePolicy(sizePolicy)
-        self.groupBox_2.setCheckable(False)
-        self.groupBox_2.setObjectName("groupBox_2")
-        self.gridLayout_4 = QtWidgets.QGridLayout(self.groupBox_2)
-        self.gridLayout_4.setObjectName("gridLayout_4")
-        self.tds_panel = TDSControl(self.groupBox_2)
-        self.tds_panel.setObjectName("tds_panel")
-        self.gridLayout_4.addWidget(self.tds_panel, 0, 0, 1, 1)
-        self.verticalLayout_4.addWidget(self.groupBox_2)
         self.groupBox_4 = QtWidgets.QGroupBox(self.maintab)
+        self.groupBox_4.setGeometry(QtCore.QRect(1840, 340, 171, 59))
         sizePolicy = QtWidgets.QSizePolicy(
             QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred
         )
@@ -110,20 +97,31 @@ class Ui_tdsfriend_mainwindow(object):
         self.machine_state_widget = LPSStateWatcher(self.groupBox_4)
         self.machine_state_widget.setObjectName("machine_state_widget")
         self.verticalLayout_2.addWidget(self.machine_state_widget)
-        self.verticalLayout_4.addWidget(self.groupBox_4)
-        self.gridLayout_3.addLayout(self.verticalLayout_4, 0, 1, 1, 1)
-        self.imaging_widget = ImagingControlWidget(self.maintab)
+        self.controls_group_box = QtWidgets.QGroupBox(self.maintab)
+        self.controls_group_box.setGeometry(QtCore.QRect(1840, 12, 171, 59))
         sizePolicy = QtWidgets.QSizePolicy(
-            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum
         )
-        sizePolicy.setHorizontalStretch(1)
+        sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(
-            self.imaging_widget.sizePolicy().hasHeightForWidth()
+            self.controls_group_box.sizePolicy().hasHeightForWidth()
         )
-        self.imaging_widget.setSizePolicy(sizePolicy)
-        self.imaging_widget.setObjectName("imaging_widget")
-        self.gridLayout_3.addWidget(self.imaging_widget, 0, 0, 1, 1)
+        self.controls_group_box.setSizePolicy(sizePolicy)
+        self.controls_group_box.setMaximumSize(QtCore.QSize(16777215, 16777215))
+        self.controls_group_box.setObjectName("controls_group_box")
+        self.gridLayout_2 = QtWidgets.QGridLayout(self.controls_group_box)
+        self.gridLayout_2.setObjectName("gridLayout_2")
+        self.area = AreaControl(self.controls_group_box)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum
+        )
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.area.sizePolicy().hasHeightForWidth())
+        self.area.setSizePolicy(sizePolicy)
+        self.area.setObjectName("area")
+        self.gridLayout_2.addWidget(self.area, 0, 0, 1, 1)
         self.tabWidget.addTab(self.maintab, "")
         self.logtab = QtWidgets.QWidget()
         self.logtab.setObjectName("logtab")
@@ -199,16 +197,17 @@ class Ui_tdsfriend_mainwindow(object):
         tdsfriend_mainwindow.setWindowTitle(
             _translate("tdsfriend_mainwindow", "Diagnostic Sections Utility")
         )
-        self.controls_group_box.setTitle(
-            _translate("tdsfriend_mainwindow", "Diagnostic Area")
+        self.groupBox.setTitle(_translate("tdsfriend_mainwindow", "Target"))
+        self.groupBox_2.setTitle(
+            _translate("tdsfriend_mainwindow", "Transverse Deflecting Structure")
         )
         self.groupBox_3.setTitle(
             _translate("tdsfriend_mainwindow", "Special Bunch Midlayer")
         )
-        self.groupBox_2.setTitle(
-            _translate("tdsfriend_mainwindow", "Transverse Deflecting Structure")
-        )
         self.groupBox_4.setTitle(_translate("tdsfriend_mainwindow", "Machine State"))
+        self.controls_group_box.setTitle(
+            _translate("tdsfriend_mainwindow", "Diagnostic Section")
+        )
         self.tabWidget.setTabText(
             self.tabWidget.indexOf(self.maintab),
             _translate("tdsfriend_mainwindow", "Main"),
@@ -222,7 +221,7 @@ class Ui_tdsfriend_mainwindow(object):
         self.menuExpert.setTitle(_translate("tdsfriend_mainwindow", "Expert"))
         self.menu_i1.setTitle(_translate("tdsfriend_mainwindow", "I1"))
         self.menu_b2.setTitle(_translate("tdsfriend_mainwindow", "B2"))
-        self.action_close.setText(_translate("tdsfriend_mainwindow", "Close"))
+        self.action_close.setText(_translate("tdsfriend_mainwindow", "Quit TDSChum"))
         self.action_close.setShortcut(_translate("tdsfriend_mainwindow", "Ctrl+Q"))
         self.action_print_to_logbook.setText(
             _translate("tdsfriend_mainwindow", "Print to Logbook")

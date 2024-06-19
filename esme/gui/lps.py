@@ -2,26 +2,33 @@ import logging
 import os
 import sys
 
-from PyQt5.QtCore import QObject, pyqtSignal, Qt, QProcess
+from PyQt5.QtCore import QObject, QProcess, Qt, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QMainWindow
 
 from esme.gui.ui import mainwindow
-from esme.gui.widgets.common import send_widget_to_log, set_tds_calibration_by_region
+from esme.gui.widgets.common import (
+    get_machine_manager_factory,
+    send_widget_to_log,
+    set_tds_calibration_by_region,
+)
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
 
-_JDDD_RUN_ARGS = {"camera_status": "-file XFEL_Camera_Overview.xml -address",
-                          "pattern_builder": "-file bunch_pattern_server_pattern_builder.xml -address",
-                          "main_timing": "-file XFEL_MainTiming.xml",
-                          "b2_llrf": "-file Main_TDS_LLRF_Operation.xml -address XFEL.RF/LLRF.CONTROLLER/LLTDSB2/",
-                          "i1_llrf": "-file Main_TDS_LLRF_Operation.xml -address XFEL.RF/LLRF.CONTROLLER/LLTDSI1/",
-                          "b2_sbm": "-file XFEL_B2_Diag_bunches.xml -address XFEL.RF//LLTDSI1/",
-                          "i1_sbm": "-file XFEL_I1_Diag_bunches.xml -address XFEL.RF//LLTDSI1/"
-                          }
-_OPEN_IMAGE_ANALYSIS_CONFIG_LINE = ("cd /home/xfeloper/released_software/ImageAnalysisConfigurator"
-                                    " ; bash /home/xfeloper/released_software/ImageAnalysisConfigurator"
-                                    "/start_imageanalysis_configurator")
+_JDDD_RUN_ARGS = {
+    "camera_status": "-file XFEL_Camera_Overview.xml -address",
+    "pattern_builder": "-file bunch_pattern_server_pattern_builder.xml -address",
+    "main_timing": "-file XFEL_MainTiming.xml",
+    "b2_llrf": "-file Main_TDS_LLRF_Operation.xml -address XFEL.RF/LLRF.CONTROLLER/LLTDSB2/",
+    "i1_llrf": "-file Main_TDS_LLRF_Operation.xml -address XFEL.RF/LLRF.CONTROLLER/LLTDSI1/",
+    "b2_sbm": "-file XFEL_B2_Diag_bunches.xml -address XFEL.RF//LLTDSI1/",
+    "i1_sbm": "-file XFEL_I1_Diag_bunches.xml -address XFEL.RF//LLTDSI1/",
+}
+_OPEN_IMAGE_ANALYSIS_CONFIG_LINE = (
+    "cd /home/xfeloper/released_software/ImageAnalysisConfigurator"
+    " ; bash /home/xfeloper/released_software/ImageAnalysisConfigurator"
+    "/start_imageanalysis_configurator"
+)
 
 
 def start_lps_gui() -> None:
@@ -48,6 +55,7 @@ class LPSMainWindow(QMainWindow):
         super().__init__()
         self.ui = mainwindow.Ui_tdsfriend_mainwindow()
         self.ui.setupUi(self)
+        self._init_target_control()
 
         # Connect signals for screen name which we select in this
         # widget and have to propagate to the child widgets.
@@ -77,6 +85,19 @@ class LPSMainWindow(QMainWindow):
         # Emit initial screen name to any widgets.
         self.ui.area.emit_current_screen_name()
 
+    def _init_target_control(self) -> None:
+        f = get_machine_manager_factory()
+        i1d_dump, i1d_undo_dump = f.make_dump_sequences(DiagnosticRegion.I1)
+        b2d_dump, b2d_undo_dump = f.make_dump_sequences(DiagnosticRegion.B2)
+
+        self.ui.target_stack.add_target_widget(
+            DiagnosticRegion.I1, "I1D", i1d_forward, i1d_backard
+        )
+
+        self.ui.target_stack.add_target_widget(
+            DiagnosticRegion.B2, "B2D", b2d_forward, b2d_backard
+        )
+
     def update_tds_voltage_calibration(self, voltage_calibration) -> None:
         set_tds_calibration_by_region(self, voltage_calibration)
         self.ui.imaging_widget.set_tds_calibration(voltage_calibration)
@@ -94,21 +115,25 @@ class LPSMainWindow(QMainWindow):
         self.ui.action_print_to_logbook.triggered.connect(self.send_to_logbook)
         self.ui.action_close.triggered.connect(self.close)
 
-        
         jddd = _JDDD_RUN_ARGS
-        self.ui.actionSpecial_Bunch_Midlayer_b2.triggered.connect(lambda: self._run_jddd_process("b2_sbm"))
-        self.ui.actionSpecial_Bunch_Midlayer_i1.triggered.connect(lambda: self._run_jddd_process("i1_sbm"))
-        self.ui.actionLLRF_i1.triggered.connect(lambda: self._run_jddd_process("i1_llrf"))
-        self.ui.actionLLRF_b2.triggered.connect(lambda: self._run_jddd_process("b2_llrf"))
-        self.ui.action_pattern_builder.triggered.connect(lambda: self._run_jddd_process("pattern_builder"))
-        self.ui.action_camera_status.triggered.connect(lambda: self._run_jddd_process("camera_status"))
-        # def open_image_analysis_server():
-        #     qproc = QProcess()
-        #     qproc.start(_OPEN_IMAGE_ANALYSIS_CONFIG_LINE)
-        #     qproc.waitForStarted()
-        #     return qproc
-            
-        # self.ui.action_image_analysis_server.triggered.connect(open_image_analysis_server)
+        self.ui.actionSpecial_Bunch_Midlayer_b2.triggered.connect(
+            lambda: self._run_jddd_process("b2_sbm")
+        )
+        self.ui.actionSpecial_Bunch_Midlayer_i1.triggered.connect(
+            lambda: self._run_jddd_process("i1_sbm")
+        )
+        self.ui.actionLLRF_i1.triggered.connect(
+            lambda: self._run_jddd_process("i1_llrf")
+        )
+        self.ui.actionLLRF_b2.triggered.connect(
+            lambda: self._run_jddd_process("b2_llrf")
+        )
+        self.ui.action_pattern_builder.triggered.connect(
+            lambda: self._run_jddd_process("pattern_builder")
+        )
+        self.ui.action_camera_status.triggered.connect(
+            lambda: self._run_jddd_process("camera_status")
+        )
 
     def closeEvent(self, event) -> None:
         self.ui.area.close()

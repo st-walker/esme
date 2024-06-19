@@ -1,46 +1,67 @@
-import sys
 from typing import Callable
 
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGridLayout, QHBoxLayout
 from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel
-from PyQt5.QtGui import QPainter, QColor, QBrush
+from PyQt5.QtGui import QBrush, QColor, QPainter
+from PyQt5.QtWidgets import QGridLayout, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
-from .common import get_machine_manager_factory, make_i1_watcher, make_b2_watcher
-from esme.control.mstate import AreaWatcher
-from esme.core import region_from_screen_name
 from esme import DiagnosticRegion
-from esme.control.mstate import Health, Condition
+from esme.control.mstate import AreaWatcher, Condition, Health
+from esme.core import region_from_screen_name
+
+from .common import make_b2_watcher, make_i1_watcher
 
 
 class CircleIndicator(QWidget):
-    COLOUR_MAPPING = {Health.GOOD: QColor(148, 255, 67), # Green
-                      Health.WARNING: QColor(220, 152, 56), # Orange
-                      Health.BAD: QColor(227, 49, 30), # Red
-                      Health.UNKNOWN: QColor(63, 63, 63), # Grey
-                      Health.SUBJECTIVE: QColor(16, 62, 180) # Blue
-                      }
+    INITIAL_COLOUR = QColor(63, 63, 63)
 
-    def __init__(self, diameter: int = 20, tooltip_text: str | None = None, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        diameter: int = 20,
+        tooltip_text: str | None = None,
+        initial_colour: None = None,
+        parent: QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
         self.diameter = diameter
-        self.status: Health = Health.UNKNOWN
         self.setFixedSize(self.diameter, self.diameter)
+        self._colour: QColor = initial_colour or self.INITIAL_COLOUR
         if tooltip_text:
             self.setToolTip(tooltip_text)
 
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-        color = self.COLOUR_MAPPING[self.status]
-        painter.setBrush(QBrush(color))
+        painter.setBrush(QBrush(self._colour))
         painter.setPen(Qt.NoPen)
         painter.drawEllipse(0, 0, self.diameter, self.diameter)
 
-    def set_status(self, condition: Condition) -> None:
-        self.status = condition.health
-        self.setToolTip(condition.long)
+    def set_colour(self, colour: QColor) -> None:
+        self._colour = colour
         self.update()
+
+
+class CircleStateIndicator(CircleIndicator):
+    COLOUR_MAPPING = {
+        Health.GOOD: QColor(148, 255, 67),  # Green
+        Health.WARNING: QColor(220, 152, 56),  # Orange
+        Health.BAD: QColor(227, 49, 30),  # Red
+        Health.UNKNOWN: QColor(63, 63, 63),  # Grey
+        Health.SUBJECTIVE: QColor(16, 62, 180),  # Blue
+    }
+
+    def __init__(
+        self,
+        diameter: int = 20,
+        tooltip_text: str | None = None,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(diameter=diameter, tooltip_text=tooltip_text, parent=parent)
+        self.set_colour(self.COLOUR_MAPPING[Health.UNKNOWN])
+
+    def set_status(self, condition: Condition) -> None:
+        self.setToolTip(condition.long)
+        self.set_colour(self.COLOUR_MAPPING[self.status])
+
 
 class TextIndicator(QWidget):
     def __init__(self, initial_state: str = "", parent: QWidget | None = None):
@@ -53,11 +74,13 @@ class TextIndicator(QWidget):
         """
         super().__init__(parent)
         self.label = QLabel()
-        self.wlayout = QVBoxLayout()        
-        self.label.setAlignment(Qt.AlignCenter) # type: ignore
+        self.wlayout = QVBoxLayout()
+        self.label.setAlignment(Qt.AlignCenter)  # type: ignore
         self.wlayout.addWidget(self.label)
         self.setLayout(self.wlayout)
-        self.label.setStyleSheet("QLabel { font-weight: bold; font-variant: small-caps; }")
+        self.label.setStyleSheet(
+            "QLabel { font-weight: bold; font-variant: small-caps; }"
+        )
 
     def set_status(self, condition: Condition) -> None:
         """Update the text displayed by the indicator based on the current status."""
@@ -73,7 +96,9 @@ class IndicatorPanelWidget(QWidget):
         self.wlayout.setVerticalSpacing(10)  # Reduce vertical spacing between rows
 
         # Store tuples of (container_widget, check_callback)
-        self.indicators: list[tuple[TextIndicator | CircleIndicator, Callable[[], Condition]]] = []
+        self.indicators: list[
+            tuple[TextIndicator | CircleStateIndicator, Callable[[], Condition]]
+        ] = []
 
     def create_container(self, label_text: str):
         """Create a container widget with a label and return the layout."""
@@ -90,32 +115,35 @@ class IndicatorPanelWidget(QWidget):
 
     def add_indicator(self, label_text: str, check_callback: Callable[[], Condition]):
         pass
-    
-    def add_state_indicator(self, label_text: str, check_callback: Callable[[], Condition]):
+
+    def add_state_indicator(
+        self, label_text: str, check_callback: Callable[[], Condition]
+    ):
         """Add a new color-based status indicator with a label to the panel."""
         container, container_layout = self.create_container(label_text)
 
-        indicator = CircleIndicator()
+        indicator = CircleStateIndicator()
         # indicator.setToolTip(tooltip_text)
         label = QLabel(label_text)
 
-        label.setAlignment(Qt.AlignVCenter) # type: ignore
+        label.setAlignment(Qt.AlignVCenter)  # type: ignore
         # indicator.setAlignment(Qt.AlignVCenter)
         row = self.wlayout.rowCount()
         self.wlayout.addWidget(label, row, 0)
-        self.wlayout.addWidget(indicator, row, 1, alignment=Qt.AlignHCenter) # type: ignore
+        self.wlayout.addWidget(indicator, row, 1, alignment=Qt.AlignHCenter)  # type: ignore
 
         self.indicators.append((indicator, check_callback))
 
-    def add_text_indicator(self, label_text: str,
-                           check_callback: Callable[[], Condition]) -> None:
+    def add_text_indicator(
+        self, label_text: str, check_callback: Callable[[], Condition]
+    ) -> None:
         """Add a new text-based status indicator with a label to the panel."""
         # container, container_layout = self.create_container(label_text)
 
         row = self.wlayout.rowCount()
 
         text_indicator = TextIndicator(initial_state="")
-        self.wlayout.addWidget(text_indicator, row, 1, alignment=Qt.AlignHCenter) # type: ignore
+        self.wlayout.addWidget(text_indicator, row, 1, alignment=Qt.AlignHCenter)  # type: ignore
 
         label = QLabel(label_text)
         label.setAlignment(Qt.AlignVCenter)
@@ -136,12 +164,16 @@ class LPSStateWatcher(IndicatorPanelWidget):
         self._b2state: AreaWatcher = make_b2_watcher()
         self.mstate: AreaWatcher = self._i1state
 
-        self.add_text_indicator("Laser Heater Shutter", self.mstate.get_laser_heater_shutter_state)
+        self.add_text_indicator(
+            "Laser Heater Shutter", self.mstate.get_laser_heater_shutter_state
+        )
         self.add_text_indicator("IBFB", self.mstate.get_ibfb_state)
 
         self.add_state_indicator("Screen", check_callback=self._check_screen_state)
         self.add_state_indicator("TDS", check_callback=self._check_tds_state)
-        self.add_state_indicator("Fast Kickers", check_callback=self._check_kickers_state)
+        self.add_state_indicator(
+            "Fast Kickers", check_callback=self._check_kickers_state
+        )
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.check_indicators)

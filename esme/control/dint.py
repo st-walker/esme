@@ -125,9 +125,6 @@ class DOOCSAddress:
             raise ValueError(f"Malformed DOOCs address string: {string}")
         return cls(**m.groups())
 
-    def resolve(self) -> str:
-        return f"{self.facility}/{self.device}/{self.location}/{self.property}"
-
     def filled(
         self,
         facility: str = "",
@@ -168,7 +165,7 @@ class DOOCSAddress:
         return f"{self.facility}/{self.device}/{location}/{self.property}"
 
     def is_wildcard_address(self) -> bool:
-        return "*" in self.resolve()
+        return "*" in str(self)
 
     def get_wildcard_component(self) -> str:
         if not self.is_wildcard_address():
@@ -184,10 +181,10 @@ class DOOCSAddress:
         raise ValueError("Unable to find wildcard component")
 
     def __str__(self) -> str:
-        return self.resolve()
+        return f"{self.facility}/{self.device}/{self.location}/{self.property}"
 
     def __repr__(self) -> str:
-        return f'<{type(self).__name__} @ {hex(id(self))}: "{self.resolve()}">'
+        return f'<{type(self).__name__} @ {hex(id(self))}: "{str(self)}">'
 
 
 @dataclass
@@ -244,6 +241,17 @@ class DOOCSInterface(DOOCSInterfaceABC):
         except pydoocs.DoocsException as e:
             raise DOOCSReadError(channel) from e
         return val["data"]
+
+    def get_names(self, wc_address: str) -> list[str]:
+        try:
+            sequence = pydoocs.names(wc_address)
+        except pydoocs.DoocsException as e:
+            raise DOOCSReadError(wc_address) from e
+
+        try:
+            return [s.split()[0] for s in sequence]
+        except (IndexError, TypeError):
+            raise DOOCSReadError(f"Malformed names output for {wc_address}") from e
 
     def read_full(self, channel: str) -> dict[str, Any]:
         try:

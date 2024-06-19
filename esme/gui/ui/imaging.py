@@ -14,7 +14,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_imaging_widget(object):
     def setupUi(self, imaging_widget):
         imaging_widget.setObjectName("imaging_widget")
-        imaging_widget.resize(1042, 849)
+        imaging_widget.resize(1381, 849)
         self.gridLayout = QtWidgets.QGridLayout(imaging_widget)
         self.gridLayout.setObjectName("gridLayout")
         self.screen_display_widget = ScreenWidget(imaging_widget)
@@ -127,9 +127,9 @@ class Ui_imaging_widget(object):
         self.autogain_button.setObjectName("autogain_button")
         self.gridLayout_2.addWidget(self.autogain_button, 0, 6, 1, 3)
         self.play_pause_button = PlayPauseButton(self.groupBox_2)
+        self.play_pause_button.setProperty("is_playing", True)
         self.play_pause_button.setObjectName("play_pause_button")
         self.gridLayout_2.addWidget(self.play_pause_button, 0, 10, 1, 2)
-        self.play_pause_button.setProperty("is_playing", True)
         self.gridLayout.addWidget(self.groupBox_2, 1, 1, 2, 1)
 
         self.retranslateUi(imaging_widget)
@@ -161,7 +161,13 @@ class Ui_imaging_widget(object):
         self.dispersion_spinner.setSuffix(_translate("imaging_widget", "m"))
         self.read_rate_spinner.setSuffix(_translate("imaging_widget", "Hz"))
         self.clip_offaxis_checkbox.setText(
-            _translate("imaging_widget", "Clip Offaxis Features")
+            _translate("imaging_widget", "Clip Off-axis Features")
+        )
+        self.calculate_dispersion_button.setToolTip(
+            _translate(
+                "imaging_widget",
+                "<html><head/><body><p>Calculates the dispersion at the screen using linear optics and magnet strengths from the machine</p></body></html>",
+            )
         )
         self.calculate_dispersion_button.setText(
             _translate("imaging_widget", "Calculate Dispersion")

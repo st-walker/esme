@@ -27,7 +27,7 @@ from esme.control.dint import DOOCS_FULL_ADDRESS_REGEX
     ("XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/I1D/EN*ERGY.ALL/", True),
     # Invalid: non-alphanumeric character '@'
     ("XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/I1D/ENERGY_ALL@", False),
-     # Invalid: non-alphanumeric character '$'
+    # Invalid: non-alphanumeric character '$'
     ("XFEL.DIAG/BEAM$ENERGY_MEASUREMENT/I1D/ENERGY.ALL", False),
     # Invalid: non-alphanumeric character '!'
     ("XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/I1D/ENERGY!ALL", False),
@@ -40,7 +40,6 @@ from esme.control.dint import DOOCS_FULL_ADDRESS_REGEX
     ("XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/I1D/ENERGY.ALL//", False),
     ("///", True),
     ("XFEL.DIAG/BEAM_ENERGY_MEASUREMENT///", True),
-
 ])
 def test_full_doocs_address_pattern(test_string, matches):
     assert bool(DOOCS_FULL_ADDRESS_REGEX.match(test_string)) is matches

@@ -4,7 +4,6 @@ from esme.control.snapshot import SnapshotRequest, Snapshotter
 from esme.core import DiagnosticRegion
 
 from .dint import DOOCSInterface
-from .exceptions import EuXFELUserError
 from .kickers import FastKickerController
 from .optics import MachineLinearOptics
 from .sbunches import SpecialBunchesControl
@@ -149,12 +148,19 @@ class MachineReadManager:
 
 
 class ImagingManager(MachineReadManager):
-    def __init__(self,
-                 *,
-                 screens: dict[str, Screen],
-                 optics: MachineLinearOptics,
-                 request: SnapshotRequest,
-                 deflector: TransverseDeflector
-                 ):
+    def __init__(
+        self,
+        *,
+        screens: dict[str, Screen],
+        optics: MachineLinearOptics,
+        request: SnapshotRequest,
+        deflector: TransverseDeflector
+    ):
         super().__init__(screens=screens, optics=optics, request=request)
         self.deflector = deflector
+
+
+class DumpManager:
+    def __init__(self, *, forward_sequence: Sequence, backward_sequence: Sequence):
+        self.forward_sequence = forward_sequence
+        self.backward_sequence = backward_sequence
