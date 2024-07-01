@@ -121,11 +121,13 @@ class DiagnosticBunchesManager(MachineManager):
         for setpoint in kicker_setpoints:
             self.kickerop.apply_fast_kicker_setpoint(setpoint)
 
-        # Set the kicker number based on the screen name.  We assume all the setpoints have the same kicker numbers,
-        # Otherwise something is very, very wrong in how the DOOCS server is configured (beyond the responsibility of
-        # this code).  So we only use the last setpoint from the above loop to set the kicker_number here.
-        kmmap = self.sbunches.get_kicker_name_to_kicker_number_map()
-        self.sbunches.kicker_number = kmmap[setpoint.name]
+        print(
+            screen_name,
+            setpoint.name,
+            "???????????????????????????????????!!!!!!!!!!!!!!!!!!!",
+        )
+        # Set the kicker number by name using one of the setpoints.
+        self.sbunches.set_kicker_name(setpoint.name)
 
 
 class MachineReadManager:

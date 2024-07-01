@@ -236,12 +236,16 @@ class SpecialBunchesControl:
         do_use_kickers
 
         """
+        # I don't really like how this is done.  
         clist = self.get_control_list()
         kmap = self.get_kicker_name_to_kicker_number_map()
         kicker_number = kmap[kicker_name]
-        clist[2] = kicker_number
-        LOG.info(f"Enabling fast kicker by setting kicker number in {self.control_address()}, {kicker_name=}, {kicker_number=}")
-        self.di.set_value(self.control_address(), clist)
+        # We store a local reference to the kicker number as well, which we have to do.
+        self._kicker_number = kicker_number
+        self._write_kicker_number_to_sbm(kicker_number)
+        # clist[2] = kicker_number        
+        # LOG.info(f"Enabling fast kicker by setting kicker number in {self.control_address()}, {kicker_name=}, {kicker_number=}")
+        # self.di.set_value(self.control_address(), clist)
 
     # def set_kicker_number_by_name(self, kicker_name: str) -> None:
     #     if self.kicker_number is None:
@@ -261,7 +265,7 @@ class SpecialBunchesControl:
 
     def do_use_kickers(self) -> None:
         """Set the kickers to use the instance attribute `kicker_number`."""
-        kn = self.kicker_number
+        kn = self._kicker_number
         LOG.info("Enabling kicker(s) in SBM by writing kicker number %d to SBM", kn)
         self._write_kicker_number_to_sbm(kn)
 

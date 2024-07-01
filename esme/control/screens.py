@@ -34,9 +34,10 @@ from typing import Any
 
 import numpy.typing as npt
 
-from .dint import DOOCSInterface
+from .dint import DOOCSInterface, dump_fdl
 from .exceptions import DOOCSReadError, DOOCSUnexpectedReadValueError
 from .kickers import FastKickerSetpoint
+from .imanal import ImageAnalysisServerFacade
 
 LOG = logging.getLogger(__name__)
 
@@ -82,6 +83,18 @@ _DOOCS_STRING_TO_POSITION: dict[str, Position] = {
     "OUT": Position.OUT,
 }
 
+INTERESTING_SCREEN_ML_LOCATIONS = ["STATUS.STR"]
+INTERESTING_CAMERA_LOCATIONS = ["CAM.STATUS",
+                                "X.POLY_SCALE",
+                                "Y.POLY_SCALE",
+                                "POWER.ON.OFF",
+                                "WIDTH",
+                                "HEIGHT",
+                                "DOOCS.HFLIP",
+                                "DOOCS.VFLIP"
+
+                ]   
+
 
 class Screen:
     SCREEN_ML_FD = "XFEL.DIAG/SCREEN.ML/{}/{}"
@@ -102,6 +115,8 @@ class Screen:
         self.fast_kicker_setpoints = fast_kicker_setpoints or []
         self.di = di or DOOCSInterface()
         self.analysis = ImageAnalysisServerFacade(name, di=self.di)
+        self._screen_fdl = self.SCREEN_ML_FD.format(self.name, "{}")
+        self._camera_fdl = self.CAMERA_FD.format(self.name, "{}")
 
     def read_camera_status(self) -> str:
         # I don't use this generally because I find it not very
@@ -227,6 +242,10 @@ class Screen:
             ) from e
         pix = ScreenMetadata(xsize=xsize, ysize=ysize, nx=nx, ny=ny)
         return pix
+    
+    def dump(self) -> dict[str, Any]:
+        return (dump_fdl(self._screen_fdl.format("*")) 
+                | dump_fdl(self._camera_fdl.format("*")))
 
 
 def screen_is_fully_operational(screen: Screen) -> bool:

@@ -32,7 +32,7 @@ _OPEN_IMAGE_ANALYSIS_CONFIG_LINE = (
 
 
 def start_lps_gui() -> None:
-    app_name = "TDSFriend"
+    app_name = "TDSChum"
     # this somehow causes big problems...
     # sys.excepthook = make_exception_hook(app_name)
     app = QApplication(sys.argv)
@@ -134,6 +134,24 @@ class LPSMainWindow(QMainWindow):
         self.ui.action_camera_status.triggered.connect(
             lambda: self._run_jddd_process("camera_status")
         )
+
+        self.ui.action_image_analysis_server.triggered.connect(
+            self._open_image_analysis_server
+        )
+
+    def _open_image_analysis_server(self):
+        qproc = QProcess()
+        qproc.setWorkingDirectory(
+            "/home/xfeloper/released_software/ImageAnalysisConfigurator"
+        )
+        qproc.start(
+            "bash",
+            [
+                "/home/xfeloper/released_software/ImageAnalysisConfigurator/start_imageanalysis_configurator"
+            ],
+        )
+        # qproc.waitForStarted()
+        self._processes["image_analysis_server"] = qproc
 
     def closeEvent(self, event) -> None:
         self.ui.area.close()

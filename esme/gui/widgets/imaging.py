@@ -35,7 +35,7 @@ from PyQt5.QtWidgets import (
 
 from esme import DiagnosticRegion
 from esme.control.exceptions import DOOCSReadError
-from esme.control.screens import Screen, ScreenMetadata
+from esme.control.screens import Screen, ScreenMetadata, Position
 from esme.control.tds import StreakingPlane
 from esme.gui.ui.imaging import Ui_imaging_widget
 from esme.gui.widgets.screen import AxesCalibration, ImagePayload
@@ -50,6 +50,7 @@ pg.setConfigOption("useNumba", True)
 
 class MessageType(Enum):
     CACHE_BACKGROUND = auto()
+    CLEAR_BACKGROUND = auto()
     # TAKE_N_FAST = auto()
     CHANGE_SCREEN = auto()
     SUBTRACT_BACKGROUND = auto()
@@ -130,20 +131,19 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         screen = self.screen
         # The button should be active only if the analysis server is not active, i.e.
         # Not doing something already.
-        self.ui.autogain_button.setEnabled(not screen.analysis.is_active())
+        is_active = screen.analysis.is_active()
+        self.ui.autogain_button.setEnabled(not is_active)
         # We only allow for clipping if the screen is off axis
         is_offaxis = screen.get_position() is Position.OFFAXIS
-        self.ui.clip_offaxis_checkbox.setEnabled(is_offaxis)
-        if is_offaxis:
+        self.ui.clip_offaxis_checkbox.setEnabled(is_offaxis and not is_active)
+        if not is_offaxis:
             # This is a bit crap but if the position is not off axis then
             # We repeatedly send a message to the thread telling it to
             # disable clipping..
-            self.consumerq.put(
-                DataTakingMessage(MessageType.CLIP_OFFAXIS, data={"state": False})
-            )
+            self.producer_worker.submit(DataTakingMessage(MessageType.CLIP_OFFAXIS, data={"state": False}))
 
     def _calculate_dispersion(self) -> None:
-        dx, dy = self.mreader.optics.dispersions_at_screen(self.screen_name)
+        dx, dy = self.mreader.optics.dispersions_at_screen(self.screen.name)
         section = self.get_section()
         if section is DiagnosticRegion.I1:
             self.ui.dispersion_spinner.setValue(dx)
@@ -166,7 +166,7 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         self.ui.take_background_button.clicked.connect(self.take_background)
 
         self.ui.autogain_button.clicked.connect(self._activate_auto_gain)
-        self.ui.clip_offaxis_checkbox.clicked.connect(self._clip_offaxis)
+        self.ui.clip_offaxis_checkbox.clicked.connect(self._set_clip_offaxis)
         self.ui.subtract_bg_checkbox.stateChanged.connect(self.set_subtract_background)
 
         self.ui.play_pause_button.play_signal.connect(self._play_screen)
@@ -176,17 +176,28 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         self.ui.calculate_dispersion_button.clicked.connect(self._calculate_dispersion)
         self.ui.regenerate_axes_button.clicked.connect(self._generate_axes_calibrations)
 
-    def _set_clip_offaxis(self, state: Qt.CheckState) -> None:
-        self._consumerq.put(
+    def _set_clip_offaxis(self, state: bool) -> None:
+        self.producer_worker.submit(
             DataTakingMessage(
-                MessageType.CLIP_OFFAXIS, data={"state": state == Qt.Checked}
+                MessageType.CLIP_OFFAXIS, data={"state": state}
             )
         )
 
     def _activate_auto_gain(self) -> None:
         # We assume the server is inactive here, because we disable the button otherwise...
+        self.screen.analysis.set_clipping(on=bool(self.ui.clip_offaxis_checkbox.checkState()))
         self.screen.analysis.activate_gain_control()
         self.ui.autogain_button.setEnabled(False)
+        # We do not allow the offaxis clipping to be touched as this also touches the image
+        # server roi.  the auto gain control is only done in the roi, so if we change the roi
+        # whilst doing the autogain on the roi, then we might have a problem.  so just avoid
+        # Doing that by disabling this checkbox.
+        self.ui.clip_offaxis_checkbox.setEnabled(False)
+        # We have to clear the background cache when adjusting the gain because we risk
+        # subtracting a background at a much higher / lower gain that the beam image, which
+        # is basically meaningless.
+        message = DataTakingMessage(MessageType.CLEAR_BACKGROUND)
+        self.producer_worker.submit(message)
 
     def _open_logbook_writer(self) -> None:
         self.elogger.show_as_new_modal_dialogue(
@@ -223,7 +234,7 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         LOG.debug("Initialising screen worker thread")
         # self.producer_queue: queue.Queue[DataTakingMessage] = queue.Queue()
         # self.consumer_queue: queue.Queue[] = queue.Queue()
-        producer_worker = DataTakingWorker(self.mreader.screens[self.screen_name])
+        producer_worker = DataTakingWorker(self.screen)
         # Propagate screen name change to data taking worker
         # responsible for reading from the screen.
         producer_thread = QThread()
@@ -282,6 +293,7 @@ class DataTakingWorker(QObject):
         self._pause = False
         self._read_period = 1.0
         self._clip_offaxis = False
+        self._xyflip = False, False
 
         # Queue for messages we we receive from
         self._consumerq: queue.Queue[DataTakingMessage | None] = queue.Queue()
@@ -389,6 +401,8 @@ class DataTakingWorker(QObject):
             case MessageType.CACHE_BACKGROUND:
                 self._caching_background = True
                 self._clear_bg_cache()
+            case MessageType.CLEAR_BACKGROUND:
+                self._clear_bg_cache()
             # case MessageType.TAKE_N_FAST:
             #     result = self._take_n_fast(message.data["n"])
             case MessageType.CHANGE_SCREEN:
@@ -403,6 +417,7 @@ class DataTakingWorker(QObject):
                 self._read_period = 1 / message.data["frequency"]
             case MessageType.CLIP_OFFAXIS:
                 self._clip_offaxis = message.data["state"]
+                print(message)
 
             case _:
                 message = f"Unexpected message send to {type(self).__name__}: {message}"
@@ -428,10 +443,20 @@ class DataTakingWorker(QObject):
             image = image.clip(min=0, out=image)
 
         if self._clip_offaxis:
-            image[self._clipping_slice] *= 0.0
+            (xmin, xmax), (ymin, ymax) = self._clipping_bounds()
+            image[:xmin] = 0.0
+            image[xmax + 1:] = 0.0
+            image[...,:ymin] = 0.0
+            image[...,ymax + 1:] = 0.0
 
-        xproj = image.sum(axis=1)
-        yproj = image.sum(axis=0)
+        image = image.T
+        # if not self.xyflip[0]:
+        #     image = np.fliplr(image)
+        if self._xyflip[1]:
+            image = np.flipud(image)
+
+        xproj = image.sum(axis=0)
+        yproj = image.sum(axis=1)
 
         imp = ImagePayload(
             image=image,
@@ -439,12 +464,13 @@ class DataTakingWorker(QObject):
             xproj=xproj,
             yproj=yproj,
         )
-
         self.display_image_signal.emit(imp)
 
     @cache
-    def _clipping_slice(self):
-        self.screen.analysis.get_roi_slice()
+    def _clipping_bounds(self) -> tuple[tuple[int, int], tuple[int, int]]:
+        xminmax = self.screen.analysis.get_xroi_clipping()
+        yminmax = self.screen.analysis.get_yroi_clipping()
+        return xminmax, yminmax
 
     def _read_from_screen(self) -> npt.NDArray:
         image = self.screen.get_image_raw()
@@ -459,9 +485,10 @@ class DataTakingWorker(QObject):
 
     def _set_screen(self, screen: Screen) -> None:
         self.screen = screen
-        self._clipping_slice.cache_clear()
+        self._clipping_bounds.cache_clear()
         self._clear_bg_cache()
         self._try_and_set_screen_metadata()
+        self._xyflip = screen.get_hflip(), screen.get_vflip()
 
     def _try_and_set_screen_metadata(self):
         # if the screen is not powered, then getting the metadata will fail.
@@ -638,6 +665,8 @@ class LogBookEntryWriterDialogue(QDialog):
         location = self._get_location()
         kvps = {"screen": screen_name, "location": location}
         kvps |= self.mreader.full_read()
+        # kvps |= self._screen.dump()
+        # kvps |= self._screen.analysis.dump()
         series = pd.Series(kvps)
         series.index.name = "channel"
         series.reset_index(name="value")

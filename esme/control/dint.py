@@ -39,6 +39,9 @@ if SPEC is not None:
 
 LOG = logging.getLogger(__name__)
 
+DOOCS_RE = re.compile(
+    r"^/?(?:[A-Z0-9._]+/)*[A-Z0-9._]*\*?[A-Z0-9._]*(?:/[A-Z0-9._]+)*/*$"
+)
 
 # This matches a full DOOCS address, with 4 fields, each field can
 # contain caps, numbers, full stops and underscores.
@@ -123,7 +126,7 @@ class DOOCSAddress:
         m = DOOCS_FULL_ADDRESS_REGEX.match(string)
         if m is None:
             raise ValueError(f"Malformed DOOCs address string: {string}")
-        return cls(**m.groups())
+        return cls(**m.groupdict())
 
     def filled(
         self,
@@ -275,3 +278,61 @@ class DOOCSInterface(DOOCSInterfaceABC):
 
     def get_charge(self) -> float:
         return self.get_value("XFEL.DIAG/CHARGE.ML/TORA.25.I1/CHARGE.SA1")
+
+
+def dump_fdl(
+    stub: str,
+    skip_types: set[str] | None = None,
+    filter_regexes: list[str] | None = None,
+) -> dict[str, Any]:
+    skip_types = skip_types or {
+        "TEXT",
+        "SPECTRUM",
+        "GSPECTRUM",
+        "XML",
+        "A_FLOAT",
+        "A_INT",
+        "IMAGE",
+    }
+    filter_regexes = filter_regexes or []
+    if filter_regexes:
+        pass
+        # Compile into one mega regex..
+
+    # Stub = something usable in pydoocs.names, e.g.
+    # XFEL.DIAG/IMAGEANALYSIS/OTRC.58.I1/*/
+    # The asterisk part HAS to be the property.
+    addy = DOOCSAddress.from_string(stub)
+    if "*" not in addy.property:
+        raise ValueError("Malformed stub, property must be a wildcard")
+
+    formattable_address = stub.replace("*", "{}")
+    addresses = []
+    values = []
+    names = pydoocs.names(stub)
+    if names[0] == "NAME = location":
+        names = names[1:]
+
+    for name in names:
+        address_part, *_ = name.split()
+        if address_part.endswith("DESC") and skip_disc:
+            continue
+        # if address_part.endswitih("CATEG") and skip_categ
+        address = formattable_address.format(address_part)
+
+        try:
+            ddata = pydoocs.read(address)
+        except pydoocs.DoocsException:
+            continue
+
+        dtype = ddata["type"]
+        if ddata["type"] in skip_types:
+            continue
+        # Always skip images...
+        if dtype == "image":
+            continue
+
+        addresses.append(address)
+        values.append(ddata["data"])
+
+    return dict(zip(addresses, values))

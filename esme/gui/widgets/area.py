@@ -130,12 +130,14 @@ class AreaControl(QWidget):
 
         if is_powered and is_taking_data:
             return
-
-        global _CAMERA_DIALOGUE
-        _CAMERA_DIALOGUE = CameraDialogue(screen_name, 
-                                          is_powered=is_powered, 
-                                          is_taking_data=is_taking_data)
-        _CAMERA_DIALOGUE.show()
+        # We don't tell the user we are turning the screen on, we just do it
+        # I comment this bit out because it is annoying.  And anyway we do not need to tell
+        # The user because we offer to switch them off at the end anyway.
+        # global _CAMERA_DIALOGUE
+        # _CAMERA_DIALOGUE = CameraDialogue(screen_name, 
+        #                                   is_powered=is_powered, 
+        #                                   is_taking_data=is_taking_data)
+        # _CAMERA_DIALOGUE.show()
 
         try:
             timeout = 10
@@ -259,40 +261,41 @@ class SwitchOffCamerasDialog(QDialog):
 
         """)
 
+        # Build up bulleted list of screens we switched on.
         started_taking_data_bullets = ""
-        for name in self.we_started_taking_data:
+        for name in sorted(self.we_started_taking_data):
             started_taking_data_bullets += f"• {name}\n"
 
-        stop_taking_data_message = textwrap.dedent(f"""\
-        Would stop acquiring images:
-        {started_taking_data_bullets}
-        """)
+        # Build up bolleted list of screens we powered on.
+        powered_on_bullets = ""
+        for name in sorted(self.we_switched_on):
+            powered_on_bullets += f"• {name}\n"
 
-        power_off_bullets = ""
-        for name in self.we_switched_on:
-            power_off_bullets += f"• {name}\n"
-        power_off_message = textwrap.dedent(f"""\
-        Would power off:
-        {power_off_bullets}
-        """)
-
+        # The message telling the user we would stop taking data
+        stop_taking_data_message = ("Would stop acquiring images:\n"
+                                   f"{started_taking_data_bullets}")
+        # Only append this string if we actually did this for any screens.
         if started_taking_data_bullets:
             message += stop_taking_data_message
-
-        if power_off_bullets:
+        # The message telling the user we would power these off.
+        power_off_message = ("Would power off:\n"
+                             f"{powered_on_bullets}")
+        # Only if we powered any on does it make sense to offer to
+        # power them off...
+        if powered_on_bullets:
             message += power_off_message
-
+ 
         message_label = QLabel(message, self)
         layout.addWidget(message_label)
 
         # Add buttons
         button_layout = QHBoxLayout()
 
-        yes_button = QPushButton("Yes", self)
+        yes_button = QPushButton("Restore Cameras", self)
         yes_button.clicked.connect(self.accept)
         button_layout.addWidget(yes_button)
 
-        no_button = QPushButton("No", self)
+        no_button = QPushButton("Exit", self)
         no_button.clicked.connect(self.reject)
         button_layout.addWidget(no_button)
 
