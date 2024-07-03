@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>MainWindow</class>
- <widget class="QMainWindow" name="MainWindow">
+ <class>calibrator_mainwindow</class>
+ <widget class="QMainWindow" name="calibrator_mainwindow">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -16,12 +16,37 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_4">
     <item row="0" column="0">
-     <widget class="AreaControl" name="area_control" native="true"/>
+     <layout class="QHBoxLayout" name="horizontalLayout_2">
+      <item>
+       <widget class="QLabel" name="section_label">
+        <property name="text">
+         <string>Section</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="i1_radio_button">
+        <property name="text">
+         <string>I1</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="b2_radio_button">
+        <property name="text">
+         <string>B2</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </item>
     <item row="0" column="1">
      <widget class="QStackedWidget" name="plot_stack">
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="page_3">
        <layout class="QGridLayout" name="gridLayout_3">
@@ -59,8 +84,14 @@
     </item>
     <item row="1" column="0">
      <widget class="QStackedWidget" name="table_stack">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+        <horstretch>0</horstretch>
+        <verstretch>1</verstretch>
+       </sizepolicy>
+      </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="page">
        <layout class="QGridLayout" name="gridLayout">
@@ -72,7 +103,11 @@
       <widget class="QWidget" name="page_2">
        <layout class="QGridLayout" name="gridLayout_2">
         <item row="0" column="0">
-         <widget class="QTableView" name="b2_calibration_table_view"/>
+         <widget class="QTableView" name="b2_calibration_table_view">
+          <property name="cornerButtonEnabled">
+           <bool>true</bool>
+          </property>
+         </widget>
         </item>
        </layout>
       </widget>
@@ -114,12 +149,6 @@
   </action>
  </widget>
  <customwidgets>
-  <customwidget>
-   <class>AreaControl</class>
-   <extends>QWidget</extends>
-   <header>esme.gui.widgets.area</header>
-   <container>1</container>
-  </customwidget>
   <customwidget>
    <class>GraphicsLayoutWidget</class>
    <extends>QWidget</extends>

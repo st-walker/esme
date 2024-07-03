@@ -11,17 +11,27 @@
 from PyQt5 import QtCore, QtWidgets
 
 
-class Ui_MainWindow(object):
-    def setupUi(self, MainWindow):
-        MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(800, 600)
-        self.centralwidget = QtWidgets.QWidget(MainWindow)
+class Ui_calibrator_mainwindow(object):
+    def setupUi(self, calibrator_mainwindow):
+        calibrator_mainwindow.setObjectName("calibrator_mainwindow")
+        calibrator_mainwindow.resize(800, 600)
+        self.centralwidget = QtWidgets.QWidget(calibrator_mainwindow)
         self.centralwidget.setObjectName("centralwidget")
         self.gridLayout_4 = QtWidgets.QGridLayout(self.centralwidget)
         self.gridLayout_4.setObjectName("gridLayout_4")
-        self.area_control = AreaControl(self.centralwidget)
-        self.area_control.setObjectName("area_control")
-        self.gridLayout_4.addWidget(self.area_control, 0, 0, 1, 1)
+        self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_2.setObjectName("horizontalLayout_2")
+        self.section_label = QtWidgets.QLabel(self.centralwidget)
+        self.section_label.setObjectName("section_label")
+        self.horizontalLayout_2.addWidget(self.section_label)
+        self.i1_radio_button = QtWidgets.QRadioButton(self.centralwidget)
+        self.i1_radio_button.setChecked(True)
+        self.i1_radio_button.setObjectName("i1_radio_button")
+        self.horizontalLayout_2.addWidget(self.i1_radio_button)
+        self.b2_radio_button = QtWidgets.QRadioButton(self.centralwidget)
+        self.b2_radio_button.setObjectName("b2_radio_button")
+        self.horizontalLayout_2.addWidget(self.b2_radio_button)
+        self.gridLayout_4.addLayout(self.horizontalLayout_2, 0, 0, 1, 1)
         self.plot_stack = QtWidgets.QStackedWidget(self.centralwidget)
         self.plot_stack.setObjectName("plot_stack")
         self.page_3 = QtWidgets.QWidget()
@@ -46,6 +56,13 @@ class Ui_MainWindow(object):
         self.plot_stack.addWidget(self.page_4)
         self.gridLayout_4.addWidget(self.plot_stack, 0, 1, 1, 1)
         self.table_stack = QtWidgets.QStackedWidget(self.centralwidget)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred
+        )
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(1)
+        sizePolicy.setHeightForWidth(self.table_stack.sizePolicy().hasHeightForWidth())
+        self.table_stack.setSizePolicy(sizePolicy)
         self.table_stack.setObjectName("table_stack")
         self.page = QtWidgets.QWidget()
         self.page.setObjectName("page")
@@ -60,54 +77,58 @@ class Ui_MainWindow(object):
         self.gridLayout_2 = QtWidgets.QGridLayout(self.page_2)
         self.gridLayout_2.setObjectName("gridLayout_2")
         self.b2_calibration_table_view = QtWidgets.QTableView(self.page_2)
+        self.b2_calibration_table_view.setCornerButtonEnabled(True)
         self.b2_calibration_table_view.setObjectName("b2_calibration_table_view")
         self.gridLayout_2.addWidget(self.b2_calibration_table_view, 0, 0, 1, 1)
         self.table_stack.addWidget(self.page_2)
         self.gridLayout_4.addWidget(self.table_stack, 1, 0, 1, 1)
-        MainWindow.setCentralWidget(self.centralwidget)
-        self.menubar = QtWidgets.QMenuBar(MainWindow)
+        calibrator_mainwindow.setCentralWidget(self.centralwidget)
+        self.menubar = QtWidgets.QMenuBar(calibrator_mainwindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 800, 24))
         self.menubar.setObjectName("menubar")
         self.menuFile = QtWidgets.QMenu(self.menubar)
         self.menuFile.setObjectName("menuFile")
-        MainWindow.setMenuBar(self.menubar)
-        self.statusbar = QtWidgets.QStatusBar(MainWindow)
+        calibrator_mainwindow.setMenuBar(self.menubar)
+        self.statusbar = QtWidgets.QStatusBar(calibrator_mainwindow)
         self.statusbar.setObjectName("statusbar")
-        MainWindow.setStatusBar(self.statusbar)
-        self.actionLoad_Calibration = QtWidgets.QAction(MainWindow)
+        calibrator_mainwindow.setStatusBar(self.statusbar)
+        self.actionLoad_Calibration = QtWidgets.QAction(calibrator_mainwindow)
         self.actionLoad_Calibration.setObjectName("actionLoad_Calibration")
-        self.actionQuit = QtWidgets.QAction(MainWindow)
+        self.actionQuit = QtWidgets.QAction(calibrator_mainwindow)
         self.actionQuit.setObjectName("actionQuit")
         self.menuFile.addAction(self.actionLoad_Calibration)
         self.menuFile.addAction(self.actionQuit)
         self.menubar.addAction(self.menuFile.menuAction())
 
-        self.retranslateUi(MainWindow)
-        self.plot_stack.setCurrentIndex(1)
-        self.table_stack.setCurrentIndex(1)
-        QtCore.QMetaObject.connectSlotsByName(MainWindow)
+        self.retranslateUi(calibrator_mainwindow)
+        self.plot_stack.setCurrentIndex(0)
+        self.table_stack.setCurrentIndex(0)
+        QtCore.QMetaObject.connectSlotsByName(calibrator_mainwindow)
 
-    def retranslateUi(self, MainWindow):
+    def retranslateUi(self, calibrator_mainwindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
-        self.menuFile.setTitle(_translate("MainWindow", "File"))
-        self.actionLoad_Calibration.setText(
-            _translate("MainWindow", "Load Calibration...")
+        calibrator_mainwindow.setWindowTitle(
+            _translate("calibrator_mainwindow", "MainWindow")
         )
-        self.actionQuit.setText(_translate("MainWindow", "Quit"))
-        self.actionQuit.setShortcut(_translate("MainWindow", "Ctrl+Q"))
+        self.section_label.setText(_translate("calibrator_mainwindow", "Section"))
+        self.i1_radio_button.setText(_translate("calibrator_mainwindow", "I1"))
+        self.b2_radio_button.setText(_translate("calibrator_mainwindow", "B2"))
+        self.menuFile.setTitle(_translate("calibrator_mainwindow", "File"))
+        self.actionLoad_Calibration.setText(
+            _translate("calibrator_mainwindow", "Load Calibration...")
+        )
+        self.actionQuit.setText(_translate("calibrator_mainwindow", "Quit"))
+        self.actionQuit.setShortcut(_translate("calibrator_mainwindow", "Ctrl+Q"))
 
 
 from pyqtgraph import GraphicsLayoutWidget
-
-from esme.gui.widgets.area import AreaControl
 
 if __name__ == "__main__":
     import sys
 
     app = QtWidgets.QApplication(sys.argv)
-    MainWindow = QtWidgets.QMainWindow()
-    ui = Ui_MainWindow()
-    ui.setupUi(MainWindow)
-    MainWindow.show()
+    calibrator_mainwindow = QtWidgets.QMainWindow()
+    ui = Ui_calibrator_mainwindow()
+    ui.setupUi(calibrator_mainwindow)
+    calibrator_mainwindow.show()
     sys.exit(app.exec_())
