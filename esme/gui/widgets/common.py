@@ -1,4 +1,3 @@
-import sys
 import logging
 import re
 import socket
@@ -9,14 +8,22 @@ from importlib.resources import files
 from pathlib import Path
 from typing import Any, Callable
 
+import matplotlib
 import numpy as np
 import pandas as pd
 import pyqtgraph as pg
 import yaml
-import matplotlib
-from PyQt5.QtCore import QBuffer, QByteArray, QIODevice, QObject, pyqtSignal, QPoint, pyqtProperty
-from PyQt5.QtWidgets import QMessageBox, QWidget, QPushButton
-from PyQt5.QtGui import QIcon, QPixmap, QColor, QPainter, QPolygon
+from PyQt5.QtCore import (
+    QBuffer,
+    QByteArray,
+    QIODevice,
+    QObject,
+    QPoint,
+    pyqtProperty,
+    pyqtSignal,
+)
+from PyQt5.QtGui import QColor, QIcon, QPainter, QPixmap, QPolygon
+from PyQt5.QtWidgets import QMessageBox, QPushButton, QWidget
 
 from esme import DiagnosticRegion
 from esme.control.configs import (
@@ -38,9 +45,12 @@ DEFAULT_CONFIG_PATH = files("esme.gui.widgets") / "defaultconf.yaml"
 DEFAULT_VCONFIG_PATH = files("esme.gui.widgets") / "vmachine.yaml"
 
 _MACHINE_MANAGER_FACTORY: MachineManagerFactory | None = None
+_VIRUTAL_MACHINE_MANAGER_FACTORY: MachineManagerFactory | None = None
+
+USE_VIRTUAL_XFEL = False
 
 
-def get_machine_manager_factory() -> MachineManagerFactory:
+def get_machine_manager_factory(virtual=False) -> MachineManagerFactory:
     global _MACHINE_MANAGER_FACTORY
     if _MACHINE_MANAGER_FACTORY:
         return _MACHINE_MANAGER_FACTORY
@@ -124,8 +134,10 @@ class QPlainTextEditLogger(QObject, logging.Handler):
         self.log_signal.emit(msg)
 
 
-def setup_screen_display_widget(widget: pg.GraphicsLayoutWidget, axes: bool = False, units: str = "m") -> pg.PlotItem:
-    # We add a plot to the pg.GraphicsLayoutWidget  
+def setup_screen_display_widget(
+    widget: pg.GraphicsLayoutWidget, axes: bool = False, units: str = "m"
+) -> pg.PlotItem:
+    # We add a plot to the pg.GraphicsLayoutWidget
     main_plot = widget.addPlot()
     # Clear it in case it has something in it already.
     main_plot.clear()
@@ -311,7 +323,7 @@ class PlayPauseButton(QPushButton):
     @pyqtProperty(bool)
     def is_playing(self) -> bool:
         return self._is_playing
-    
+
     @is_playing.setter
     def is_playing(self, value: bool) -> None:
         self._is_playing = bool(value)
