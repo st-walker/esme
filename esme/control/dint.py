@@ -69,10 +69,11 @@ DOOCS_FULL_ADDRESS_REGEX = re.compile(
     /                          # Separator between device and location
 
     # Location:
-    (?P<location>              # Capture group for location
-    [0-9A-Z._]*                # Location name, caps, numbers, full stops and underscores
+    (?P<location>              # Capture group for location.  Unlike other fields, can have lower
+                               # case characters (I added this for the Taskomat sequences)
+    [0-9A-Za-z._]*             # Location name, caps, numbers, full stops and underscores
     \*?                        # Optional wildcard character, at most once within the location name
-    [0-9A-Z._]*                # After the wildcard, more location name characters
+    [0-9A-Za-z._]*             # After the wildcard, more location name characters
     )                          # End of location capture group
 
     /                          # Separator between location and property
@@ -242,6 +243,7 @@ class DOOCSInterface(DOOCSInterfaceABC):
         try:
             val = pydoocs.read(channel)
         except pydoocs.DoocsException as e:
+            from ipdb import set_trace; set_trace()
             raise DOOCSReadError(channel) from e
         return val["data"]
 
@@ -279,6 +281,28 @@ class DOOCSInterface(DOOCSInterfaceABC):
     def get_charge(self) -> float:
         return self.get_value("XFEL.DIAG/CHARGE.ML/TORA.25.I1/CHARGE.SA1")
 
+
+class VXFELDOOCSInterface(DOOCSInterface):
+    def filter_address(self, address: str) -> str:
+        rexp = re.compile("^/?XFEL")
+        if not rexp.match(address):
+            raise ValueError("Unable to redirect not XFEL address to Virtual XFEL")
+        elif address.startswith("XFEL_SIM"):
+            raise ValueError(f"{address} is already a virtual xfel address")
+
+        return re.sub(rexp, "XFEL_SIM", address)
+
+    def get_value(self, channel: str) -> Any:
+        return super().get_value(self.filter_address(channel))
+    
+    def set_value(self, channel: str, value: Any) -> None:
+        super().set_value(self.filter_address(channel), value)
+
+    def get_names(self, wc_address: str) -> list[str]:
+        return super().get_names(self.filter_address(wc_address))
+    
+    def read_full(self, channel: str) -> dict[str, Any]:
+        return super().read_full(self.filter_address(channel))
 
 def dump_fdl(
     stub: str,

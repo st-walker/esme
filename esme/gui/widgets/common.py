@@ -31,7 +31,7 @@ from esme.control.configs import (
     build_area_watcher_from_config,
     load_virtual_machine_interface,
 )
-from esme.control.dint import DOOCSInterface, DOOCSInterfaceABC
+from esme.control.dint import DOOCSInterface, DOOCSInterfaceABC, VXFELDOOCSInterface
 from esme.control.vdint import DictionaryDOOCSInterface
 
 try:
@@ -49,6 +49,7 @@ _VIRUTAL_MACHINE_MANAGER_FACTORY: MachineManagerFactory | None = None
 
 USE_VIRTUAL_XFEL = False
 
+USE_VIRTUAL_XFEL_ADDRESSES = False
 
 def get_machine_manager_factory(virtual=False) -> MachineManagerFactory:
     global _MACHINE_MANAGER_FACTORY
@@ -68,8 +69,11 @@ def is_in_controlroom() -> bool:
 
 
 def make_default_doocs_interface() -> DOOCSInterfaceABC:
+    global USE_VIRTUAL_XFEL_ADDRESSES    
     if not is_in_controlroom():
         return get_default_virtual_machine_interface()
+    elif USE_VIRTUAL_XFEL_ADDRESSES:
+        return VXFELDOOCSInterface()
     else:
         return DOOCSInterface()
 

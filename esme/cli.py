@@ -16,6 +16,7 @@ from esme.gui.explorer import start_explorer_gui
 from esme.gui.tds_calibrator import start_calibration_explorer_gui
 from esme.load import load_result_directory
 from esme.plot import pretty_parameter_table
+import esme.gui.widgets.common as wcommon
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
@@ -51,9 +52,10 @@ def calculate_bunch_length(setpoint: SetpointDataFrame):
 
 
 @group()
-@option("--debug", is_flag=True, help="Run all subcommands in debug mode")
+@option("--debug", is_flag=True, help="Run all subcommands in debug mode.")
+@option("--vxfel", is_flag=True, help="Run all commands in virtual XFEL address space.")
 @option("--profile", is_flag=True)
-def main(debug, profile):
+def main(debug, profile, vxfel):
     """Main entrypoint."""
     echo("esme-xfel")
     echo("=" * len("esme-xfel"))
@@ -74,6 +76,8 @@ def main(debug, profile):
         logging.getLogger("esme.explorer").setLevel(logging.DEBUG)
 
         logging.getLogger("ocelot.utils.fel_track").setLevel(logging.DEBUG)
+    
+    wcommon.USE_VIRTUAL_XFEL_ADDRESSES = vxfel
 
     if profile:
         import atexit
@@ -304,9 +308,22 @@ def optics(dirname):
 
 
 @main.command()
-@arugment("seqname", nargs=1)
+@argument("seqname", nargs=1)
 def taskomat(seqname):
-    pass
+    from esme.gui.widgets.sequence import TaskomatSequenceDisplay
+    from esme.control.taskomat import Sequence
+    from PyQt5.QtWidgets import QApplication
+    from esme.gui.widgets.common import make_default_doocs_interface
+    import sys
+    app = QApplication(sys.argv)
+
+    sequence = Sequence(seqname, di=make_default_doocs_interface())
+    display = TaskomatSequenceDisplay(sequence)
+    display.setWindowTitle("Taskomat Sequence Runner")
+    display.show()
+    display.raise_()
+    sys.exit(app.exec_())
+
 
 
 if __name__ == "__main__":

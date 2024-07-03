@@ -276,7 +276,7 @@ class MachineManagerFactory:
 
     def make_dump_sequences(
         self, area: DiagnosticRegion
-    ) -> tuple[DiagnosticTarget, DiagnosticTarget]:
+    ) -> tuple[DiagnosticRegion, DiagnosticRegion]:
         try:
             forward_sequence = deepcopy(
                 self._manager_cache[area]["forward_taskomat_location"]

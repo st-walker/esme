@@ -1,4 +1,7 @@
 import re
+from functools import cache
+from enum import IntEnum
+from typing import Any
 
 from .dint import DOOCSAddress, DOOCSInterface
 
@@ -29,46 +32,68 @@ class Sequence:
         return self._location
 
     def run_once(self) -> None:
-        self.di.set_value(self._fdl.resolve(property="RUN.ONCE"), 1)
+        self.di.set_value(self._fdl.filled(property="RUN.ONCE"), 1)
 
     def is_running(self) -> bool:
-        return self.di.get_value(self._fdl.resolve(property="RUNNING")) == 1
+        return self.di.get_value(self._fdl.filled(property="RUNNING")) == 1
+    
+    def force_stop(self) -> None:
+        return self.di.set_value(self._fdl.filled(property="FORCESTOP"), 1)
 
     def _get_step_address(self, step_number: int, suffix: str) -> str:
         # given step number and suffix, gives full address.
-        return self._fdl.resolve(property=f"STEP{step_number:03}.{suffix}")
-
+        return self._fdl.filled(property=f"STEP{step_number:03}.{suffix}")
+    
     @cache
-    def _get_step_numbers(self) -> list[int]:
-        properties = self.di.names(str(self._fdl.resolve(property="*")))
-        matches = [_STEP_REGEX.match(m) for p in properties]
+    def _get_step_type_map(self) -> dict[int, str]:
+        addy = self._fdl.filled(property="COMBOBOX_TYPES")
+        combobox_types = self.di.get_value(addy)
+        result = {}
+        for entry in combobox_types.split(";"):
+            step_type, type_number = entry.split("|")
+            result[int(type_number)] = step_type
+
+        return result
+
+    def get_step_type(self, step_number: int) -> str:
+        step_type_int = self._get_step_value(step_number, "TYPE")
+        return self._get_step_type_map()[step_type_int]
+    
+    @cache
+    def get_step_numbers(self) -> list[int]:
+        properties = self.di.get_names(str(self._fdl.filled(property="*")))
+        matches = [_STEP_REGEX.match(p) for p in properties]
         matches = [m for m in matches if m]
-        step_numbers = set([m.groups(1) for m in matches])
-        return sorted(step_numbers)
+        steps = set([int(m.group("step")) for m in matches])
+        return sorted(steps)
 
     def get_running_step(self) -> int:
-        for step_number in self._get_n_steps():
+        for step_number in self.get_step_numbers():
             if self.is_step_running(step_number):
                 return step_number
         raise SequenceNotRunningError(f"Sequence: {self} is not running")
 
+    def _get_step_value(self, step_number: int, suffix: str) -> Any:
+        address = self._get_step_address(step_number, suffix)
+        return self.di.get_value(address)
+
     def get_number_of_steps(self) -> int:
-        return len(self._get_n_steps())
+        return len(self.get_step_numbers())
 
     def is_step_running(self, step_number: int) -> bool:
-        return self._get_step_address(step_number, "RUNNING") == 1
+        return self._get_step_value(step_number, "RUNNING") == 1
 
     def is_step_disabled(self, step_number: int) -> bool:
-        return self._get_step_address(step_number, "DISABLED") == 1
+        return self._get_step_value(step_number, "DISABLED") == 1
 
-    def is_step_error(self, step_numnber: int) -> bool:
-        return self._get_step_address(step_number, "STATE") == 2
+    def is_step_error(self, step_number: int) -> bool:
+        return self._get_step_value(step_number, "STATE") == 2
 
     def get_step_label(self, step_number: int) -> str:
-        return self._get_step_address(step_number, "LABEL")
+        return self._get_step_value(step_number, "LABEL")
 
     def get_label(self) -> str:
-        return self.di.get_value(self._fdl.resolve(property="LABEL"))
+        return self.di.get_value(self._fdl.filled(property="LABEL"))
 
     def get_html_log(self) -> str:
-        self.di.get_value(self._fdl.resolve(property="LOG_HTML"))
+        return self.di.get_value(self._fdl.filled(property="LOG_HTML"))

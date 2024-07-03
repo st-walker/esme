@@ -10,6 +10,7 @@ from .sbunches import SpecialBunchesControl
 from .scanner import Scanner
 from .screens import Screen
 from .tds import TransverseDeflector
+from .taskomat import Sequence
 
 # class StreakingPlaneCalibrationMixin:
 #     def get_streaking_com_slope(self, screen_name):

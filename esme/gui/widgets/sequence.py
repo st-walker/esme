@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
-from PyQt5.QtCore import QProcess, Qt
-from PyQt5.QtGui import QColor, QFont, QPainter, QPaintEvent, QPen
+from PyQt5.QtCore import QProcess, Qt, QTimer
+from PyQt5.QtGui import QColor, QFont, QPainter, QPaintEvent, QPen, QTextCursor
 from PyQt5.QtWidgets import (
     QFormLayout,
     QFrame,
@@ -13,15 +13,25 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from esme.gui.widgets.status import CircleIndicator
 
 from esme.control.taskomat import Sequence
 
-
-class StrikethroughLabel(QLabel):
-    def __init__(self, text: str = "", parent: QWidget | None = None):
+class StepLabel(QLabel):
+    def __init__(self, keyword: str = "", text: str = "", indentation_level: int = 0, parent=None):
         super().__init__(text, parent)
+        self.keyword = keyword
         self.strikethrough = False
+        self.indentation_level = indentation_level
+        self.setText(self.format_text(keyword, text))
 
+    def format_text(self, keyword: str, text: str) -> str:
+        indent = "    " * self.indentation_level
+        text = f"{indent}{text}"
+        if keyword:
+            return f"<span style='color: royalblue; font-weight: bold;'>{keyword}</span> {text}"
+        return text
+    
     def set_strikethrough(self, enabled: bool) -> None:
         self.strikethrough = enabled
         self.update()
@@ -51,7 +61,9 @@ class TaskomatSequenceDisplay(QWidget):
 
         self._timer = QTimer()
         self._timer.timeout.connect(self._update_ui)
-        self.timer.start(1000)
+        self._timer.start(50)
+
+        self._last_log_message: str = ""
 
     def init_ui(self) -> SimpleNamespace:
         # Title
@@ -109,21 +121,30 @@ class TaskomatSequenceDisplay(QWidget):
     def generate_table(self) -> None:
         # Populate the form layout
         self.rows.clear()  # Clear the rows list
-        for irow in range(self._taskomat.get_number_of_steps()):
+        nesting_level = 0
+        for istep in self._sequence.get_step_numbers():
             hbox = QHBoxLayout()
 
-            number_label = QLabel(str(irow + 1))
+            number_label = QLabel(str(istep))
             number_label.setFixedWidth(20)  # Set a fixed width for the number label
 
-            step_label = self._taskomat.get_step_label(irow)
-            is_disabled = self._taskomat.is_step_disabled(irow)
+            step_label = self._sequence.get_step_label(istep)
+            is_disabled = self._sequence.is_step_disabled(istep)
+            keyword = self._sequence.get_step_type(istep)
 
-            description_label = StrikethroughLabel(step_label)
+            if keyword == "ACTION":
+                keyword = ""
+
+            description_label = StepLabel(keyword=keyword, text=step_label, indentation_level=nesting_level)
             description_label.set_strikethrough(is_disabled)
             description_label.setWordWrap(True)
             description_label.setSizePolicy(
                 QSizePolicy.Expanding, QSizePolicy.Preferred
             )
+            if keyword in {"IF", "WHILE", "TRY", "CATCH"}:
+                nesting_level += 1
+            elif keyword in {"END"}:
+                nesting_level = max(0, nesting_level - 1)
 
             status_indicator = CircleIndicator()
 
@@ -134,43 +155,64 @@ class TaskomatSequenceDisplay(QWidget):
             self.ui.form_layout.addRow(hbox)
             self.rows.append((description_label, status_indicator))
 
-    def set_strikethrough(self, row: int, enabled: bool) -> None:
-        self.rows[row][0].set_strikethrough(enabled)
+    def set_strikethrough(self, row: int, strike: bool) -> None:
+        # Counts from zero, so step number 1 has row of 0
+        self.rows[row][0].set_strikethrough(strike)
 
     def set_indicator_colour(self, row: int, colour: QColor) -> None:
+        # Counts from zero, so step number 1 has row of 0
         self.rows[row][1].set_colour(colour)
 
     def _update_ui(self) -> None:
-        for irow in range(self._taskomat.get_number_of_steps()):
-            is_disabled = self._taskomat.is_step_disabled(irow)
-            self.set_strikethrough(irow, is_disabled)
-            if self._taskomat.is_step_running(irow):
+        for step_number in self._sequence.get_step_numbers():
+            irow = step_number - 1
+            self.set_strikethrough(irow, self._sequence.is_step_disabled(step_number))
+
+            if self._sequence.is_step_running(step_number):
                 # Green
-                self.set_indicator_colour(QColor(148, 255, 67))
-            elif self._taskomat.is_step_error(irow):
+                self.set_indicator_colour(irow, QColor(148, 255, 67))
+            elif self._sequence.is_step_error(step_number):
                 # Red
-                self.set_indicator_colour(QColor(227, 49, 30))
+                self.set_indicator_colour(irow, QColor(227, 49, 30))
             else:
                 # Grey
-                self.set_indicator_colour(QColor(63, 63, 63))
-
+                self.set_indicator_colour(irow, QColor(63, 63, 63))
+        self._set_buttons_for_running_state(is_running=self._sequence.is_running())
         self._update_log()
 
     def _update_log(self) -> None:
-        self.ui.log_text_edit.setHtml(self._taskomat.get_html_log())
+        log_text = self._sequence.get_html_log()
+        if self._last_log_message == log_text:
+            return
+
+        scrollbar = self.ui.log_text_edit.verticalScrollBar()
+        old_scroll_value = scrollbar.value()
+        at_bottom_of_text = old_scroll_value == scrollbar.maximum() 
+
+        # Now update the contents of the text
+        self._last_log_message = log_text
+        self.ui.log_text_edit.setHtml(log_text)
+
+        if at_bottom_of_text:
+            new_scroll = scrollbar.maximum()
+        else:
+            new_scroll = old_scroll_value
+
+        scrollbar.setValue(new_scroll)
+
+    def _set_buttons_for_running_state(self, *, is_running) -> None:
+        self.ui.start_button.setEnabled(not is_running)
+        self.ui.stop_button.setEnabled(is_running)
 
     def start_sequence(self) -> None:
-        self.ui.start_button.setEnabled(False)
-        self.ui.stop_button.setEnabled(True)
+        self._set_buttons_for_running_state(is_running=True)
         self._sequence.run_once()
 
     def stop_sequence(self) -> None:
-        self.ui.start_button.setEnabled(True)
-        self.ui.stop_button.setEnabled(False)
-        self.ui._sequence.force_stop()
+        self._set_buttons_for_running_state(is_running=False)
+        self._sequence.force_stop()
 
     def open_taskomat(self) -> None:
-        # Some sort of qprocess stuff here, ideally opening to the right panel.
         process = QProcess()
         process.setProgram("jddd-run")
         process.setArguments(
