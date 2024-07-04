@@ -28,9 +28,6 @@
       </property>
       <widget class="QWidget" name="page">
        <layout class="QGridLayout" name="gridLayout">
-        <item row="0" column="0">
-         <widget class="QTableView" name="i1_calibration_table_view"/>
-        </item>
         <item row="1" column="0">
          <widget class="QTextEdit" name="i1_log">
           <property name="readOnly">
@@ -42,13 +39,6 @@
       </widget>
       <widget class="QWidget" name="page_2">
        <layout class="QGridLayout" name="gridLayout_2">
-        <item row="0" column="0">
-         <widget class="QTableView" name="b2_calibration_table_view">
-          <property name="cornerButtonEnabled">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
         <item row="1" column="0">
          <widget class="QTextEdit" name="b2_log">
           <property name="readOnly">
@@ -173,24 +163,41 @@
       </property>
       <widget class="QWidget" name="page_3">
        <layout class="QGridLayout" name="gridLayout_3">
-        <item row="0" column="0">
-         <widget class="GraphicsLayoutWidget" name="i1_calibration_graphics" native="true"/>
+        <item row="2" column="0">
+         <widget class="GraphicsLayoutWidget" name="i1_pscan_graphics" native="true"/>
         </item>
         <item row="1" column="0">
-         <widget class="GraphicsLayoutWidget" name="i1_pscan_graphics" native="true"/>
+         <widget class="GraphicsLayoutWidget" name="i1_calibration_graphics" native="true"/>
+        </item>
+        <item row="0" column="0">
+         <widget class="QTableView" name="i1_calibration_table_view"/>
         </item>
        </layout>
       </widget>
       <widget class="QWidget" name="page_4">
        <layout class="QGridLayout" name="gridLayout_5">
-        <item row="0" column="0">
-         <widget class="GraphicsLayoutWidget" name="b2_calibration_graphics" native="true"/>
+        <item row="2" column="0">
+         <widget class="GraphicsLayoutWidget" name="b2_pscan_graphics" native="true"/>
         </item>
         <item row="1" column="0">
-         <widget class="GraphicsLayoutWidget" name="b2_pscan_graphics" native="true"/>
+         <widget class="GraphicsLayoutWidget" name="b2_calibration_graphics" native="true"/>
+        </item>
+        <item row="0" column="0">
+         <widget class="QTableView" name="b2_calibration_table_view">
+          <property name="cornerButtonEnabled">
+           <bool>true</bool>
+          </property>
+         </widget>
         </item>
        </layout>
       </widget>
+     </widget>
+    </item>
+    <item row="3" column="0" colspan="2">
+     <widget class="Line" name="line">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
      </widget>
     </item>
    </layout>
