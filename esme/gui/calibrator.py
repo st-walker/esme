@@ -11,6 +11,9 @@ from PyQt5.QtWidgets import QApplication, QVBoxLayout, QWidget, QMainWindow
 
 from esme.gui.ui.calibrator import Ui_calibrator_mainwindow
 
+class IncompleteCalibration(RuntimeError):
+    pass
+
 @dataclass
 class PhaseScan:
     """Phase scan. This is output from the calibration routine."""
@@ -48,7 +51,6 @@ class CalibrationSetpoint:
     pscan0: PhaseScan = field(default_factory=PhaseScan)
     pscan1: PhaseScan = field(default_factory=PhaseScan)
 
-
 @dataclass
 class TDSCalibration:
     context: CalibrationContext = field(default_factory=CalibrationContext)
@@ -67,9 +69,10 @@ class TDSCalibration:
 
 
 class CalibrationTableModel(QAbstractTableModel):
-    def __init__(self, calibration: TDSCalibration):
+    def __init__(self, calibration: TDSCalibration | None = None):
         super().__init__()
-        self.calibration = calibration
+        # Just have 5 rows, I don't see any need for more when calibrating...
+        self.calibration = calibration or TDSCalibration([CalibrationSetpoint() for _ in range(5)])
         self.headers = [
             "Amplitude / %",
             "  𝜙₀₀ / °  ",
@@ -156,6 +159,20 @@ class CalibrationTableModel(QAbstractTableModel):
                 return QBrush(color)
 
         return None
+    
+    def _data_phase_ranges(self, setpoint, icol: int) -> float | None:
+        assert 1 <= icol <= 4
+        try:
+            if icol == 1:
+                return setpoint.pscan0.prange0[0]
+            elif icol == 2:
+                return setpoint.pscan0.prange0[1]
+            elif icol == 3:
+                return setpoint.pscan1.prange0[0]
+            elif icol == 4:
+                return setpoint.pscan1.prange0[1]
+        except TypeError:
+            return None
 
     def setData(self, index, value, role=Qt.EditRole):
         if not index.isValid() or role != Qt.EditRole:
@@ -230,6 +247,25 @@ class TDSCalibratorMainWindow(QMainWindow):
         super().__init__()
         self.ui = Ui_calibrator_mainwindow()
         self.ui.setupUi(self)
+        self._init_widget_stacks()
+
+    def _init_widget_stacks(self):
+        self._init_table_view(self.ui.i1_calibration_table_view)
+        self._init_table_view(self.ui.b2_calibration_table_view)
+
+    def _init_table_view(self, table_view):
+        model = CalibrationTableModel()
+
+        table_view.setModel(model)
+
+        screens = ["Screen1", "Screen2", "Screen3"]
+        delegate = ScreenDelegate(screens)
+        table_view.setItemDelegateForColumn(5, delegate)
+
+        # Set the last column to stretch and fill the remaining horizontal space
+        header = table_view.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Interactive)  # Default for all columns
+        header.setSectionResizeMode(11, QHeaderView.Stretch)  # Stretch the last column
 
         calibration_data = TDSCalibration()
         model = CalibrationTableModel(calibration_data)
@@ -247,7 +283,6 @@ def start_tds_calibrator(argv) -> None:
 
 def create_sample_data():
     return TDSCalibration()
-
 
 if __name__ == "__main__":
     app = QApplication([])
