@@ -24,6 +24,8 @@ What if screen is switched off by someone/something else?
 what if kickers are depowered by someone?
 then i should try in a loop to power them, right?
 
+!!!!!!!!!!!!!!!!!!!!!!!!!FIX COLOUR MAP!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 i need an icon
 
 self.screen masks self.screen()

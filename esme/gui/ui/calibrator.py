@@ -19,19 +19,6 @@ class Ui_calibrator_mainwindow(object):
         self.centralwidget.setObjectName("centralwidget")
         self.gridLayout_4 = QtWidgets.QGridLayout(self.centralwidget)
         self.gridLayout_4.setObjectName("gridLayout_4")
-        self.horizontalLayout_2 = QtWidgets.QHBoxLayout()
-        self.horizontalLayout_2.setObjectName("horizontalLayout_2")
-        self.section_label = QtWidgets.QLabel(self.centralwidget)
-        self.section_label.setObjectName("section_label")
-        self.horizontalLayout_2.addWidget(self.section_label)
-        self.i1_radio_button = QtWidgets.QRadioButton(self.centralwidget)
-        self.i1_radio_button.setChecked(True)
-        self.i1_radio_button.setObjectName("i1_radio_button")
-        self.horizontalLayout_2.addWidget(self.i1_radio_button)
-        self.b2_radio_button = QtWidgets.QRadioButton(self.centralwidget)
-        self.b2_radio_button.setObjectName("b2_radio_button")
-        self.horizontalLayout_2.addWidget(self.b2_radio_button)
-        self.gridLayout_4.addLayout(self.horizontalLayout_2, 0, 0, 1, 1)
         self.table_stack = QtWidgets.QStackedWidget(self.centralwidget)
         sizePolicy = QtWidgets.QSizePolicy(
             QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred
@@ -48,6 +35,10 @@ class Ui_calibrator_mainwindow(object):
         self.i1_calibration_table_view = QtWidgets.QTableView(self.page)
         self.i1_calibration_table_view.setObjectName("i1_calibration_table_view")
         self.gridLayout.addWidget(self.i1_calibration_table_view, 0, 0, 1, 1)
+        self.i1_log = QtWidgets.QTextEdit(self.page)
+        self.i1_log.setReadOnly(True)
+        self.i1_log.setObjectName("i1_log")
+        self.gridLayout.addWidget(self.i1_log, 1, 0, 1, 1)
         self.table_stack.addWidget(self.page)
         self.page_2 = QtWidgets.QWidget()
         self.page_2.setObjectName("page_2")
@@ -57,8 +48,68 @@ class Ui_calibrator_mainwindow(object):
         self.b2_calibration_table_view.setCornerButtonEnabled(True)
         self.b2_calibration_table_view.setObjectName("b2_calibration_table_view")
         self.gridLayout_2.addWidget(self.b2_calibration_table_view, 0, 0, 1, 1)
+        self.b2_log = QtWidgets.QTextEdit(self.page_2)
+        self.b2_log.setReadOnly(True)
+        self.b2_log.setObjectName("b2_log")
+        self.gridLayout_2.addWidget(self.b2_log, 1, 0, 1, 1)
         self.table_stack.addWidget(self.page_2)
-        self.gridLayout_4.addWidget(self.table_stack, 1, 0, 1, 1)
+        self.gridLayout_4.addWidget(self.table_stack, 4, 0, 1, 2)
+        self.start_calibration_button = QtWidgets.QPushButton(self.centralwidget)
+        self.start_calibration_button.setObjectName("start_calibration_button")
+        self.gridLayout_4.addWidget(self.start_calibration_button, 1, 0, 1, 1)
+        self.area_control = AreaControl(self.centralwidget)
+        self.area_control.setObjectName("area_control")
+        self.gridLayout_4.addWidget(self.area_control, 0, 0, 1, 2)
+        self.stackedWidget_2 = QtWidgets.QStackedWidget(self.centralwidget)
+        self.stackedWidget_2.setObjectName("stackedWidget_2")
+        self.page_7 = QtWidgets.QWidget()
+        self.page_7.setObjectName("page_7")
+        self.gridLayout_7 = QtWidgets.QGridLayout(self.page_7)
+        self.gridLayout_7.setObjectName("gridLayout_7")
+        self.groupBox = QtWidgets.QGroupBox(self.page_7)
+        self.groupBox.setObjectName("groupBox")
+        self.gridLayout_6 = QtWidgets.QGridLayout(self.groupBox)
+        self.gridLayout_6.setObjectName("gridLayout_6")
+        self.i1_tds_frequency_label = QtWidgets.QLabel(self.groupBox)
+        self.i1_tds_frequency_label.setObjectName("i1_tds_frequency_label")
+        self.gridLayout_6.addWidget(self.i1_tds_frequency_label, 2, 0, 1, 1)
+        self.i1_r12_streaking_label = QtWidgets.QLabel(self.groupBox)
+        self.i1_r12_streaking_label.setObjectName("i1_r12_streaking_label")
+        self.gridLayout_6.addWidget(self.i1_r12_streaking_label, 4, 0, 1, 1)
+        self.i1_beam_energy_label = QtWidgets.QLabel(self.groupBox)
+        self.i1_beam_energy_label.setObjectName("i1_beam_energy_label")
+        self.gridLayout_6.addWidget(self.i1_beam_energy_label, 1, 0, 1, 1)
+        self.i1_screen_label = QtWidgets.QLabel(self.groupBox)
+        self.i1_screen_label.setObjectName("i1_screen_label")
+        self.gridLayout_6.addWidget(self.i1_screen_label, 3, 0, 1, 1)
+        self.gridLayout_7.addWidget(self.groupBox, 0, 0, 1, 1)
+        self.stackedWidget_2.addWidget(self.page_7)
+        self.page_8 = QtWidgets.QWidget()
+        self.page_8.setObjectName("page_8")
+        self.gridLayout_9 = QtWidgets.QGridLayout(self.page_8)
+        self.gridLayout_9.setObjectName("gridLayout_9")
+        self.groupBox_2 = QtWidgets.QGroupBox(self.page_8)
+        self.groupBox_2.setObjectName("groupBox_2")
+        self.gridLayout_8 = QtWidgets.QGridLayout(self.groupBox_2)
+        self.gridLayout_8.setObjectName("gridLayout_8")
+        self.b2_beam_energy_label = QtWidgets.QLabel(self.groupBox_2)
+        self.b2_beam_energy_label.setObjectName("b2_beam_energy_label")
+        self.gridLayout_8.addWidget(self.b2_beam_energy_label, 0, 0, 1, 1)
+        self.b2_screen_label = QtWidgets.QLabel(self.groupBox_2)
+        self.b2_screen_label.setObjectName("b2_screen_label")
+        self.gridLayout_8.addWidget(self.b2_screen_label, 4, 0, 1, 1)
+        self.b2_tds_frequency_label = QtWidgets.QLabel(self.groupBox_2)
+        self.b2_tds_frequency_label.setObjectName("b2_tds_frequency_label")
+        self.gridLayout_8.addWidget(self.b2_tds_frequency_label, 1, 0, 1, 1)
+        self.b2_r12_streaking_label = QtWidgets.QLabel(self.groupBox_2)
+        self.b2_r12_streaking_label.setObjectName("b2_r12_streaking_label")
+        self.gridLayout_8.addWidget(self.b2_r12_streaking_label, 3, 0, 1, 1)
+        self.gridLayout_9.addWidget(self.groupBox_2, 0, 0, 1, 1)
+        self.stackedWidget_2.addWidget(self.page_8)
+        self.gridLayout_4.addWidget(self.stackedWidget_2, 2, 0, 1, 2)
+        self.load_calibration_buton = QtWidgets.QPushButton(self.centralwidget)
+        self.load_calibration_buton.setObjectName("load_calibration_buton")
+        self.gridLayout_4.addWidget(self.load_calibration_buton, 1, 1, 1, 1)
         self.plot_stack = QtWidgets.QStackedWidget(self.centralwidget)
         self.plot_stack.setObjectName("plot_stack")
         self.page_3 = QtWidgets.QWidget()
@@ -74,14 +125,16 @@ class Ui_calibrator_mainwindow(object):
         self.plot_stack.addWidget(self.page_3)
         self.page_4 = QtWidgets.QWidget()
         self.page_4.setObjectName("page_4")
+        self.gridLayout_5 = QtWidgets.QGridLayout(self.page_4)
+        self.gridLayout_5.setObjectName("gridLayout_5")
         self.b2_calibration_graphics = GraphicsLayoutWidget(self.page_4)
-        self.b2_calibration_graphics.setGeometry(QtCore.QRect(50, 11, 257, 169))
         self.b2_calibration_graphics.setObjectName("b2_calibration_graphics")
+        self.gridLayout_5.addWidget(self.b2_calibration_graphics, 0, 0, 1, 1)
         self.b2_pscan_graphics = GraphicsLayoutWidget(self.page_4)
-        self.b2_pscan_graphics.setGeometry(QtCore.QRect(50, 190, 257, 168))
         self.b2_pscan_graphics.setObjectName("b2_pscan_graphics")
+        self.gridLayout_5.addWidget(self.b2_pscan_graphics, 1, 0, 1, 1)
         self.plot_stack.addWidget(self.page_4)
-        self.gridLayout_4.addWidget(self.plot_stack, 0, 1, 2, 1)
+        self.gridLayout_4.addWidget(self.plot_stack, 0, 2, 6, 1)
         calibrator_mainwindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(calibrator_mainwindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 800, 24))
@@ -102,6 +155,7 @@ class Ui_calibrator_mainwindow(object):
 
         self.retranslateUi(calibrator_mainwindow)
         self.table_stack.setCurrentIndex(0)
+        self.stackedWidget_2.setCurrentIndex(0)
         self.plot_stack.setCurrentIndex(0)
         QtCore.QMetaObject.connectSlotsByName(calibrator_mainwindow)
 
@@ -110,9 +164,44 @@ class Ui_calibrator_mainwindow(object):
         calibrator_mainwindow.setWindowTitle(
             _translate("calibrator_mainwindow", "MainWindow")
         )
-        self.section_label.setText(_translate("calibrator_mainwindow", "Section"))
-        self.i1_radio_button.setText(_translate("calibrator_mainwindow", "I1"))
-        self.b2_radio_button.setText(_translate("calibrator_mainwindow", "B2"))
+        self.start_calibration_button.setText(
+            _translate("calibrator_mainwindow", "Start Calibration")
+        )
+        self.groupBox.setTitle(
+            _translate("calibrator_mainwindow", "Calibration Parameters")
+        )
+        self.i1_tds_frequency_label.setText(
+            _translate("calibrator_mainwindow", "TDS Frequency:")
+        )
+        self.i1_r12_streaking_label.setText(
+            _translate(
+                "calibrator_mainwindow",
+                '<html><head/><body><p><span style=" font-style:italic;">R</span><span style=" vertical-align:sub;">34</span>:</p></body></html>',
+            )
+        )
+        self.i1_beam_energy_label.setText(
+            _translate("calibrator_mainwindow", "Beam Energy:")
+        )
+        self.i1_screen_label.setText(_translate("calibrator_mainwindow", "Screen:"))
+        self.groupBox_2.setTitle(
+            _translate("calibrator_mainwindow", "Calibration Parameters")
+        )
+        self.b2_beam_energy_label.setText(
+            _translate("calibrator_mainwindow", "Beam Energy:")
+        )
+        self.b2_screen_label.setText(_translate("calibrator_mainwindow", "Screen:"))
+        self.b2_tds_frequency_label.setText(
+            _translate("calibrator_mainwindow", "TDS Frequency:")
+        )
+        self.b2_r12_streaking_label.setText(
+            _translate(
+                "calibrator_mainwindow",
+                '<html><head/><body><p><span style=" font-style:italic;">R</span><span style=" vertical-align:sub;">34</span>:</p></body></html>',
+            )
+        )
+        self.load_calibration_buton.setText(
+            _translate("calibrator_mainwindow", "Load Calibration...")
+        )
         self.menuFile.setTitle(_translate("calibrator_mainwindow", "File"))
         self.actionLoad_Calibration.setText(
             _translate("calibrator_mainwindow", "Load Calibration...")
@@ -122,6 +211,8 @@ class Ui_calibrator_mainwindow(object):
 
 
 from pyqtgraph import GraphicsLayoutWidget
+
+from esme.gui.widgets.area import AreaControl
 
 if __name__ == "__main__":
     import sys
