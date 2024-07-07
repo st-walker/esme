@@ -127,7 +127,7 @@
            <item row="4" column="0">
             <widget class="QLabel" name="i1_r12_streaking_label">
              <property name="text">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-style:italic;&quot;&gt;R&lt;/span&gt;&lt;span style=&quot; vertical-align:sub;&quot;&gt;12&lt;/span&gt;:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-style:italic;&quot;&gt;R&lt;/span&gt;&lt;span style=&quot; vertical-align:sub;&quot;&gt;34&lt;/span&gt;:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
              </property>
             </widget>
            </item>
@@ -153,7 +153,7 @@
             </widget>
            </item>
            <item row="2" column="1">
-            <widget class="QLabel" name="i1_tds_frequnecy_value_label">
+            <widget class="QLabel" name="i1_tds_frequency_value_label">
              <property name="font">
               <font>
                <family>.AppleSystemUIFont</family>
@@ -222,7 +222,7 @@
            <item row="5" column="0">
             <widget class="QLabel" name="b2_r12_streaking_label">
              <property name="text">
-              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-style:italic;&quot;&gt;R&lt;/span&gt;&lt;span style=&quot; vertical-align:sub;&quot;&gt;34&lt;/span&gt;:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-style:italic;&quot;&gt;R&lt;/span&gt;&lt;span style=&quot; vertical-align:sub;&quot;&gt;12&lt;/span&gt;:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
              </property>
             </widget>
            </item>

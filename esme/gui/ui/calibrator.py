@@ -116,12 +116,12 @@ class Ui_calibrator_mainwindow(object):
         self.i1_beam_energy_value_label.setText("")
         self.i1_beam_energy_value_label.setObjectName("i1_beam_energy_value_label")
         self.gridLayout_6.addWidget(self.i1_beam_energy_value_label, 1, 1, 1, 1)
-        self.i1_tds_frequnecy_value_label = QtWidgets.QLabel(self.groupBox)
+        self.i1_tds_frequency_value_label = QtWidgets.QLabel(self.groupBox)
         font = QtGui.QFont()
         font.setFamily(".AppleSystemUIFont")
-        self.i1_tds_frequnecy_value_label.setFont(font)
-        self.i1_tds_frequnecy_value_label.setObjectName("i1_tds_frequnecy_value_label")
-        self.gridLayout_6.addWidget(self.i1_tds_frequnecy_value_label, 2, 1, 1, 1)
+        self.i1_tds_frequency_value_label.setFont(font)
+        self.i1_tds_frequency_value_label.setObjectName("i1_tds_frequency_value_label")
+        self.gridLayout_6.addWidget(self.i1_tds_frequency_value_label, 2, 1, 1, 1)
         self.i1_screen_label_value = QtWidgets.QLabel(self.groupBox)
         self.i1_screen_label_value.setText("")
         self.i1_screen_label_value.setObjectName("i1_screen_label_value")
@@ -218,14 +218,14 @@ class Ui_calibrator_mainwindow(object):
         self.i1_r12_streaking_label.setText(
             _translate(
                 "calibrator_mainwindow",
-                '<html><head/><body><p><span style=" font-style:italic;">R</span><span style=" vertical-align:sub;">12</span>:</p></body></html>',
+                '<html><head/><body><p><span style=" font-style:italic;">R</span><span style=" vertical-align:sub;">34</span>:</p></body></html>',
             )
         )
         self.i1_screen_label.setText(_translate("calibrator_mainwindow", "Screen:"))
         self.i1_beam_energy_label.setText(
             _translate("calibrator_mainwindow", "Beam Energy:")
         )
-        self.i1_tds_frequnecy_value_label.setText(
+        self.i1_tds_frequency_value_label.setText(
             _translate("calibrator_mainwindow", "3 GHz")
         )
         self.groupBox_2.setTitle(
@@ -240,7 +240,7 @@ class Ui_calibrator_mainwindow(object):
         self.b2_r12_streaking_label.setText(
             _translate(
                 "calibrator_mainwindow",
-                '<html><head/><body><p><span style=" font-style:italic;">R</span><span style=" vertical-align:sub;">34</span>:</p></body></html>',
+                '<html><head/><body><p><span style=" font-style:italic;">R</span><span style=" vertical-align:sub;">12</span>:</p></body></html>',
             )
         )
         self.b2_screen_label.setText(_translate("calibrator_mainwindow", "Screen:"))
