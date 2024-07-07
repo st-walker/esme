@@ -31,7 +31,7 @@ class Ui_calibrator_mainwindow(object):
         self.i1_calibration_graphics = GraphicsLayoutWidget(self.page_3)
         self.i1_calibration_graphics.setObjectName("i1_calibration_graphics")
         self.gridLayout_3.addWidget(self.i1_calibration_graphics, 1, 0, 1, 1)
-        self.i1_calibration_table_view = QtWidgets.QTableView(self.page_3)
+        self.i1_calibration_table_view = CalibrationTableView(self.page_3)
         self.i1_calibration_table_view.setObjectName("i1_calibration_table_view")
         self.gridLayout_3.addWidget(self.i1_calibration_table_view, 0, 0, 1, 1)
         self.plot_stack.addWidget(self.page_3)
@@ -281,6 +281,7 @@ class Ui_calibrator_mainwindow(object):
 
 from pyqtgraph import GraphicsLayoutWidget
 
+from esme.gui.calibrator import CalibrationTableView
 from esme.gui.widgets.area import AreaControl
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ import numpy.typing as npt
 import pandas as pd
 from PyQt5.QtCore import QAbstractTableModel, Qt
 from PyQt5.QtGui import QBrush, QColor
-from PyQt5.QtWidgets import QApplication, QHeaderView, QTableView, QVBoxLayout, QWidget
+from PyQt5.QtWidgets import QApplication, QTableView, QVBoxLayout, QWidget
 
 
 @dataclass
@@ -222,15 +222,23 @@ class CalibrationTableModel(QAbstractTableModel):
             return section + 1
 
 
-class CustomTableView(QTableView):
-    def __init__(self, model, parent=None):
-        super(CustomTableView, self).__init__(parent)
-        self.setModel(model)
+class CalibrationTableView(QTableView):
+    # def __init__(self, model, parent=None):
+    #     super(CustomTableView, self).__init__(parent)
+    #     self.setModel(model)
 
-        # Set the last column to stretch and fill the remaining horizontal space
-        header = self.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Interactive)  # Default for all columns
-        header.setSectionResizeMode(9, QHeaderView.Stretch)  # Stretch the last column
+    #     # Set the last column to stretch and fill the remaining horizontal space
+    #     header = self.horizontalHeader()
+    #     header.setSectionResizeMode(QHeaderView.Interactive)  # Default for all columns
+    #     header.setSectionResizeMode(9, QHeaderView.Stretch)  # Stretch the last column
+
+    def keyPressEvent(self, event: QKeyEvent):
+        if event.key() == Qt.Key_Backspace:
+            index = self.currentIndex()
+            if index.isValid():
+                self.model().setData(index, "", Qt.EditRole)
+        else:
+            super().keyPressEvent(event)
 
 
 def create_sample_data():
