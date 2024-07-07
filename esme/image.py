@@ -489,3 +489,12 @@ def get_selected_central_slice_width_from_slice_properties(means, sigmas, paddin
 
 
     return centre_index, np.mean(sigmas[centre_index - padding : centre_index + padding])
+
+def zero_off_axis_regions(image, xmin: int, xmax: int, ymin: int, ymax: int) -> None:
+    image[:xmin] = 0.0
+    image[xmax + 1:] = 0.0
+    image[..., :ymin] = 0.0
+    image[..., ymax + 1:] = 0.0
+
+def clip_off_axis_regions(image, xmin: int, xmax: int, ymin: int, ymax: int) -> npt.NDArray:
+    return image[ymin: ymax + 1, xmin: xmax + 1]

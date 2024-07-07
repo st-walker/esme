@@ -174,16 +174,23 @@ class TDSCalibrationManager:
                 screens: dict[str, Screen],
                 tds: TransverseDeflector,
                 optics: MachineLinearOptics,
-                sbunches: SpecialBunchesControl):
+                sbunches: SpecialBunchesControl,
+                di: DOOCSInterface | None = None):
         self.kickerop = kickerop
         self.screens = screens
         self.tds = tds
         self.optics = optics
         self.sbunches = sbunches
+        self.di = di or DOOCSInterface()
 
     def set_kickers_for_screen(self, screen_name: str):
         _set_kickers_for_screen(self.kickerop, self.sbunches, self.screens[screen_name])
 
+    def turn_beam_on(self):
+        self.di.set_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED", 1)
+
+    def turn_beam_off(self):
+        self.di.set_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED", 0)
 
 def _set_kickers_for_screen(kickerop: FastKickerController,
                             sbunches: SpecialBunchesControl, 

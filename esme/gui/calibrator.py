@@ -16,6 +16,9 @@ from PyQt5.QtWidgets import QApplication, QHeaderView, QTableView, QVBoxLayout, 
 from esme.control.screens import Screen, Position
 from esme.control.exceptions import DOOCSReadError
 from esme.gui.ui.calibrator import Ui_calibrator_mainwindow
+import datetime
+from pathlib import Path
+import toml
 
 from esme.gui.widgets.common import get_machine_manager_factory, get_tds_calibration_config_dir, set_machine_by_region
 from esme.gui.widgets.sbunchpanel import IBFBWarningDialogue
@@ -31,8 +34,10 @@ class CalibrationContext:
     beam_energy: float = 0.0
     frequency: float = 0.0
     background_images: npt.NDArray = 0.0
+    off_axis_roi_bounds: tuple[tuple[int, int], tuple[int, int]] | None = None
 
     def r12_streaking(self) -> float:
+        # TODO: Make this make sense.
         return self.amplitude * self.frequency  # Example implementation
 
 
@@ -41,9 +46,10 @@ class PhaseScan:
     """Phase scan. This is output from the calibration routine."""
 
     prange: tuple[float | None, float | None] = (None, None)
-    images: npt.NDArray = field(default_factory=lambda: np.array([]))
+    images: npt.NDArray | None = None
 
     def phases(self):
+        # XXX num is hardcoded to 5, but this should be done more nicely somewhere...
         return np.linspace(*self.prange, num=5)
 
     def coms(self):
@@ -54,7 +60,7 @@ class PhaseScan:
             phases = self.phases()
             coms = self.coms()
             return sum(phases * coms) # Place holder...
-        except (np.AxisError, TypeError):
+        except (np.AxisError, TypeError, AttributeError):
             raise IncompleteCalibration
     
     def has_real_bounds(self) -> bool:
@@ -86,7 +92,7 @@ class CalibrationSetpoint:
 class TDSCalibration:
     context: CalibrationContext = field(default_factory=CalibrationContext)
     setpoints: List[CalibrationSetpoint] = field(
-        default_factory=lambda: [CalibrationSetpoint() for _ in range(5)]
+        default_factory=lambda: [CalibrationSetpoint() for _ in range(10)]
     )
 
     def v0(self) -> List[float]:
@@ -191,7 +197,6 @@ class CalibrationTableModel(QAbstractTableModel):
             return method()
         except IncompleteCalibration:
             return ""    
-    
 
     def _data_phase_ranges(self, setpoint, icol: int) -> float | None:
         assert 1 <= icol <= 4
@@ -308,12 +313,22 @@ class TDSCalibratorMainWindow(QMainWindow):
         self.ui.cancel_button.clicked.connect(self.interupt_calibration)
         self.ui.load_calibration_button.clicked.connect(self.load_calibration)
 
-    def interupt_calibration(self):
-        if self._get_screen().get_position is Position.OFFAXIS:
-            self.machine.sbunches.stop_diagnostic_bunch
-            self.set_ui_enabled(enabled=True)
+    def interupt_calibration(self) -> None:
+        screen = self._get_screen()
+        pos = screen.get_position()
+        if pos is Position.OFFAXIS:
+            self.machine.sbunches.stop_diagnostic_bunch()
+        elif pos is Position.ONAXIS:
+            self.machine.turn_beam_off()
+        else:
+            raise ValueError(f"Unknown screen position, {screen=}. {pos=}")
 
-    def set_ui_enabled(self, *, enabled):
+        self.set_ui_enabled(enabled=True)
+
+    def _init_plots(self):
+        pass
+
+    def set_ui_enabled(self, *, enabled: bool) -> None:
         self.ui.area_control.setEnabled(enabled)
         self.ui.start_calibration_button.setEnabled(enabled)
         self.ui.cancel_button.setEnabled(not enabled)
@@ -331,13 +346,13 @@ class TDSCalibratorMainWindow(QMainWindow):
                                                                                         screen_name,
                                                                                         beam_energy,
                                                                                         )
-            self.ui.i1_screen_value_label.setText(f"{r12_streaking:.2f} m/rad")
+            self.ui.i1_r12_streaking_value_label.setText(f"{r12_streaking:.2f} m/rad")
         else: 
-            self.ui.i1_screen_value_label.setText(f"nan")
+            self.ui.i1_r12_streaking_label_value_label.setText(f"nan")
 
         self.ui.i1_beam_energy_value_label.setText(f"{beam_energy:.1f} MeV")
         self.ui.i1_tds_frequency_value_label.setText("3⋅2𝜋 GHz")
-        self.ui.i1_screen_label.setText(f"Screen: {screen_name}")
+        self.ui.i1_screen_value_label.setText(f"{screen_name}")
         
 
     def _init_widget_stacks(self) -> None:
@@ -369,6 +384,15 @@ class TDSCalibratorMainWindow(QMainWindow):
         self.calibration.context.screen_name = screen_name
         self.calibration.context.snapshot = optics_df
         self.calibration.context.beam_energy = beam_energy
+        screen = self._get_screen()
+
+        if screen.get_position() is Position.OFFAXIS:
+            xminmax = screen.analysis.get_xroi_clipping()
+            yminmax = screen.analysis.get_yroi_clipping()
+            self.calibration.context.off_axis_roi_bounds = (xminmax, yminmax)
+        else:
+            self.calibration.context.off_axis_roi_bounds = None
+
         self._update_calibration_parameters_ui()
 
     def _take_images(self, n: int) -> npt.NDArray:
@@ -390,10 +414,11 @@ class TDSCalibratorMainWindow(QMainWindow):
         position = screen.get_position()
         self._write_to_log(f"Screen: {screen.name}, position: {position}")
         if position is Position.ONAXIS:
-            self._turn_beam_on()
+            self.machine.turn_beam_on()
         elif position is Position.OFFAXIS:
             self._kick_beam_onto_screen()
         elif position is Position.OUT:
+            # TODO: some sort of bombing here.
             pass
 
     def _kick_beam_onto_screen(self) -> None:
@@ -422,6 +447,7 @@ class TDSCalibratorMainWindow(QMainWindow):
         self.set_ui_enabled(enabled=False)
         self._update_calibration_context()
         calibrated_at_least_once = False
+        # XXX: DO AUTO GAIN AT EVERY NEW STREAKING!!
         for irow, setpoint in enumerate(self.calibration.setpoints, 1):            
             if setpoint.partially_defined_input():
                 self._write_to_log(f"Skipping partially defined calibration input on row {irow}")
@@ -437,13 +463,22 @@ class TDSCalibratorMainWindow(QMainWindow):
 
         if calibrated_at_least_once:            
             self._write_to_log("Finished TDS Calibration")
+            self.save_calibration()
         else:
             self._write_to_log("Not calibrating as no defined calibration setpoints")
 
     def do_one_calibration_setpoint(self, irow: int, setpoint):
-        amp = setpoint.amplitude
+        amp = setpoint.amplitude        
         self._write_to_log(f"Starting calibration for row {irow} at {amp}")
         self.machine.deflector.set_amplitude(amp)
+        screen = self._get_screen()
+        self._write_to_log("Setting camera gain for new amplitude...")
+        # Need to set clipping here for auto gain!!!
+        screen.analysis.activate_gain_control()
+        while screen.analysis.is_active():
+            time.sleep(0.5)
+        self._write_to_log("Finished setting gain")
+        
         # Do first phase scan at first phase pair
         self._do_phase_scan(setpoint.pscan0)
         # Do second phase scan at the other phase pair
@@ -462,6 +497,42 @@ class TDSCalibratorMainWindow(QMainWindow):
             images = self._take_images(n=10)
 
         pscan.images = images
+
+    def save_calibration(self) -> None:
+        # XXX: Offer to save here with a qdialog...
+        # First save the calibration context
+        outdir = self._get_outdir()
+        self._save_calibration_context(outdir)
+        self._save_calibration_setpoints(outdir)
+        self._write_to_log(f"Written calibration to {outdir}")
+
+    def _get_outdir(self) -> Path:
+        # Something sensible should go here...
+        nowstr = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+        # XXX: Get rid of hardcoded "i1" please...
+        return get_tds_calibration_config_dir() / "i1" / nowstr
+
+    def _save_calibration_setpoints(self, outdir: Path) -> None:
+        for i, setpoint in enumerate(self.calibration.setpoints):
+            np.savez_compressed(outdir / f"setpoint-{i}.npz",
+                                amplitude=setpoint.amplitude,
+                                prange0=setpoint.pscan0.prange, 
+                                images0=setpoint.pscan0.images,
+                                prange1=setpoint.pscan1.prange,
+                                images1=setpoint.pscan1.images)
+        
+    def _save_calibration_context(self, outdir: Path) -> None:
+        ctx = self.calibration.context
+        # Save background images (maybe don't save here if there aren't any?)
+        np.savez_compressed(outdir / "background.npz", ctx.background_images)
+        ctx.snapshot.to_csv(outdir / "snapshot.csv")
+        misc_context = {"screen_name": ctx.screen_name,
+                        "beam_energy": ctx.beam_energy,
+                        "tds_frequency": ctx.frequency,
+                        "off_axis_roi_bounds": ctx.off_axis_roi_bounds}
+        with (outdir / "context.toml").open("w") as f:
+            toml.dump(misc_context, f)
+        
 
     def load_calibration(self):
         pass

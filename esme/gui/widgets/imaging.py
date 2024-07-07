@@ -34,6 +34,7 @@ from PyQt5.QtWidgets import (
 )
 
 from esme import DiagnosticRegion
+from esme.image import zero_off_axis_regions
 from esme.control.exceptions import DOOCSReadError
 from esme.control.screens import Position, Screen, ScreenMetadata
 from esme.control.tds import StreakingPlane
@@ -446,10 +447,7 @@ class DataTakingWorker(QObject):
 
         if self._clip_offaxis:
             (xmin, xmax), (ymin, ymax) = self._clipping_bounds()
-            image[:xmin] = 0.0
-            image[xmax + 1 :] = 0.0
-            image[..., :ymin] = 0.0
-            image[..., ymax + 1 :] = 0.0
+            zero_off_axis_regions(image, xmin, xmax, ymin, ymax)
 
         image = image.T
         # if not self.xyflip[0]:
