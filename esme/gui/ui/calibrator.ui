@@ -165,7 +165,7 @@
             </widget>
            </item>
            <item row="3" column="1">
-            <widget class="QLabel" name="i1_screen_label_value">
+            <widget class="QLabel" name="i1_screen_value_label">
              <property name="text">
               <string/>
              </property>

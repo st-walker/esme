@@ -18,21 +18,15 @@ class Ui_imaging_widget(object):
         self.gridLayout = QtWidgets.QGridLayout(imaging_widget)
         self.gridLayout.setObjectName("gridLayout")
         self.screen_display_widget = ScreenWidget(imaging_widget)
-        sizePolicy = QtWidgets.QSizePolicy(
-            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding
-        )
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         sizePolicy.setHorizontalStretch(1)
         sizePolicy.setVerticalStretch(1)
-        sizePolicy.setHeightForWidth(
-            self.screen_display_widget.sizePolicy().hasHeightForWidth()
-        )
+        sizePolicy.setHeightForWidth(self.screen_display_widget.sizePolicy().hasHeightForWidth())
         self.screen_display_widget.setSizePolicy(sizePolicy)
         self.screen_display_widget.setObjectName("screen_display_widget")
         self.gridLayout.addWidget(self.screen_display_widget, 0, 0, 1, 2)
         self.groupBox = QtWidgets.QGroupBox(imaging_widget)
-        sizePolicy = QtWidgets.QSizePolicy(
-            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred
-        )
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(1)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.groupBox.sizePolicy().hasHeightForWidth())
@@ -100,9 +94,7 @@ class Ui_imaging_widget(object):
         self.dispersion_spinner.setMinimum(-100.0)
         self.dispersion_spinner.setMaximum(100.0)
         self.dispersion_spinner.setSingleStep(0.1)
-        self.dispersion_spinner.setStepType(
-            QtWidgets.QAbstractSpinBox.AdaptiveDecimalStepType
-        )
+        self.dispersion_spinner.setStepType(QtWidgets.QAbstractSpinBox.AdaptiveDecimalStepType)
         self.dispersion_spinner.setObjectName("dispersion_spinner")
         self.horizontalLayout.addWidget(self.dispersion_spinner)
         self.gridLayout_2.addLayout(self.horizontalLayout, 0, 0, 1, 1)
@@ -139,52 +131,29 @@ class Ui_imaging_widget(object):
         _translate = QtCore.QCoreApplication.translate
         imaging_widget.setWindowTitle(_translate("imaging_widget", "Form"))
         self.groupBox.setTitle(_translate("imaging_widget", "Measurements"))
-        self.current_profile_button.setText(
-            _translate("imaging_widget", "Current Profile")
-        )
+        self.current_profile_button.setText(_translate("imaging_widget", "Current Profile"))
         self.pushButton.setText(_translate("imaging_widget", "Slice Emittance"))
-        self.take_background_button.setText(
-            _translate("imaging_widget", "Accumulate Background")
-        )
-        self.nbg_images_acquired_label.setText(
-            _translate("imaging_widget", "Background Images: 0")
-        )
-        self.send_to_logbook_button.setText(
-            _translate("imaging_widget", "Write to XFEL e-Logbook...")
-        )
+        self.take_background_button.setText(_translate("imaging_widget", "Accumulate Background"))
+        self.nbg_images_acquired_label.setText(_translate("imaging_widget", "Background Images: 0"))
+        self.send_to_logbook_button.setText(_translate("imaging_widget", "Write to XFEL e-Logbook..."))
         self.groupBox_2.setTitle(_translate("imaging_widget", "Display"))
-        self.regenerate_axes_button.setText(
-            _translate("imaging_widget", "Regenerate Axes")
-        )
+        self.regenerate_axes_button.setText(_translate("imaging_widget", "Regenerate Axes"))
         self.label_2.setText(_translate("imaging_widget", "Read Rate"))
         self.label.setText(_translate("imaging_widget", "Dispersion"))
         self.dispersion_spinner.setSuffix(_translate("imaging_widget", "m"))
         self.read_rate_spinner.setSuffix(_translate("imaging_widget", "Hz"))
-        self.clip_offaxis_checkbox.setText(
-            _translate("imaging_widget", "Clip Off-axis Features")
-        )
-        self.calculate_dispersion_button.setToolTip(
-            _translate(
-                "imaging_widget",
-                "<html><head/><body><p>Calculates the dispersion at the screen using linear optics and magnet strengths from the machine</p></body></html>",
-            )
-        )
-        self.calculate_dispersion_button.setText(
-            _translate("imaging_widget", "Calculate Dispersion")
-        )
-        self.subtract_bg_checkbox.setText(
-            _translate("imaging_widget", "Subtract background")
-        )
+        self.clip_offaxis_checkbox.setText(_translate("imaging_widget", "Clip Off-axis Features"))
+        self.calculate_dispersion_button.setToolTip(_translate("imaging_widget", "<html><head/><body><p>Calculates the dispersion at the screen using linear optics and magnet strengths from the machine</p></body></html>"))
+        self.calculate_dispersion_button.setText(_translate("imaging_widget", "Calculate Dispersion"))
+        self.subtract_bg_checkbox.setText(_translate("imaging_widget", "Subtract background"))
         self.autogain_button.setText(_translate("imaging_widget", "Auto Gain Control"))
         self.play_pause_button.setText(_translate("imaging_widget", "Pause"))
-
-
 from esme.gui.widgets.common import PlayPauseButton
 from esme.gui.widgets.screen import ScreenWidget
 
+
 if __name__ == "__main__":
     import sys
-
     app = QtWidgets.QApplication(sys.argv)
     imaging_widget = QtWidgets.QWidget()
     ui = Ui_imaging_widget()

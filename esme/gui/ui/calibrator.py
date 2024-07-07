@@ -52,9 +52,7 @@ class Ui_calibrator_mainwindow(object):
         self.plot_stack.addWidget(self.page_4)
         self.gridLayout_4.addWidget(self.plot_stack, 0, 2, 7, 1)
         self.table_stack = QtWidgets.QStackedWidget(self.centralwidget)
-        sizePolicy = QtWidgets.QSizePolicy(
-            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred
-        )
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(1)
         sizePolicy.setHeightForWidth(self.table_stack.sizePolicy().hasHeightForWidth())
@@ -122,10 +120,10 @@ class Ui_calibrator_mainwindow(object):
         self.i1_tds_frequency_value_label.setFont(font)
         self.i1_tds_frequency_value_label.setObjectName("i1_tds_frequency_value_label")
         self.gridLayout_6.addWidget(self.i1_tds_frequency_value_label, 2, 1, 1, 1)
-        self.i1_screen_label_value = QtWidgets.QLabel(self.groupBox)
-        self.i1_screen_label_value.setText("")
-        self.i1_screen_label_value.setObjectName("i1_screen_label_value")
-        self.gridLayout_6.addWidget(self.i1_screen_label_value, 3, 1, 1, 1)
+        self.i1_screen_value_label = QtWidgets.QLabel(self.groupBox)
+        self.i1_screen_value_label.setText("")
+        self.i1_screen_value_label.setObjectName("i1_screen_value_label")
+        self.gridLayout_6.addWidget(self.i1_screen_value_label, 3, 1, 1, 1)
         self.i1_r12_streaking_value_label = QtWidgets.QLabel(self.groupBox)
         self.i1_r12_streaking_value_label.setText("")
         self.i1_r12_streaking_value_label.setObjectName("i1_r12_streaking_value_label")
@@ -203,68 +201,31 @@ class Ui_calibrator_mainwindow(object):
 
     def retranslateUi(self, calibrator_mainwindow):
         _translate = QtCore.QCoreApplication.translate
-        calibrator_mainwindow.setWindowTitle(
-            _translate("calibrator_mainwindow", "MainWindow")
-        )
-        self.start_calibration_button.setText(
-            _translate("calibrator_mainwindow", "Start Calibration")
-        )
-        self.groupBox.setTitle(
-            _translate("calibrator_mainwindow", "Calibration Parameters")
-        )
-        self.i1_tds_frequency_label.setText(
-            _translate("calibrator_mainwindow", "TDS Frequency:")
-        )
-        self.i1_r12_streaking_label.setText(
-            _translate(
-                "calibrator_mainwindow",
-                '<html><head/><body><p><span style=" font-style:italic;">R</span><span style=" vertical-align:sub;">34</span>:</p></body></html>',
-            )
-        )
+        calibrator_mainwindow.setWindowTitle(_translate("calibrator_mainwindow", "MainWindow"))
+        self.start_calibration_button.setText(_translate("calibrator_mainwindow", "Start Calibration"))
+        self.groupBox.setTitle(_translate("calibrator_mainwindow", "Calibration Parameters"))
+        self.i1_tds_frequency_label.setText(_translate("calibrator_mainwindow", "TDS Frequency:"))
+        self.i1_r12_streaking_label.setText(_translate("calibrator_mainwindow", "<html><head/><body><p><span style=\" font-style:italic;\">R</span><span style=\" vertical-align:sub;\">34</span>:</p></body></html>"))
         self.i1_screen_label.setText(_translate("calibrator_mainwindow", "Screen:"))
-        self.i1_beam_energy_label.setText(
-            _translate("calibrator_mainwindow", "Beam Energy:")
-        )
-        self.i1_tds_frequency_value_label.setText(
-            _translate("calibrator_mainwindow", "3 GHz")
-        )
-        self.groupBox_2.setTitle(
-            _translate("calibrator_mainwindow", "Calibration Parameters")
-        )
-        self.b2_beam_energy_label.setText(
-            _translate("calibrator_mainwindow", "Beam Energy:")
-        )
-        self.b2_tds_frequency_label.setText(
-            _translate("calibrator_mainwindow", "TDS Frequency:")
-        )
-        self.b2_r12_streaking_label.setText(
-            _translate(
-                "calibrator_mainwindow",
-                '<html><head/><body><p><span style=" font-style:italic;">R</span><span style=" vertical-align:sub;">12</span>:</p></body></html>',
-            )
-        )
+        self.i1_beam_energy_label.setText(_translate("calibrator_mainwindow", "Beam Energy:"))
+        self.i1_tds_frequency_value_label.setText(_translate("calibrator_mainwindow", "3 GHz"))
+        self.groupBox_2.setTitle(_translate("calibrator_mainwindow", "Calibration Parameters"))
+        self.b2_beam_energy_label.setText(_translate("calibrator_mainwindow", "Beam Energy:"))
+        self.b2_tds_frequency_label.setText(_translate("calibrator_mainwindow", "TDS Frequency:"))
+        self.b2_r12_streaking_label.setText(_translate("calibrator_mainwindow", "<html><head/><body><p><span style=\" font-style:italic;\">R</span><span style=\" vertical-align:sub;\">12</span>:</p></body></html>"))
         self.b2_screen_label.setText(_translate("calibrator_mainwindow", "Screen:"))
-        self.cancel_button.setText(
-            _translate("calibrator_mainwindow", "Cancel Calibration")
-        )
-        self.load_calibration_button.setText(
-            _translate("calibrator_mainwindow", "Load Calibration...")
-        )
+        self.cancel_button.setText(_translate("calibrator_mainwindow", "Cancel Calibration"))
+        self.load_calibration_button.setText(_translate("calibrator_mainwindow", "Load Calibration..."))
         self.menuFile.setTitle(_translate("calibrator_mainwindow", "File"))
-        self.actionLoad_Calibration.setText(
-            _translate("calibrator_mainwindow", "Load Calibration...")
-        )
+        self.actionLoad_Calibration.setText(_translate("calibrator_mainwindow", "Load Calibration..."))
         self.actionQuit.setText(_translate("calibrator_mainwindow", "Quit"))
         self.actionQuit.setShortcut(_translate("calibrator_mainwindow", "Ctrl+Q"))
-
-
+from esme.gui.widgets.area import AreaControl
 from pyqtgraph import GraphicsLayoutWidget
 
-from esme.gui.widgets.area import AreaControl
 
 if __name__ == "__main__":
     import sys
-
     app = QtWidgets.QApplication(sys.argv)
     calibrator_mainwindow = QtWidgets.QMainWindow()
     ui = Ui_calibrator_mainwindow()
