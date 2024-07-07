@@ -43,6 +43,9 @@ class MachineLinearOptics(ABC):
     def dispersions_at_screen(self, point_name: str) -> tuple[float, float]:
         pass
 
+    def optics_snapshot(self) -> pd.DataFrame:
+        return pd.DataFrame.from_records([self.snapshotter.snapshot()])
+
 
 class I1toI1DLinearOptics(MachineLinearOptics):
     def __init__(
@@ -56,12 +59,16 @@ class I1toI1DLinearOptics(MachineLinearOptics):
         self.energy_addresses = energy_addresses
         self.felmodel = cat_to_i1d(model_type="real")
 
+    def r12_streaking_from_tds_to_point_from_df(self, optics_df: pd.DataFrame, target_name: str, beam_energy: float) -> float:
+        return calculate_i1d_r34_from_tds_centre(
+            optics_df, target_name, beam_energy
+        )
+        
     def r12_streaking_from_tds_to_point(self, screen_or_marker_name: str) -> float:
         # Strictly this is r34 not r12, but point is in streaking plane...
-        df = pd.DataFrame.from_records([self.snapshotter.snapshot()])
-        return calculate_i1d_r34_from_tds_centre(
-            df, screen_or_marker_name, self.get_beam_energy()
-        )
+        return self.r12_streaking_from_tds_to_point_from_df(self.optics_snapshot(),
+                                                            screen_or_marker_name,
+                                                            self.get_beam_energy())
 
     def design_r12_streaking_from_tds_to_point(
         self, screen_or_marker_name: str

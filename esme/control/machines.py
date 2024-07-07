@@ -167,3 +167,46 @@ class DumpManager:
     def __init__(self, *, forward_sequence: Sequence, backward_sequence: Sequence):
         self.forward_sequence = forward_sequence
         self.backward_sequence = backward_sequence
+
+class TDSCalibrationManager:
+    def __init__(self,
+                kickerop: FastKickerController,
+                screens: dict[str, Screen],
+                tds: TransverseDeflector,
+                optics: MachineLinearOptics,
+                sbunches: SpecialBunchesControl):
+        self.kickerop = kickerop
+        self.screens = screens
+        self.tds = tds
+        self.optics = optics
+        self.sbunches = sbunches
+
+    def set_kickers_for_screen(self, screen_name: str):
+        _set_kickers_for_screen(self.kickerop, self.sbunches, self.screens[screen_name])
+
+
+def _set_kickers_for_screen(kickerop: FastKickerController,
+                            sbunches: SpecialBunchesControl, 
+                            screen: Screen) -> None:
+    """For the given screen, set the kicker timings, voltages, etc.
+    so that when the kickers are fired, they will kick the diagnostic bunch
+    onto the named screen (screen_name)."""
+    # Get the screen instance by name
+    # Try and set the kickers for the screen.  If it's a dump screen,
+    # there will be no kickers for it, so we just do nothing and return.
+    # We get the kicker setpoints for the screen.
+    kicker_setpoints = screen.get_fast_kicker_setpoints()
+
+    # If there are no kickers for this screen then we need to disable kicker activation,
+    # Other
+    if not kicker_setpoints:
+        sbunches.dont_use_kickers()
+        return
+
+    # Loop over the setpoints corresponding to the screen and write their settings to the machine.
+    for setpoint in kicker_setpoints:
+        kickerop.apply_fast_kicker_setpoint(setpoint)
+
+    # Set the kicker number by name using one of the setpoints.
+    sbunches.set_kicker_name(setpoint.name)
+

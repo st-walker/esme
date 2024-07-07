@@ -23,6 +23,7 @@ from esme.control.machines import (
     LPSMachine,
     MachineManager,
     MachineReadManager,
+    TDSCalibrationManager
 )
 from esme.control.mstate import AreaWatcher
 from esme.control.optics import I1toB2DLinearOptics, I1toI1DLinearOptics
@@ -286,6 +287,22 @@ class MachineManagerFactory:
             )
         except KeyError:
             return self._get_dump_sequences(area)
+        
+    def make_tds_calibration_manager(self, area: DiagnosticRegion):
+        try:
+            manager = deepcopy(self._manager_cache[area]["calibration"])
+        except KeyError:
+            manager = TDSCalibrationManager(
+                kickerop=self._get_kicker_facade(area),
+                screens=self._get_screens(area),
+                tds=self._get_deflector(area),
+                optics=self._get_optics(area),
+                sbunches=self._get_sbunches(area),
+            )
+        else:
+            self._manager_cache[area]["calibration"] = manager
+
+        return manager
 
 
 # def build_lps_machine_from_config(yamlf: os.PathLike, area: DiagnosticRegion, di: DOOCSInterfaceABC | None = None) -> LPSMachine:

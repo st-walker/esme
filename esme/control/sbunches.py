@@ -96,6 +96,7 @@ from collections import defaultdict
 import logging
 
 from .dint import DOOCSInterface
+from .pattern import get_beam_regions, get_bunch_pattern
 
 from esme.core import DiagnosticRegion
 
@@ -427,3 +428,13 @@ class SpecialBunchesControl:
         state = int(bool(on))
         self.di.set_value(self.LFF_X_ADDRESS, state)
         self.di.set_value(self.LFF_Y_ADDRESS, state)
+
+    def set_to_append_diagnostic_bunch(self):
+        beam_regions = get_beam_regions(get_bunch_pattern())
+        last_beam_region = beam_regions[-1]
+        nbunches = last_beam_region.nbunches()
+        beam_region_number = last_beam_region.idn
+        diagnostic_bunch_number = nbunches + 1
+        # assert last_beam_region > 0
+        self.set_beam_region(beam_region_number - 1)
+        self.set_bunch_number(diagnostic_bunch_number)
