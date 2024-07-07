@@ -8,6 +8,7 @@ import pandas as pd
 from click import Option
 from click import Path as CPath
 from click import UsageError, argument, echo, group, option
+import sys
 
 import esme.analysis as ana
 import esme.plot as plot
@@ -276,6 +277,7 @@ def rm(pcl_files, imname, dry_run):
             rm_ims_from_pcl(fpcl, imname, dry_run)
 
 
+
 @main.command()
 def gui():
     """Start the measurement GUI"""
@@ -283,6 +285,10 @@ def gui():
 
     start_lps_gui()
 
+@main.command()
+def tds():
+    from esme.gui.calibrator import start_tds_calibrator
+    start_tds_calibrator(sys.argv)
 
 @main.command()
 @argument("dirname", nargs=1, type=CPath(exists=True, file_okay=False, path_type=Path))

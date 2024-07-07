@@ -1,12 +1,15 @@
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
+import sys
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 from PyQt5.QtCore import QAbstractTableModel, Qt
 from PyQt5.QtGui import QBrush, QColor
+from PyQt5.QtWidgets import QApplication, QVBoxLayout, QWidget, QMainWindow
 
+from esme.gui.ui.calibrator import Ui_calibrator_mainwindow
 
 @dataclass
 class PhaseScan:
@@ -221,5 +224,43 @@ class CalibrationTableModel(QAbstractTableModel):
             return section + 1
 
 
+
+class TDSCalibratorMainWindow(QMainWindow):
+    def __init__(self) -> None:
+        super().__init__()
+        self.ui = Ui_calibrator_mainwindow()
+        self.ui.setupUi(self)
+
+        calibration_data = TDSCalibration()
+        model = CalibrationTableModel(calibration_data)
+
+        self.ui.i1_calibration_table_view.setModel(model)
+
+def start_tds_calibrator(argv) -> None:
+    app = QApplication(argv)
+
+    calwindow = TDSCalibratorMainWindow()
+    calwindow.setWindowTitle("TDS Calibrator")
+    calwindow.show()
+    calwindow.raise_()
+    sys.exit(app.exec_())
+
 def create_sample_data():
     return TDSCalibration()
+
+
+if __name__ == "__main__":
+    app = QApplication([])
+
+    calibration_data = create_sample_data()
+    model = CalibrationTableModel(calibration_data)
+
+    custom_view = TDSCalibratorMainWindow(model)
+
+    window = QWidget()
+    layout = QVBoxLayout()
+    layout.addWidget(custom_view)
+    window.setLayout(layout)
+    window.show()
+
+    app.exec()

@@ -1,9 +1,12 @@
 import sys
 
-from Pyqt5.QtCore import Qt
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QStackedWidget, QWidget
 
 from esme.gui.ui.target import Ui_Target
+from esme.core import DiagnosticRegion
+from esme.gui.widgets.sequence import TaskomatSequenceDisplay
+from esme.control.taskomat import Sequence
 
 
 class TargetControl(QWidget):

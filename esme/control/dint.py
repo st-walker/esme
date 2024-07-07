@@ -243,7 +243,6 @@ class DOOCSInterface(DOOCSInterfaceABC):
         try:
             val = pydoocs.read(channel)
         except pydoocs.DoocsException as e:
-            from ipdb import set_trace; set_trace()
             raise DOOCSReadError(channel) from e
         return val["data"]
 
