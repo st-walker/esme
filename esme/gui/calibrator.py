@@ -305,7 +305,14 @@ class TDSCalibratorMainWindow(QMainWindow):
 
     def _connect_buttons(self):
         self.ui.start_calibration_button.clicked.connect(self.calibrate_tds)
-        self.ui.load_calibration_buton.clicked.connect(self.load_calibration)
+        self.ui.cancel_button.clicked.connect(self.interupt_calibration)
+        self.ui.load_calibration_button.clicked.connect(self.load_calibration)
+
+    def interupt_calibration(self):
+        if self._get_screen().get_position is Position.OFFAXIS:
+            self.machine.sbunches.stop_diagnostic_bunch
+            self.set_ui_enabled(enabled=True)
+
 
     def _update_calibration_parameters_ui(self) -> None:
         ctx = self.calibration.context
@@ -318,12 +325,12 @@ class TDSCalibratorMainWindow(QMainWindow):
                                                                                         screen_name,
                                                                                         beam_energy,
                                                                                         )
-            self.ui.i1_screen_label.setText(f"R34: {r12_streaking:.2f} m/rad")
+            self.ui.i1_screen_value_label.setText(f"{r12_streaking:.2f} m/rad")
         else: 
-            self.ui.i1_screen_label.setText(f"R34: nan")
+            self.ui.i1_screen_value_label.setText(f"nan")
 
-        self.ui.i1_beam_energy_label.setText(f"Beam Energy: {beam_energy:.1f} MeV")
-        self.ui.i1_tds_frequency_label.setText("TDS Frequency: 3⋅2𝜋 GHz")
+        self.ui.i1_beam_energy_value_label.setText(f"{beam_energy:.1f} MeV")
+        self.ui.i1_tds_frequency_value_label.setText("3⋅2𝜋 GHz")
         self.ui.i1_screen_label.setText(f"Screen: {screen_name}")
         
 
