@@ -313,6 +313,12 @@ class TDSCalibratorMainWindow(QMainWindow):
             self.machine.sbunches.stop_diagnostic_bunch
             self.set_ui_enabled(enabled=True)
 
+    def set_ui_enabled(self, *, enabled):
+        self.ui.area_control.setEnabled(enabled)
+        self.ui.start_calibration_button.setEnabled(enabled)
+        self.ui.cancel_button.setEnabled(not enabled)
+        self.ui.load_calibration_button.setEnabled(enabled)
+        self.ui.i1_calibration_table_view.setEnabled(enabled)
 
     def _update_calibration_parameters_ui(self) -> None:
         ctx = self.calibration.context
@@ -413,6 +419,7 @@ class TDSCalibratorMainWindow(QMainWindow):
         """Main method that does the actual calibration, looping over the inputs in the table, 
         checking they're valid, and then doing the calibration at that setpoint
         (one setpoint = an amplitude and two pairs of phases)."""
+        self.set_ui_enabled(enabled=False)
         self._update_calibration_context()
         calibrated_at_least_once = False
         for irow, setpoint in enumerate(self.calibration.setpoints, 1):            
@@ -424,6 +431,9 @@ class TDSCalibratorMainWindow(QMainWindow):
                 continue
             self.do_one_calibration_setpoint(irow, setpoint)
             done_at_least_one = True
+
+        # reenable the UI now we are finished.
+        self.set_ui_enabled(enabled=True)
 
         if calibrated_at_least_once:            
             self._write_to_log("Finished TDS Calibration")
