@@ -35,6 +35,7 @@ class CalibrationContext:
     frequency: float = 0.0
     background_images: npt.NDArray = 0.0
     off_axis_roi_bounds: tuple[tuple[int, int], tuple[int, int]] | None = None
+    pixel_sizes: tuple[float, float] | None = None
 
     def r12_streaking(self) -> float:
         # TODO: Make this make sense.
@@ -354,7 +355,6 @@ class TDSCalibratorMainWindow(QMainWindow):
         self.ui.i1_tds_frequency_value_label.setText("3⋅2𝜋 GHz")
         self.ui.i1_screen_value_label.setText(f"{screen_name}")
         
-
     def _init_widget_stacks(self) -> None:
         # Init table views
         self._init_table_view(self.ui.i1_calibration_table_view)
