@@ -45,12 +45,12 @@ class Ui_calibrator_mainwindow(object):
         self.b2_calibration_graphics = GraphicsLayoutWidget(self.page_4)
         self.b2_calibration_graphics.setObjectName("b2_calibration_graphics")
         self.gridLayout_5.addWidget(self.b2_calibration_graphics, 1, 0, 1, 1)
-        self.b2_calibration_table_view = QtWidgets.QTableView(self.page_4)
+        self.b2_calibration_table_view = CalibrationTableView(self.page_4)
         self.b2_calibration_table_view.setCornerButtonEnabled(True)
         self.b2_calibration_table_view.setObjectName("b2_calibration_table_view")
         self.gridLayout_5.addWidget(self.b2_calibration_table_view, 0, 0, 1, 1)
         self.plot_stack.addWidget(self.page_4)
-        self.gridLayout_4.addWidget(self.plot_stack, 0, 2, 7, 1)
+        self.gridLayout_4.addWidget(self.plot_stack, 0, 2, 9, 1)
         self.table_stack = QtWidgets.QStackedWidget(self.centralwidget)
         sizePolicy = QtWidgets.QSizePolicy(
             QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Preferred
@@ -78,7 +78,7 @@ class Ui_calibrator_mainwindow(object):
         self.b2_log.setObjectName("b2_log")
         self.gridLayout_2.addWidget(self.b2_log, 1, 0, 1, 1)
         self.table_stack.addWidget(self.page_2)
-        self.gridLayout_4.addWidget(self.table_stack, 5, 0, 1, 2)
+        self.gridLayout_4.addWidget(self.table_stack, 7, 0, 1, 2)
         self.area_control = AreaControl(self.centralwidget)
         self.area_control.setObjectName("area_control")
         self.gridLayout_4.addWidget(self.area_control, 0, 0, 1, 2)
@@ -86,7 +86,11 @@ class Ui_calibrator_mainwindow(object):
         self.line.setFrameShape(QtWidgets.QFrame.HLine)
         self.line.setFrameShadow(QtWidgets.QFrame.Sunken)
         self.line.setObjectName("line")
-        self.gridLayout_4.addWidget(self.line, 4, 0, 1, 2)
+        self.gridLayout_4.addWidget(self.line, 6, 0, 1, 2)
+        self.cancel_button = QtWidgets.QPushButton(self.centralwidget)
+        self.cancel_button.setEnabled(False)
+        self.cancel_button.setObjectName("cancel_button")
+        self.gridLayout_4.addWidget(self.cancel_button, 1, 1, 1, 1)
         self.start_calibration_button = QtWidgets.QPushButton(self.centralwidget)
         self.start_calibration_button.setObjectName("start_calibration_button")
         self.gridLayout_4.addWidget(self.start_calibration_button, 1, 0, 1, 1)
@@ -188,14 +192,13 @@ class Ui_calibrator_mainwindow(object):
         self.gridLayout_8.addWidget(self.b2_screen_position_value_label, 4, 1, 1, 1)
         self.gridLayout_9.addWidget(self.groupBox_2, 0, 0, 1, 1)
         self.stackedWidget_2.addWidget(self.page_8)
-        self.gridLayout_4.addWidget(self.stackedWidget_2, 3, 0, 1, 2)
-        self.cancel_button = QtWidgets.QPushButton(self.centralwidget)
-        self.cancel_button.setEnabled(False)
-        self.cancel_button.setObjectName("cancel_button")
-        self.gridLayout_4.addWidget(self.cancel_button, 1, 1, 1, 1)
+        self.gridLayout_4.addWidget(self.stackedWidget_2, 5, 0, 1, 2)
+        self.check_phases_button = QtWidgets.QPushButton(self.centralwidget)
+        self.check_phases_button.setObjectName("check_phases_button")
+        self.gridLayout_4.addWidget(self.check_phases_button, 2, 1, 1, 1)
         self.load_calibration_button = QtWidgets.QPushButton(self.centralwidget)
         self.load_calibration_button.setObjectName("load_calibration_button")
-        self.gridLayout_4.addWidget(self.load_calibration_button, 2, 0, 1, 2)
+        self.gridLayout_4.addWidget(self.load_calibration_button, 2, 0, 1, 1)
         calibrator_mainwindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(calibrator_mainwindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 800, 24))
@@ -224,6 +227,9 @@ class Ui_calibrator_mainwindow(object):
         _translate = QtCore.QCoreApplication.translate
         calibrator_mainwindow.setWindowTitle(
             _translate("calibrator_mainwindow", "MainWindow")
+        )
+        self.cancel_button.setText(
+            _translate("calibrator_mainwindow", "Cancel Calibration")
         )
         self.start_calibration_button.setText(
             _translate("calibrator_mainwindow", "Start Calibration")
@@ -265,8 +271,8 @@ class Ui_calibrator_mainwindow(object):
         )
         self.b2_screen_label.setText(_translate("calibrator_mainwindow", "Screen:"))
         self.label_2.setText(_translate("calibrator_mainwindow", "Screen Position:"))
-        self.cancel_button.setText(
-            _translate("calibrator_mainwindow", "Cancel Calibration")
+        self.check_phases_button.setText(
+            _translate("calibrator_mainwindow", "Check Phase Pairs")
         )
         self.load_calibration_button.setText(
             _translate("calibrator_mainwindow", "Load Calibration...")
@@ -281,7 +287,7 @@ class Ui_calibrator_mainwindow(object):
 
 from pyqtgraph import GraphicsLayoutWidget
 
-from esme.gui.calibrator import CalibrationTableView
+from esme.gui.caltable import CalibrationTableView
 from esme.gui.widgets.area import AreaControl
 
 if __name__ == "__main__":

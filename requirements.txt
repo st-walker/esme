@@ -608,9 +608,9 @@ toml==0.10.2 ; python_version >= "3.12" and python_version < "4.0" \
 tzdata==2024.1 ; python_version >= "3.12" and python_version < "4.0" \
     --hash=sha256:2674120f8d891909751c38abcdfd386ac0a5a1127954fbc332af6b5ceae07efd \
     --hash=sha256:9068bc196136463f5245e51efda838afa15aaeca9903f49050dfa2679db4d252
-uncertainties==3.2.1 ; python_version >= "3.12" and python_version < "4.0" \
-    --hash=sha256:80dea7f0c2fe37c9de6893b2352311b5f332be60060cbd6387f88050f7ec345d \
-    --hash=sha256:b05417b58bdef236c20e711fb2fee18e4db7348a92edcec01318b32aab34925e
+uncertainties==3.2.2 ; python_version >= "3.12" and python_version < "4.0" \
+    --hash=sha256:e62c86fdc64429828229de6ab4e11466f114907e6bd343c077858994cc12e00b \
+    --hash=sha256:fd8543355952f4052786ed4150acaf12e23117bd0f5bd03ea07de466bce646e7
 xlrd==2.0.1 ; python_version >= "3.12" and python_version < "4.0" \
     --hash=sha256:6a33ee89877bd9abc1158129f6e94be74e2679636b8a205b43b85206c3f0bbdd \
     --hash=sha256:f72f148f54442c6b056bf931dbc34f986fd0c3b0b6b5a58d013c9aef274d0c88
