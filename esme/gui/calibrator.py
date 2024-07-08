@@ -20,6 +20,7 @@ import datetime
 from pathlib import Path
 import toml
 
+from esme.core import DiagnosticRegion, region_from_screen_name
 from esme.gui.widgets.common import get_machine_manager_factory, get_tds_calibration_config_dir, set_machine_by_region
 from esme.gui.widgets.sbunchpanel import IBFBWarningDialogue
 
@@ -33,9 +34,9 @@ class CalibrationContext:
     snapshot: pd.DataFrame | None = None
     beam_energy: float = 0.0
     frequency: float = 0.0
-    background_images: npt.NDArray = 0.0
+    screen_position: Position = field(default_factory=lambda: Position.UNKNOWN)
     off_axis_roi_bounds: tuple[tuple[int, int], tuple[int, int]] | None = None
-    pixel_sizes: tuple[float, float] | None = None
+    pixel_sizes: tuple[float, float] = (np.nan, np.nan)
 
     def r12_streaking(self) -> float:
         # TODO: Make this make sense.
@@ -49,12 +50,14 @@ class PhaseScan:
     prange: tuple[float | None, float | None] = (None, None)
     images: npt.NDArray | None = None
 
-    def phases(self):
-        # XXX num is hardcoded to 5, but this should be done more nicely somewhere...
-        return np.linspace(*self.prange, num=5)
+    def phases(self, n=5):
+        return np.linspace(*self.prange, num=n)
 
     def coms(self):
         return self.images.sum(axis=1)
+    
+    def mean_phase(self) -> float:
+        return 0.5 * (self.prange[0] + self.prange[1])
 
     def cal(self) -> float:
         try:
@@ -77,6 +80,7 @@ class CalibrationSetpoint:
     amplitude: float | None = None
     pscan0: PhaseScan = field(default_factory=PhaseScan)
     pscan1: PhaseScan = field(default_factory=PhaseScan)
+    background_images: npt.NDArray = 0.0
 
     def can_be_calibrated(self) -> bool:
         return all([self.amplitude is not None,
@@ -270,12 +274,14 @@ class CalibrationTableModel(QAbstractTableModel):
 
 
 class TDSCalibratorMainWindow(QMainWindow):
+    ORDERED_REGIONS = [DiagnosticRegion.I1, DiagnosticRegion.B2]
     def __init__(self) -> None:
         super().__init__()
         self.ui = Ui_calibrator_mainwindow()
         self.ui.setupUi(self)
         # XXX: There should be two of these, one for I1 and one for B2!!!
-        self.calibration = TDSCalibration()
+        self.i1calibration = TDSCalibration()
+        self.b2calibration = TDSCalibration()
         self._init_widget_stacks()
         self._connect_buttons()
 
@@ -305,11 +311,38 @@ class TDSCalibratorMainWindow(QMainWindow):
         self.timer.timeout.connect(self._update_calibration_parameters_ui)
         self.timer.start(1000)
 
+    def _set_region(self, region: DiagnosticRegion) -> None:
+        if region is DiagnosticRegion.I1:
+            self.machine = self.i1machine
+        elif region is DiagnosticRegion.B2:
+            self.machine = self.b2machine
+
+    def _get_active_region(self) -> DiagnosticRegion:
+        if self.machine is self.i1machine:
+            return DiagnosticRegion.I1
+        elif self.machine is self.b2machine:
+            return DiagnosticRegion.B2
+
     def _set_screen(self, screen_name: str) -> None:
         # there shoudl be some logic here, if a b2 screen, set screen for b2 calibration
-        self.calibration.context.screen_name = screen_name
+        region = region_from_screen_name(screen_name)
+        # If an i1 screen, set the screen for the i1 calibration instance, or if a b2
+        # calibration then do it for the b2 instance.
+        if region is DiagnosticRegion.I1:
+            self.i1calibration.context.screen_name = screen_name
+        elif region is DiagnosticRegion.B2:
+            self.b2calibration.context.screen_name = screen_name
+        # Set machine instance to be used.
+        self._set_region(region)
+        self._set_widget_stack_by_region(region)
 
-    def _connect_buttons(self):
+    def _set_widget_stack_by_region(self, region: DiagnosticRegion) -> None:
+        index = self.ORDERED_REGIONS.index(region)
+        self.ui.table_stack.setCurrentIndex(index)
+        self.ui.plot_stack.setCurrentIndex(index)
+        self.ui.stackedWidget_2.setCurrentIndex(index)
+
+    def _connect_buttons(self) -> None:
         self.ui.start_calibration_button.clicked.connect(self.calibrate_tds)
         self.ui.cancel_button.clicked.connect(self.interupt_calibration)
         self.ui.load_calibration_button.clicked.connect(self.load_calibration)
@@ -335,34 +368,59 @@ class TDSCalibratorMainWindow(QMainWindow):
         self.ui.cancel_button.setEnabled(not enabled)
         self.ui.load_calibration_button.setEnabled(enabled)
         self.ui.i1_calibration_table_view.setEnabled(enabled)
+        self.ui.b2_calibration_table_view.setEnabled(enabled)
 
-    def _update_calibration_parameters_ui(self) -> None:
-        ctx = self.calibration.context
-        screen = ctx.screen_name
+    def _update_calibration_parameters_ui(self, ctx: CalibrationContext) -> None:
+        pass
+
+    def _update_calibration_parameters_ui(self) -> None: 
+        ctx = self._active_calibration()
+        screen_name = ctx.screen_name
         optics_df = ctx.snapshot
         beam_energy = ctx.beam_energy
         screen_name = ctx.screen_name
+        xsize, ysize = ctx.pixel_sizes
         if ctx.snapshot is not None:
             r12_streaking = self.machine.optics.r12_streaking_from_tds_to_point_from_df(optics_df,
                                                                                         screen_name,
-                                                                                        beam_energy,
+                                                                                        beam_energy
                                                                                         )
             self.ui.i1_r12_streaking_value_label.setText(f"{r12_streaking:.2f} m/rad")
         else: 
             self.ui.i1_r12_streaking_label_value_label.setText(f"nan")
 
         self.ui.i1_beam_energy_value_label.setText(f"{beam_energy:.1f} MeV")
-        self.ui.i1_tds_frequency_value_label.setText("3⋅2𝜋 GHz")
+        self.ui.i1_tds_frequency_value_label.setText("3 GHz")
         self.ui.i1_screen_value_label.setText(f"{screen_name}")
+        self.ui.i1_screen_position_value_label.setText(ctx.screen_position.name)
+        self.ui.i1_pixel_size_value_label.setText(f"{ysize * 1e6:.2f} μm")
+
+    def _write_calibration_info_box(self, prefix: str = "i1"):
+        self.ui.i1_r12_streaking_value_label.setText(f"{r12_streaking:.2f} m/rad")
+        self.ui.i1_r12_streaking_label_value_label.setText(f"nan")
+        self.ui.i1_beam_energy_value_label.setText(f"{beam_energy:.1f} MeV")
+        self.ui.i1_tds_frequency_value_label.setText("3 GHz")
+        self.ui.i1_screen_value_label.setText(f"{screen_name}")
+        self.ui.i1_screen_position_value_label.setText(ctx.screen_position.name)
+        self.ui.i1_pixel_size_value_label.setText(f"{ysize * 1e6:.2f} μm")
+
+        
         
     def _init_widget_stacks(self) -> None:
         # Init table views
-        self._init_table_view(self.ui.i1_calibration_table_view)
-        self._init_table_view(self.ui.b2_calibration_table_view)
+        self._init_table_view(self.ui.i1_calibration_table_view, self.i1calibration)
+        self._init_table_view(self.ui.b2_calibration_table_view, self.b2calibration)
         # Init the pyqtgraph graphics layout widgets
 
-    def _init_table_view(self, table_view) -> None:
-        model = CalibrationTableModel(self.calibration)
+    def _active_calibration(self) -> TDSCalibration:
+        region = self._get_active_region()
+        if region is DiagnosticRegion.I1:
+            return self.i1calibration
+        elif region is DiagnosticRegion.B2:
+            return self.b2calibration
+
+    def _init_table_view(self, table_view, calibration: TDSCalibration) -> None:
+        model = CalibrationTableModel(calibration)
 
         table_view.setModel(model)
 
@@ -376,22 +434,28 @@ class TDSCalibratorMainWindow(QMainWindow):
 
     def _update_calibration_context(self) -> None:
         optics_df = self.machine.optics.optics_snapshot()
-        screen_name = self._get_screen().name
+        screen = self._get_screen()
+        screen_name = screen.name
+        calibration = self._active_calibration()
         try:
             beam_energy = self.machine.optics.get_beam_energy()
         except DOOCSReadError:
             beam_energy = np.nan
-        self.calibration.context.screen_name = screen_name
-        self.calibration.context.snapshot = optics_df
-        self.calibration.context.beam_energy = beam_energy
-        screen = self._get_screen()
 
-        if screen.get_position() is Position.OFFAXIS:
-            xminmax = screen.analysis.get_xroi_clipping()
-            yminmax = screen.analysis.get_yroi_clipping()
-            self.calibration.context.off_axis_roi_bounds = (xminmax, yminmax)
-        else:
-            self.calibration.context.off_axis_roi_bounds = None
+        calibration.context.screen_name = screen_name
+        calibration.context.snapshot = optics_df
+        calibration.context.beam_energy = beam_energy
+        try:
+            xsize = screen.get_pixel_xsize()
+            ysize = screen.get_pixel_ysize()
+        except DOOCSReadError:
+            xsize = ysize = np.nan
+
+        calibration.context.pixel_sizes = xsize, ysize
+
+        xminmax = screen.analysis.get_xroi_clipping()
+        yminmax = screen.analysis.get_yroi_clipping()
+        calibration.context.off_axis_roi_bounds = (xminmax, yminmax)
 
         self._update_calibration_parameters_ui()
 
@@ -407,6 +471,7 @@ class TDSCalibratorMainWindow(QMainWindow):
         return np.array(images)
     
     def _take_background(self) -> npt.NDArray:
+        self._take_beam_off_screen()
         return self._take_images(n=5)
 
     def _turn_beam_onto_screen(self) -> None:
@@ -415,11 +480,33 @@ class TDSCalibratorMainWindow(QMainWindow):
         self._write_to_log(f"Screen: {screen.name}, position: {position}")
         if position is Position.ONAXIS:
             self.machine.turn_beam_on()
+            # We clip the off-axis artefacts if the beam is on axis
+            self.set_clipping(on=False)
         elif position is Position.OFFAXIS:
             self._kick_beam_onto_screen()
+            # We are off axis so we enable clipping of off axis rubbish
+            self.set_clipping(on=True)
         elif position is Position.OUT:
             # TODO: some sort of bombing here.
             pass
+
+    def _take_beam_off_screen(self) -> None:
+        screen = self._get_screen()
+        position = screen.get_position()
+        if position is Position.ONAXIS:
+            self.machine.turn_beam_off()
+            # We don't clip off-axis artefacts if the beam is on axis
+            self.set_clipping(on=False)
+        elif position is Position.OFFAXIS:
+            self.machine.sbunches.stop_diagnostic_bunch()
+            # We are off axis so we enable clipping of off axis rubbish
+        elif position is Position.OUT:
+            self._write_to_log("Camera")
+            # TODO: some sort of bombing here.
+            pass
+        # Tidy up by disabling ROI clipping in the image analysis server
+        # Maybe not really that important but just in case/nice to do.
+        self.set_clipping(on=False)
 
     def _kick_beam_onto_screen(self) -> None:
         # Get the screen
@@ -438,7 +525,8 @@ class TDSCalibratorMainWindow(QMainWindow):
             self.machine.sbunches.start_diagnostic_bunch()
 
     def _get_screen(self) -> Screen:
-        return self.machine.screens[self.calibration.context.screen_name]
+        calibration = self._active_calibration()
+        return self.machine.screens[calibration.context.screen_name]
 
     def calibrate_tds(self) -> None:
         """Main method that does the actual calibration, looping over the inputs in the table, 
@@ -448,6 +536,7 @@ class TDSCalibratorMainWindow(QMainWindow):
         self._update_calibration_context()
         calibrated_at_least_once = False
         # XXX: DO AUTO GAIN AT EVERY NEW STREAKING!!
+        # XXX: AND ALSO TAKE NEW BACKGROUND!!
         for irow, setpoint in enumerate(self.calibration.setpoints, 1):            
             if setpoint.partially_defined_input():
                 self._write_to_log(f"Skipping partially defined calibration input on row {irow}")
@@ -467,22 +556,42 @@ class TDSCalibratorMainWindow(QMainWindow):
         else:
             self._write_to_log("Not calibrating as no defined calibration setpoints")
 
-    def do_one_calibration_setpoint(self, irow: int, setpoint):
-        amp = setpoint.amplitude        
+    def do_one_calibration_setpoint(self, irow: int, setpoint: CalibrationSetpoint) -> None:
+        # Set the TDS amplitude for this calibration setpoint
+        # Go to the middle phase.
+        # Turn on the beam.
+        # Set auto gain
+        # Take data
+        # Turn the beam off
+        # take background
+
         self._write_to_log(f"Starting calibration for row {irow} at {amp}")
+
+        # Amplitude
+        amp = setpoint.amplitude        
         self.machine.deflector.set_amplitude(amp)
         screen = self._get_screen()
+        # Set central phase for the auto gain.
+        self.machine.deflector.set_phase(setpoint.pscan.mean_phase())
+        # Turn beam on.
+        self._turn_beam_onto_screen()
+        # Do auto gain for the screen with the beam on it.
+        # We assume the ROI is correctly clipped whenever we are off-axis
+        # as we take car of this in self._turn_beam_onto_screen()
         self._write_to_log("Setting camera gain for new amplitude...")
-        # Need to set clipping here for auto gain!!!
         screen.analysis.activate_gain_control()
-        while screen.analysis.is_active():
+        while screen.analysis.is_active(): # wait for gain adjustment to finish
             time.sleep(0.5)
-        self._write_to_log("Finished setting gain")
-        
         # Do first phase scan at first phase pair
         self._do_phase_scan(setpoint.pscan0)
         # Do second phase scan at the other phase pair
         self._do_phase_scan(setpoint.pscan1)
+
+        # Take background (turns the beam off in the process)
+        nbg = 5
+        self._write_to_log(f"Taking {nbg} background images")
+        bg_images = self._take_background(n=nbg)
+        setpoint.background_images = bg_images
 
     def _do_phase_scan(self, pscan: PhaseScan) -> None:
         screen = self._get_screen()
@@ -519,23 +628,27 @@ class TDSCalibratorMainWindow(QMainWindow):
                                 prange0=setpoint.pscan0.prange, 
                                 images0=setpoint.pscan0.images,
                                 prange1=setpoint.pscan1.prange,
-                                images1=setpoint.pscan1.images)
+                                images1=setpoint.pscan1.images,
+                                bg_images=setpoint.background_images)
         
     def _save_calibration_context(self, outdir: Path) -> None:
         ctx = self.calibration.context
-        # Save background images (maybe don't save here if there aren't any?)
-        np.savez_compressed(outdir / "background.npz", ctx.background_images)
         ctx.snapshot.to_csv(outdir / "snapshot.csv")
         misc_context = {"screen_name": ctx.screen_name,
                         "beam_energy": ctx.beam_energy,
                         "tds_frequency": ctx.frequency,
+                        "screen_position": ctx.screen_position.name,
+                        "pixel_sizes": ctx.pixel_sizes,
                         "off_axis_roi_bounds": ctx.off_axis_roi_bounds}
         with (outdir / "context.toml").open("w") as f:
             toml.dump(misc_context, f)
-        
 
-    def load_calibration(self):
+    def load_calibration(self, region: DiagnosticRegion, caldir: Path):
         pass
+
+
+def load_calibration_context(caldir):
+    bg_images = np.load(caldir / "background.npz")
 
 def _get_images_from_screen_instance(screen: Screen) -> dict[str, Any]:
     return screen.get_image_raw_full()
