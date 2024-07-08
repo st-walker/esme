@@ -100,97 +100,167 @@ class Ui_calibrator_mainwindow(object):
         self.page_7.setObjectName("page_7")
         self.gridLayout_7 = QtWidgets.QGridLayout(self.page_7)
         self.gridLayout_7.setObjectName("gridLayout_7")
-        self.groupBox = QtWidgets.QGroupBox(self.page_7)
-        self.groupBox.setObjectName("groupBox")
-        self.gridLayout_6 = QtWidgets.QGridLayout(self.groupBox)
+        self.i1_calibration_parameters_group_box = QtWidgets.QGroupBox(self.page_7)
+        self.i1_calibration_parameters_group_box.setObjectName(
+            "i1_calibration_parameters_group_box"
+        )
+        self.gridLayout_6 = QtWidgets.QGridLayout(
+            self.i1_calibration_parameters_group_box
+        )
         self.gridLayout_6.setObjectName("gridLayout_6")
-        self.i1_r12_streaking_label = QtWidgets.QLabel(self.groupBox)
+        self.i1_r12_streaking_label = QtWidgets.QLabel(
+            self.i1_calibration_parameters_group_box
+        )
         self.i1_r12_streaking_label.setObjectName("i1_r12_streaking_label")
-        self.gridLayout_6.addWidget(self.i1_r12_streaking_label, 5, 0, 1, 1)
-        self.i1_screen_label = QtWidgets.QLabel(self.groupBox)
+        self.gridLayout_6.addWidget(self.i1_r12_streaking_label, 6, 0, 1, 1)
+        self.label = QtWidgets.QLabel(self.i1_calibration_parameters_group_box)
+        self.label.setObjectName("label")
+        self.gridLayout_6.addWidget(self.label, 4, 0, 1, 1)
+        self.i1_screen_label = QtWidgets.QLabel(
+            self.i1_calibration_parameters_group_box
+        )
         self.i1_screen_label.setObjectName("i1_screen_label")
         self.gridLayout_6.addWidget(self.i1_screen_label, 3, 0, 1, 1)
-        self.i1_tds_frequency_label = QtWidgets.QLabel(self.groupBox)
+        self.i1_tds_frequency_label = QtWidgets.QLabel(
+            self.i1_calibration_parameters_group_box
+        )
         self.i1_tds_frequency_label.setObjectName("i1_tds_frequency_label")
         self.gridLayout_6.addWidget(self.i1_tds_frequency_label, 2, 0, 1, 1)
-        self.i1_screen_value_label = QtWidgets.QLabel(self.groupBox)
+        self.i1_screen_value_label = QtWidgets.QLabel(
+            self.i1_calibration_parameters_group_box
+        )
         self.i1_screen_value_label.setText("")
         self.i1_screen_value_label.setObjectName("i1_screen_value_label")
         self.gridLayout_6.addWidget(self.i1_screen_value_label, 3, 1, 1, 1)
-        self.i1_tds_frequency_value_label = QtWidgets.QLabel(self.groupBox)
+        self.i1_tds_frequency_value_label = QtWidgets.QLabel(
+            self.i1_calibration_parameters_group_box
+        )
         font = QtGui.QFont()
         font.setFamily(".AppleSystemUIFont")
         self.i1_tds_frequency_value_label.setFont(font)
         self.i1_tds_frequency_value_label.setObjectName("i1_tds_frequency_value_label")
         self.gridLayout_6.addWidget(self.i1_tds_frequency_value_label, 2, 1, 1, 1)
-        self.i1_beam_energy_value_label = QtWidgets.QLabel(self.groupBox)
+        self.i1_beam_energy_value_label = QtWidgets.QLabel(
+            self.i1_calibration_parameters_group_box
+        )
         self.i1_beam_energy_value_label.setText("")
         self.i1_beam_energy_value_label.setObjectName("i1_beam_energy_value_label")
         self.gridLayout_6.addWidget(self.i1_beam_energy_value_label, 1, 1, 1, 1)
-        self.i1_r12_streaking_value_label = QtWidgets.QLabel(self.groupBox)
+        self.i1_r12_streaking_value_label = QtWidgets.QLabel(
+            self.i1_calibration_parameters_group_box
+        )
         self.i1_r12_streaking_value_label.setText("")
         self.i1_r12_streaking_value_label.setObjectName("i1_r12_streaking_value_label")
-        self.gridLayout_6.addWidget(self.i1_r12_streaking_value_label, 5, 1, 1, 1)
-        self.i1_beam_energy_label = QtWidgets.QLabel(self.groupBox)
-        self.i1_beam_energy_label.setObjectName("i1_beam_energy_label")
-        self.gridLayout_6.addWidget(self.i1_beam_energy_label, 1, 0, 1, 1)
-        self.label = QtWidgets.QLabel(self.groupBox)
-        self.label.setObjectName("label")
-        self.gridLayout_6.addWidget(self.label, 4, 0, 1, 1)
-        self.i1_screen_position_value_label = QtWidgets.QLabel(self.groupBox)
+        self.gridLayout_6.addWidget(self.i1_r12_streaking_value_label, 6, 1, 1, 1)
+        self.i1_screen_position_value_label = QtWidgets.QLabel(
+            self.i1_calibration_parameters_group_box
+        )
         self.i1_screen_position_value_label.setText("")
         self.i1_screen_position_value_label.setObjectName(
             "i1_screen_position_value_label"
         )
         self.gridLayout_6.addWidget(self.i1_screen_position_value_label, 4, 1, 1, 1)
-        self.gridLayout_7.addWidget(self.groupBox, 0, 0, 1, 1)
+        self.i1_beam_energy_label = QtWidgets.QLabel(
+            self.i1_calibration_parameters_group_box
+        )
+        self.i1_beam_energy_label.setObjectName("i1_beam_energy_label")
+        self.gridLayout_6.addWidget(self.i1_beam_energy_label, 1, 0, 1, 1)
+        self.i1_pixel_size_label = QtWidgets.QLabel(
+            self.i1_calibration_parameters_group_box
+        )
+        self.i1_pixel_size_label.setObjectName("i1_pixel_size_label")
+        self.gridLayout_6.addWidget(self.i1_pixel_size_label, 5, 0, 1, 1)
+        self.i1_pixel_size_value_label = QtWidgets.QLabel(
+            self.i1_calibration_parameters_group_box
+        )
+        self.i1_pixel_size_value_label.setText("")
+        self.i1_pixel_size_value_label.setObjectName("i1_pixel_size_value_label")
+        self.gridLayout_6.addWidget(self.i1_pixel_size_value_label, 5, 1, 1, 1)
+        self.gridLayout_7.addWidget(
+            self.i1_calibration_parameters_group_box, 0, 0, 1, 1
+        )
         self.stackedWidget_2.addWidget(self.page_7)
         self.page_8 = QtWidgets.QWidget()
         self.page_8.setObjectName("page_8")
         self.gridLayout_9 = QtWidgets.QGridLayout(self.page_8)
         self.gridLayout_9.setObjectName("gridLayout_9")
-        self.groupBox_2 = QtWidgets.QGroupBox(self.page_8)
-        self.groupBox_2.setObjectName("groupBox_2")
-        self.gridLayout_8 = QtWidgets.QGridLayout(self.groupBox_2)
+        self.b2_calibration_parameters_group_box = QtWidgets.QGroupBox(self.page_8)
+        self.b2_calibration_parameters_group_box.setObjectName(
+            "b2_calibration_parameters_group_box"
+        )
+        self.gridLayout_8 = QtWidgets.QGridLayout(
+            self.b2_calibration_parameters_group_box
+        )
         self.gridLayout_8.setObjectName("gridLayout_8")
-        self.b2_beam_energy_value_label = QtWidgets.QLabel(self.groupBox_2)
-        self.b2_beam_energy_value_label.setText("")
-        self.b2_beam_energy_value_label.setObjectName("b2_beam_energy_value_label")
-        self.gridLayout_8.addWidget(self.b2_beam_energy_value_label, 0, 1, 1, 1)
-        self.b2_tds_frequency_value_label = QtWidgets.QLabel(self.groupBox_2)
-        self.b2_tds_frequency_value_label.setText("")
-        self.b2_tds_frequency_value_label.setObjectName("b2_tds_frequency_value_label")
-        self.gridLayout_8.addWidget(self.b2_tds_frequency_value_label, 1, 1, 1, 1)
-        self.b2_beam_energy_label = QtWidgets.QLabel(self.groupBox_2)
-        self.b2_beam_energy_label.setObjectName("b2_beam_energy_label")
-        self.gridLayout_8.addWidget(self.b2_beam_energy_label, 0, 0, 1, 1)
-        self.b2_tds_frequency_label = QtWidgets.QLabel(self.groupBox_2)
-        self.b2_tds_frequency_label.setObjectName("b2_tds_frequency_label")
-        self.gridLayout_8.addWidget(self.b2_tds_frequency_label, 1, 0, 1, 1)
-        self.b2_r12_streaking_label = QtWidgets.QLabel(self.groupBox_2)
+        self.b2_r12_streaking_label = QtWidgets.QLabel(
+            self.b2_calibration_parameters_group_box
+        )
         self.b2_r12_streaking_label.setObjectName("b2_r12_streaking_label")
-        self.gridLayout_8.addWidget(self.b2_r12_streaking_label, 5, 0, 1, 1)
-        self.b2_screen_label = QtWidgets.QLabel(self.groupBox_2)
-        self.b2_screen_label.setObjectName("b2_screen_label")
-        self.gridLayout_8.addWidget(self.b2_screen_label, 3, 0, 1, 1)
-        self.b2_r12_streaking_value_label = QtWidgets.QLabel(self.groupBox_2)
-        self.b2_r12_streaking_value_label.setText("")
-        self.b2_r12_streaking_value_label.setObjectName("b2_r12_streaking_value_label")
-        self.gridLayout_8.addWidget(self.b2_r12_streaking_value_label, 5, 1, 1, 1)
-        self.b2_screen_value_label = QtWidgets.QLabel(self.groupBox_2)
-        self.b2_screen_value_label.setText("")
-        self.b2_screen_value_label.setObjectName("b2_screen_value_label")
-        self.gridLayout_8.addWidget(self.b2_screen_value_label, 3, 1, 1, 1)
-        self.label_2 = QtWidgets.QLabel(self.groupBox_2)
-        self.label_2.setObjectName("label_2")
-        self.gridLayout_8.addWidget(self.label_2, 4, 0, 1, 1)
-        self.b2_screen_position_value_label = QtWidgets.QLabel(self.groupBox_2)
+        self.gridLayout_8.addWidget(self.b2_r12_streaking_label, 6, 0, 1, 1)
+        self.b2_screen_position_value_label = QtWidgets.QLabel(
+            self.b2_calibration_parameters_group_box
+        )
         self.b2_screen_position_value_label.setText("")
         self.b2_screen_position_value_label.setObjectName(
             "b2_screen_position_value_label"
         )
         self.gridLayout_8.addWidget(self.b2_screen_position_value_label, 4, 1, 1, 1)
-        self.gridLayout_9.addWidget(self.groupBox_2, 0, 0, 1, 1)
+        self.b2_screen_value_label = QtWidgets.QLabel(
+            self.b2_calibration_parameters_group_box
+        )
+        self.b2_screen_value_label.setText("")
+        self.b2_screen_value_label.setObjectName("b2_screen_value_label")
+        self.gridLayout_8.addWidget(self.b2_screen_value_label, 3, 1, 1, 1)
+        self.b2_beam_energy_value_label = QtWidgets.QLabel(
+            self.b2_calibration_parameters_group_box
+        )
+        self.b2_beam_energy_value_label.setText("")
+        self.b2_beam_energy_value_label.setObjectName("b2_beam_energy_value_label")
+        self.gridLayout_8.addWidget(self.b2_beam_energy_value_label, 0, 1, 1, 1)
+        self.b2_screen_label = QtWidgets.QLabel(
+            self.b2_calibration_parameters_group_box
+        )
+        self.b2_screen_label.setObjectName("b2_screen_label")
+        self.gridLayout_8.addWidget(self.b2_screen_label, 3, 0, 1, 1)
+        self.b2_r12_streaking_value_label = QtWidgets.QLabel(
+            self.b2_calibration_parameters_group_box
+        )
+        self.b2_r12_streaking_value_label.setText("")
+        self.b2_r12_streaking_value_label.setObjectName("b2_r12_streaking_value_label")
+        self.gridLayout_8.addWidget(self.b2_r12_streaking_value_label, 6, 1, 1, 1)
+        self.b2_tds_frequency_value_label = QtWidgets.QLabel(
+            self.b2_calibration_parameters_group_box
+        )
+        self.b2_tds_frequency_value_label.setText("")
+        self.b2_tds_frequency_value_label.setObjectName("b2_tds_frequency_value_label")
+        self.gridLayout_8.addWidget(self.b2_tds_frequency_value_label, 1, 1, 1, 1)
+        self.b2_beam_energy_label = QtWidgets.QLabel(
+            self.b2_calibration_parameters_group_box
+        )
+        self.b2_beam_energy_label.setObjectName("b2_beam_energy_label")
+        self.gridLayout_8.addWidget(self.b2_beam_energy_label, 0, 0, 1, 1)
+        self.b2_tds_frequency_label = QtWidgets.QLabel(
+            self.b2_calibration_parameters_group_box
+        )
+        self.b2_tds_frequency_label.setObjectName("b2_tds_frequency_label")
+        self.gridLayout_8.addWidget(self.b2_tds_frequency_label, 1, 0, 1, 1)
+        self.label_2 = QtWidgets.QLabel(self.b2_calibration_parameters_group_box)
+        self.label_2.setObjectName("label_2")
+        self.gridLayout_8.addWidget(self.label_2, 4, 0, 1, 1)
+        self.b2_pixel_size_label = QtWidgets.QLabel(
+            self.b2_calibration_parameters_group_box
+        )
+        self.b2_pixel_size_label.setObjectName("b2_pixel_size_label")
+        self.gridLayout_8.addWidget(self.b2_pixel_size_label, 5, 0, 1, 1)
+        self.b2_pixel_size_value_label = QtWidgets.QLabel(
+            self.b2_calibration_parameters_group_box
+        )
+        self.b2_pixel_size_value_label.setText("")
+        self.b2_pixel_size_value_label.setObjectName("b2_pixel_size_value_label")
+        self.gridLayout_8.addWidget(self.b2_pixel_size_value_label, 5, 1, 1, 1)
+        self.gridLayout_9.addWidget(
+            self.b2_calibration_parameters_group_box, 0, 0, 1, 1
+        )
         self.stackedWidget_2.addWidget(self.page_8)
         self.gridLayout_4.addWidget(self.stackedWidget_2, 5, 0, 1, 2)
         self.check_phases_button = QtWidgets.QPushButton(self.centralwidget)
@@ -234,7 +304,7 @@ class Ui_calibrator_mainwindow(object):
         self.start_calibration_button.setText(
             _translate("calibrator_mainwindow", "Start Calibration")
         )
-        self.groupBox.setTitle(
+        self.i1_calibration_parameters_group_box.setTitle(
             _translate("calibrator_mainwindow", "Calibration Parameters")
         )
         self.i1_r12_streaking_label.setText(
@@ -243,6 +313,7 @@ class Ui_calibrator_mainwindow(object):
                 '<html><head/><body><p><span style=" font-style:italic;">R</span><span style=" vertical-align:sub;">34</span>:</p></body></html>',
             )
         )
+        self.label.setText(_translate("calibrator_mainwindow", "Screen Position:"))
         self.i1_screen_label.setText(_translate("calibrator_mainwindow", "Screen:"))
         self.i1_tds_frequency_label.setText(
             _translate("calibrator_mainwindow", "TDS Frequency:")
@@ -253,15 +324,11 @@ class Ui_calibrator_mainwindow(object):
         self.i1_beam_energy_label.setText(
             _translate("calibrator_mainwindow", "Beam Energy:")
         )
-        self.label.setText(_translate("calibrator_mainwindow", "Screen Position:"))
-        self.groupBox_2.setTitle(
+        self.i1_pixel_size_label.setText(
+            _translate("calibrator_mainwindow", "Pixel Size:")
+        )
+        self.b2_calibration_parameters_group_box.setTitle(
             _translate("calibrator_mainwindow", "Calibration Parameters")
-        )
-        self.b2_beam_energy_label.setText(
-            _translate("calibrator_mainwindow", "Beam Energy:")
-        )
-        self.b2_tds_frequency_label.setText(
-            _translate("calibrator_mainwindow", "TDS Frequency:")
         )
         self.b2_r12_streaking_label.setText(
             _translate(
@@ -270,7 +337,16 @@ class Ui_calibrator_mainwindow(object):
             )
         )
         self.b2_screen_label.setText(_translate("calibrator_mainwindow", "Screen:"))
+        self.b2_beam_energy_label.setText(
+            _translate("calibrator_mainwindow", "Beam Energy:")
+        )
+        self.b2_tds_frequency_label.setText(
+            _translate("calibrator_mainwindow", "TDS Frequency:")
+        )
         self.label_2.setText(_translate("calibrator_mainwindow", "Screen Position:"))
+        self.b2_pixel_size_label.setText(
+            _translate("calibrator_mainwindow", "Pixel Size:")
+        )
         self.check_phases_button.setText(
             _translate("calibrator_mainwindow", "Check Phase Pairs")
         )
