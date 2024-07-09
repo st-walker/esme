@@ -17,6 +17,7 @@ class UncalibratedTDSError(RuntimeError):
 class StreakingPlane(str, Enum):
     HORIZONTAL = "HORIZONTAL"
     VERTICAL = "VERTICAL"
+    UNKNOWN = "UNKNOWN"
 
 
 class TransverseDeflector:
