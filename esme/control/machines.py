@@ -8,7 +8,7 @@ from .kickers import FastKickerController
 from .optics import MachineLinearOptics
 from .sbunches import SpecialBunchesControl
 from .scanner import Scanner
-from .screens import Screen
+from .screens import Screen, Position
 from .tds import TransverseDeflector
 from .taskomat import Sequence
 
@@ -191,6 +191,46 @@ class TDSCalibrationManager:
 
     def turn_beam_off(self):
         self.di.set_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED", 0)
+
+    def _turn_beam_onto_screen(self, screen: Screen) -> None:
+        position = screen.get_position()
+        self._write_to_log(f"Screen: {screen.name}, position: {position}")
+        if position is Position.ONAXIS:
+            self.machine.turn_beam_on()
+            # We clip the off-axis artefacts if the beam is on axis
+            screen.analysis.set_clipping(on=False)
+        elif position is Position.OFFAXIS:
+            self._kick_beam_onto_screen()
+            # We are off axis so we enable clipping of off axis rubbish
+            screen.analysis.set_clipping(on=True)
+        elif position is Position.OUT:
+            # TODO: some sort of bombing here.
+            pass
+
+    def take_beam_off_screen(self, screen: Screen) -> None:
+        position = screen.get_position()
+        if position is Position.ONAXIS:
+            self.machine.turn_beam_off()
+            # We don't clip off-axis artefacts if the beam is on axis
+            screen.analysis.set_clipping(on=False)
+        elif position is Position.OFFAXIS:
+            self.machine.sbunches.stop_diagnostic_bunch()
+            # We are off axis so we enable clipping of off axis rubbish
+        elif position is Position.OUT:
+            self._write_to_log("Camera")
+            # TODO: some sort of bombing here.
+            pass
+        # Tidy up by disabling ROI clipping in the image analysis server
+        # Maybe not really that important but just in case/nice to do.
+        screen.analysis.set_clipping(on=False)
+
+    def kick_beam_onto_screen(self, screen: Screen) -> None:
+        # Set the kickers for the screen
+        self.set_kickers_for_screen(screen.name)
+        # Append a diagnostic bunch by setting bunch to last in machine + 1
+        self.sbunches.set_to_append_diagnostic_bunch()
+        # Now start firing the fast kicker(s).
+        self.safe_diagnostic_bunch_start()
 
 def _set_kickers_for_screen(kickerop: FastKickerController,
                             sbunches: SpecialBunchesControl, 

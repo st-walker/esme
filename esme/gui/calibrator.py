@@ -421,7 +421,6 @@ class TDSCalibrationWorker(QRunnable):
         else:
             self._write_to_log("Not calibrating as no defined calibration setpoints")
 
-
     def do_one_calibration_setpoint(self, irow: int, setpoint: CalibrationSetpoint) -> CalibrationSetpoint:
         # Set the TDS amplitude for this calibration setpoint
         # Go to the middle phase.
@@ -441,7 +440,7 @@ class TDSCalibrationWorker(QRunnable):
         # Set central phase for the auto gain.
         self.machine.deflector.set_phase(setpoint.pscan.mean_phase())
         # Turn beam on.
-        self._turn_beam_onto_screen()
+        self.machine.turn_beam_onto_screen(self.screen)
         # Do auto gain for the screen with the beam on it.
         # We assume the ROI is correctly clipped whenever we are off-axis
         # as we take car of this in self._turn_beam_onto_screen()
@@ -482,55 +481,10 @@ class TDSCalibrationWorker(QRunnable):
     
     def _take_background(self, n: int) -> npt.NDArray:
         # Turn beam off screen.
-        # Then date data
-        self._take_beam_off_screen()
+        # Then take data
+        self.machine.take_beam_off_screen(self.screen)
         return self._take_images(n=n)
     
-    def _turn_beam_onto_screen(self) -> None:
-        screen = self._get_screen()
-        position = screen.get_position()
-        self._write_to_log(f"Screen: {screen.name}, position: {position}")
-        if position is Position.ONAXIS:
-            self.machine.turn_beam_on()
-            # We clip the off-axis artefacts if the beam is on axis
-            self.set_clipping(on=False)
-        elif position is Position.OFFAXIS:
-            self._kick_beam_onto_screen()
-            # We are off axis so we enable clipping of off axis rubbish
-            self.set_clipping(on=True)
-        elif position is Position.OUT:
-            # TODO: some sort of bombing here.
-            pass
-
-    def _take_beam_off_screen(self) -> None:
-        screen = self._get_screen()
-        position = screen.get_position()
-        if position is Position.ONAXIS:
-            self.machine.turn_beam_off()
-            # We don't clip off-axis artefacts if the beam is on axis
-            self.set_clipping(on=False)
-        elif position is Position.OFFAXIS:
-            self.machine.sbunches.stop_diagnostic_bunch()
-            # We are off axis so we enable clipping of off axis rubbish
-        elif position is Position.OUT:
-            self._write_to_log("Camera")
-            # TODO: some sort of bombing here.
-            pass
-        # Tidy up by disabling ROI clipping in the image analysis server
-        # Maybe not really that important but just in case/nice to do.
-        self.set_clipping(on=False)
-
-    def _kick_beam_onto_screen(self) -> None:
-        # Get the screen
-        screen = self._get_screen()
-        # Set the kickers for the screen
-        self.machine.set_kickers_for_screen(screen.name)
-        # Append a diagnostic bunch by setting bunch to last in machine + 1
-        self.machine.sbunches.set_to_append_diagnostic_bunch()
-        # Now start firing the fast kicker(s).
-        self.safe_diagnostic_bunch_start()
-
-
 class TDSCalibratorMainWindow(QMainWindow):
     # I need to do this in another thread...  even though I don't want to 😱
     ORDERED_REGIONS = [DiagnosticRegion.I1, DiagnosticRegion.B2]
