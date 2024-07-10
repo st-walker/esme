@@ -113,19 +113,30 @@ deflectors:
     streak: vertical
     sp_fdl: XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/
     rb_fdl: XFEL.RF/LLRF.CONTROLLER/VS.LLTDSI1/
+    modulator: XFEL.RF/TDS.MODULATOR/TDSA.52.I1.MODULATOR/KLYSTRON_HV
+    fsm: XFEL.RF/TDS.STARTUP/TDSA.52.I1/RFMAIN.FSM_ON
 
   - area: B2
     streak: horizontal
     sp_fdl: XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSB2/
     rb_fdl: XFEL.RF/LLRF.CONTROLLER/VS.LLTDSB2/
+    modulator: XFEL.RF/TDS.MODULATOR/TDSB.428.B2/CCPS_UREAD
+    fsm: XFEL.RF/TDS.STARTUP/TDSB.428.B2/RFMAIN.FSM_ON
+
 
 dumps:
   - area: I1
-    forward_taskomat_location: SeparateInjectorFromXtl
-    backward_taskomat_location: JoinInjectorAndXtl
+    taskomat_location: DumpInjector
+    pre_run_properties_forward:
+      TO_DUMP: 1
+    pre_run_properties_backward:
+      TO_DUMP: 0
   - area: B2
-    taskomat_location: null
-    backward_taskomat_location: null
+    taskomat_location: DumpB2
+    pre_run_properties_forward:
+      TO_DUMP: 1
+    pre_run_properties_backrward:
+      TO_DUMP: 0
 
 snapshots:
   # When you press snapshot to elog, etc, where the LPS images etc. go.

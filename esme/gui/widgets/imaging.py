@@ -35,7 +35,7 @@ from PyQt5.QtWidgets import (
 
 from esme import DiagnosticRegion
 from esme.control.exceptions import DOOCSReadError
-from esme.control.screens import Screen, ScreenMetadata, Position
+from esme.control.screens import Position, Screen, ScreenMetadata
 from esme.control.tds import StreakingPlane
 from esme.gui.ui.imaging import Ui_imaging_widget
 from esme.gui.widgets.screen import AxesCalibration, ImagePayload
@@ -140,7 +140,9 @@ class ImagingControlWidget(DiagnosticSectionWidget):
             # This is a bit crap but if the position is not off axis then
             # We repeatedly send a message to the thread telling it to
             # disable clipping..
-            self.producer_worker.submit(DataTakingMessage(MessageType.CLIP_OFFAXIS, data={"state": False}))
+            self.producer_worker.submit(
+                DataTakingMessage(MessageType.CLIP_OFFAXIS, data={"state": False})
+            )
 
     def _calculate_dispersion(self) -> None:
         dx, dy = self.mreader.optics.dispersions_at_screen(self.screen.name)
@@ -178,14 +180,14 @@ class ImagingControlWidget(DiagnosticSectionWidget):
 
     def _set_clip_offaxis(self, state: bool) -> None:
         self.producer_worker.submit(
-            DataTakingMessage(
-                MessageType.CLIP_OFFAXIS, data={"state": state}
-            )
+            DataTakingMessage(MessageType.CLIP_OFFAXIS, data={"state": state})
         )
 
     def _activate_auto_gain(self) -> None:
         # We assume the server is inactive here, because we disable the button otherwise...
-        self.screen.analysis.set_clipping(on=bool(self.ui.clip_offaxis_checkbox.checkState()))
+        self.screen.analysis.set_clipping(
+            on=bool(self.ui.clip_offaxis_checkbox.checkState())
+        )
         self.screen.analysis.activate_gain_control()
         self.ui.autogain_button.setEnabled(False)
         # We do not allow the offaxis clipping to be touched as this also touches the image
@@ -445,9 +447,9 @@ class DataTakingWorker(QObject):
         if self._clip_offaxis:
             (xmin, xmax), (ymin, ymax) = self._clipping_bounds()
             image[:xmin] = 0.0
-            image[xmax + 1:] = 0.0
-            image[...,:ymin] = 0.0
-            image[...,ymax + 1:] = 0.0
+            image[xmax + 1 :] = 0.0
+            image[..., :ymin] = 0.0
+            image[..., ymax + 1 :] = 0.0
 
         image = image.T
         # if not self.xyflip[0]:

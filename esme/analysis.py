@@ -20,32 +20,33 @@ Units: everything is in SI, except energy which is in eV.
 
 from __future__ import annotations
 
-from enum import Enum
 import logging
-from dataclasses import dataclass
-from typing import Any, Optional, Union
 import time
+from dataclasses import dataclass
+from enum import Enum
+from functools import cached_property
+from typing import Any, Optional
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 from scipy.constants import c, e, m_e
+from scipy.stats import zscore
 from uncertainties import ufloat
 from uncertainties.umath import sqrt as usqrt  # pylint: disable=no-name-in-module
-from scipy.constants import e
-from scipy.stats import zscore
 
 from esme.calibration import TDS_LENGTH, TDS_WAVENUMBER
-from esme.image import get_slice_properties, get_central_slice_width_from_slice_properties, filter_image, crop_image, get_cropping_slice
-from esme.maths import ValueWithErrorT, linear_fit
-import numpy as np
+from esme.image import (
+    crop_image,
+    filter_image,
+    get_central_slice_width_from_slice_properties,
+    get_cropping_slice,
+    get_slice_properties,
+)
+from esme.maths import ValueWithErrorT, get_gaussian_fit, linear_fit
 from esme.optics import calculate_i1d_r34_from_tds_centre
-from functools import cached_property
-from esme.plot import formatted_parameter_dfs
 
-
-from esme.calibration import TDS_WAVENUMBER
-from esme.maths import get_gaussian_fit
+# from esme.plot import formatted_parameter_dfs
 
 
 PIXEL_SCALE_X_UM: float = 13.7369
@@ -62,7 +63,6 @@ ELECTRON_MASS_EV: float = m_e * c**2 / e
 RawImageT = npt.NDArray
 
 
-
 @dataclass
 class OpticsFixedPoints:
     beta_screen: float
@@ -75,13 +75,17 @@ class OpticsFixedPoints:
 
 
 class ImageMetadata:
-    def __init__(self, kvps: dict[str, Any], optics: OpticsFixedPoints, screen_name: str):
+    def __init__(
+        self, kvps: dict[str, Any], optics: OpticsFixedPoints, screen_name: str
+    ):
         self.kvps = kvps
         self.optics = optics
         self.screen_name = screen_name
         if "timestamp" not in self.kvps:
             self.timestamp = time.time()
-            LOG.warning(f"No timestamp in metadata, added arbitrary one: {self.timestamp}")
+            LOG.warning(
+                f"No timestamp in metadata, added arbitrary one: {self.timestamp}"
+            )
 
     @property
     def timestamp(self):
@@ -93,7 +97,12 @@ class ImageMetadata:
 
 
 class TaggedImage:
-    def __init__(self, image: npt.ArrayLike, metadata: ImageMetadata, addresses: AnalysisAddresses):
+    def __init__(
+        self,
+        image: npt.ArrayLike,
+        metadata: ImageMetadata,
+        addresses: AnalysisAddresses,
+    ):
         self.image = image
         self.metadata = metadata
         self.addresses = addresses
@@ -101,7 +110,6 @@ class TaggedImage:
     @property
     def energy(self):
         return self.metadata.kvps[self.addresses.energy]
-    
 
 
 @dataclass
@@ -119,20 +127,23 @@ class DecomposedBeamImage:
         self._image_cache = [tagged_raw_image.image]
         # from IPython import embed; embed()
 
-        self._slice_properties_cache = [None] # No slice properties calculated for raw image initially.
+        self._slice_properties_cache = [
+            None
+        ]  # No slice properties calculated for raw image initially.
 
         self._final_cropping_slice = None
 
         self._crop_all = crop_all
         self._are_cropped = False
 
-
     def _check_index_bounds(self, index):
         if index < 0:
             raise ValueError("Cannot have negative image processing step")
 
         if index > self.pipeline_steps:
-            raise ValueError("Requested image processing step is greater than the pipeline length")
+            raise ValueError(
+                "Requested image processing step is greater than the pipeline length"
+            )
 
     def get_image_at_step(self, index):
         self._check_index_bounds(index)
@@ -161,12 +172,14 @@ class DecomposedBeamImage:
                 crop = self.final_cropping_slice
                 image_at_step = image_at_step[crop]
 
-            slice_properties = get_slice_properties(image_at_step, crop=False, fast=False)
+            slice_properties = get_slice_properties(
+                image_at_step, crop=False, fast=False
+            )
             row_index, means, sigmas = slice_properties
 
             everything = np.concatenate(([m.n for m in means], [m.n for m in sigmas]))
             if np.isnan(everything).any():
-                import ipdb; ipdb.set_trace()
+                raise ValueError()
 
             self._slice_properties_cache[index] = slice_properties
 
@@ -181,7 +194,9 @@ class DecomposedBeamImage:
         if self._crop_all and not self._are_cropped:
             slc = self.final_cropping_slice
             for i, im in enumerate(self._image_cache):
-                self._image_cache[i] = im[slc].copy() # Copy to force GC of original array.
+                self._image_cache[i] = im[
+                    slc
+                ].copy()  # Copy to force GC of original array.
         self._are_cropped = True
 
     def is_finished(self):
@@ -238,8 +253,6 @@ class DecomposedBeamImage:
         return means1.argmin()
 
 
-
-
 @dataclass
 class AnalysisAddresses:
     image: str
@@ -248,11 +261,14 @@ class AnalysisAddresses:
     amplitude_rb: str
     power_sp: str
 
+
 @dataclass
 class ScanMetadata:
     """Minimal set of addresses that are necessary for the analysis and measurement"""
+
     addresses: Addresses
     fixed_optics: OpticsFixedPoints
+
 
 class SliceWidths:
     def __init__(self, x):
@@ -307,6 +323,7 @@ class Scan:
     def __iter__(self):
         yield from iter(self.setpointdfs)
 
+
 class MeasurementDataFrames:
     def __init__(self, *, dscans, tscans, bscans, optics, bg=None):
         # Copy and sort by each of their respective independent variables
@@ -337,8 +354,9 @@ class MeasurementDataFrames:
     def dscan_voltage(self):
         return self.dscan.voltages()[0]
 
+
 class SetpointDataFrame:
-    def __init__(self, df, addresses, optics, bg=0.):
+    def __init__(self, df, addresses, optics, bg=0.0):
         self.df = df
         self.addresses = addresses
         self.optics = optics
@@ -368,7 +386,7 @@ class SetpointDataFrame:
     def get_images_with_background(self):
         for path in self.image_paths:
             image = np.load(path)["image"]
-            image = image.T # Flip to match control room..?  TODO
+            image = image.T  # Flip to match control room..?  TODO
             yield image, self.bg
 
     @property
@@ -441,10 +459,10 @@ def make_outlier_widths_mask(widths, sigma_cut):
         z = zscore(widths, ddof=1)
         maski = abs(z) >= sigma_cut
 
-        if maski.sum() == 0: # If no outliers (left) then we are done.
+        if maski.sum() == 0:  # If no outliers (left) then we are done.
             break
 
-        widths.mask |= maski # Else binary or with mask, building it up bit by bit...
+        widths.mask |= maski  # Else binary or with mask, building it up bit by bit...
 
     # Have to negate because 0 = not mask and 1 = masked in masked
     # arrays, but we want the usual style, which is the opposite.
@@ -453,6 +471,7 @@ def make_outlier_widths_mask(widths, sigma_cut):
 
 def count_outliers(x):
     return sum(abs(z) >= abs(sigma_cut))
+
 
 def transform_pixel_widths(
     pixel_widths: npt.NDArray,
@@ -500,7 +519,7 @@ def transform_pixel_widths(
 def calculate_energy_spread_simple(widths) -> ValueWithErrorT:
     # Get measurement instance with highest dispresion for this scan
     dx, measurement = max((measurement.dx, measurement) for measurement in scan)
-    energy = measurement.energy * 1e6 # in eV
+    energy = measurement.energy * 1e6  # in eV
 
     width_pixels = measurement.mean_central_slice_width_with_error(padding=10)
     # Calculate with uncertainties automatically.
@@ -518,11 +537,15 @@ def calculate_energy_spread_simple(widths) -> ValueWithErrorT:
 def process_measurment_dfs(measurement, avmapping):
     tscan_widths = {}
     for tscan_setpoint in measurement.tscan:
-        tscan_widths[tscan_setpoint.voltage] = pixel_widths_from_setpoint(tscan_setpoint)
+        tscan_widths[tscan_setpoint.voltage] = pixel_widths_from_setpoint(
+            tscan_setpoint
+        )
 
     dscan_widths = {}
     for dscan_setpoint in measurement.dscan:
-        dscan_widths[dscan_setpoint.dispersion] = pixel_widths_from_setpoint(dscan_setpoint)
+        dscan_widths[dscan_setpoint.dispersion] = pixel_widths_from_setpoint(
+            dscan_setpoint
+        )
 
     bscan_widths = {}
     for bscan_setpoint in measurement.bscan:
@@ -541,12 +564,14 @@ def process_measurment_dfs(measurement, avmapping):
     ofp = measurement.optics
 
     fitter = SliceWidthsFitter(dscan_widths, tscan_widths)
-    params = fitter.all_fit_parameters(measurement.energy() * 1e6, # to eV
-                                       dscan_voltage=measurement.dscan_voltage(),
-                                       tscan_dispersion=measurement.tscan_dispersion(),
-                                       optics_fixed_points=ofp,
-                                       sigma_z=(bunch_length.n, bunch_length.s),
-                                       sigma_z_rms=(sigma_z_rms.n, sigma_z_rms.s))
+    params = fitter.all_fit_parameters(
+        measurement.energy() * 1e6,  # to eV
+        dscan_voltage=measurement.dscan_voltage(),
+        tscan_dispersion=measurement.tscan_dispersion(),
+        optics_fixed_points=ofp,
+        sigma_z=(bunch_length.n, bunch_length.s),
+        sigma_z_rms=(sigma_z_rms.n, sigma_z_rms.s),
+    )
 
     beam_df = params.beam_parameters_to_df()
     fit_df = params.fit_parameters_to_df()
@@ -554,10 +579,12 @@ def process_measurment_dfs(measurement, avmapping):
     # If failed to reconstruct values...
     if np.isnan(beam_df.loc["sigma_i"]["values"]):
         sigma_e = _simple_calc(measurement.max_dispersion_sp())
-        beam_df.loc["sigma_e"] = {"values": sigma_e.n,
-                                  "errors": sigma_e.s,
-                                  "alt_values": np.nan,
-                                  "alt_errors": np.nan}
+        beam_df.loc["sigma_e"] = {
+            "values": sigma_e.n,
+            "errors": sigma_e.s,
+            "alt_values": np.nan,
+            "alt_errors": np.nan,
+        }
 
     dirname = "result"
 
@@ -567,6 +594,7 @@ def process_measurment_dfs(measurement, avmapping):
     fit_df, beam_df = formatted_parameter_dfs(params)
 
     return fit_df, beam_df
+
 
 def pixel_widths_from_setpoint(setpoint: SetpointDataFrame, policy="emax"):
     pass
@@ -591,7 +619,6 @@ def pixel_widths_from_setpoint(setpoint: SetpointDataFrame, policy="emax"):
             # coontinue
             pass
 
-
         # if policy == "emax":
         #     central_width_row = np.argmin(means)
         # elif policy == "middle":
@@ -609,19 +636,11 @@ def pixel_widths_from_setpoint(setpoint: SetpointDataFrame, policy="emax"):
 
 
 class SliceWidthsFitter:
-    def __init__(
-        self,
-            dscan_widths,
-            tscan_widths,
-            bscan_widths=None,
-            *,
-            avmapping
-    ):
+    def __init__(self, dscan_widths, tscan_widths, bscan_widths=None, *, avmapping):
         self.dscan_widths = dscan_widths
         self.tscan_widths = tscan_widths
         self.bscan_widths = bscan_widths
         self.avmapping = avmapping
-
 
     def dispersion_scan_fit(self, sigma_r=None, emittance=None) -> ValueWithErrorT:
         widths_with_errors = list(self.dscan_widths.values())
@@ -645,7 +664,8 @@ class SliceWidthsFitter:
         try:
             voltages = self.avmapping(amplitudes)
         except TypeError:
-            import ipdb; ipdb.set_trace()
+            raise TypeError()
+
         voltages2 = voltages**2
         widths2_m2, errors2_m2 = transform_pixel_widths(
             widths, errors, pixel_units="m", to_variances=True
@@ -664,7 +684,15 @@ class SliceWidthsFitter:
         a_beta, b_beta = linear_fit(beta, widths2_m2, errors2_m2)
         return a_beta, b_beta
 
-    def all_fit_parameters(self, beam_energy, tscan_dispersion, dscan_voltage, optics_fixed_points, sigma_z=None, sigma_z_rms=None) -> DerivedBeamParameters:
+    def all_fit_parameters(
+        self,
+        beam_energy,
+        tscan_dispersion,
+        dscan_voltage,
+        optics_fixed_points,
+        sigma_z=None,
+        sigma_z_rms=None,
+    ) -> DerivedBeamParameters:
         a_v, b_v = self.tds_scan_fit()
         a_d, b_d = self.dispersion_scan_fit()
 
@@ -691,7 +719,7 @@ class SliceWidthsFitter:
             a_beta=a_beta,
             b_beta=b_beta,
             sigma_z=sigma_z,
-            sigma_z_rms=sigma_z_rms
+            sigma_z_rms=sigma_z_rms,
         )
 
 
@@ -716,7 +744,7 @@ class DerivedBeamParameters:
     def a_d_derived(self, sigma_r, emittance: Optional[float] = None):
         if emittance is None:
             emittance = self.emitx
-        return np.sqrt(sigma_r**2 + (emittance * self.oconfig.beta_screen)**2)
+        return np.sqrt(sigma_r**2 + (emittance * self.oconfig.beta_screen) ** 2)
 
     def set_a_d_to_known_value(self, sigma_r, emittance: Optional[float] = None):
         new_ad = self.a_d_derived(sigma_r, emittance=emittance)
@@ -725,7 +753,6 @@ class DerivedBeamParameters:
     def set_a_v_to_known_value(self, sigma_r, emittance: Optional[float] = None):
         new_ad = self.a_d_derived(sigma_r, emittance=emittance)
         self.a_d = new_ad
-
 
     @property
     def sigma_e(self) -> ValueWithErrorT:
@@ -921,8 +948,14 @@ class DerivedBeamParameters:
         alt_params = self._alt_beam_parameters_to_df()
         if self.sigma_z is not None:
             self.sigma_t
-            params.loc["sigma_z"] = {"values": self.sigma_z[0], "errors": self.sigma_z[1]}
-            params.loc["sigma_t"] = {"values": self.sigma_t[0], "errors": self.sigma_t[1]}
+            params.loc["sigma_z"] = {
+                "values": self.sigma_z[0],
+                "errors": self.sigma_z[1],
+            }
+            params.loc["sigma_t"] = {
+                "values": self.sigma_t[0],
+                "errors": self.sigma_t[1],
+            }
 
         return pd.concat([params, alt_params], axis=1)
 
@@ -938,7 +971,10 @@ class DerivedBeamParameters:
         ste = self.sigma_z_rms[1] / c
         return stn, ste
 
-def true_bunch_length_from_setpoint(setpoint, avmapping: AmplitudeVoltageMapping, method: str = "gaussian"):
+
+def true_bunch_length_from_setpoint(
+    setpoint, avmapping: AmplitudeVoltageMapping, method: str = "gaussian"
+):
     apparent_bunch_lengths = []
     if method == "gaussian":
         fn = apparent_gaussian_bunch_length_from_processed_image
@@ -946,7 +982,7 @@ def true_bunch_length_from_setpoint(setpoint, avmapping: AmplitudeVoltageMapping
         fn = apparent_rms_bunch_length_from_processed_image
     else:
         raise ValueError(f"Unknown method: {method}")
- 
+
     for dbim in setpoint.images:
         im = dbim.final_image()
         df = dbim.tagged_raw_image.metadata
@@ -965,12 +1001,18 @@ def true_bunch_length_from_setpoint(setpoint, avmapping: AmplitudeVoltageMapping
 
     tds_amplitude = setpoint.amplitude
     voltage = avmapping(tds_amplitude)
-    bunch_length = (energy_joules / (e * voltage * TDS_WAVENUMBER)) * mean_apparent_bunch_length / r34
+    bunch_length = (
+        (energy_joules / (e * voltage * TDS_WAVENUMBER))
+        * mean_apparent_bunch_length
+        / r34
+    )
     return abs(bunch_length)
 
 
 def true_bunch_length_from_df(setpoint, method: str = "gaussian"):
-    from IPython import embed; embed()
+    from IPython import embed
+
+    embed()
     apparent_bunch_lengths = []
     if method == "gaussian":
         fn = apparent_gaussian_bunch_length_from_processed_image
@@ -989,13 +1031,20 @@ def true_bunch_length_from_df(setpoint, method: str = "gaussian"):
 
     mean_apparent_bunch_length = np.mean(apparent_bunch_lengths)
 
-    r34 = abs(calculate_i1d_r34_from_tds_centre(setpoint.df, setpoint.screen_name, setpoint.energy))
-    energy = setpoint.energy * 1e6 * e # to Joules
+    r34 = abs(
+        calculate_i1d_r34_from_tds_centre(
+            setpoint.df, setpoint.screen_name, setpoint.energy
+        )
+    )
+    energy = setpoint.energy * 1e6 * e  # to Joules
     voltage = setpoint.voltage
 
-    bunch_length = (energy / (e * voltage * TDS_WAVENUMBER)) * mean_apparent_bunch_length / r34
+    bunch_length = (
+        (energy / (e * voltage * TDS_WAVENUMBER)) * mean_apparent_bunch_length / r34
+    )
 
     return bunch_length
+
 
 # def true_bunch_length_from_imagesf(processed_images, df, method="gaussian"):
 #     apparent_bunch_lengths = []
@@ -1039,18 +1088,21 @@ def true_bunch_length_from_df(setpoint, method="gaussian"):
 
     mean_apparent_bunch_length = np.mean(apparent_bunch_lengths)
 
-    r34 = abs(calculate_i1d_r34_from_tds_centre(setpoint.df, setpoint.screen_name, setpoint.energy))
-    energy = setpoint.energy * 1e6 * e # to Joules
+    r34 = abs(
+        calculate_i1d_r34_from_tds_centre(
+            setpoint.df, setpoint.screen_name, setpoint.energy
+        )
+    )
+    energy = setpoint.energy * 1e6 * e  # to Joules
     voltage = setpoint.voltage
-    bunch_length = (energy / (e * voltage * TDS_WAVENUMBER)) * mean_apparent_bunch_length / r34
+    bunch_length = (
+        (energy / (e * voltage * TDS_WAVENUMBER)) * mean_apparent_bunch_length / r34
+    )
 
     return bunch_length
 
 
-
-
-def streaking_parameter(*, voltage, energy, r12_streaking,
-                        wavenumber=TDS_WAVENUMBER):
+def streaking_parameter(*, voltage, energy, r12_streaking, wavenumber=TDS_WAVENUMBER):
     """Energy in eV.  Voltage in V."""
     energy = energy * e  # in eV and convert to joules
     k0 = e * voltage * wavenumber / energy
@@ -1067,7 +1119,6 @@ def apparent_gaussian_bunch_length_from_processed_image(image):
     except RuntimeError:
         # This can happen when for example when the cropping fails completely...
         return np.nan, np.nan
-
 
     sigma = popt[2]
     sigma_error = perr[2]
@@ -1092,8 +1143,10 @@ def apparent_rms_bunch_length_from_processed_image(image):
 
     # Get PDF of longitudinal distribution by normalising w.r.t
     beam_pdf = projection / projection.sum()
-    population_mean = np.trapz(beam_pdf*pixel_indices, x=pixel_indices)
-    population_variance = np.trapz(beam_pdf * (pixel_indices - population_mean)**2, x=pixel_indices)
+    population_mean = np.trapz(beam_pdf * pixel_indices, x=pixel_indices)
+    population_variance = np.trapz(
+        beam_pdf * (pixel_indices - population_mean) ** 2, x=pixel_indices
+    )
     population_standard_deviation = np.sqrt(population_variance)
 
     # Transform units from px to whatever was chosen

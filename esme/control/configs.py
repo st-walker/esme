@@ -390,8 +390,12 @@ def load_deflector_from_config(
         area = ddef["area"]
         sp_fdl = ddef["sp_fdl"]
         rb_fdl = ddef["rb_fdl"]
+        modulator = ddef["modulator"]
+        fsm = ddef["fsm"]
         plane = StreakingPlane[ddef["streak"].upper()]
-        deflectors[area] = TransverseDeflector(sp_fdl, rb_fdl, plane=plane, di=di)
+        deflectors[area] = TransverseDeflector(
+            sp_fdl, rb_fdl, modulator=modulator, fsm=fsm, plane=plane, di=di
+        )
     return deflectors[area]
 
 

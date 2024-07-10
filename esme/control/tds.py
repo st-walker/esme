@@ -29,6 +29,8 @@ class TransverseDeflector:
         self,
         sp_fdl: str,
         rb_fdl: str,
+        modulator_voltage_addr: str,
+        fsm_addr: str,
         plane: StreakingPlane,
         calibration=None,
         zero_crossing: float | None = None,
@@ -41,6 +43,8 @@ class TransverseDeflector:
         # /XFEL.RF/LLRF.CONTROLLER/CTRL.LLTDSI1/
         self.sp_fdl = sp_fdl
         self.rb_fdl = rb_fdl
+        self._modulator_voltage_address = modulator_voltage_addr
+        self._fsm_address = fsm_addr
         self.plane = plane
         self.calibration = None
         self.zero_crossing = None
@@ -106,7 +110,7 @@ class TransverseDeflector:
             raise ValueError("Zero Crossing has not been set.")
         self.set_phase(self.zero_crossing)
 
-    def set_zero_crossing(self):
+    def set_zero_crossing(self) -> None:
         """Set the zero crossing.  Convenient for jumping back to the zero crossing and not having
         to find it repeatedly."""
         phase = self.get_phase_sp()
@@ -115,3 +119,9 @@ class TransverseDeflector:
         else:
             phase %= 180
         self.zero_crossing = phase
+
+    def get_modulator_voltage(self) -> float:
+        return self.di.get_value(self._modulator_voltage_addr)
+
+    def get_fsm_state(self) -> int:
+        return self.di.get_value(self._fsm_address)
