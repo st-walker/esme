@@ -290,6 +290,12 @@ def tds():
     from esme.gui.calibrator import start_tds_calibrator
     start_tds_calibrator(sys.argv)
 
+
+@main.command()
+def current():
+    from esme.gui.widgets.current import start_current_profiler
+    start_current_profiler(sys.argv)
+
 @main.command()
 @argument("dirname", nargs=1, type=CPath(exists=True, file_okay=False, path_type=Path))
 def optics(dirname):

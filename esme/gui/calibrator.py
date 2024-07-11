@@ -55,7 +55,7 @@ class CalibrationError(RuntimeError):
         self.message = message
 
 @dataclass
-class CalibrationContext:
+class MeasurementContext:
     screen_name: str = ""
     snapshot: pd.DataFrame | None = None
     beam_energy: float = 0.0
@@ -84,7 +84,7 @@ class PhaseScan:
     def phases(self, n: int = 5):
         return np.linspace(*self.prange, num=n)
 
-    def centres_of_mass(self, ctx: CalibrationContext) -> list[ufloat]:
+    def centres_of_mass(self, ctx: MeasurementContext) -> list[ufloat]:
         mean_centres_of_mass = []
         xscale, yscale = self.pixel_sizes
         for image_collection_at_one_phase in self.images:
@@ -106,12 +106,12 @@ class PhaseScan:
     def phase_deltas(self, n: int = 5) -> float:
         return self.phases(n=n) - self.mean_phase()
     
-    def time_deltas(self, ctx: CalibrationContext, n: int = 5) -> npt.NDArray:
+    def time_deltas(self, ctx: MeasurementContext, n: int = 5) -> npt.NDArray:
         frequency = ctx.frequency
         phase_deltas = self.phase_deltas(n=n)
         return phase_deltas / (360 * frequency)
 
-    def calibration_fit(self, ctx: CalibrationContext, n: int = 5) -> tuple[ufloat, ufloat]:
+    def calibration_fit(self, ctx: MeasurementContext, n: int = 5) -> tuple[ufloat, ufloat]:
         phases = self.phase_deltas(n=n)
         time_deltas = self.time_deltas(ctx, n=n)
         coms = self.centres_of_mass(ctx=ctx)
@@ -123,7 +123,7 @@ class PhaseScan:
         # is grad here going to be a tuple of numbers, one 
         return yint, grad
 
-    def cal(self, ctx: CalibrationContext) -> ufloat:
+    def cal(self, ctx: MeasurementContext) -> ufloat:
         try:
             _, grad = self.calibration_fit(ctx)
             return grad
@@ -140,7 +140,7 @@ class PhaseScan:
             return False
         return not np.isclose(low, hi)
     
-    def voltage(self, ctx: CalibrationContext) -> ufloat:        
+    def voltage(self, ctx: MeasurementContext) -> ufloat:        
         return calculate_voltage(slope=self.cal(ctx=ctx),
                                  r34=ctx.r12_streaking(),
                                  energy=ctx.beam_energy,
@@ -169,7 +169,7 @@ class CalibrationSetpoint:
                     self.pscan1.has_real_bounds()])
                     and not self.can_be_calibrated())
     
-    def vmean(self, ctx: CalibrationContext) -> ufloat:
+    def vmean(self, ctx: MeasurementContext) -> ufloat:
         v0 = self.pscan0.voltage(ctx=ctx)
         v1 = self.pscan1.voltage(ctx=ctx)
         return (abs(v0) + abs(v1)) / 2.0
@@ -177,7 +177,7 @@ class CalibrationSetpoint:
 
 @dataclass
 class TDSCalibration:
-    context: CalibrationContext = field(default_factory=CalibrationContext)
+    context: MeasurementContext = field(default_factory=MeasurementContext)
     setpoints: List[CalibrationSetpoint] = field(
         default_factory=lambda: [CalibrationSetpoint() for _ in range(10)]
     )
@@ -563,14 +563,13 @@ class TDSCalibratorMainWindow(QMainWindow):
 
     def _connect_buttons(self) -> None:
         self.ui.start_calibration_button.clicked.connect(self.calibrate_tds)
-        self.ui.cancel_button.clicked.connect(self.interupt_calibration)
+        self.ui.cancel_button.clicked.connect(self.interrupt_calibration)
         self.ui.load_calibration_button.clicked.connect(self.load_calibration)
 
     def interupt_calibration(self) -> None:
         if self.worker is None:
             return
         self.interrupt_event.set()
-        self.calibration_thread.wait()
         self.i1machine.sbunches.stop_diagnostic_bunch()
         self.b2machine.sbunches.stop_diagnostic_bunch()
         # And also turn the beam off if we are on-axis.
@@ -748,13 +747,13 @@ class TDSCalibratorMainWindow(QMainWindow):
         checking they're valid, and then doing the calibration at that setpoint
         (one setpoint = an amplitude and two pairs of phases)."""
 
-        self.calibration_worker = TDSCalibrationWorker(self.machine, self._get_screen(), self._active_calibration())
-        self.calibration_worker.signals.log_message.connect(self._write_to_log)
-        self.calibration_worker.signals.save_calibration.connect(self.save_calibration)
-        self.calibration_worker.signals.finished_calibration_setpoint.connect(self._post_calibration_setpoint)
-        self.calibration_worker.signals.finished_calibration.connect(lambda: self.set_ui_enabled(enabled=True))
-        self.calibration_worker.signals.calibration_error.connect(self._handle_errors)
-        self.threadpool.start(self.calibration_worker)
+        self.worker = TDSCalibrationWorker(self.machine, self._get_screen(), self._active_calibration())
+        self.worker.signals.log_message.connect(self._write_to_log)
+        self.worker.signals.save_calibration.connect(self.save_calibration)
+        self.calibrationworker.signals.finished_calibration_setpoint.connect(self._post_calibration_setpoint)
+        self.worker.signals.finished_calibration.connect(lambda: self.set_ui_enabled(enabled=True))
+        self.worker.signals.calibration_error.connect(self._handle_errors)
+        self.threadpool.start(self.worker)
         self.set_ui_enabled(enabled=False)
 
     def save_calibration(self) -> None:
@@ -876,9 +875,9 @@ def load_calibration_setpoint(setpointnpz: Path) -> CalibrationSetpoint:
 
 
 
-def load_calibration_context(caldir: Path) -> CalibrationContext:
+def load_calibration_context(caldir: Path) -> MeasurementContext:
     snapshot = pd.read_csv(caldir / "snapshot.csv")
-    result = CalibrationContext()
+    result = MeasurementContext()
     result.snapshot = snapshot
     with (caldir / "context.toml") as f:
         tdict = toml.load(f)

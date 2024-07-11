@@ -192,7 +192,7 @@ class TDSCalibrationManager:
     def turn_beam_off(self):
         self.di.set_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED", 0)
 
-    def _turn_beam_onto_screen(self, screen: Screen) -> None:
+    def turn_beam_onto_screen(self, screen: Screen) -> None:
         position = screen.get_position()
         self._write_to_log(f"Screen: {screen.name}, position: {position}")
         if position is Position.ONAXIS:

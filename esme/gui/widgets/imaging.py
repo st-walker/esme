@@ -106,7 +106,7 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         self.i1, self.b2 = mfactory.make_i1_b2_imaging_managers()
         self.mreader = self.i1
 
-        self.screen = self.mreader.screens["OTRC.55.I1"]
+        self.screen = self.mreader.screens["OTRC.58.I1"]
 
         # Thread that reads the images and others can get from.
         self.producer_worker, self.producer_thread = self.setup_data_taking_worker()
@@ -285,6 +285,7 @@ class DataTakingWorker(QObject):
 
         self.screen: Screen = initial_screen
         # This clearly assumes the screen is already powered etc..  no catching here!
+        print(self.screen)
         self.screen_md: ScreenMetadata = initial_screen.get_screen_metadata()
         self._set_screen(initial_screen)
 

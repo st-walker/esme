@@ -362,6 +362,7 @@ def load_target_sequences_from_config(
     dconf: dict[str, Any], area: DiagnosticRegion, di: DOOCSInterfaceABC | None = None
 ) -> tuple[Sequence, Sequence]:
     targets = dconf["dumps"]
+    from IPython import embed; embed()
     target = targets[area.name]
     forward_sequence_loc = target["forward_taskomat_location"]
     backward_taskomat_location = target["backward_taskomat_location"]
@@ -411,7 +412,7 @@ def load_deflector_from_config(
         fsm = ddef["fsm"]
         plane = StreakingPlane[ddef["streak"].upper()]
         deflectors[area] = TransverseDeflector(
-            sp_fdl, rb_fdl, modulator=modulator, fsm=fsm, plane=plane, di=di
+            sp_fdl, rb_fdl, modulator_voltage_addr=modulator, fsm_addr=fsm, plane=plane, di=di
         )
     return deflectors[area]
 

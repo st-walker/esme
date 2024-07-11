@@ -11,6 +11,7 @@ from esme.gui.widgets.common import (
     send_widget_to_log,
     set_tds_calibration_by_region,
 )
+from esme.core import DiagnosticRegion
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
