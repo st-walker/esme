@@ -125,13 +125,13 @@ deflectors:
 
 
 dumps:
-  - area: I1
+  I1:
     taskomat_location: DumpInjector
     pre_run_properties_forward:
       TO_DUMP: 1
     pre_run_properties_backward:
       TO_DUMP: 0
-  - area: B2
+  B2:
     taskomat_location: DumpB2
     pre_run_properties_forward:
       TO_DUMP: 1

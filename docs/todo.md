@@ -7,6 +7,8 @@
 # TEST TOMORROW MORNING:
 
 
+# Handle when not getting screen metadata?  e.g. orc.55.i1 when screen is off doens't work whole gui crashes.
+
 questions for bolko:
 
 what are in bolko's .mat files from his calib?
