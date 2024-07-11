@@ -362,12 +362,14 @@ def load_target_sequences_from_config(
     dconf: dict[str, Any], area: DiagnosticRegion, di: DOOCSInterfaceABC | None = None
 ) -> tuple[Sequence, Sequence]:
     targets = dconf["dumps"]
-    from IPython import embed; embed()
     target = targets[area.name]
-    forward_sequence_loc = target["forward_taskomat_location"]
-    backward_taskomat_location = target["backward_taskomat_location"]
+    location = target["taskomat_location"]
+    from IPython import embed; embed()
+    # XXX: Need to use these!!!
+    pre_run_properties_forward = target["pre_run_properties_forward"]
+    pre_run_properties_backward = target["pre_run_properties_backward"]
 
-    return Sequence(forward_sequence_loc), Sequence(backward_taskomat_location)
+    return Sequence(location), Sequence(location)
 
 
 def build_linear_optics(
