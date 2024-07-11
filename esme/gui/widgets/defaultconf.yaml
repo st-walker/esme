@@ -135,7 +135,7 @@ dumps:
     taskomat_location: DumpB2
     pre_run_properties_forward:
       TO_DUMP: 1
-    pre_run_properties_backrward:
+    pre_run_properties_backward:
       TO_DUMP: 0
 
 snapshots:
