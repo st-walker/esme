@@ -438,3 +438,13 @@ class SpecialBunchesControl:
         # assert last_beam_region > 0
         self.set_beam_region(beam_region_number - 1)
         self.set_bunch_number(diagnostic_bunch_number)
+
+    def set_to_last_bunch(self):
+        beam_regions = get_beam_regions(get_bunch_pattern())
+        last_beam_region = beam_regions[-1]
+        nbunches = last_beam_region.nbunches()
+        beam_region_number = last_beam_region.idn
+        diagnostic_bunch_number = nbunches + 1
+        # assert last_beam_region > 0
+        self.set_beam_region(beam_region_number - 1)
+        self.set_bunch_number(diagnostic_bunch_number)

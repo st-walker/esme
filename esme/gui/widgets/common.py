@@ -99,11 +99,12 @@ def get_default_virtual_machine_interface() -> DictionaryDOOCSInterface:
 
 
 def get_config_path() -> Path:
+    return Path("/Users/xfeloper/user/stwalker/lps")
     return Path.home() / ".config" / "lps/"
 
 
 def get_tds_calibration_config_dir() -> Path:
-    return get_config_path() / "tds"
+    return get_config_path() / "tds-calibrations"
 
 
 def set_machine_by_region(widget: QWidget, location: DiagnosticRegion) -> None:

@@ -134,7 +134,7 @@ class TDSControl(QtWidgets.QWidget):
         self.ui.set_zero_crossing_button.clicked.connect(self.set_zero_crossing)
         self.ui.go_to_zero_crossing_button.clicked.connect(self.go_to_zero_crossing)
         self.ui.subtract_180deg_button.clicked.connect(self.subtract_180_deg)
-        self.ui.subtract_180deg_button.clicked.connect(self.add_180_deg)
+        self.ui.add_180deg_button.clicked.connect(self.add_180_deg)
 
     def subtract_180_deg(self) -> None:
         phase = self.machine.deflector.get_phase_sp()

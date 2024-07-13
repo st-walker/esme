@@ -56,7 +56,8 @@ class LPSMainWindow(QMainWindow):
         super().__init__()
         self.ui = mainwindow.Ui_tdsfriend_mainwindow()
         self.ui.setupUi(self)
-        self._init_target_control()
+        # XXX: Not a priortity right now.
+        # self._init_target_control()
 
         # Connect signals for screen name which we select in this
         # widget and have to propagate to the child widgets.
@@ -92,11 +93,11 @@ class LPSMainWindow(QMainWindow):
         b2d_dump, b2d_undo_dump = f.make_dump_sequences(DiagnosticRegion.B2)
 
         self.ui.target_stack.add_target_widget(
-            DiagnosticRegion.I1, "I1D", i1d_forward, i1d_backard
+            DiagnosticRegion.I1, "I1D", i1d_dump, i1d_undo_dump
         )
 
         self.ui.target_stack.add_target_widget(
-            DiagnosticRegion.B2, "B2D", b2d_forward, b2d_backard
+            DiagnosticRegion.B2, "B2D", b2d_dump, b2d_undo_dump
         )
 
     def update_tds_voltage_calibration(self, voltage_calibration) -> None:

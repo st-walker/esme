@@ -157,8 +157,12 @@ class ImagingControlWidget(DiagnosticSectionWidget):
 
     def _generate_axes_calibrations(self) -> None:
         dispersion = self.ui.dispersion_spinner.value()
+        try:
+            energy_ev = energy_ev=self.mreader.optics.get_beam_energy() * 1e6
+        except DOOCSReadError:
+            energy_ev = None
         axescalib = AxesCalibration(
-            energy_ev=self.mreader.optics.get_beam_energy() * 1e6,
+            energy_ev=energy_ev,
             dispersion=dispersion,
             streaking_plane=self.mreader.deflector.plane,
         )

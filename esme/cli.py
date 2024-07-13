@@ -18,6 +18,7 @@ from esme.gui.tds_calibrator import start_calibration_explorer_gui
 from esme.load import load_result_directory
 from esme.plot import pretty_parameter_table
 import esme.gui.widgets.common as wcommon
+from esme.gui.high_res_espread import start_hires_gui
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
@@ -99,6 +100,10 @@ def main(debug, profile, vxfel):
 
         atexit.register(exit)
 
+@main.command()
+def hires():
+    import sys
+    start_hires_gui()
 
 @main.command()
 def calib():

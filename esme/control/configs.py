@@ -364,7 +364,6 @@ def load_target_sequences_from_config(
     targets = dconf["dumps"]
     target = targets[area.name]
     location = target["taskomat_location"]
-    from IPython import embed; embed()
     # XXX: Need to use these!!!
     pre_run_properties_forward = target["pre_run_properties_forward"]
     pre_run_properties_backward = target["pre_run_properties_backward"]

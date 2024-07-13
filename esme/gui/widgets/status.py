@@ -60,7 +60,7 @@ class CircleStateIndicator(CircleIndicator):
 
     def set_status(self, condition: Condition) -> None:
         self.setToolTip(condition.long)
-        self.set_colour(self.COLOUR_MAPPING[self.status])
+        self.set_colour(self.COLOUR_MAPPING[condition.health])
 
 
 class TextIndicator(QWidget):
