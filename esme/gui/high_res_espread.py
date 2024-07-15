@@ -32,6 +32,7 @@ class HighResolutionEnergySpreadMainWindow(QMainWindow):
 
         self.scannerp = self.ui.scanner_panel
 
+        # XXXTDS:
         self.ui.tds_panel.voltage_calibration_signal.connect(self.ui.scanner_panel.update_tds_calibration)
 
         self.image_plot = setup_screen_display_widget(self.ui.image_plot)
@@ -59,7 +60,9 @@ class HighResolutionEnergySpreadMainWindow(QMainWindow):
         self.timer = self.build_main_timer(100)
         self.finished = False
 
+        # XXXTDS:
         self.ui.tds_panel.emit_calibrations()
+        # from IPython import embed; embed()
 
 
     def send_to_logbook(self):

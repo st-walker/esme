@@ -33,7 +33,7 @@ class MachineLinearOptics(ABC):
             except DOOCSReadError:
                 continue
 
-        raise DOOCSReadError("Unable to read injector beam energy")
+        raise DOOCSReadError(address)
 
     @abstractmethod
     def r12_streaking_from_tds_to_point(self, point_name: str) -> float:

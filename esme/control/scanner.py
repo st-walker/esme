@@ -7,6 +7,7 @@ from esme.control.sbunches import DiagnosticRegion
 from esme.control.exceptions import EuXFELMachineError
 from esme.analysis import OpticsFixedPoints
 from esme.control.snapshot import SnapshotRequest, Snapshotter
+from esme.control.dint import DOOCSInterface
 
 LOG = logging.getLogger(__name__)
 
@@ -70,7 +71,7 @@ class Scanner:
     BEAM_ALLOWED_ADDRESS = "XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED"
     def __init__(self, scan: ScanConfig, di=None):
         self.scan = scan
-        self.di = di if di else XFELMachineInterface()
+        self.di = di if di else DOOCSInterface()
 
     def set_quad_strength(self, quad_name: str, kmrad: float) -> None:
         ch = self.FDP_QUAD_KICK_SP_ADDRESS.format(quad_name)

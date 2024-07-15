@@ -246,6 +246,13 @@ class Screen:
     def dump(self) -> dict[str, Any]:
         return (dump_fdl(self._screen_fdl.format("*")) 
                 | dump_fdl(self._camera_fdl.format("*")))
+    
+    def set_position(self, pos: Position) -> None:
+        posname = pos.name
+        if pos is Position.ONAXIS or pos is Position.OFFAXIS:
+            posname = f"{posname}_LYSO"
+        addy = self.SCREEN_ML_FD.format(self.name, posname)
+        self.di.set_value(addy, 1)
 
 
 def screen_is_fully_operational(screen: Screen) -> bool:

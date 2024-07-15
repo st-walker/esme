@@ -13,9 +13,11 @@ from PyQt5.QtCore import QSettings, QTimer, pyqtSignal
 from esme import DiagnosticRegion
 from esme.control.machines import LPSMachine
 from esme.core import region_from_screen_name
-from esme.gui.tds_calibrator import CalibrationMainWindow, TaggedCalibration
+from esme.gui.tds_calibrator import CalibrationMainWindow
 from esme.gui.ui.tds import Ui_tds_control_panel
-from esme.load import load_calibration_from_yaml
+from esme.load import load_amplitude_voltage_mapping
+from esme.calibration import AmplitudeVoltageMapping
+from datetime import datetime
 
 from .common import (
     get_machine_manager_factory,
@@ -46,10 +48,11 @@ LOG.setLevel(logging.INFO)
 # The TDSControl loads any most recent calibrations and emits them.
 
 
+
 @dataclass
-class CalibrationMetadata:
-    filename: str
-    datetime: datetime
+class TaggedCalibration:
+    avmapping: AmplitudeVoltageMapping
+    filepath: Path
 
 
 class TDSControl(QtWidgets.QWidget):
@@ -72,7 +75,7 @@ class TDSControl(QtWidgets.QWidget):
         self.calibration_window = CalibrationMainWindow(self)
         self.calibration_window.avmapping_signal.connect(self.update_tds_calibration)
 
-        self.metadata = self.load_most_recent_calibrations()
+        self.i1calibration, self.b2calibration = self.load_most_recent_calibrations()
 
         # Connect calibration window.
         self.connect_buttons()
@@ -126,6 +129,9 @@ class TDSControl(QtWidgets.QWidget):
         self.ui.tds_amplitude_spinbox.setValue(
             self.machine.deflector.get_amplitude_sp()
         )
+        # We multiply by 1e-6 convert from V to MV.
+        self.ui.tds_voltage_readback.setText(f"{(self.machine.deflector.get_voltage_rb() * 1e-6):.2f}")
+        self.ui.tds_voltage_spinbox.setValue(self.machine.deflector.get_voltage_sp() * 1e-6)
 
     def connect_buttons(self) -> None:
         self.ui.tds_phase_spinbox.valueChanged.connect(self.set_phase)
@@ -134,7 +140,7 @@ class TDSControl(QtWidgets.QWidget):
         self.ui.set_zero_crossing_button.clicked.connect(self.set_zero_crossing)
         self.ui.go_to_zero_crossing_button.clicked.connect(self.go_to_zero_crossing)
         self.ui.subtract_180deg_button.clicked.connect(self.subtract_180_deg)
-        self.ui.add_180deg_button.clicked.connect(self.add_180_deg)
+        self.ui.add_180_deg_button.clicked.connect(self.add_180_deg)
 
     def subtract_180_deg(self) -> None:
         phase = self.machine.deflector.get_phase_sp()
@@ -169,14 +175,17 @@ class TDSControl(QtWidgets.QWidget):
         self.voltage_calibration_signal.emit(calibration)
 
     def set_calibration_info_strings(self) -> None:
-        if self.machine.deflector.calibration is None:
-            self.set_missing_calibration_info_string()
-            return
-        metadata = self.metadata[self.machine.region]
-        calibration_filename = metadata.filename
-        datetime = metadata.datetime
-        short_filename = re.sub(f"^{Path.home()}", "~", str(calibration_filename))
-        self.ui.calibration_file_path_label.setText(str(short_filename))
+        if self.i1machine is self.machine:
+            tagged_calibration = self.i1calibration
+        elif self.b2machine is self.machine:
+            tagged_calibration = self.b2calibration
+        
+        calibration_filename = Path(tagged_calibration.filepath)
+        datetime = tagged_calibration.avmapping.calibration_time
+        short_filename = os.sep.join(calibration_filename.parts[-1:])
+
+        self.ui.calibration_file_path_label.setText(short_filename)
+        self.ui.calibration_file_path_label.setToolTip(str(calibration_filename))
 
         tz = pytz.timezone("Europe/Berlin")
         local_hamburg_time = tz.localize(datetime)
@@ -190,39 +199,44 @@ class TDSControl(QtWidgets.QWidget):
     def load_most_recent_calibrations(self) -> dict[DiagnosticRegion, LPSMachine]:
         try:
             i1tagged_calib = load_most_recent_calibration(DiagnosticRegion.I1)
-        except StopIteration:
-            i1md = None
+        except (StopIteration, FileNotFoundError):
+            i1tagged_calib = None
         else:
-            self.i1machine.deflector.calibration = i1tagged_calib.calibration
-            i1md = CalibrationMetadata(
-                filename=i1tagged_calib.filename, datetime=i1tagged_calib.datetime
-            )
+            self.set_avmapping(i1tagged_calib.avmapping)
 
         try:
             b2tagged_calib = load_most_recent_calibration(DiagnosticRegion.B2)
-        except StopIteration:
-            b2md = None
+        except (StopIteration, FileNotFoundError):
+            b2tagged_calib = None
         else:
-            self.b2machine.deflector.calibration = i1tagged_calib.calibration
-            b2md = CalibrationMetadata(
-                filename=b2tagged_calib.filename, datetime=b2tagged_calib.datetime
-            )
+            self.set_avmapping(b2tagged_calib.avmapping)
 
-        return {DiagnosticRegion.I1: i1md, DiagnosticRegion.B2: b2md}
-
-
-def load_calibration_file(calibration_filename: str) -> TaggedCalibration:
-    calibration = load_calibration_from_yaml(calibration_filename)
-    file_birthday = datetime.fromtimestamp(os.path.getmtime(calibration_filename))
-    return TaggedCalibration(
-        calibration=calibration, filename=calibration_filename, datetime=file_birthday
-    )
+        return i1tagged_calib, b2tagged_calib
+    
+    def set_avmapping(self, avmapping: AmplitudeVoltageMapping) -> None:
+        area = avmapping.region
+        if area is DiagnosticRegion.I1:
+            self.i1machine.deflector.calibration = avmapping
+        elif area is DiagnosticRegion.B2:
+            self.b2machine.deflector.calibration = avmapping
 
 
 def load_most_recent_calibration(section: DiagnosticRegion) -> TaggedCalibration:
     cdir = get_tds_calibration_config_dir() / DiagnosticRegion(section).name.lower()
 
-    files = cdir.glob("*.toml")
+    dirs = cdir.glob("*")
+    for directory in iter(sorted(dirs, key=os.path.getmtime)):
+        if not directory.is_dir():
+            continue
+        avmapping_file = directory / "avmapping.toml"
+        try:
+            avmapping = load_amplitude_voltage_mapping(avmapping_file)
+        except FileNotFoundError:
+            pass
+        else:
+            LOG.info(f"Loading calibration file {avmapping_file} for {section.name} TDS")
+            return TaggedCalibration(avmapping, avmapping_file)
 
-    newest_file = next(iter(sorted(files, key=os.path.getmtime)))
-    return load_calibration_file(newest_file)
+    msg = f"Failed to find calibration file for {section.name} TDS in {cdir}"
+    LOG.warning(msg)
+    raise FileNotFoundError(msg)

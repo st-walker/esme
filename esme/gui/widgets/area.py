@@ -17,6 +17,7 @@ from esme.control.screens import Screen, screen_is_fully_operational, PoweringSt
 from esme.core import DiagnosticRegion
 from esme.gui.ui import Ui_area_widget
 from esme.control.exceptions import DOOCSReadError
+from esme.control.screens import Screen, Position
 from esme.gui.widgets.common import get_machine_manager_factory, raise_message_box
 
 LOG = logging.getLogger(__name__)
@@ -44,11 +45,7 @@ class AreaControl(QWidget):
         self.machine = self.i1machine  # Set initial machine choice to
         # be for I1 diagnostics
 
-        self.ui.i1_radio_button.pressed.connect(self.set_i1)
-        self.ui.b2_radio_button.pressed.connect(self.set_b2)
-        self.ui.jddd_screen_gui_button.clicked.connect(self.open_jddd_screen_window)
-        self.ui.select_screen_combobox.activated.connect(self.select_screen)
-        # self.ui.select_screen_combobox.activated.connect(self.select_screen)
+        self._connect_buttons()
 
         self._screens_we_powered: set[Screen] = set()
         self._screens_we_set_to_take_data: set[Screen] = set()
@@ -57,6 +54,29 @@ class AreaControl(QWidget):
 
         self.update_screen_combo_box(self.I1_INITIAL_SCREEN)
         self._setup_screen(self.I1_INITIAL_SCREEN)
+
+        self.timer = QTimer()
+        self.timer.timeout.connect(self._update_screen_position_ui)
+        self.timer.start(1000)
+
+    def _connect_buttons(self):
+        self.ui.i1_radio_button.pressed.connect(self.set_i1)
+        self.ui.b2_radio_button.pressed.connect(self.set_b2)
+        self.ui.jddd_screen_gui_button.clicked.connect(self.open_jddd_screen_window)
+        self.ui.select_screen_combobox.activated.connect(self.select_screen)
+        self.ui.screen_on_axis_button.clicked.connect(lambda: self._set_screen_position(Position.ONAXIS))
+        self.ui.screen_off_axis_button.clicked.connect(lambda: self._set_screen_position(Position.OFFAXIS))
+        self.ui.screen_out_button.clicked.connect(lambda: self._set_screen_position(Position.OUT))
+
+    def _set_screen_position(self, pos: Position) -> None:
+        screen = self.machine.screens[self.get_selected_screen_name()]
+        screen.set_position(pos)
+    
+    def _update_screen_position_ui(self):
+        screen = self.machine.screens[self.get_selected_screen_name()]
+        self.ui.screen_position_label.setText(screen.get_position().name)
+        
+        # self.ui.select_screen_combobox.activated.connect(self.select_screen)
 
     def update_screen_combo_box(self, initial_value=None) -> None:
         self.ui.select_screen_combobox.clear()

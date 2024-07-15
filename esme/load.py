@@ -5,6 +5,7 @@ from pathlib import Path
 import yaml
 import logging
 from typing import Optional
+import datetime
 
 import numpy as np
 import pandas as pd
@@ -14,6 +15,7 @@ from esme.control.scanner import QuadScan, QuadScanSetpoint
 from esme.analysis import AnalysisAddresses, OpticsFixedPoints, SetpointDataFrame, MeasurementDataFrames, Scan
 from esme.calibration import CompleteCalibration, CalibrationOptics
 from esme.core import DiagnosticRegion
+from esme.calibration import AmplitudeVoltageMapping
 
 
 LOG = logging.getLogger(__name__)
@@ -136,6 +138,18 @@ def _dscan_config_from_scan_config(
 
 def i1_tscan_config_from_scan_config_file(config_path: os.PathLike):
     return _tscan_config_from_scan_config_file("i1", config_path)
+
+def load_amplitude_voltage_mapping(ftoml: os.PathLike) -> AmplitudeVoltageMapping:
+    with Path(ftoml).open("r") as f:
+        avmapping_kvps = toml.load(f)
+        area = DiagnosticRegion[avmapping_kvps["area"]]
+        amplitudes = avmapping_kvps["amplitudes"]
+        voltages = avmapping_kvps["voltages"]
+        calibration_time = avmapping_kvps.get("calibration_time")
+        if calibration_time is not None:
+            calibration_time = datetime.datetime.fromtimestamp(calibration_time)
+        return AmplitudeVoltageMapping(area, amplitudes, voltages, calibration_time=calibration_time)
+
 
 def load_calibration_from_yaml(yaml_file_path: str) -> CompleteCalibration:
     with open(yaml_file_path, 'r') as file:

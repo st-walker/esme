@@ -100,8 +100,6 @@ def get_default_virtual_machine_interface() -> DictionaryDOOCSInterface:
 
 def get_config_path() -> Path:
     return Path("/Users/xfeloper/user/stwalker/lps")
-    return Path.home() / ".config" / "lps/"
-
 
 def get_tds_calibration_config_dir() -> Path:
     return get_config_path() / "tds-calibrations"
@@ -140,7 +138,7 @@ class QPlainTextEditLogger(QObject, logging.Handler):
 
 
 def setup_screen_display_widget(
-    widget: pg.GraphicsLayoutWidget, axes: bool = False, units: str = "m"
+    widget: pg.GraphicsLayoutWidget, 
 ) -> pg.PlotItem:
     # We add a plot to the pg.GraphicsLayoutWidget
     main_plot = widget.addPlot()
@@ -151,9 +149,13 @@ def setup_screen_display_widget(
     image = pg.ImageItem(border="k", axisOrder="row-major")
     main_plot.hideAxis("left")
     main_plot.hideAxis("bottom")
-    if axes:
-        main_plot.setLabel("bottom", "<i>&Delta;x</i>", units=units)
-        main_plot.setLabel("right", "<i>&Delta;y</i>", units=units)
+    # if axes and not invertxy:
+    #     main_plot.setLabel("bottom", "<i>&Delta;x</i>", units=units)
+    #     main_plot.setLabel("right", "<i>&Delta;y</i>", units=units)
+    # elif axes:
+    #     main_plot.setLabel("bottom", "<i>&Delta;y</i>", units=units)
+    #     main_plot.setLabel("right", "<i>&Delta;x</i>", units=units)
+
     # add the image item to the plot
     main_plot.addItem(image)
     cmap = matplotlib.colormaps["viridis"]

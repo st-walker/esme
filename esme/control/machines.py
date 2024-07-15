@@ -2,6 +2,7 @@ from typing import Any
 
 from esme.control.snapshot import SnapshotRequest, Snapshotter
 from esme.core import DiagnosticRegion
+from esme.calibration import calculate_tds_time_calibration
 
 from .dint import DOOCSInterface
 from .kickers import FastKickerController
@@ -11,7 +12,7 @@ from .scanner import Scanner
 from .screens import Screen, Position
 from .tds import TransverseDeflector
 from .taskomat import Sequence
-
+from .exceptions import DOOCSReadError
 # class StreakingPlaneCalibrationMixin:
 #     def get_streaking_com_slope(self, screen_name):
 #         voltage = self.deflector.get_voltage_rb()
@@ -49,7 +50,7 @@ class HighResolutionEnergySpreadMachine(MachineManager):
         self.sbunches = sbunches
         self.optics = optics
 
-    def beam_off(self):
+    def beam_off(self):    
         self.di.set_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED", 0)
 
     def beam_on(self):
@@ -105,6 +106,7 @@ class DiagnosticBunchesManager(MachineManager):
         """For the given screen, set the kicker timings, voltages, etc.
         so that when the kickers are fired, they will kick the diagnostic bunch
         onto the named screen (screen_name)."""
+        # from IPython import embed; embed()
         # Get the screen instance by name
         screen = self.screens[screen_name]
         # Try and set the kickers for the screen.  If it's a dump screen,
@@ -137,7 +139,7 @@ class MachineReadManager:
         *,
         screens: dict[str, Screen],
         optics: MachineLinearOptics,
-        request: SnapshotRequest
+        request: SnapshotRequest,
     ):
         self.screens = screens
         self.optics = optics
@@ -148,6 +150,8 @@ class MachineReadManager:
         rest_read = self.snapshotter.snapshot(resolve_wildcards=True)
         rest_read |= full_optics_read
         return rest_read
+    
+
 
 
 class ImagingManager(MachineReadManager):
@@ -161,6 +165,17 @@ class ImagingManager(MachineReadManager):
     ):
         super().__init__(screens=screens, optics=optics, request=request)
         self.deflector = deflector
+
+    def calculate_time_calibration(self, screen_name: str) -> float:
+        r12 = self.optics.r12_streaking_from_tds_to_point(screen_name)            
+        voltage = self.deflector.get_voltage_rb()
+        beam_energy = self.optics.get_beam_energy()
+        return calculate_tds_time_calibration(r12_streaking=r12,
+                                              energy_mev=beam_energy,
+                                              voltage=voltage)
+
+    def is_tds_calibrated(self) -> bool:
+        return self.tds.calibration is not None
 
 
 class DumpManager:

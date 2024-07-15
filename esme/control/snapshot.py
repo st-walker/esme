@@ -94,7 +94,8 @@ class Snapshotter:
         result.update(self.read_addresses())
         result.update(self.read_wildcards(resolve_wildcards=resolve_wildcards))
         if self.request.image:
-            result.update(self.read_image(image_dir=image_dir, image=image))
+            image_path, _ = self.read_image(image_dir=image_dir, image=image)
+            result.update(image_path)
         result.update(kvps)
         return result
 

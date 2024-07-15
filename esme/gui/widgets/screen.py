@@ -17,12 +17,14 @@ from esme.calibration import get_tds_com_slope
 from esme.control.exceptions import DOOCSReadError
 from esme.control.screens import ScreenMetadata
 from esme.control.tds import StreakingPlane, UncalibratedTDSError
+from esme.maths import gauss
 
 from .common import get_machine_manager_factory, setup_screen_display_widget
 
 # Below this dispersion we take the dispersion to be 0.
 # Used for deciding whether to apply an energy axis to the screen or not.
 ZERO_DISPERSION_THRESHOLD = 0.01
+# ZERO_STREAKING_THRESHOLD = 0.01 #
 
 # If axis changed by 5% or less then don't propagate a new axis to save unnecessary updates.
 AXIS_UPDATE_RELATIVE_TOLERANCE = 0.05
@@ -38,28 +40,40 @@ AXES_KWARGS: dict[str : dict[str, Any]] = {
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
 
+@dataclass
+class GaussianParameters:
+    scale: float
+    mu: float
+    sigma: float
+
+    def to_popt(self) -> tuple[float, float, float]:
+        return (self.scale, self.mu, self.sigma)
 
 @dataclass
 class ImagePayload:
     image: npt.NDArray
     screen_md: ScreenMetadata
-    xproj: npt.NDArray
-    yproj: npt.NDArray
+    tproj: npt.NDArray
+    eproj: npt.NDArray
+    tgauss: GaussianParameters
 
     @property
-    def x(self) -> np.ndarray:
+    def time(self) -> np.ndarray:
+        # Time is always the x-axis in our convention
         sh = self.image.shape
         return (
-            np.linspace(-sh[1] / 2, sh[1] / 2, num=len(self.xproj))
-            * self.screen_md.xsize
+            np.linspace(-sh[1] / 2, sh[1] / 2, num=len(self.tproj))
+            # XXX: This scale factor would have to change for B2...
+            * self.screen_md.ysize
         )
 
     @property
-    def y(self) -> np.ndarray:
+    def energy(self) -> np.ndarray:
+        # Time is always the x-axis so energy is y-axis.
         sh = self.image.shape
         return (
-            np.linspace(-sh[0] / 2, sh[0] / 2, num=len(self.yproj))
-            * self.screen_md.ysize
+            np.linspace(-sh[0] / 2, sh[0] / 2, num=len(self.eproj))
+            * self.screen_md.xsize
         )
 
 
@@ -67,28 +81,42 @@ class ImagePayload:
 class AxesCalibration:
     energy_ev: float
     dispersion: float
+    time_calibration: float # in m/s of course...
     streaking_plane: StreakingPlane
 
 
 class ScreenWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
+        # fmt: off
+        self.i1machine, self.b2machine = get_machine_manager_factory().make_i1_b2_imaging_managers()
+        self.machine = self.i1machine
+        # fmt: on
 
         self.glwidget = pg.GraphicsLayoutWidget(parent=self)
         self.layout = QGridLayout(self)
         self.layout.addWidget(self.glwidget)
-        self.image_plot = setup_screen_display_widget(self.glwidget, axes=True)
+        self.image_plot = setup_screen_display_widget(self.glwidget)
+        self.setup_screen_axes()
 
-        # fmt: off
-        self.i1machine, self.b2machine = get_machine_manager_factory().make_i1_b2_managers()
-        self.machine = self.i1machine
-        # fmt: on
 
         # Add projection axes to the image display daughter widget
         self.xplot, self.yplot = self._make_transverse_projections()
 
         # We have to pick some screen to begin with so it might as well be the first screen.
         self.set_screen("OTRC.55.I1")
+
+    def setup_screen_axes(self) -> None:
+        xlabel = "<i>&Delta;x</i>"
+        ylabel = "<i>&Delta;y</i>"
+        if self.machine is self.i1machine:
+            xpos = "right"
+            ypos = "bottom"
+        elif self.machine is self.b2machine:
+            xpos = "bottom"
+            ypos = "right"
+        self.image_plot.setLabel(xpos, xlabel, units="m")
+        self.image_plot.setLabel(ypos, ylabel, units="m")
 
     def set_screen(self, screen_name: str) -> None:
         # Screen dimensions should always be distance (not pixels, not time, not energy).
@@ -119,10 +147,12 @@ class ScreenWidget(QWidget):
                 # Try again in a bit
                 QTimer.singleShot(1000, try_it)
             else:
+                # XXX!!! This will be wrong for BC2!!!  This whole thing needs refactoring...
+                # This makes no sense, why scale by ypixel size but translate by nxpixels?  nobody knows...
                 tr = QtGui.QTransform()  # prepare ImageItem transformation:
-                tr.scale(xpixel_size, ypixel_size)  # scale horizontal and vertical axes
+                tr.scale(ypixel_size, xpixel_size)  # scale horizontal and vertical axes
                 tr.translate(
-                    -nypixel / 2, -nxpixel / 2
+                    -nxpixel / 2, -nypixel / 2
                 )  # move image to locate center at axis origin
                 self.image_plot.items[0].setTransform(tr)  # assign transform
 
@@ -133,12 +163,14 @@ class ScreenWidget(QWidget):
 
     def _calibrate_dispersive_axes(self, axescalib: AxesCalibration) -> None:
         # The dispersive axis the the other axis to the streaking axis.
+
+        # The dispersive axes always is on the y-axis, because we want
+        # time on the x-axis.
+        axis = self.xplot.getAxis("right")
         if axescalib.streaking_plane is StreakingPlane.HORIZONTAL:
-            axis = self.xplot.getAxis("bottom")
-            dim = "x"
-        elif axescalib.streaking_plane is StreakingPlane.VERTICAL:
-            axis = self.yplot.getAxis("right")
             dim = "y"
+        elif axescalib.streaking_plane is StreakingPlane.VERTICAL:
+            dim = "x"
         else:
             raise TypeError(f"Unknown streaking plane: {axescalib.streaking_plane}")
 
@@ -153,6 +185,26 @@ class ScreenWidget(QWidget):
             self.set_axis_transform_with_label(
                 axis, scale_factor, AXES_KWARGS["energy"]
             )
+
+    def _calibrate_time_axes(self, axescalib: AxesCalibration) -> None:
+        # Time axis is always on the bottom (x-axis)
+        axis = self.xplot.getAxis("bottom")
+        if axescalib.streaking_plane is StreakingPlane.HORIZONTAL:
+            dim = "y"
+        elif axescalib.streaking_plane is StreakingPlane.VERTICAL:
+            axis = self.yplot.getAxis("bottom")
+            dim = "x"
+        else:
+            raise TypeError(f"Unknown streaking plane: {axescalib.streaking_plane}")
+
+        if not abs(axescalib.time_calibration):
+            self.set_axis_transform_with_label(axis, 1.0, AXES_KWARGS[dim])
+        else:
+            scale_factor = 1 / axescalib.time_calibration
+            self.set_axis_transform_with_label(
+                axis, scale_factor, AXES_KWARGS["time"]
+            )
+
 
     def set_axis_transform_with_label(
         self,
@@ -178,7 +230,7 @@ class ScreenWidget(QWidget):
     def _make_transverse_projections(self) -> None:
         win = self.glwidget
         axis = {
-            "right": NegatableLabelsAxisItem("right", text="<i>&Delta;y</i>", units="m")
+            "right": NegatableLabelsAxisItem("right", text="<i>&Delta;x</i>", units="m")
         }
         yplot = win.addPlot(row=0, col=1, rowspan=1, colspan=1, axisItems=axis)
         yplot.hideAxis("left")
@@ -190,7 +242,7 @@ class ScreenWidget(QWidget):
         win.nextRow()
         axis = {
             "bottom": NegatableLabelsAxisItem(
-                "bottom", text="<i>&Delta;x</i>", units="m"
+                "bottom", text="<i>&Delta;y</i>", units="m"
             )
         }
         xplot = win.addPlot(row=1, col=0, colspan=1, axisItems=axis)
@@ -202,8 +254,12 @@ class ScreenWidget(QWidget):
     def update_projection_plots(self, image_payload: ImagePayload) -> None:
         self.xplot.clear()
         self.yplot.clear()
-        self.xplot.plot(image_payload.x, image_payload.xproj)
-        self.yplot.plot(image_payload.yproj, image_payload.y)
+        self.xplot.plot(image_payload.time, image_payload.tproj, name="Data")
+        # We need here the time calibration really (if it exists...)
+        if image_payload.tgauss is not None:
+            tgaussfit = gauss(image_payload.time, *image_payload.tgauss.to_popt())
+            self.xplot.plot(image_payload.time, tgaussfit, name="Fit", pen="red")
+        self.yplot.plot(image_payload.eproj, image_payload.energy)
 
 
 class CalibrationWatcher(QObject):

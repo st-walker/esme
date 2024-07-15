@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 
-from PyQt5.QtCore import QObject, QProcess, Qt, pyqtSignal
+from PyQt5.QtCore import QObject, QProcess, Qt, pyqtSignal, QTimer
 from PyQt5.QtWidgets import QApplication, QMainWindow
 
 from esme.gui.ui import mainwindow
@@ -12,6 +12,8 @@ from esme.gui.widgets.common import (
     set_tds_calibration_by_region,
 )
 from esme.core import DiagnosticRegion
+from esme.control.dint import DOOCSInterface
+import pydoocs
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
@@ -59,6 +61,8 @@ class LPSMainWindow(QMainWindow):
         # XXX: Not a priortity right now.
         # self._init_target_control()
 
+        self.di = DOOCSInterface()
+
         # Connect signals for screen name which we select in this
         # widget and have to propagate to the child widgets.
         self.ui.area.screen_name_signal.connect(
@@ -87,6 +91,10 @@ class LPSMainWindow(QMainWindow):
         # Emit initial screen name to any widgets.
         self.ui.area.emit_current_screen_name()
 
+        self.timer = QTimer()
+        self.timer.timeout.connect(self._set_beam_on_off_text)
+        self.timer.start(1000)
+
     def _init_target_control(self) -> None:
         f = get_machine_manager_factory()
         i1d_dump, i1d_undo_dump = f.make_dump_sequences(DiagnosticRegion.I1)
@@ -101,7 +109,6 @@ class LPSMainWindow(QMainWindow):
         )
 
     def update_tds_voltage_calibration(self, voltage_calibration) -> None:
-        set_tds_calibration_by_region(self, voltage_calibration)
         self.ui.imaging_widget.set_tds_calibration(voltage_calibration)
 
     def send_to_logbook(self) -> None:
@@ -112,7 +119,21 @@ class LPSMainWindow(QMainWindow):
         logging.getLogger().addHandler(log_handler)
         log_handler.log_signal.connect(self.ui.measurement_log_browser.append)
 
+    def toggle_beam_on_off(self):
+        if self.di.set_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED"):
+            self.di.set_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED", 0)
+        else:
+            self.di.set_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED", 1)
+
+    def _set_beam_on_off_text(self):
+        if not self.di.get_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED"):
+            button_text = "Beam Off"
+        else:
+            button_text = "Beam On"
+        self.ui.beam_on_off_button.setText(button_text)
+
     def connect_buttons(self) -> None:
+        self.ui.beam_on_off_button.clicked.connect(self.toggle_beam_on_off)
         # Menu buttons
         self.ui.action_print_to_logbook.triggered.connect(self.send_to_logbook)
         self.ui.action_close.triggered.connect(self.close)

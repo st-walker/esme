@@ -203,8 +203,10 @@ class MachineManagerFactory:
         try:
             manager = deepcopy(self._manager_cache[area]["hires"])
         except KeyError:
+            # from IPython import embed; embed()
             manager = HighResolutionEnergySpreadMachine(
-                scanner=self._get_scanner(area),
+                scanner=load_scanner_from_config(self._config),
+                # scanner=self._get_scanner(area),
                 screen=self._get_screens(area)["OTRC.64.I1D"],
                 deflector=self._get_deflector(area),
                 sbunches=self._get_sbunches(area),

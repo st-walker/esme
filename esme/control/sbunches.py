@@ -125,17 +125,6 @@ class SpecialBunchesControl:
 
     def _first_valid_kicker_number(self) -> int:
         return min(self._kicker_number_area_map()[self.location])
-    
-    @property
-    def kicker_number(self) -> int:
-        return self._kicker_number
-    
-    @kicker_number.setter
-    def kicker_number(self, n: int | None) -> None:
-        # What is this bit of code doing?  Why can None be a possible Kicker number?
-        if n is not None and n not in self._kicker_number_area_map()[self.location]:
-            raise ValueError(f"Selected kicker number {n} does not correspond to a real kicker.")
-        self._kicker_number = n
 
     def set_beam_region(self, br: int) -> None:
         """Set the beam region of the special bunch that would be fired.  Note that the number here is zero counting!"""
@@ -223,8 +212,8 @@ class SpecialBunchesControl:
 
     def set_kicker_name(self, kicker_name: str) -> None:
         """Select a kicker given by name for use in the special bunch midlayer.
-           This sets the relevant entry in the control address (a 4-tuple of integers) so that when a diagnostic bunch is fired, 
-           IF the kickers are ALSO enabled (using method power_on_kickers).
+           This does not actually write the kicker number to the control address (i.e. to use it).  If the kickers are not
+           enable before calling this method, then they are not enabled after calling this method.
 
            If there are two kickers we want to set (i.e. two with the same kicker number), then we only need to set one of them, as they
            share the same kicker number, so this only needs to be called once in that case, although calling it again will not cause 
@@ -237,27 +226,10 @@ class SpecialBunchesControl:
         do_use_kickers
 
         """
-        # I don't really like how this is done.  
-        clist = self.get_control_list()
-        kmap = self.get_kicker_name_to_kicker_number_map()
-        kicker_number = kmap[kicker_name]
-        # We store a local reference to the kicker number as well, which we have to do.
-        self._kicker_number = kicker_number
-        self._write_kicker_number_to_sbm(kicker_number)
-        # clist[2] = kicker_number        
-        # LOG.info(f"Enabling fast kicker by setting kicker number in {self.control_address()}, {kicker_name=}, {kicker_number=}")
-        # self.di.set_value(self.control_address(), clist)
-
-    # def set_kicker_number_by_name(self, kicker_name: str) -> None:
-    #     if self.kicker_number is None:
-    #         raise ValueError("No kicker number to write to CONTROL.")
-    #     clist = self.get_control_list()
-    #     kmap = self.get_kicker_name_to_kicker_number_map()
-    #     kicker_number = kmap[kicker_name]
-    #     clist[2] = kicker_number
-    #     LOG.info(f"Enabling fast kicker by setting kicker number in {self.control_address()}, {kicker_name=}, {kicker_number=}")
-    #     self.di.set_value(self.control_address(), clist)
-    #     pass
+        self._kicker_number = self.get_kicker_name_to_kicker_number_map()[kicker_name]
+        # If we would use the kickers with some previous kicker number, we do still, by updating the kicker number in the control list.
+        if self.would_use_kickers():
+            self.do_use_kickers()        
 
     def _write_kicker_number_to_sbm(self, kn: int) -> None:
         clist = self.get_control_list()        

@@ -9,7 +9,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>493</width>
+    <width>511</width>
     <height>250</height>
    </rect>
   </property>
@@ -45,7 +45,7 @@
    <item row="2" column="1">
     <widget class="QDoubleSpinBox" name="tds_voltage_spinbox">
      <property name="enabled">
-      <bool>false</bool>
+      <bool>true</bool>
      </property>
      <property name="suffix">
       <string>MV</string>
@@ -89,7 +89,7 @@
    <item row="2" column="0">
     <widget class="QLabel" name="voltage_label">
      <property name="enabled">
-      <bool>false</bool>
+      <bool>true</bool>
      </property>
      <property name="text">
       <string>Voltage</string>
@@ -101,7 +101,7 @@
      <item>
       <widget class="QLabel" name="calibration_file_path_label">
        <property name="text">
-        <string>file</string>
+        <string/>
        </property>
        <property name="textInteractionFlags">
         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
@@ -141,7 +141,7 @@
      <item>
       <widget class="QLabel" name="calibration_time_label_2">
        <property name="text">
-        <string>time</string>
+        <string/>
        </property>
        <property name="textInteractionFlags">
         <set>Qt::TextSelectableByMouse</set>

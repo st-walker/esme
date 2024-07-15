@@ -84,7 +84,7 @@ class MeasurementContext:
         raise TypeError()
 
 
-
+from esme.image import filter
 
 @dataclass
 class PhaseScan:

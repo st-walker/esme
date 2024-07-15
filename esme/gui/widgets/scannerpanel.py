@@ -38,6 +38,8 @@ from esme.image import (
     get_slice_properties,
 )
 from esme.optics import load_matthias_slice_measurement
+from esme.calibration import AmplitudeVoltageMapping
+from esme.core import DiagnosticRegion
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
@@ -85,10 +87,7 @@ class ScannerControl(QtWidgets.QWidget):
         self.ui = Ui_scanner_form()
         self.ui.setupUi(self)
 
-        (
-            self.i1machine,
-            self.b2machine,
-        ) = get_machine_manager_factory().make_i1_b2_managers()
+        self.i1machine = self.b2machine = get_machine_manager_factory().make_hires_injector_energy_spread_manager()
         self.machine = (
             self.i1machine
         )  # Set initial machine choice to be for I1 diagnostics
@@ -107,6 +106,13 @@ class ScannerControl(QtWidgets.QWidget):
         self.jddd_camera_window_process = None
 
         self.timer = self.build_main_timer(100)
+
+        amplitudes = [7, 10, 13, 16]
+        voltages = np.array([0.35, 0.51, 0.66, 0.83]) * 1e6
+        self.avmapping = AmplitudeVoltageMapping(DiagnosticRegion.I1, amplitudes, voltages)
+        self.machine.deflector.calibration = self.avmapping
+        print(amplitudes)
+        print(self.avmapping.get_voltage(amplitudes))
 
     def set_ui_initial_values(self, dic: dict[str, Any]) -> None:
         self.ui.beam_shots_spinner.setValue(dic["beam_shots_spinner"])
@@ -328,7 +334,7 @@ class ScannerControl(QtWidgets.QWidget):
     def display_final_result(self, result: OnlineMeasurementResult):
         LOG.debug("Displaying Final Result")
         try:
-            self.result_dialog.post_measurement_result(result)
+            self.result_dialog.post_measurement_result(result.measurement_parameters, output_directory=result.output_directory)
         except ValueError:
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Critical)
@@ -377,6 +383,7 @@ class ScannerControl(QtWidgets.QWidget):
             images_per_setpoint=images_per_setpoint,
             total_background_images=total_background_images,
             settings=settings,
+            avmapping=self.avmapping
         )
         LOG.info(f"Preparing scan request payload: {scan_request}")
         return scan_request
@@ -435,6 +442,7 @@ class ScanRequest:
     slice_pos: int = None
     # measured_slice_twiss = None
     settings: ScanSettings = None
+    avmapping: AmplitudeVoltageMapping = None
 
 
 @dataclass
@@ -488,7 +496,7 @@ class ScanWorker(QObject):
         sbml.set_use_tds(use_tds=True)
         # Kickers I think have to be powered on to make the SBM server
         # happy, but obivously we don't use them.
-        sbml.power_on_kickers()
+        sbml.power_up_kickers()
         sbml.dont_use_kickers()
 
     def start_tds_firing(self):
@@ -500,6 +508,9 @@ class ScanWorker(QObject):
         print(self.machine)
         print(self.machine.di)
         self.machine.beam_off()
+        self.machine.sbunches.stop_diagnostic_bunch()
+        time.sleep(1)
+        # self.machine.sbunches.
         try:
             background = self.take_background(self.scan_request.total_background_images)
         except InterruptedMeasurementException as e:
@@ -537,6 +548,7 @@ class ScanWorker(QObject):
             dscan_widths=dscan_widths,
             tscan_widths=tscan_widths,
             bscan_widths=bscan_widths,
+            avmapping=self.scan_request.avmapping
         )
         ofp = self.machine.scanner.scan.optics_fixed_points
         beam_energy = self.machine.optics.get_beam_energy() * 1e6
@@ -611,7 +623,7 @@ class ScanWorker(QObject):
         setpoint = self.machine.scanner.scan.tscan.setpoint
         slice_pos = self.scan_request.slice_pos
         self.set_quads(setpoint)
-        time.sleep(3)
+        time.sleep(5)
         widths = defaultdict(list)
         lengths = defaultdict(list)
 
@@ -712,6 +724,7 @@ class ScanWorker(QObject):
     def set_tds_voltage(self, voltage):
         LOG.info(f"Setting TDS voltage: {voltage / 1e6} MV")
         # amplitude = self.scan_request.calibration.get_amplitude(voltage)
+
         self.machine.deflector.set_voltage(voltage)
 
     def take_screen_data(self, nbeam, expect_beam=True):
@@ -723,7 +736,6 @@ class ScanWorker(QObject):
             elif not expect_beam and is_beam_on:
                 raise MachineCancelledMeasurementException("Beam unexpectedly on.")
 
-            time.sleep(0.2)
             raw_image = self.machine.screen.get_image_raw()
             yield raw_image
 
@@ -784,7 +796,7 @@ class ScanWorker(QObject):
             self.scan_request.screen_name
         )
         beam_energy = self.machine.optics.get_beam_energy() * 1e6 * e  # MeV to Joules
-
+        
         sigma_z = true_bunch_length_from_processed_image(
             image, voltage=voltage, r34=r12_streaking, energy=beam_energy
         )

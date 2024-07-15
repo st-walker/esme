@@ -12,7 +12,7 @@ with warnings.catch_warnings():
 
 from esme.maths import line
 from esme import DiagnosticRegion
-from esme.optics import calculate_i1d_r34_from_tds_centre
+from datetime import datetime
 
 I1D_ENERGY_ADDRESS = "XFEL.DIAG/BEAM_ENERGY_MEASUREMENT/I1D/ENERGY.ALL"
 
@@ -23,37 +23,34 @@ TDS_LENGTH = 0.7  # metres
 
 
 class AmplitudeVoltageMapping:
-    def __init__(self, region: DiagnosticRegion, amplitudes, voltages):
+    def __init__(self, region: DiagnosticRegion, amplitudes, voltages, calibration_time: datetime | None = None):
         self.region = region
-        self._amplitudes = amplitudes
-        self._voltages = voltages
+        self._amplitudes = list(amplitudes)
+        self._voltages = list(voltages)
+        self.calibration_time = calibration_time
 
         if len(self._amplitudes) != len(self._voltages):
             raise ValueError("Mismatch in number of amplitudes and voltages")
 
-        # self._is_single_point = len(self._amplitudes) == 1
-        if len(self._amplitudes) > 1:
-            self._amp_to_voltage_popt = self.fit_to_voltage()
-            self._voltage_to_amp_popt = self.fit_to_amplitude()
-            self._is_single_point = False
-        elif len(self._amplitudes) == 1:
-            self._is_single_point = True
-        # else:
-        #     raise
+        self._amp_to_voltage_popt, self._amp_to_voltage_pcov = self.fit_to_voltage()
+        self._voltage_to_amp_popt, self._voltage_to_amp_pcov = self.fit_to_amplitude()
 
+    @property
+    def voltages(self) -> list[float]:
+        return self._voltages.copy()
+    
+    @property
+    def amplitudes(self) -> list[float]:
+        return self._amplitudes.copy()
 
     def get_voltage(self, amplitude):
-        if self._is_single_point:
-            return amplitude * self._voltages[0] / self._amplitudes[0]
-
-        popt, _ = self._voltage_to_amp_popt
-        return line(np.array(amplitude), *popt)
+        popt, _ = curve_fit(line, self._amplitudes, self._voltages)
+        return line(abs(np.array(amplitude)), *popt)
 
     def get_amplitude(self, voltage):
         if self._is_single_point:
             return voltage * self._amplitudes[0] / self._voltages[0]
-
-        popt, _ = self._amp_to_voltage_popt
+        popt = self._amp_to_voltage_popt
         return line(np.array(voltage), *popt)
 
     def fit_to_voltage(self):
@@ -167,3 +164,5 @@ def get_tds_com_slope(r12_streaking, energy_mev, voltage) -> float:
     energy_joules = energy_mev * e * 1e6  # Convert to joules.
     gradient_m_per_s = e * voltage * r12_streaking * angular_frequency / energy_joules
     return gradient_m_per_s
+
+calculate_tds_time_calibration = get_tds_com_slope

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>438</width>
-    <height>72</height>
+    <width>466</width>
+    <height>250</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -20,83 +20,106 @@
    <string>Form</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <property name="leftMargin">
-    <number>0</number>
-   </property>
-   <property name="topMargin">
-    <number>0</number>
-   </property>
-   <property name="rightMargin">
-    <number>0</number>
-   </property>
-   <property name="bottomMargin">
-    <number>0</number>
-   </property>
-   <property name="horizontalSpacing">
-    <number>-1</number>
-   </property>
-   <item row="0" column="0">
-    <layout class="QVBoxLayout" name="verticalLayout">
+   <item row="3" column="0">
+    <widget class="QPushButton" name="screen_on_axis_button">
+     <property name="text">
+      <string>On Axis</string>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="1" colspan="2">
+    <widget class="QLabel" name="screen_position_label">
+     <property name="text">
+      <string/>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="0" colspan="3">
+    <layout class="QHBoxLayout" name="horizontalLayout_3">
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_2">
-       <item>
-        <widget class="QLabel" name="section_label">
-         <property name="text">
-          <string>Section</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QRadioButton" name="i1_radio_button">
-         <property name="text">
-          <string>I1</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QRadioButton" name="b2_radio_button">
-         <property name="text">
-          <string>B2</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
+      <widget class="QLabel" name="screen_label">
+       <property name="text">
+        <string>Screen</string>
+       </property>
+      </widget>
      </item>
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_3">
-       <item>
-        <widget class="QLabel" name="screen_label">
-         <property name="text">
-          <string>Screen</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QComboBox" name="select_screen_combobox">
-         <property name="toolTip">
-          <string>The name of the screen to use</string>
-         </property>
-         <property name="placeholderText">
-          <string/>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="jddd_screen_gui_button">
-         <property name="toolTip">
-          <string>Open the corresponding JDDD camera control panel for the selected screen</string>
-         </property>
-         <property name="text">
-          <string>Open Camera Expert</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
+      <widget class="QComboBox" name="select_screen_combobox">
+       <property name="toolTip">
+        <string>The name of the screen to use</string>
+       </property>
+       <property name="placeholderText">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="jddd_screen_gui_button">
+       <property name="toolTip">
+        <string>Open the corresponding JDDD camera control panel for the selected screen</string>
+       </property>
+       <property name="text">
+        <string>Open Camera Expert</string>
+       </property>
+      </widget>
      </item>
     </layout>
+   </item>
+   <item row="3" column="1">
+    <widget class="QPushButton" name="screen_off_axis_button">
+     <property name="text">
+      <string>Off Axis</string>
+     </property>
+    </widget>
+   </item>
+   <item row="3" column="2">
+    <widget class="QPushButton" name="screen_out_button">
+     <property name="text">
+      <string>Out</string>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="0">
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>Position:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="0" colspan="3">
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
+     <item>
+      <widget class="QLabel" name="section_label">
+       <property name="text">
+        <string>Section</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QRadioButton" name="i1_radio_button">
+       <property name="text">
+        <string>I1</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QRadioButton" name="b2_radio_button">
+       <property name="text">
+        <string>B2</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item row="1" column="0" colspan="3">
+    <widget class="Line" name="line">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+    </widget>
    </item>
   </layout>
  </widget>

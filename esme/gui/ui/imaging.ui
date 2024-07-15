@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1381</width>
+    <width>1561</width>
     <height>849</height>
    </rect>
   </property>
@@ -14,16 +14,6 @@
    <string>Form</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="0" column="0" colspan="2">
-    <widget class="ScreenWidget" name="screen_display_widget" native="true">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-       <horstretch>1</horstretch>
-       <verstretch>1</verstretch>
-      </sizepolicy>
-     </property>
-    </widget>
-   </item>
    <item row="1" column="0" rowspan="2">
     <widget class="QGroupBox" name="groupBox">
      <property name="sizePolicy">
@@ -36,17 +26,24 @@
       <string>Measurements</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_6">
-      <item row="0" column="3">
+      <item row="0" column="3" rowspan="3">
+       <widget class="Line" name="line">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="4">
        <widget class="QPushButton" name="current_profile_button">
         <property name="enabled">
-         <bool>false</bool>
+         <bool>true</bool>
         </property>
         <property name="text">
          <string>Current Profile</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="3">
+      <item row="2" column="4">
        <widget class="QPushButton" name="pushButton">
         <property name="enabled">
          <bool>false</bool>
@@ -56,21 +53,31 @@
         </property>
        </widget>
       </item>
-      <item row="0" column="2" rowspan="2">
-       <widget class="Line" name="line">
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
+      <item row="0" column="0" colspan="3">
+       <widget class="QPushButton" name="send_to_logbook_button">
+        <property name="styleSheet">
+         <string notr="true">QPushButton { color: blue; }</string>
+        </property>
+        <property name="text">
+         <string>Write to XFEL e-Logbook...</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="0">
+      <item row="1" column="4">
+       <widget class="QPushButton" name="pushButton_3">
+        <property name="text">
+         <string>Slice Analysis</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0" rowspan="2">
        <widget class="QPushButton" name="take_background_button">
         <property name="text">
          <string>Accumulate Background</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="1">
+      <item row="1" column="1" rowspan="2">
        <widget class="QLabel" name="nbg_images_acquired_label">
         <property name="font">
          <font>
@@ -82,17 +89,17 @@
         </property>
        </widget>
       </item>
-      <item row="0" column="0" colspan="2">
-       <widget class="QPushButton" name="send_to_logbook_button">
-        <property name="styleSheet">
-         <string notr="true">QPushButton { color: blue; }</string>
-        </property>
-        <property name="text">
-         <string>Write to XFEL e-Logbook...</string>
-        </property>
-       </widget>
-      </item>
      </layout>
+    </widget>
+   </item>
+   <item row="0" column="0" colspan="2">
+    <widget class="ScreenWidget" name="screen_display_widget" native="true">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>1</horstretch>
+       <verstretch>1</verstretch>
+      </sizepolicy>
+     </property>
     </widget>
    </item>
    <item row="1" column="1" rowspan="2">
@@ -101,77 +108,28 @@
       <string>Display</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_2">
-      <item row="1" column="0" colspan="3">
-       <widget class="QPushButton" name="regenerate_axes_button">
-        <property name="text">
-         <string>Regenerate Axes</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="4" rowspan="2">
+      <item row="0" column="3" rowspan="5">
        <widget class="Line" name="line_3">
         <property name="orientation">
          <enum>Qt::Vertical</enum>
         </property>
        </widget>
       </item>
-      <item row="0" column="9" rowspan="2">
-       <widget class="Line" name="line_2">
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
+      <item row="4" column="0" colspan="3">
+       <widget class="QPushButton" name="regenerate_axes_button">
+        <property name="text">
+         <string>Regenerate Axes</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="10">
+      <item row="4" column="7">
        <widget class="QLabel" name="label_2">
         <property name="text">
          <string>Read Rate</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="0">
-       <layout class="QHBoxLayout" name="horizontalLayout">
-        <item>
-         <widget class="QLabel" name="label">
-          <property name="text">
-           <string>Dispersion</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QDoubleSpinBox" name="dispersion_spinner">
-          <property name="wrapping">
-           <bool>false</bool>
-          </property>
-          <property name="frame">
-           <bool>true</bool>
-          </property>
-          <property name="showGroupSeparator" stdset="0">
-           <bool>false</bool>
-          </property>
-          <property name="suffix">
-           <string>m</string>
-          </property>
-          <property name="decimals">
-           <number>2</number>
-          </property>
-          <property name="minimum">
-           <double>-100.000000000000000</double>
-          </property>
-          <property name="maximum">
-           <double>100.000000000000000</double>
-          </property>
-          <property name="singleStep">
-           <double>0.100000000000000</double>
-          </property>
-          <property name="stepType">
-           <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item row="1" column="11">
+      <item row="4" column="8">
        <widget class="QSpinBox" name="read_rate_spinner">
         <property name="buttonSymbols">
          <enum>QAbstractSpinBox::UpDownArrows</enum>
@@ -187,14 +145,113 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="6">
-       <widget class="QCheckBox" name="clip_offaxis_checkbox">
+      <item row="3" column="2">
+       <widget class="QPushButton" name="calculate_time_calibration_button">
         <property name="text">
-         <string>Clip Off-axis Features</string>
+         <string>Calculate Time Calibration</string>
         </property>
        </widget>
       </item>
-      <item row="0" column="2">
+      <item row="0" column="4" rowspan="5">
+       <layout class="QVBoxLayout" name="verticalLayout">
+        <item>
+         <widget class="QPushButton" name="autogain_button">
+          <property name="text">
+           <string>Auto Gain Control</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="subtract_bg_checkbox">
+          <property name="enabled">
+           <bool>true</bool>
+          </property>
+          <property name="text">
+           <string>Subtract background</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="smooth_image_checkbox">
+          <property name="text">
+           <string>Smooth Image</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item row="0" column="5" rowspan="5" colspan="2">
+       <widget class="Line" name="line_2">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="QDoubleSpinBox" name="time_calibration_spinbox">
+        <property name="suffix">
+         <string> μmps⁻¹</string>
+        </property>
+        <property name="decimals">
+         <number>1</number>
+        </property>
+        <property name="maximum">
+         <double>10000.000000000000000</double>
+        </property>
+        <property name="stepType">
+         <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
+        </property>
+        <property name="value">
+         <double>0.000000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="label_3">
+        <property name="text">
+         <string>Time Calibration</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label">
+        <property name="text">
+         <string>Dispersion</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QDoubleSpinBox" name="dispersion_spinner">
+        <property name="wrapping">
+         <bool>false</bool>
+        </property>
+        <property name="frame">
+         <bool>true</bool>
+        </property>
+        <property name="showGroupSeparator" stdset="0">
+         <bool>false</bool>
+        </property>
+        <property name="suffix">
+         <string> m</string>
+        </property>
+        <property name="decimals">
+         <number>2</number>
+        </property>
+        <property name="minimum">
+         <double>-100.000000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>100.000000000000000</double>
+        </property>
+        <property name="singleStep">
+         <double>0.100000000000000</double>
+        </property>
+        <property name="stepType">
+         <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="2">
        <widget class="QPushButton" name="calculate_dispersion_button">
         <property name="toolTip">
          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Calculates the dispersion at the screen using linear optics and magnet strengths from the machine&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -207,24 +264,7 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="8">
-       <widget class="QCheckBox" name="subtract_bg_checkbox">
-        <property name="enabled">
-         <bool>true</bool>
-        </property>
-        <property name="text">
-         <string>Subtract background</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="6" colspan="3">
-       <widget class="QPushButton" name="autogain_button">
-        <property name="text">
-         <string>Auto Gain Control</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="10" colspan="2">
+      <item row="1" column="7" rowspan="3" colspan="2">
        <widget class="PlayPauseButton" name="play_pause_button">
         <property name="text">
          <string>Pause</string>

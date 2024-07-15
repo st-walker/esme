@@ -1151,7 +1151,7 @@ def apparent_rms_bunch_length_from_processed_image(image):
 
     # Transform units from px to whatever was chosen
     mean_length, mean_error = transform_pixel_widths(
-        [population_standard_deviation],
+
         [0],
         to_variances=False,
         pixel_units="m",
@@ -1162,7 +1162,7 @@ def apparent_rms_bunch_length_from_processed_image(image):
 
 
 def true_bunch_length_from_processed_image(image, *, voltage, r34, energy) -> ufloat:
-    raw_bl, raw_bl_err = apparent_bunch_length_from_processed_image(image)
+    raw_bl, raw_bl_err = apparent_gaussian_bunch_length_from_processed_image(image)
     raw_bl = ufloat(raw_bl, raw_bl_err)
     true_bl = (energy / (e * voltage * TDS_WAVENUMBER)) * raw_bl / abs(r34)
     return true_bl

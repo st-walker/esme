@@ -21,6 +21,7 @@ import pyqtgraph as pg
 from PyQt5 import QtGui
 from PyQt5.QtCore import QObject, Qt, QThread, QTimer, pyqtSignal
 from PyQt5.QtWidgets import (
+    QMessageBox,
     QDialog,
     QHBoxLayout,
     QLabel,
@@ -32,6 +33,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from scipy import ndimage
 
 from esme import DiagnosticRegion
 from esme.image import zero_off_axis_regions
@@ -39,7 +41,9 @@ from esme.control.exceptions import DOOCSReadError
 from esme.control.screens import Position, Screen, ScreenMetadata
 from esme.control.tds import StreakingPlane
 from esme.gui.ui.imaging import Ui_imaging_widget
-from esme.gui.widgets.screen import AxesCalibration, ImagePayload
+from esme.gui.widgets.screen import AxesCalibration, ImagePayload, GaussianParameters
+from esme.calibration import AmplitudeVoltageMapping
+from scipy.optimize import curve_fit
 
 from .common import get_machine_manager_factory, send_widget_to_log
 
@@ -59,6 +63,7 @@ class MessageType(Enum):
     PAUSE_SCREEN = auto()
     SET_FREQUENCY = auto()
     CLIP_OFFAXIS = auto()
+    SMOOTH_IMAGE = auto()
 
 
 @dataclass
@@ -121,12 +126,14 @@ class ImagingControlWidget(DiagnosticSectionWidget):
 
         self._connect_buttons()
 
-    def set_tds_calibration(self, voltage_calibration):
+    def set_tds_calibration(self, voltage_calibration: AmplitudeVoltageMapping):
         # XXX: I should somehow also send this to the elogger so it's clear which
         # Calibration we are using or whatever.
-        self.ui.screen_display_widget.propagate_tds_calibration_signal(
-            voltage_calibration
-        )
+        pass
+        # from IPython import embed; embed()
+        # self.ui.screen_display_widget.propagate_tds_calibration_signal(
+        #     voltage_calibration
+        # )
 
     def _update_ui(self):
         screen = self.screen
@@ -136,7 +143,6 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         self.ui.autogain_button.setEnabled(not is_active)
         # We only allow for clipping if the screen is off axis
         is_offaxis = screen.get_position() is Position.OFFAXIS
-        self.ui.clip_offaxis_checkbox.setEnabled(is_offaxis and not is_active)
         if not is_offaxis:
             # This is a bit crap but if the position is not off axis then
             # We repeatedly send a message to the thread telling it to
@@ -154,9 +160,20 @@ class ImagingControlWidget(DiagnosticSectionWidget):
             self.ui.dispersion_spinner.setValue(dy)
         else:
             raise ValueError("Unknown diagnostic section: %s", section)
+        
+    def _calculate_time_calibration(self) -> None:
+        try:
+            time_calibration = self.mreader.calculate_time_calibration(self.screen.name)
+        except DOOCSReadError as e:
+            QMessageBox.warning(None, "Read Error", f"Error trying to calculate TDS calibration at screen.  Could not read {e.address}.")
+            # In case we e.g. cannot read the beam energy (this would typically be if there is no beam...)
+            return
+        # Multiply by 1e-6 to convert from m/s to µm/ps.
+        self.ui.time_calibration_spinbox.setValue(time_calibration * 1e-6)
 
     def _generate_axes_calibrations(self) -> None:
         dispersion = self.ui.dispersion_spinner.value()
+        time_calibration = self.ui.time_calibration_spinbox.value() * 1e6 # convert µm/ps to m/s
         try:
             energy_ev = energy_ev=self.mreader.optics.get_beam_energy() * 1e6
         except DOOCSReadError:
@@ -164,6 +181,7 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         axescalib = AxesCalibration(
             energy_ev=energy_ev,
             dispersion=dispersion,
+            time_calibration = time_calibration,
             streaking_plane=self.mreader.deflector.plane,
         )
         self.ui.screen_display_widget.calibrate_axes(axescalib)
@@ -173,15 +191,22 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         self.ui.take_background_button.clicked.connect(self.take_background)
 
         self.ui.autogain_button.clicked.connect(self._activate_auto_gain)
-        self.ui.clip_offaxis_checkbox.clicked.connect(self._set_clip_offaxis)
         self.ui.subtract_bg_checkbox.stateChanged.connect(self.set_subtract_background)
 
         self.ui.play_pause_button.play_signal.connect(self._play_screen)
         self.ui.play_pause_button.pause_signal.connect(self._pause_screen)
         self.ui.read_rate_spinner.valueChanged.connect(self._set_read_frequency)
+        self.ui.smooth_image_checkbox.stateChanged.connect(self._set_smooth_image)
 
         self.ui.calculate_dispersion_button.clicked.connect(self._calculate_dispersion)
+        self.ui.calculate_time_calibration_button.clicked.connect(self._calculate_time_calibration)
         self.ui.regenerate_axes_button.clicked.connect(self._generate_axes_calibrations)
+
+    def _set_smooth_image(self, smooth_image_state: Qt.CheckState) -> None:
+        assert smooth_image_state != Qt.PartiallyChecked
+        message = DataTakingMessage(MessageType.SMOOTH_IMAGE, 
+                                    {"state": bool(smooth_image_state)})
+        self.producer_worker.submit(message)
 
     def _set_clip_offaxis(self, state: bool) -> None:
         self.producer_worker.submit(
@@ -302,6 +327,7 @@ class DataTakingWorker(QObject):
         self._read_period = 1.0
         self._clip_offaxis = False
         self._xyflip = False, False
+        self._smooth_image = False
 
         # Queue for messages we we receive from
         self._consumerq: queue.Queue[DataTakingMessage | None] = queue.Queue()
@@ -344,7 +370,9 @@ class DataTakingWorker(QObject):
             if self._pause and not self._caching_background:
                 continue
 
+            # image = np.rot90(self.screen.get_image_raw(), 3)
             image = self.screen.get_image_raw()
+            image = np.rot90(image, 2)
             if image is None:
                 # this can happen sometimes, sometimes when switching cameras
                 # get_image_raw can for a moment start returning None, of course
@@ -426,6 +454,8 @@ class DataTakingWorker(QObject):
             case MessageType.CLIP_OFFAXIS:
                 self._clip_offaxis = message.data["state"]
                 print(message)
+            case MessageType.SMOOTH_IMAGE:
+                self._smooth_image = message.data["state"]
 
             case _:
                 message = f"Unexpected message send to {type(self).__name__}: {message}"
@@ -447,27 +477,38 @@ class DataTakingWorker(QObject):
             image = image.copy()
 
         if self.bg_images and self._do_subtract_background:
+            image = image.astype(np.float64)
             image -= self.mean_bg
             image = image.clip(min=0, out=image)
+
+        if self._smooth_image:
+            Hg = ndimage.gaussian_filter(image, sigma=5)
+            threshold = 0.05
+            print(threshold)
+            inds_mask_neg = np.asarray((Hg - np.max(Hg) * threshold) < 0).nonzero()
+            image[inds_mask_neg] = 0.0
 
         if self._clip_offaxis:
             (xmin, xmax), (ymin, ymax) = self._clipping_bounds()
             zero_off_axis_regions(image, xmin, xmax, ymin, ymax)
 
-        image = image.T
-        # if not self.xyflip[0]:
-        #     image = np.fliplr(image)
-        if self._xyflip[1]:
-            image = np.flipud(image)
-
-        xproj = image.sum(axis=0)
-        yproj = image.sum(axis=1)
+        tproj = image.sum(axis=0)
+        eproj = image.sum(axis=1)
+        time = np.arange(0, image.shape[1])
+        # Hopefully this is correct...
+        try:
+            popt, pcov = curve_fit(gauss, time, tproj, p0=[tproj.max(), tproj.argmax(), 1])
+        except (RuntimeError, ValueError):
+            tgparam = None
+        else:
+            tgparam = GaussianParameters(scale=popt[0], mu=popt[1], sigma=popt[2])
 
         imp = ImagePayload(
             image=image,
             screen_md=self.screen_md,
-            xproj=xproj,
-            yproj=yproj,
+            tproj=tproj,
+            eproj=eproj,
+            tgauss=tgparam
         )
         self.display_image_signal.emit(imp)
 
@@ -514,6 +555,8 @@ class DataTakingWorker(QObject):
         message = DataTakingMessage(MessageType.CHANGE_SCREEN, {"screen": new_screen})
         self._consumerq.put(message)
 
+def gauss(x, a, mu, sigma):
+         return a * np.exp(-((x - mu) ** 2) / (2.0 * sigma**2))
 
 class LogBookEntryWriterDialogue(QDialog):
     DEFAULT_AUTHOR = "xfeloper"

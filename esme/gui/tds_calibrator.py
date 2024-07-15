@@ -74,11 +74,6 @@ class HumanReadableCalibrationData:
     amplitude: float
 
 
-@dataclass
-class TaggedCalibration:
-    calibration: AmplitudeVoltageMapping
-    filename: Optional[str] = None
-    datetime: Optional[datetime] = None
 
 
 @dataclass
