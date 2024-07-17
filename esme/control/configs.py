@@ -267,6 +267,7 @@ class MachineManagerFactory:
                 optics=self._get_optics(area),
                 request=self._get_misc_snapshot_request(area),
                 deflector=self._get_deflector(area),
+                sbunches=self._get_sbunches(area)
             )
         else:
             self._manager_cache[area]["imaging"]

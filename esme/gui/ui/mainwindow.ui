@@ -7,11 +7,14 @@
     <x>0</x>
     <y>0</y>
     <width>2100</width>
-    <height>1286</height>
+    <height>1338</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Diagnostic Sections Utility</string>
+  </property>
+  <property name="locale">
+   <locale language="German" country="Germany"/>
   </property>
   <property name="documentMode">
    <bool>false</bool>
@@ -34,6 +37,23 @@
         <string>Main</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_5">
+        <item row="0" column="1" colspan="2">
+         <widget class="QPushButton" name="beam_on_off_button">
+          <property name="text">
+           <string>Beam On</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0" rowspan="2">
+         <widget class="ImagingControlWidget" name="imaging_widget" native="true">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+            <horstretch>1</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+         </widget>
+        </item>
         <item row="1" column="1" colspan="2">
          <layout class="QVBoxLayout" name="verticalLayout_3">
           <item>
@@ -132,7 +152,7 @@
              <item row="0" column="0">
               <widget class="TargetStack" name="target_stack">
                <property name="currentIndex">
-                <number>0</number>
+                <number>1</number>
                </property>
                <widget class="QWidget" name="page"/>
                <widget class="QWidget" name="page_2"/>
@@ -160,23 +180,6 @@
            </widget>
           </item>
          </layout>
-        </item>
-        <item row="0" column="0" rowspan="2">
-         <widget class="ImagingControlWidget" name="imaging_widget" native="true">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-            <horstretch>1</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1" colspan="2">
-         <widget class="QPushButton" name="beam_on_off_button">
-          <property name="text">
-           <string>Beam On</string>
-          </property>
-         </widget>
         </item>
        </layout>
       </widget>
@@ -243,6 +246,7 @@
     <addaction name="action_pattern_builder"/>
     <addaction name="action_camera_status"/>
     <addaction name="menuExpert"/>
+    <addaction name="actionBLM_Toroid_Alarm_Overview"/>
    </widget>
    <addaction name="menuMenu"/>
    <addaction name="menu_external"/>
@@ -320,6 +324,11 @@
    </property>
    <property name="toolTip">
     <string>Open LLRF Panel for the I1 TDS</string>
+   </property>
+  </action>
+  <action name="actionBLM_Toroid_Alarm_Overview">
+   <property name="text">
+    <string>BLM &amp;&amp; Toroid Alarm Overview</string>
    </property>
   </action>
  </widget>

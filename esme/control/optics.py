@@ -45,6 +45,9 @@ class MachineLinearOptics(ABC):
 
     def optics_snapshot(self) -> pd.DataFrame:
         return pd.DataFrame.from_records([self.snapshotter.snapshot()])
+    
+    def get_bunch_charge(self) -> float:
+        return self.di.get_value("XFEL.DIAG/CHARGE.ML/TORA.25.I1/CHARGE.ALL")
 
 
 class I1toI1DLinearOptics(MachineLinearOptics):
@@ -91,8 +94,7 @@ class I1toI1DLinearOptics(MachineLinearOptics):
 
     def full_read(self):
         return self.snapshotter.snapshot(resolve_wildcards=True)
-
-
+    
 class I1toB2DLinearOptics(MachineLinearOptics):
     def __init__(
         self,

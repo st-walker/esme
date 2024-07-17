@@ -142,6 +142,10 @@ class TDSControl(QtWidgets.QWidget):
         self.ui.subtract_180deg_button.clicked.connect(self.subtract_180_deg)
         self.ui.add_180_deg_button.clicked.connect(self.add_180_deg)
 
+    def set_voltage(self, voltage: float) -> None:
+        self.machine.deflector.set_voltage(voltage * 1e6)
+        
+
     def subtract_180_deg(self) -> None:
         phase = self.machine.deflector.get_phase_sp()
         self.machine.deflector.set_phase(phase - 180)

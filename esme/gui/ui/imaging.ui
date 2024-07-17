@@ -14,6 +14,16 @@
    <string>Form</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
+   <item row="0" column="0" colspan="2">
+    <widget class="ScreenWidget" name="screen_display_widget" native="true">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>1</horstretch>
+       <verstretch>1</verstretch>
+      </sizepolicy>
+     </property>
+    </widget>
+   </item>
    <item row="1" column="0" rowspan="2">
     <widget class="QGroupBox" name="groupBox">
      <property name="sizePolicy">
@@ -92,136 +102,24 @@
      </layout>
     </widget>
    </item>
-   <item row="0" column="0" colspan="2">
-    <widget class="ScreenWidget" name="screen_display_widget" native="true">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-       <horstretch>1</horstretch>
-       <verstretch>1</verstretch>
-      </sizepolicy>
-     </property>
-    </widget>
-   </item>
    <item row="1" column="1" rowspan="2">
     <widget class="QGroupBox" name="groupBox_2">
      <property name="title">
       <string>Display</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_2">
-      <item row="0" column="3" rowspan="5">
-       <widget class="Line" name="line_3">
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="0" colspan="3">
-       <widget class="QPushButton" name="regenerate_axes_button">
-        <property name="text">
-         <string>Regenerate Axes</string>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="7">
-       <widget class="QLabel" name="label_2">
-        <property name="text">
-         <string>Read Rate</string>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="8">
-       <widget class="QSpinBox" name="read_rate_spinner">
-        <property name="buttonSymbols">
-         <enum>QAbstractSpinBox::UpDownArrows</enum>
-        </property>
-        <property name="suffix">
-         <string>Hz</string>
-        </property>
-        <property name="minimum">
-         <number>1</number>
-        </property>
-        <property name="maximum">
-         <number>10</number>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="2">
-       <widget class="QPushButton" name="calculate_time_calibration_button">
-        <property name="text">
-         <string>Calculate Time Calibration</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="4" rowspan="5">
-       <layout class="QVBoxLayout" name="verticalLayout">
-        <item>
-         <widget class="QPushButton" name="autogain_button">
-          <property name="text">
-           <string>Auto Gain Control</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QCheckBox" name="subtract_bg_checkbox">
-          <property name="enabled">
-           <bool>true</bool>
-          </property>
-          <property name="text">
-           <string>Subtract background</string>
-          </property>
-         </widget>
-        </item>
-        <item>
-         <widget class="QCheckBox" name="smooth_image_checkbox">
-          <property name="text">
-           <string>Smooth Image</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </item>
-      <item row="0" column="5" rowspan="5" colspan="2">
-       <widget class="Line" name="line_2">
-        <property name="orientation">
-         <enum>Qt::Vertical</enum>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="1">
-       <widget class="QDoubleSpinBox" name="time_calibration_spinbox">
-        <property name="suffix">
-         <string> μmps⁻¹</string>
-        </property>
-        <property name="decimals">
-         <number>1</number>
-        </property>
-        <property name="maximum">
-         <double>10000.000000000000000</double>
-        </property>
-        <property name="stepType">
-         <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
-        </property>
-        <property name="value">
-         <double>0.000000000000000</double>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="0">
-       <widget class="QLabel" name="label_3">
-        <property name="text">
-         <string>Time Calibration</string>
-        </property>
-       </widget>
-      </item>
-      <item row="1" column="0">
+      <item row="0" column="0" rowspan="2">
        <widget class="QLabel" name="label">
         <property name="text">
          <string>Dispersion</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="1">
+      <item row="0" column="1" rowspan="2">
        <widget class="QDoubleSpinBox" name="dispersion_spinner">
+        <property name="locale">
+         <locale language="English" country="UnitedStates"/>
+        </property>
         <property name="wrapping">
          <bool>false</bool>
         </property>
@@ -251,7 +149,7 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="2">
+      <item row="0" column="2" rowspan="2">
        <widget class="QPushButton" name="calculate_dispersion_button">
         <property name="toolTip">
          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Calculates the dispersion at the screen using linear optics and magnet strengths from the machine&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -264,13 +162,127 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="7" rowspan="3" colspan="2">
+      <item row="0" column="3" rowspan="6" colspan="2">
+       <widget class="Line" name="line_3">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="5" rowspan="6">
+       <widget class="Line" name="line_2">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="6" rowspan="2" colspan="3">
+       <widget class="QPushButton" name="autogain_button">
+        <property name="text">
+         <string>Auto Gain Control</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="4">
+       <widget class="QCheckBox" name="fix_aspect_ratio_checkbox">
+        <property name="text">
+         <string>Fix Aspect Ratio</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0" rowspan="2">
+       <widget class="QLabel" name="label_3">
+        <property name="text">
+         <string>Time Calibration</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1" rowspan="2">
+       <widget class="QDoubleSpinBox" name="time_calibration_spinbox">
+        <property name="locale">
+         <locale language="English" country="UnitedStates"/>
+        </property>
+        <property name="suffix">
+         <string> μmps⁻¹</string>
+        </property>
+        <property name="decimals">
+         <number>0</number>
+        </property>
+        <property name="maximum">
+         <double>10000.000000000000000</double>
+        </property>
+        <property name="stepType">
+         <enum>QAbstractSpinBox::AdaptiveDecimalStepType</enum>
+        </property>
+        <property name="value">
+         <double>0.000000000000000</double>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="2" rowspan="2">
+       <widget class="QPushButton" name="calculate_time_calibration_button">
+        <property name="text">
+         <string>Calculate Time Calibration</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="4">
+       <widget class="QCheckBox" name="subtract_bg_checkbox">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="text">
+         <string>Subtract background</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="8" rowspan="2">
+       <widget class="QSpinBox" name="read_rate_spinner">
+        <property name="buttonSymbols">
+         <enum>QAbstractSpinBox::UpDownArrows</enum>
+        </property>
+        <property name="suffix">
+         <string>Hz</string>
+        </property>
+        <property name="minimum">
+         <number>1</number>
+        </property>
+        <property name="maximum">
+         <number>10</number>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="4">
+       <widget class="QCheckBox" name="smooth_image_checkbox">
+        <property name="text">
+         <string>Smooth Image</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0" rowspan="2" colspan="3">
+       <widget class="QPushButton" name="regenerate_axes_button">
+        <property name="text">
+         <string>Regenerate Axes</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="6" rowspan="2" colspan="3">
        <widget class="PlayPauseButton" name="play_pause_button">
         <property name="text">
          <string>Pause</string>
         </property>
         <property name="is_playing" stdset="0">
          <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="6" rowspan="2" colspan="2">
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>Read Rate</string>
         </property>
        </widget>
       </item>

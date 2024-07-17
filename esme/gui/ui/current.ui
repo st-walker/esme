@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>802</width>
-    <height>708</height>
+    <width>1511</width>
+    <height>1187</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,6 +15,15 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_3">
+    <item row="1" column="1">
+     <widget class="GraphicsLayoutWidget" name="tilt_graphics" native="true"/>
+    </item>
+    <item row="2" column="1">
+     <widget class="BeamCurrentTableView" name="beam_table_view"/>
+    </item>
+    <item row="0" column="1">
+     <widget class="GraphicsLayoutWidget" name="current_graphics" native="true"/>
+    </item>
     <item row="0" column="0" rowspan="3">
      <layout class="QVBoxLayout" name="verticalLayout">
       <item>
@@ -26,16 +35,6 @@
          <string>e-LogBook</string>
         </property>
         <layout class="QGridLayout" name="gridLayout">
-         <item row="0" column="1">
-          <widget class="QLineEdit" name="author_line_edit">
-           <property name="tabletTracking">
-            <bool>false</bool>
-           </property>
-           <property name="placeholderText">
-            <string>xfeloper</string>
-           </property>
-          </widget>
-         </item>
          <item row="1" column="0" colspan="2">
           <widget class="QTextEdit" name="logbook_text_edit">
            <property name="tabChangesFocus">
@@ -46,6 +45,16 @@
            </property>
            <property name="placeholderText">
             <string>Logbook entry...</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLineEdit" name="author_line_edit">
+           <property name="tabletTracking">
+            <bool>false</bool>
+           </property>
+           <property name="placeholderText">
+            <string>xfeloper</string>
            </property>
           </widget>
          </item>
@@ -65,17 +74,13 @@
          <string>Measurement</string>
         </property>
         <layout class="QGridLayout" name="gridLayout_2">
-         <item row="6" column="0" colspan="4">
-          <widget class="QProgressBar" name="progress_bar">
-           <property name="value">
-            <number>0</number>
+         <item row="7" column="2" colspan="2">
+          <widget class="QPushButton" name="cancel_button">
+           <property name="enabled">
+            <bool>false</bool>
            </property>
-          </widget>
-         </item>
-         <item row="2" column="0" colspan="4">
-          <widget class="Line" name="line">
-           <property name="orientation">
-            <enum>Qt::Horizontal</enum>
+           <property name="text">
+            <string>Cancel</string>
            </property>
           </widget>
          </item>
@@ -86,31 +91,10 @@
            </property>
           </widget>
          </item>
-         <item row="0" column="2" colspan="2">
-          <layout class="QHBoxLayout" name="horizontalLayout_2">
-           <item>
-            <widget class="QLabel" name="label_2">
-             <property name="text">
-              <string>Bunch Number</string>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QSpinBox" name="bunch_number_spinner">
-             <property name="minimum">
-              <number>1</number>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
-         <item row="7" column="2" colspan="2">
-          <widget class="QPushButton" name="cancel_button">
-           <property name="enabled">
-            <bool>false</bool>
-           </property>
-           <property name="text">
-            <string>Cancel</string>
+         <item row="2" column="0" colspan="4">
+          <widget class="Line" name="line">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
            </property>
           </widget>
          </item>
@@ -132,6 +116,31 @@
            </item>
           </layout>
          </item>
+         <item row="0" column="2" colspan="2">
+          <layout class="QHBoxLayout" name="horizontalLayout_2">
+           <item>
+            <widget class="QLabel" name="label_2">
+             <property name="text">
+              <string>Bunch Number</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QSpinBox" name="bunch_number_spinner">
+             <property name="minimum">
+              <number>1</number>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item row="6" column="0" colspan="4">
+          <widget class="QProgressBar" name="progress_bar">
+           <property name="value">
+            <number>0</number>
+           </property>
+          </widget>
+         </item>
          <item row="1" column="0" colspan="4">
           <widget class="QPushButton" name="goto_last_in_beamregion">
            <property name="text">
@@ -144,15 +153,6 @@
       </item>
      </layout>
     </item>
-    <item row="0" column="1">
-     <widget class="GraphicsLayoutWidget" name="current_graphics" native="true"/>
-    </item>
-    <item row="1" column="1">
-     <widget class="GraphicsLayoutWidget" name="tilt_graphics" native="true"/>
-    </item>
-    <item row="2" column="1">
-     <widget class="BeamCurrentTableView" name="beam_table_view"/>
-    </item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menubar">
@@ -160,7 +160,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>802</width>
+     <width>1511</width>
      <height>24</height>
     </rect>
    </property>
@@ -169,15 +169,15 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>GraphicsLayoutWidget</class>
-   <extends>QWidget</extends>
-   <header>pyqtgraph</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
    <class>AreaControl</class>
    <extends>QWidget</extends>
    <header>esme.gui.widgets.area</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>GraphicsLayoutWidget</class>
+   <extends>QWidget</extends>
+   <header>pyqtgraph</header>
    <container>1</container>
   </customwidget>
   <customwidget>

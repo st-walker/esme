@@ -31,6 +31,8 @@ import matplotlib.pyplot as plt
 import toml
 import numbers
 from esme.image import zero_off_axis_regions
+from esme.maths import get_gaussian_fit
+
 
 from esme.core import DiagnosticRegion, region_from_screen_name
 from esme.gui.widgets.common import get_machine_manager_factory, get_tds_calibration_config_dir, set_machine_by_region, send_widget_to_log, df_to_logbook_table, send_to_logbook
@@ -42,6 +44,7 @@ from uncertainties import ufloat
 from esme.optics import calculate_i1d_r34_from_tds_centre
 from functools import cached_property
 from IPython import embed
+from scipy import ndimage
 
 _DEFAULT_COLOUR_CYCLE = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
@@ -84,8 +87,6 @@ class MeasurementContext:
         raise TypeError()
 
 
-from esme.image import filter
-
 @dataclass
 class PhaseScan:
     """Phase scan. This is output from the calibration routine."""
@@ -102,34 +103,45 @@ class PhaseScan:
 
     def centres_of_mass(self, ctx: MeasurementContext) -> list[ufloat]:
         mean_centres_of_mass = []
-        xscale, yscale = ctx.pixel_sizes
-        (xmin, xmax), (ymin, ymax) = ctx.off_axis_roi_bounds
         mean_bg = self.bg_images.mean(axis=0)
-        if ctx.screen_position is Position.OFFAXIS:
-            mean_bg = zero_off_axis_regions(mean_bg)
 
+        if ctx.streaking_plane is StreakingPlane.HORIZONTAL:
+            psize = ctx.pixel_sizes[0]
+        elif ctx.streaking_plane is StreakingPlane.VERTICAL:
+            psize = ctx.pixel_sizes[1]
+        else:
+            raise TypeError()
+        
         for image_collection_at_one_phase in self.images:
-            this_phases_xcoms_with_errors = []
-            this_phases_ycoms_with_errors = []
+            this_phases_mean_beam_positions = []
             for image in image_collection_at_one_phase:
-                # Get rid of any off axis artefacts like the screen edge.
-                if ctx.screen_position is Position.OFFAXIS:
-                    image = zero_off_axis_regions(image, xmin, max, ymin, ymax)
-                    
-                # Subtract background and clip negative values.
-                image = (image - mean_bg).clip(min=0)
+                image = self._do_image_analysis(ctx, image, mean_bg=mean_bg)
+                # from IPython import embed; embed()
+                timeproj = image.sum(axis=0) # ???
+                # from IPython import embed; embed()
+                popt, _ = get_gaussian_fit(np.arange(len(timeproj)), timeproj, p0=(timeproj.max(), timeproj.argmax(), 300))
+                _, mu, _ = popt
+                print(mu)
+                this_phases_mean_beam_positions.append(ufloat(mu * psize, psize / 2))
 
-                ycom, xcom = ndi.center_of_mass(image)
-                this_phases_xcoms_with_errors.append(ufloat(xcom * xscale, xscale/2))
-                this_phases_ycoms_with_errors.append(ufloat(ycom * yscale, yscale/2))
-
-            if ctx.streaking_plane is StreakingPlane.HORIZONTAL:
-                mean_centres_of_mass.append(np.mean(this_phases_xcoms_with_errors))
-            if ctx.streaking_plane is StreakingPlane.VERTICAL:
-                mean_centres_of_mass.append(np.mean(this_phases_ycoms_with_errors))
+            mean_centres_of_mass.append(np.mean(this_phases_mean_beam_positions, axis=1))
 
         return mean_centres_of_mass
     
+    def _do_image_analysis(self, ctx: MeasurementContext, image: npt.NDArray, mean_bg: npt.NDArray) -> npt.NDArray:
+        # Get rid of any off axis artefacts like the screen edge.
+        if ctx.screen_position is Position.OFFAXIS:
+            (xmin, xmax), (ymin, ymax) = ctx.off_axis_roi_bounds
+            # zero_off_axis_regions(image, xmin, xmax, ymin, ymax)
+            zero_off_axis_regions(image, ymin, ymax, xmin, xmax)
+        # Subtract background and clip negative values.
+        image = (image - mean_bg).clip(min=0)
+        Hg = ndimage.gaussian_filter(image, sigma=5)
+        threshold = 0.05
+        inds_mask_neg = np.asarray((Hg - np.max(Hg) * threshold) < 0).nonzero()
+        image[inds_mask_neg] = 0.0
+        return image
+
     def mean_phase(self) -> float:
         return 0.5 * (self.prange[0] + self.prange[1])
     
@@ -544,10 +556,11 @@ class TDSCalibrationWorker(QRunnable):
         # We assume the ROI is correctly clipped whenever we are off-axis
         # as we take care of this in self._turn_beam_onto_screen()
         self._write_to_log("Setting camera gain for new amplitude...")
-        self.screen.analysis.activate_gain_control()
+        self.screen.analysis.activate_gain_control()        
         while self.screen.analysis.is_active(): # wait for gain adjustment to finish
             self._raise_if_interrupted()
             time.sleep(0.5)
+        time.sleep(4)
         # Do first phase scan at first phase pair
         self._do_phase_scan(setpoint.pscan0)
         # Do second phase scan at the other phase pair
@@ -566,17 +579,17 @@ class TDSCalibrationWorker(QRunnable):
         images = []
         self._write_to_log(f"Starting phase scan between {pscan.prange[0]} and {pscan.prange[1]}")
         for i, phase in enumerate(pscan.phases()):
+            self.machine.tds.set_phase(phase)
             if i == 0: # Sleep extra for the first step as it may involve a large jump in phase
                 time.sleep(2.)
             self._write_to_log(f"Setting TDS phase to {phase}")
-            self.machine.tds.set_phase(phase)
-            time.sleep(0.1)
+            time.sleep(1)
             images.append(self._take_images(n=10))
 
         pscan.images = images
 
     def _take_images(self, n: int) -> npt.NDArray:
-        return np.array([self.screen.get_image_raw().T for _ in range(n)])
+        return np.array([self.screen.get_image_raw().T.astype(np.float64) for _ in range(n)])
     
     def _take_background(self, n: int) -> npt.NDArray:
         # Turn beam off screen.

@@ -14,7 +14,8 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_tdsfriend_mainwindow(object):
     def setupUi(self, tdsfriend_mainwindow):
         tdsfriend_mainwindow.setObjectName("tdsfriend_mainwindow")
-        tdsfriend_mainwindow.resize(2100, 1286)
+        tdsfriend_mainwindow.resize(2100, 1338)
+        tdsfriend_mainwindow.setLocale(QtCore.QLocale(QtCore.QLocale.German, QtCore.QLocale.Germany))
         tdsfriend_mainwindow.setDocumentMode(False)
         self.centralwidget = QtWidgets.QWidget(tdsfriend_mainwindow)
         self.centralwidget.setAutoFillBackground(False)
@@ -173,6 +174,8 @@ class Ui_tdsfriend_mainwindow(object):
         self.actionSpecial_Bunch_Midlayer_b2.setObjectName("actionSpecial_Bunch_Midlayer_b2")
         self.actionLLRF_i1 = QtWidgets.QAction(tdsfriend_mainwindow)
         self.actionLLRF_i1.setObjectName("actionLLRF_i1")
+        self.actionBLM_Toroid_Alarm_Overview = QtWidgets.QAction(tdsfriend_mainwindow)
+        self.actionBLM_Toroid_Alarm_Overview.setObjectName("actionBLM_Toroid_Alarm_Overview")
         self.menuMenu.addAction(self.action_print_to_logbook)
         self.menuMenu.addAction(self.action_close)
         self.menu_i1.addAction(self.actionLLRF_i1)
@@ -185,6 +188,7 @@ class Ui_tdsfriend_mainwindow(object):
         self.menu_external.addAction(self.action_pattern_builder)
         self.menu_external.addAction(self.action_camera_status)
         self.menu_external.addAction(self.menuExpert.menuAction())
+        self.menu_external.addAction(self.actionBLM_Toroid_Alarm_Overview)
         self.menubar.addAction(self.menuMenu.menuAction())
         self.menubar.addAction(self.menu_external.menuAction())
 
@@ -228,6 +232,7 @@ class Ui_tdsfriend_mainwindow(object):
         self.actionSpecial_Bunch_Midlayer_b2.setToolTip(_translate("tdsfriend_mainwindow", "Open Special Bunch Midlayer Panel for B2"))
         self.actionLLRF_i1.setText(_translate("tdsfriend_mainwindow", "LLRF"))
         self.actionLLRF_i1.setToolTip(_translate("tdsfriend_mainwindow", "Open LLRF Panel for the I1 TDS"))
+        self.actionBLM_Toroid_Alarm_Overview.setText(_translate("tdsfriend_mainwindow", "BLM && Toroid Alarm Overview"))
 from esme.gui.widgets.area import AreaControl
 from esme.gui.widgets.imaging import ImagingControlWidget
 from esme.gui.widgets.sbunchpanel import SpecialBunchMidLayerPanel

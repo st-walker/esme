@@ -8,7 +8,6 @@ from collections import deque
 from concurrent.futures import Future, ProcessPoolExecutor
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum, auto
 from functools import cache
 from pathlib import Path
 from types import SimpleNamespace
@@ -41,9 +40,11 @@ from esme.control.exceptions import DOOCSReadError
 from esme.control.screens import Position, Screen, ScreenMetadata
 from esme.control.tds import StreakingPlane
 from esme.gui.ui.imaging import Ui_imaging_widget
-from esme.gui.widgets.screen import AxesCalibration, ImagePayload, GaussianParameters
+from esme.gui.widgets.screen import AxesCalibration
 from esme.calibration import AmplitudeVoltageMapping
 from scipy.optimize import curve_fit
+from esme.gui.widgets.current import CurrentProfilerWindow
+from esme.gui.workers import ImagingMessage, ImagePayload, MessageType, ImagingWorker, GaussianParameters
 
 from .common import get_machine_manager_factory, send_widget_to_log
 
@@ -52,34 +53,6 @@ LOG.setLevel(logging.INFO)
 
 pg.setConfigOption("useNumba", True)
 
-
-class MessageType(Enum):
-    CACHE_BACKGROUND = auto()
-    CLEAR_BACKGROUND = auto()
-    # TAKE_N_FAST = auto()
-    CHANGE_SCREEN = auto()
-    SUBTRACT_BACKGROUND = auto()
-    PLAY_SCREEN = auto()
-    PAUSE_SCREEN = auto()
-    SET_FREQUENCY = auto()
-    CLIP_OFFAXIS = auto()
-    SMOOTH_IMAGE = auto()
-
-
-@dataclass
-class DataTakingMessage:
-    mtype: MessageType
-    data: dict[str, Any] = field(default_factory=dict)
-
-
-class StopImageAcquisition(Exception):
-    pass
-
-
-@dataclass
-class MachineState:
-    bg_images: deque[npt.NDArray]
-    kvps: pd.Series
 
 
 class DiagnosticSectionWidget(QWidget):
@@ -112,9 +85,13 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         self.mreader = self.i1
 
         self.screen = self.mreader.screens["OTRC.58.I1"]
+        self._was_beam_on_screen = self.mreader.is_beam_on_screen(self.screen)
+
 
         # Thread that reads the images and others can get from.
         self.producer_worker, self.producer_thread = self.setup_data_taking_worker()
+
+        self.current_profiler = CurrentProfilerWindow(self.producer_worker)
 
         self.elogger = LogBookEntryWriterDialogue(
             self.screen, bg_images=None, parent=self
@@ -122,6 +99,7 @@ class ImagingControlWidget(DiagnosticSectionWidget):
 
         self.timer = QTimer()
         self.timer.timeout.connect(self._update_ui)
+        self.timer.timeout.connect(self._check_screen_position)
         self.timer.start(1000)
 
         self._connect_buttons()
@@ -135,21 +113,18 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         #     voltage_calibration
         # )
 
+    def _check_screen_position(self) -> None:
+        self.producer_worker.submit(
+            ImagingMessage(MessageType.CLIP_OFFAXIS,
+                              data={"state": self.screen.get_position() is Position.OFFAXIS})
+        )
+
     def _update_ui(self):
         screen = self.screen
         # The button should be active only if the analysis server is not active, i.e.
         # Not doing something already.
         is_active = screen.analysis.is_active()
         self.ui.autogain_button.setEnabled(not is_active)
-        # We only allow for clipping if the screen is off axis
-        is_offaxis = screen.get_position() is Position.OFFAXIS
-        if not is_offaxis:
-            # This is a bit crap but if the position is not off axis then
-            # We repeatedly send a message to the thread telling it to
-            # disable clipping..
-            self.producer_worker.submit(
-                DataTakingMessage(MessageType.CLIP_OFFAXIS, data={"state": False})
-            )
 
     def _calculate_dispersion(self) -> None:
         dx, dy = self.mreader.optics.dispersions_at_screen(self.screen.name)
@@ -171,6 +146,16 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         # Multiply by 1e-6 to convert from m/s to µm/ps.
         self.ui.time_calibration_spinbox.setValue(time_calibration * 1e-6)
 
+    def _pass_time_calibration_to_worker(self, time_calibration_value: float) -> None:
+        try:
+            bunch_charge = self.mreader.optics.get_bunch_charge() * 1e-9 # convert nC to C
+        except DOOCSReadError:
+            bunch_charge = None
+        self.producer_worker.submit(ImagingMessage(MessageType.TIME_CALIBRATION, 
+                                                      # Convert µm/ps to m/s.
+                                                      data={"time_calibration": time_calibration_value * 1e6,
+                                                            "bunch_charge": bunch_charge}))
+
     def _generate_axes_calibrations(self) -> None:
         dispersion = self.ui.dispersion_spinner.value()
         time_calibration = self.ui.time_calibration_spinbox.value() * 1e6 # convert µm/ps to m/s
@@ -181,8 +166,8 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         axescalib = AxesCalibration(
             energy_ev=energy_ev,
             dispersion=dispersion,
-            time_calibration = time_calibration,
-            streaking_plane=self.mreader.deflector.plane,
+            time_calibration=time_calibration,
+            streaking_plane=self.mreader.deflector.plane
         )
         self.ui.screen_display_widget.calibrate_axes(axescalib)
 
@@ -202,33 +187,31 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         self.ui.calculate_time_calibration_button.clicked.connect(self._calculate_time_calibration)
         self.ui.regenerate_axes_button.clicked.connect(self._generate_axes_calibrations)
 
+        self.ui.time_calibration_spinbox.valueChanged.connect(self._pass_time_calibration_to_worker)
+
+        self.ui.current_profile_button.clicked.connect(self.current_profiler.show)
+
     def _set_smooth_image(self, smooth_image_state: Qt.CheckState) -> None:
         assert smooth_image_state != Qt.PartiallyChecked
-        message = DataTakingMessage(MessageType.SMOOTH_IMAGE, 
+        message = ImagingMessage(MessageType.SMOOTH_IMAGE, 
                                     {"state": bool(smooth_image_state)})
         self.producer_worker.submit(message)
 
-    def _set_clip_offaxis(self, state: bool) -> None:
-        self.producer_worker.submit(
-            DataTakingMessage(MessageType.CLIP_OFFAXIS, data={"state": state})
-        )
-
     def _activate_auto_gain(self) -> None:
-        # We assume the server is inactive here, because we disable the button otherwise...
-        self.screen.analysis.set_clipping(
-            on=bool(self.ui.clip_offaxis_checkbox.checkState())
-        )
+        # We assume the server is inactive here, as we can only make it active by
+        # xxx; technically we should check to see if it is busy here...
+        self.screen.analysis.set_clipping(on=self.screen.get_position() is Position.OFFAXIS)
+
         self.screen.analysis.activate_gain_control()
         self.ui.autogain_button.setEnabled(False)
         # We do not allow the offaxis clipping to be touched as this also touches the image
         # server roi.  the auto gain control is only done in the roi, so if we change the roi
         # whilst doing the autogain on the roi, then we might have a problem.  so just avoid
         # Doing that by disabling this checkbox.
-        self.ui.clip_offaxis_checkbox.setEnabled(False)
         # We have to clear the background cache when adjusting the gain because we risk
         # subtracting a background at a much higher / lower gain that the beam image, which
         # is basically meaningless.
-        message = DataTakingMessage(MessageType.CLEAR_BACKGROUND)
+        message = ImagingMessage(MessageType.CLEAR_BACKGROUND)
         self.producer_worker.submit(message)
 
     def _open_logbook_writer(self) -> None:
@@ -238,35 +221,35 @@ class ImagingControlWidget(DiagnosticSectionWidget):
 
     def set_subtract_background(self, subtract_bg_state: Qt.CheckState) -> None:  # type: ignore
         assert subtract_bg_state != Qt.PartiallyChecked  # type: ignore
-        message = DataTakingMessage(
+        message = ImagingMessage(
             MessageType.SUBTRACT_BACKGROUND, {"state": bool(subtract_bg_state)}
         )
         self.producer_worker.submit(message)
 
     def take_background(self) -> None:
-        message = DataTakingMessage(MessageType.CACHE_BACKGROUND, {"number_to_take": 5})
-        self.producer_worker.submit(message)
+        message = ImagingMessage(MessageType.CACHE_BACKGROUND, {"number_to_take": 5})
+        self._was_beam_on_screen = self.mreader.is_beam_on_screen(self.screen)
+        self.mreader.take_beam_off_screen(self.screen)
+        self.producer_worker.submit(message)    
 
     def _play_screen(self) -> None:
-        self.producer_worker.submit(DataTakingMessage(MessageType.PLAY_SCREEN))
+        self.producer_worker.submit(ImagingMessage(MessageType.PLAY_SCREEN))
 
     def _pause_screen(self) -> None:
-        self.producer_worker.submit(DataTakingMessage(MessageType.PAUSE_SCREEN))
+        self.producer_worker.submit(ImagingMessage(MessageType.PAUSE_SCREEN))
 
     def _set_read_frequency(self) -> None:
         # TODO: debounce this so only is set after not being touched for a few seconds.
         self.producer_worker.submit(
-            DataTakingMessage(
+            ImagingMessage(
                 MessageType.SET_FREQUENCY,
                 {"frequency": self.ui.read_rate_spinner.value()},
             )
         )
 
-    def setup_data_taking_worker(self) -> tuple[DataTakingWorker, QThread]:
+    def setup_data_taking_worker(self) -> tuple[ImagingWorker, QThread]:
         LOG.debug("Initialising screen worker thread")
-        # self.producer_queue: queue.Queue[DataTakingMessage] = queue.Queue()
-        # self.consumer_queue: queue.Queue[] = queue.Queue()
-        producer_worker = DataTakingWorker(self.screen)
+        producer_worker = ImagingWorker(self.screen)
         # Propagate screen name change to data taking worker
         # responsible for reading from the screen.
         producer_thread = QThread()
@@ -276,10 +259,20 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         )
         producer_worker.nbackground_taken.connect(self._set_nbg_images_acquired_textbox)
         producer_thread.started.connect(producer_worker.run)
+        producer_worker.finished_background_acquisition.connect(self._post_background_acquisition)
 
         producer_thread.start()
 
         return producer_worker, producer_thread
+
+    def _post_background_acquisition(self) -> None:
+        # If the beam was on screen before we started taking background data,
+        # Then we putit back on here now.
+        if self._was_beam_on_screen:
+            self.mreader.turn_beam_onto_screen(self.screen)
+            self._was_beam_on_screen = True
+        # By default we immediately start subtracking background for convenience.
+        self.ui.subtract_bg_checkbox.setCheckState(Qt.Checked)
 
     def _set_nbg_images_acquired_textbox(self, nbg: int) -> None:
         label = f"Background Images: {nbg}"
@@ -296,264 +289,13 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         self.elogger.set_screen(self.screen)
         # Get the worker producing imagees
         self.producer_worker.change_screen(self.screen)
+        self._check_screen_position()
         # Get the daughter Screen widget to also use the relevant screen instance.
         self.ui.screen_display_widget.set_screen(self.screen.name)
         self._calculate_dispersion()
         self._generate_axes_calibrations()
 
 
-class DataTakingWorker(QObject):
-    display_image_signal = pyqtSignal(ImagePayload)
-    nbackground_taken = pyqtSignal(int)
-
-    def __init__(self, initial_screen: Screen):
-        super().__init__()
-        # The background images cache.
-        self.bg_images: deque[npt.NDArray] = deque(maxlen=5)
-        self.mean_bg = 0.0
-
-        self.screen: Screen = initial_screen
-        # This clearly assumes the screen is already powered etc..  no catching here!
-        print(self.screen)
-        self.screen_md: ScreenMetadata = initial_screen.get_screen_metadata()
-        self._set_screen(initial_screen)
-
-        # Flag for when possibly emitting a processed image for
-        # display: Whether we should subtract the background for the
-        # displayed image or not.
-        self._do_subtract_background: bool = False
-        self._caching_background = False
-        self._pause = False
-        self._read_period = 1.0
-        self._clip_offaxis = False
-        self._xyflip = False, False
-        self._smooth_image = False
-
-        # Queue for messages we we receive from
-        self._consumerq: queue.Queue[DataTakingMessage | None] = queue.Queue()
-
-        self._is_running = False
-
-    def run(self) -> None:
-        if self._is_running:
-            raise RuntimeError(
-                "Already running, run should not be called more than once."
-            )
-        self._is_running = True
-        self._slow_loop()
-
-    def stop_read_loop(self):
-        self._consumerq.put(None)
-
-    def _slow_loop(self):
-        """This is a slow loop that is the one that is running by default and acquires images at a rate of
-        1Hz.
-        """
-        deadline = time.time() + self._read_period
-        while True:
-            # Only do this event loop about once a second
-            wait = deadline - time.time()
-            if wait > 0:
-                time.sleep(wait)
-
-            # set deadline for next read.
-            deadline += self._read_period
-
-            # Check for anything in the message queue
-            try:
-                self._dispatch_from_message_queue()
-            except StopImageAcquisition:
-                break
-
-            # Do not even read if paused, unless we are caching the background, then
-            # we still want to read.
-            if self._pause and not self._caching_background:
-                continue
-
-            # image = np.rot90(self.screen.get_image_raw(), 3)
-            image = self.screen.get_image_raw()
-            image = np.rot90(image, 2)
-            if image is None:
-                # this can happen sometimes, sometimes when switching cameras
-                # get_image_raw can for a moment start returning None, of course
-                # we need to account for this possibility and go next.
-                continue
-
-            if self._caching_background:
-                self.bg_images.appendleft(image)
-                nbg_taken = len(self.bg_images)
-                self.nbackground_taken.emit(nbg_taken)
-
-                if nbg_taken == self.bg_images.maxlen:
-                    # Then we've filled the ring buffer of background images and
-                    # can go back to taking beam data, but first cache the mean_bg.
-                    self._caching_background = False
-                    self.mean_bg = np.mean(self.bg_images, axis=0, dtype=image.dtype)
-
-            if not self._pause:
-                self._process_and_emit_image_for_display(image)
-
-    # def _take_n_fast(self, n: int) -> None:
-    #     # This completely blocks the thread in that it is no longer listening
-    #     # For messages.
-    #     out = []
-    #     assert n > 0
-    #     for i in range(n):
-    #         image = self.screen.get_image_raw()
-    #         out.append(image)
-    #         self.n_fast_state.emit(i)
-    #         if (i % 10) == 0:
-    #             self._process_and_emit_image_for_display(image)
-    #     # At least emit one image for display.
-    #     self._process_and_emit_image_for_display(image)
-    #     return out
-
-    def submit(self, message: DataTakingMessage) -> None:
-        self._consumerq.put(message)
-
-    def _dispatch_from_message_queue(self) -> None:
-        # Check for messages from our parent
-        # Only messages I account for are switching screen name
-        # And switching image taking mode.  We consume all that have been queued
-        # before proceeding with image taking.
-        while True:
-            try:
-                message = self._consumerq.get(block=False)
-            except queue.Empty:
-                return
-
-            if message is None:
-                LOG.critical(
-                    "%s received request to stop image acquisition", type(self).__name__
-                )
-                raise StopImageAcquisition("Image Acquisition halt requested.")
-
-            self._handle_message(message)
-
-    def _handle_message(self, message: DataTakingMessage) -> None:
-        result = None
-        match message.mtype:
-            # Could improve this pattern matching here by using both args of DataTakingMessage.
-            case MessageType.CACHE_BACKGROUND:
-                self._caching_background = True
-                self._clear_bg_cache()
-            case MessageType.CLEAR_BACKGROUND:
-                self._clear_bg_cache()
-            # case MessageType.TAKE_N_FAST:
-            #     result = self._take_n_fast(message.data["n"])
-            case MessageType.CHANGE_SCREEN:
-                self._set_screen(message.data["screen"])
-            case MessageType.SUBTRACT_BACKGROUND:
-                self._do_subtract_background = message.data["state"]
-            case MessageType.PAUSE_SCREEN:
-                self._pause = True
-            case MessageType.PLAY_SCREEN:
-                self._pause = False
-            case MessageType.SET_FREQUENCY:
-                self._read_period = 1 / message.data["frequency"]
-            case MessageType.CLIP_OFFAXIS:
-                self._clip_offaxis = message.data["state"]
-                print(message)
-            case MessageType.SMOOTH_IMAGE:
-                self._smooth_image = message.data["state"]
-
-            case _:
-                message = f"Unexpected message send to {type(self).__name__}: {message}"
-                LOG.critical(message)
-                raise ValueError(message)
-        self._consumerq.task_done()
-
-    def _clear_bg_cache(self) -> None:
-        self.bg_images = deque(maxlen=self.bg_images.maxlen)
-        self.nbackground_taken.emit(0)
-
-    def _process_and_emit_image_for_display(self, image: npt.NDArray) -> None:
-        # Subtract background if we have taken some background and enabled it.
-        # In case this affects the background caching?
-
-        if self._caching_background:
-            # If we are also using the images we get for caching then
-            # We copy so that out image processing here doesn't affect our data.
-            image = image.copy()
-
-        if self.bg_images and self._do_subtract_background:
-            image = image.astype(np.float64)
-            image -= self.mean_bg
-            image = image.clip(min=0, out=image)
-
-        if self._smooth_image:
-            Hg = ndimage.gaussian_filter(image, sigma=5)
-            threshold = 0.05
-            print(threshold)
-            inds_mask_neg = np.asarray((Hg - np.max(Hg) * threshold) < 0).nonzero()
-            image[inds_mask_neg] = 0.0
-
-        if self._clip_offaxis:
-            (xmin, xmax), (ymin, ymax) = self._clipping_bounds()
-            zero_off_axis_regions(image, xmin, xmax, ymin, ymax)
-
-        tproj = image.sum(axis=0)
-        eproj = image.sum(axis=1)
-        time = np.arange(0, image.shape[1])
-        # Hopefully this is correct...
-        try:
-            popt, pcov = curve_fit(gauss, time, tproj, p0=[tproj.max(), tproj.argmax(), 1])
-        except (RuntimeError, ValueError):
-            tgparam = None
-        else:
-            tgparam = GaussianParameters(scale=popt[0], mu=popt[1], sigma=popt[2])
-
-        imp = ImagePayload(
-            image=image,
-            screen_md=self.screen_md,
-            tproj=tproj,
-            eproj=eproj,
-            tgauss=tgparam
-        )
-        self.display_image_signal.emit(imp)
-
-    @cache
-    def _clipping_bounds(self) -> tuple[tuple[int, int], tuple[int, int]]:
-        xminmax = self.screen.analysis.get_xroi_clipping()
-        yminmax = self.screen.analysis.get_yroi_clipping()
-        return xminmax, yminmax
-
-    def _read_from_screen(self) -> npt.NDArray:
-        image = self.screen.get_image_raw()
-        if self._caching_background:
-            self.bg_images.appendleft(image)
-            if len(self.bg_images) == self.bg_images.maxlen:
-                # Then we've filled the ring buffer of background images and
-                # can go back to taking beam data, but first cache the mean_bg.
-                self._caching_background = False
-                self.mean_bg = np.mean(self.bg_images, axis=0, dtype=image.dtype)
-        return image
-
-    def _set_screen(self, screen: Screen) -> None:
-        self.screen = screen
-        self._clipping_bounds.cache_clear()
-        self._clear_bg_cache()
-        self._try_and_set_screen_metadata()
-        self._xyflip = screen.get_hflip(), screen.get_vflip()
-
-    def _try_and_set_screen_metadata(self):
-        # if the screen is not powered, then getting the metadata will fail.
-        # We will have to just try to get it in the future, hoping that at some
-        # point some other part of the program will switch the screen on.
-        # So we punt this into the long grass, so to speak.
-        try:
-            self.screen_md = self.screen.get_screen_metadata()
-        except DOOCSReadError:
-            timeout = 500
-            LOG.warning(
-                "Unable to acquire screen metadata, will try again in %ss",
-                timeout / 1000,
-            )
-            QTimer.singleShot(timeout, self._try_and_set_screen_metadata)
-
-    def change_screen(self, new_screen: Screen) -> None:
-        message = DataTakingMessage(MessageType.CHANGE_SCREEN, {"screen": new_screen})
-        self._consumerq.put(message)
 
 def gauss(x, a, mu, sigma):
          return a * np.exp(-((x - mu) ** 2) / (2.0 * sigma**2))

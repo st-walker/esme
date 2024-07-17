@@ -2,7 +2,7 @@ import logging
 import os
 import sys
 
-from PyQt5.QtCore import QObject, QProcess, Qt, pyqtSignal, QTimer
+from PyQt5.QtCore import QObject, QProcess, Qt, pyqtSignal, QTimer, QLocale
 from PyQt5.QtWidgets import QApplication, QMainWindow
 
 from esme.gui.ui import mainwindow
@@ -26,6 +26,7 @@ _JDDD_RUN_ARGS = {
     "i1_llrf": "-file Main_TDS_LLRF_Operation.xml -address XFEL.RF/LLRF.CONTROLLER/LLTDSI1/",
     "b2_sbm": "-file XFEL_B2_Diag_bunches.xml -address XFEL.RF//LLTDSI1/",
     "i1_sbm": "-file XFEL_I1_Diag_bunches.xml -address XFEL.RF//LLTDSI1/",
+    "blms_and_toroids": "-file XFEL_BLM_TOROID_alarm_overview.xml"
 }
 _OPEN_IMAGE_ANALYSIS_CONFIG_LINE = (
     "cd /home/xfeloper/released_software/ImageAnalysisConfigurator"
@@ -120,16 +121,16 @@ class LPSMainWindow(QMainWindow):
         log_handler.log_signal.connect(self.ui.measurement_log_browser.append)
 
     def toggle_beam_on_off(self):
-        if self.di.set_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED"):
+        if self.di.get_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED"):
             self.di.set_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED", 0)
         else:
             self.di.set_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED", 1)
 
     def _set_beam_on_off_text(self):
         if not self.di.get_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED"):
-            button_text = "Beam Off"
-        else:
             button_text = "Beam On"
+        else:
+            button_text = "Beam Off"
         self.ui.beam_on_off_button.setText(button_text)
 
     def connect_buttons(self) -> None:

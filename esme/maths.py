@@ -34,11 +34,14 @@ def gauss(x, a, mu, sigma) -> Any:
 def parabola(x, a, b, c):
     return a*x**2 + b*x + c
 
-def get_gaussian_fit(x, y) -> tuple[tuple, tuple]:
+def get_gaussian_fit(x, y, p0: tuple[float, float, float] | None = None) -> tuple[tuple, tuple]:
     """popt/perr order: a, mu, sigma"""
-    mu0 = y.argmax()
-    a0 = y.max()
-    sigma0 = 1
+    if p0 is None:
+        a0 = y.max()
+        mu0 = y.argmax()
+        sigma0 = 1    
+
+    a0, mu0, sigma0 = p0
 
     # Bounds argument of curve_fit slows the fitting procedure down too much
     # (>2x worse), so avoid using it here.

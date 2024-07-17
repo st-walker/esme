@@ -10,14 +10,18 @@ import numpy.typing as npt
 import pyqtgraph as pg
 from PyQt5 import QtGui
 from PyQt5.QtCore import QObject, QTimer, pyqtSlot
-from PyQt5.QtWidgets import QGridLayout, QWidget
+from PyQt5.QtWidgets import QGridLayout, QWidget, QGraphicsTextItem
+from PyQt5.QtGui import QColor
 
 from esme import DiagnosticRegion
 from esme.calibration import get_tds_com_slope
 from esme.control.exceptions import DOOCSReadError
 from esme.control.screens import ScreenMetadata
 from esme.control.tds import StreakingPlane, UncalibratedTDSError
-from esme.maths import gauss
+from esme.maths import gauss, get_gaussian_fit
+from enum import Enum, auto
+from functools import cached_property
+from esme.gui.workers import ImagePayload
 
 from .common import get_machine_manager_factory, setup_screen_display_widget
 
@@ -40,42 +44,8 @@ AXES_KWARGS: dict[str : dict[str, Any]] = {
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
 
-@dataclass
-class GaussianParameters:
-    scale: float
-    mu: float
-    sigma: float
 
-    def to_popt(self) -> tuple[float, float, float]:
-        return (self.scale, self.mu, self.sigma)
-
-@dataclass
-class ImagePayload:
-    image: npt.NDArray
-    screen_md: ScreenMetadata
-    tproj: npt.NDArray
-    eproj: npt.NDArray
-    tgauss: GaussianParameters
-
-    @property
-    def time(self) -> np.ndarray:
-        # Time is always the x-axis in our convention
-        sh = self.image.shape
-        return (
-            np.linspace(-sh[1] / 2, sh[1] / 2, num=len(self.tproj))
-            # XXX: This scale factor would have to change for B2...
-            * self.screen_md.ysize
-        )
-
-    @property
-    def energy(self) -> np.ndarray:
-        # Time is always the x-axis so energy is y-axis.
-        sh = self.image.shape
-        return (
-            np.linspace(-sh[0] / 2, sh[0] / 2, num=len(self.eproj))
-            * self.screen_md.xsize
-        )
-
+    
 
 @dataclass
 class AxesCalibration:
@@ -102,6 +72,24 @@ class ScreenWidget(QWidget):
 
         # Add projection axes to the image display daughter widget
         self.xplot, self.yplot = self._make_transverse_projections()
+        # self.gauss_beam_length_string = pg.TextItem(html=f"<i>σ</i><sub>Gauss.</sub> = ", anchor=(0.0, 0), color="white")
+        # self.gauss_beam_length_string = pg.TextItem(f"HELLO ", color="yellow")
+        self.gauss_beam_length_string = pg.TextItem("", color="yellow")
+        self.gauss_beam_length_string.setFlag(self.gauss_beam_length_string.ItemIgnoresTransformations)
+        self.image_plot.addItem(self.gauss_beam_length_string, ignoreBounds=True)
+        self.gauss_beam_length_string.setParentItem(self.image_plot)
+        self.gauss_beam_length_string.setPos(1000, 650)
+
+        self.gauss_beam_length_string.setHtml("<i>Hello</i>")
+        # self.xplot.addItem(self.gauss_beam_length_string)
+        # self.yplot.addItem(self.gauss_beam_length_string)
+        # self.xplot.addItem(self.gauss_beam_length_string)
+        # scene = self.glwidget.scene()
+        # text_item = QGraphicsTextItem("sample Text")
+        # text_item.setDefaultTextColor(QColor("white"))
+        # text_item.setPos(600, 750)
+        # scene.addItem(text_item)
+
 
         # We have to pick some screen to begin with so it might as well be the first screen.
         self.set_screen("OTRC.55.I1")
@@ -134,7 +122,6 @@ class ScreenWidget(QWidget):
 
         # this functions is only responsible for transforming from pixel units to distance units
         # i.e. basically scaling
-
         screen = self.machine.screens[screen_name]
 
         def try_it():
@@ -160,6 +147,7 @@ class ScreenWidget(QWidget):
 
     def calibrate_axes(self, axescalib: AxesCalibration):
         self._calibrate_dispersive_axes(axescalib)
+        self._calibrate_time_axes(axescalib)
 
     def _calibrate_dispersive_axes(self, axescalib: AxesCalibration) -> None:
         # The dispersive axis the the other axis to the streaking axis.
@@ -190,16 +178,17 @@ class ScreenWidget(QWidget):
         # Time axis is always on the bottom (x-axis)
         axis = self.xplot.getAxis("bottom")
         if axescalib.streaking_plane is StreakingPlane.HORIZONTAL:
-            dim = "y"
-        elif axescalib.streaking_plane is StreakingPlane.VERTICAL:
-            axis = self.yplot.getAxis("bottom")
             dim = "x"
+        elif axescalib.streaking_plane is StreakingPlane.VERTICAL:
+            dim = "y"
         else:
             raise TypeError(f"Unknown streaking plane: {axescalib.streaking_plane}")
 
         if not abs(axescalib.time_calibration):
+            self.xplot.hideAxis("left")
             self.set_axis_transform_with_label(axis, 1.0, AXES_KWARGS[dim])
         else:
+            self.xplot.showAxis("left")
             scale_factor = 1 / axescalib.time_calibration
             self.set_axis_transform_with_label(
                 axis, scale_factor, AXES_KWARGS["time"]
@@ -222,7 +211,6 @@ class ScreenWidget(QWidget):
     @pyqtSlot(ImagePayload)
     def post_beam_image(self, image_payload: ImagePayload) -> None:
         items = self.image_plot.items
-        assert len(items) == 1
         image_item = items[0]
         image_item.setImage(image_payload.image)
         self.update_projection_plots(image_payload)
@@ -249,17 +237,40 @@ class ScreenWidget(QWidget):
         xplot.hideAxis("left")
         xplot.setMaximumHeight(200)
         xplot.setXLink(self.image_plot)
+        xplot.setLabel("left", text="<i>I</i>", units="A")
         return xplot, yplot
 
     def update_projection_plots(self, image_payload: ImagePayload) -> None:
         self.xplot.clear()
         self.yplot.clear()
-        self.xplot.plot(image_payload.time, image_payload.tproj, name="Data")
         # We need here the time calibration really (if it exists...)
-        if image_payload.tgauss is not None:
-            tgaussfit = gauss(image_payload.time, *image_payload.tgauss.to_popt())
-            self.xplot.plot(image_payload.time, tgaussfit, name="Fit", pen="red")
+        self._make_current_projection_fit(image_payload)
         self.yplot.plot(image_payload.eproj, image_payload.energy)
+
+    def _make_current_projection_fit(self, image_payload):
+        try:
+            if image_payload.time_calibration and image_payload.bunch_charge:
+                xvar = image_payload.time_calibrated
+                yvar = image_payload.current
+                popt = image_payload.gaussfit_current.to_popt()
+                # self.gauss_beam_length_string.setHtml("<i>Hello</i>")
+                self.gauss_beam_length_string.setHtml(f"<i>σ</i><sub>Gauss.</sub> = {popt[2]*1e12:.2f} ps")
+
+            else:
+                xvar = image_payload.time
+                yvar = image_payload.tproj
+                popt = image_payload.gaussfit_time.to_popt()
+                # Only state the bunch length if there is a sigma, otherwise it has no meaning anyway
+                self.gauss_beam_length_string.setHtml(f"")
+        except (ValueError, RuntimeError, TypeError):
+            self.gauss_beam_length_string.setHtml(f"")
+        else:
+            tgaussfit = gauss(xvar, *popt)
+            # We scale the axis elsewhere, so we plot in the original coordinate syste, not wiht time!!!
+            self.xplot.plot(image_payload.time, yvar, name="Data")
+            self.xplot.plot(image_payload.time, tgaussfit, name="Fit", pen=pg.mkPen("red", width=3))
+
+
 
 
 class CalibrationWatcher(QObject):
