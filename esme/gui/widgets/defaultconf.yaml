@@ -144,6 +144,15 @@ dumps:
     pre_run_properties_backward:
       TO_DUMP: 0
 
+
+blms:
+  I1:
+    - "BLM.60.I1"
+    - "BLM.63.I1"
+    - "BLM.66.I1"
+  B2:
+    - "BLM.472.B2"
+
 snapshots:
   # When you press snapshot to elog, etc, where the LPS images etc. go.
   outdir: /Users/xfeloper/user/stwalker/lps-dumpage/
