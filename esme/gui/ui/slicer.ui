@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>Form</class>
- <widget class="QWidget" name="Form">
+ <class>slice_analysis_gui</class>
+ <widget class="QWidget" name="slice_analysis_gui">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -65,60 +65,76 @@
      </layout>
     </widget>
    </item>
+   <item row="0" column="1" rowspan="2">
+    <widget class="GraphicsLayoutWidget" name="centroid_profile_graphics" native="true"/>
+   </item>
+   <item row="0" column="0" rowspan="2">
+    <widget class="GraphicsLayoutWidget" name="lps_graphics" native="true"/>
+   </item>
    <item row="2" column="1">
     <widget class="QGroupBox" name="groupBox_2">
      <property name="title">
-      <string>Parameters</string>
+      <string>Measurement Parameters</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_3">
-      <item row="4" column="1">
+      <item row="8" column="1">
        <widget class="QDoubleSpinBox" name="beta_spinbox"/>
       </item>
-      <item row="3" column="0">
+      <item row="7" column="0">
        <widget class="QLabel" name="label_4">
         <property name="text">
-         <string>TDS Voltage</string>
+         <string>TDS Voltage / MV</string>
         </property>
        </widget>
       </item>
-      <item row="5" column="0">
+      <item row="9" column="0">
        <widget class="QLabel" name="label_6">
         <property name="text">
-         <string>Beam Energy</string>
+         <string>Beam Energy / MeV</string>
         </property>
        </widget>
       </item>
       <item row="1" column="0">
-       <widget class="QLabel" name="label_2">
+       <widget class="QLabel" name="label_7">
         <property name="text">
-         <string>Time Calibration</string>
+         <string>Pixel Size x / µm</string>
         </property>
        </widget>
       </item>
-      <item row="2" column="0">
+      <item row="3" column="0">
+       <widget class="QLabel" name="label_2">
+        <property name="text">
+         <string>Time Calibration / µmps</string>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="0">
        <widget class="QLabel" name="label_3">
         <property name="text">
-         <string>Energy Calibration</string>
+         <string>Energy Calibration / MeV m⁻¹</string>
         </property>
        </widget>
       </item>
       <item row="0" column="1">
-       <widget class="QLabel" name="label_7">
+       <widget class="QLabel" name="screen_name_label">
         <property name="text">
-         <string>TextLabel</string>
+         <string/>
         </property>
        </widget>
       </item>
-      <item row="3" column="1">
+      <item row="7" column="1">
        <widget class="QDoubleSpinBox" name="voltage_spinbox"/>
       </item>
-      <item row="1" column="1">
+      <item row="3" column="1">
        <widget class="QDoubleSpinBox" name="timecal_spinner"/>
       </item>
-      <item row="2" column="1">
+      <item row="6" column="1">
        <widget class="QDoubleSpinBox" name="energy_cal_spinner"/>
       </item>
-      <item row="5" column="1">
+      <item row="10" column="1">
+       <widget class="QDoubleSpinBox" name="screen_resolution_spinner"/>
+      </item>
+      <item row="9" column="1">
        <widget class="QDoubleSpinBox" name="beam_energy_spinner"/>
       </item>
       <item row="0" column="0">
@@ -128,39 +144,43 @@
         </property>
        </widget>
       </item>
-      <item row="4" column="0">
+      <item row="8" column="0">
        <widget class="QLabel" name="label_5">
         <property name="text">
-         <string>Beta</string>
+         <string>Beta / m</string>
         </property>
        </widget>
       </item>
-      <item row="6" column="0">
+      <item row="10" column="0">
        <widget class="QLabel" name="label_9">
         <property name="text">
-         <string>Screen Resolution</string>
+         <string>Screen Resolution / µm</string>
         </property>
        </widget>
       </item>
-      <item row="6" column="1">
-       <widget class="QDoubleSpinBox" name="screen_resolution_spinner"/>
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_10">
+        <property name="text">
+         <string>Pixel Size y / µm</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QDoubleSpinBox" name="doubleSpinBox"/>
+      </item>
+      <item row="2" column="1">
+       <widget class="QDoubleSpinBox" name="doubleSpinBox_2"/>
       </item>
      </layout>
     </widget>
-   </item>
-   <item row="0" column="1" rowspan="2">
-    <widget class="MatplotlibCanvas" name="centroid_profile_graphics" native="true"/>
-   </item>
-   <item row="0" column="0" rowspan="2">
-    <widget class="MatplotlibCanvas" name="lps_graphics" native="true"/>
    </item>
   </layout>
  </widget>
  <customwidgets>
   <customwidget>
-   <class>MatplotlibCanvas</class>
+   <class>GraphicsLayoutWidget</class>
    <extends>QWidget</extends>
-   <header>esme.gui.widgets.mpl_widget</header>
+   <header>pyqtgraph</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

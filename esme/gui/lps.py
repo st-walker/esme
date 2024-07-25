@@ -2,18 +2,13 @@ import logging
 import os
 import sys
 
-from PyQt5.QtCore import QObject, QProcess, Qt, pyqtSignal, QTimer, QLocale
+from PyQt5.QtCore import QObject, QProcess, Qt, QTimer, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QMainWindow
 
-from esme.gui.ui import mainwindow
-from esme.gui.widgets.common import (
-    get_machine_manager_factory,
-    send_widget_to_log,
-    set_tds_calibration_by_region,
-)
-from esme.core import DiagnosticRegion
 from esme.control.dint import DOOCSInterface
-import pydoocs
+from esme.core import DiagnosticRegion
+from esme.gui.ui import mainwindow
+from esme.gui.widgets.common import get_machine_manager_factory, send_widget_to_log
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
@@ -26,7 +21,7 @@ _JDDD_RUN_ARGS = {
     "i1_llrf": "-file Main_TDS_LLRF_Operation.xml -address XFEL.RF/LLRF.CONTROLLER/LLTDSI1/",
     "b2_sbm": "-file XFEL_B2_Diag_bunches.xml -address XFEL.RF//LLTDSI1/",
     "i1_sbm": "-file XFEL_I1_Diag_bunches.xml -address XFEL.RF//LLTDSI1/",
-    "blms_and_toroids": "-file XFEL_BLM_TOROID_alarm_overview.xml"
+    "blms_and_toroids": "-file XFEL_BLM_TOROID_alarm_overview.xml",
 }
 _OPEN_IMAGE_ANALYSIS_CONFIG_LINE = (
     "cd /home/xfeloper/released_software/ImageAnalysisConfigurator"

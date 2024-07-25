@@ -1,6 +1,7 @@
 """Console script for esme."""
 
 import logging
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -8,17 +9,16 @@ import pandas as pd
 from click import Option
 from click import Path as CPath
 from click import UsageError, argument, echo, group, option
-import sys
 
 import esme.analysis as ana
+import esme.gui.widgets.common as wcommon
 import esme.plot as plot
 from esme.analysis import SetpointDataFrame
 from esme.gui.explorer import start_explorer_gui
+from esme.gui.high_res_espread import start_hires_gui
 from esme.gui.tds_calibrator import start_calibration_explorer_gui
 from esme.load import load_result_directory
 from esme.plot import pretty_parameter_table
-import esme.gui.widgets.common as wcommon
-from esme.gui.high_res_espread import start_hires_gui
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
@@ -78,7 +78,7 @@ def main(debug, profile, vxfel):
         logging.getLogger("esme.explorer").setLevel(logging.DEBUG)
 
         logging.getLogger("ocelot.utils.fel_track").setLevel(logging.DEBUG)
-    
+
     wcommon.USE_VIRTUAL_XFEL_ADDRESSES = vxfel
 
     if profile:
@@ -100,10 +100,13 @@ def main(debug, profile, vxfel):
 
         atexit.register(exit)
 
+
 @main.command()
 def hires():
-    import sys
+    pass
+
     start_hires_gui()
+
 
 @main.command()
 def calib():
@@ -282,7 +285,6 @@ def rm(pcl_files, imname, dry_run):
             rm_ims_from_pcl(fpcl, imname, dry_run)
 
 
-
 @main.command()
 def gui():
     """Start the measurement GUI"""
@@ -290,16 +292,27 @@ def gui():
 
     start_lps_gui()
 
+
 @main.command()
 def tds():
     from esme.gui.calibrator import start_tds_calibrator
+
     start_tds_calibrator(sys.argv)
+
+
+@main.command()
+def slices():
+    from esme.gui.widgets.slicer import start_slice_analysis_gui
+
+    start_slice_analysis_gui()
 
 
 @main.command()
 def current():
     from esme.gui.widgets.current import start_current_profiler
+
     start_current_profiler(sys.argv)
+
 
 @main.command()
 @argument("dirname", nargs=1, type=CPath(exists=True, file_okay=False, path_type=Path))
@@ -327,11 +340,14 @@ def optics(dirname):
 @main.command()
 @argument("seqname", nargs=1)
 def taskomat(seqname):
-    from esme.gui.widgets.sequence import TaskomatSequenceDisplay
-    from esme.control.taskomat import Sequence
-    from PyQt5.QtWidgets import QApplication
-    from esme.gui.widgets.common import make_default_doocs_interface
     import sys
+
+    from PyQt5.QtWidgets import QApplication
+
+    from esme.control.taskomat import Sequence
+    from esme.gui.widgets.common import make_default_doocs_interface
+    from esme.gui.widgets.sequence import TaskomatSequenceDisplay
+
     app = QApplication(sys.argv)
 
     sequence = Sequence(seqname, di=make_default_doocs_interface())
@@ -340,7 +356,6 @@ def taskomat(seqname):
     display.show()
     display.raise_()
     sys.exit(app.exec_())
-
 
 
 if __name__ == "__main__":

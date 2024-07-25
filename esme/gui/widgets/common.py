@@ -71,9 +71,9 @@ def is_in_controlroom() -> bool:
 
 def make_default_doocs_interface() -> DOOCSInterfaceABC:
     global USE_VIRTUAL_XFEL_ADDRESSES
-    if not is_in_controlroom():
-        return get_default_virtual_machine_interface()
-    elif USE_VIRTUAL_XFEL_ADDRESSES:
+    # if not is_in_controlroom():
+    #     return get_default_virtual_machine_interface()
+    if USE_VIRTUAL_XFEL_ADDRESSES:
         return VXFELDOOCSInterface()
     else:
         return DOOCSInterface()
