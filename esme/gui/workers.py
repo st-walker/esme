@@ -1,22 +1,23 @@
-import logging
+from enum import Enum, auto
+from dataclasses import dataclass, field
+from functools import cached_property, cache
+from collections import deque
 import queue
 import time
-from collections import deque
-from copy import deepcopy
-from dataclasses import dataclass, field
-from enum import Enum, auto
-from functools import cache, cached_property
+import logging
 from typing import Any
+from copy import deepcopy
+import threading
 
-import numpy as np
+from PyQt5.QtCore import pyqtSignal, QObject, QTimer
 import numpy.typing as npt
-from PyQt5.QtCore import QObject, QTimer, pyqtSignal
+import numpy as np
 from scipy import ndimage
 
-from esme.control.exceptions import DOOCSReadError
-from esme.control.screens import Screen, ScreenMetadata
-from esme.image import get_slice_properties, zero_off_axis_regions
+from esme.control.screens import Position, Screen, ScreenMetadata
 from esme.maths import get_gaussian_fit
+from esme.image import zero_off_axis_regions
+from esme.control.exceptions import DOOCSReadError
 
 LOG = logging.getLogger(__name__)
 
@@ -30,7 +31,6 @@ class GaussianParameters:
     def to_popt(self) -> tuple[float, float, float]:
         return (self.scale, self.mu, self.sigma)
 
-
 @dataclass
 class ImagePayload:
     image: npt.NDArray
@@ -42,7 +42,7 @@ class ImagePayload:
     @cached_property
     def eproj(self):
         return self.image.sum(axis=1)
-
+    
     @cached_property
     def tproj(self):
         return self.image.sum(axis=0)
@@ -52,91 +52,55 @@ class ImagePayload:
         # Time is always the x-axis in our convention
         sh = self.image.shape
         return np.linspace(-sh[1] / 2, sh[1] / 2, num=len(self.tproj))
-
+    
     @property
     def energypx(self):
         sh = self.image.shape
-        return np.linspace(-sh[0] / 2, sh[0] / 2, num=len(self.eproj))
+        return np.linspace(-sh[0] / 2, sh[0] / 2, num=len(self.eproj))    
 
     @property
     def time(self) -> npt.NDArray:
         return self.timepx * self.screen_md.ysize
-
+    
     @property
     def energy(self) -> npt.NDArray:
         # Time is always the x-axis so energy is y-axis.
         return self.energypx * self.screen_md.xsize
-
+    
     @property
     def time_calibrated(self) -> npt.NDArray:
-        return self.time / self.time_calibration
+        return self.time / self.time_calibration    
 
     @cached_property
     def current(self):
-        profile = self.tproj * (
-            self.bunch_charge / np.trapz(self.tproj, self.time_calibrated)
-        )
+        profile = self.tproj * (self.bunch_charge / np.trapz(self.tproj, self.time_calibrated))
+        print(self.bunch_charge, profile.max())
         return profile
-
+    
+    @cached_property
+    def stdev_bunch_length(self) -> float:
+        tcal = self.time_calibrated
+        pdf = self.tproj / np.trapz(self.tproj, tcal)
+        mean = np.trapz(pdf * self.time_calibrated, tcal)
+        stdev = np.sqrt(np.trapz(pdf * (mean - tcal)**2, tcal))
+        return stdev
+    
     @cached_property
     def gaussfit_time(self):
         # This is uncalibrated time...
-        popt, _ = get_slice_properties(
-            self.time,
-            self.tproj,
-            p0=[
-                self.tproj.max(),
-                self.time[self.tproj.argmax()],
-                300 * self.screen_md.ysize,
-            ],
-        )
+        popt, _ = get_gaussian_fit(self.time, self.tproj, p0=[self.tproj.max(), self.time[self.tproj.argmax()], 300 * self.screen_md.ysize])
         scale, mu, sigma = popt
         return GaussianParameters(scale=scale, mu=mu, sigma=sigma)
 
     @cached_property
     def gaussfit_current(self):
-        popt, _ = get_gaussian_fit(
-            self.time_calibrated,
-            self.current,
-            p0=[
-                self.current.max(),
-                self.time_calibrated[self.current.argmax()],
-                300 * self.screen_md.ysize / self.time_calibration,
-            ],
-        )
+        popt, _ = get_gaussian_fit(self.time_calibrated, 
+                                   self.current,
+                                   p0=[self.current.max(),
+                                       self.time_calibrated[self.current.argmax()],
+                                       300 * self.screen_md.ysize / self.time_calibration])
         scale, mu, sigma = popt
         return GaussianParameters(scale=scale, mu=mu, sigma=sigma)
-
-    @cached_property
-    def slice_gaussfit_time_calibrated(self):
-        """This is the slice of the image that is gaussian fitted in time."""
-        row_index, mean_slice_position, slice_width = get_slice_properties(
-            self.image.T, mask_nans=True
-        )
-        time = self.time_calibrated[row_index]
-        mean_slice_position *= self.screen_md.xsize  # In the non-streaking plane
-        slice_width *= self.screen_md.xsize  # Also in the non streaking plane....
-        return time, mean_slice_position, slice_width
-
-    @cached_property
-    def slice_gaussfit_time(self):
-        """This is the slice of the image that is gaussian fitted in time."""
-        row_index, mean_slice_position, slice_width = get_slice_properties(
-            self.image.T, mask_nans=True
-        )
-        time = self.time[row_index]
-        mean_slice_position *= self.screen_md.xsize  # In the non-streaking plane
-        slice_width *= self.screen_md.xsize  # Also in the non streaking plane....
-        return time, mean_slice_position, slice_width
-
-    @cached_property
-    def slice_gaussfit_px(self):
-        row_index, mean_slice_position, slice_width = get_slice_properties(
-            self.image.T, mask_nans=True
-        )
-        # timepx = self.timepx[row_index]
-        time = row_index
-        return time, mean_slice_position, slice_width
 
 
 class MessageType(Enum):
@@ -163,10 +127,11 @@ class StopImageAcquisition(Exception):
     pass
 
 
-class CountingQueue(queue.Queue):
-    def __init__(self, maxlen=0):
-        self.maxlen = 0.0
-
+@dataclass
+class ImageQueue:
+    q: queue.Queue[ImagePayload]
+    num_images_remaining: int
+        
 
 class ImagingWorker(QObject):
     display_image_signal = pyqtSignal(ImagePayload)
@@ -200,13 +165,14 @@ class ImagingWorker(QObject):
 
         # Queue for messages we we receive from
         self._consumerq: queue.Queue[ImagingMessage | None] = queue.Queue()
-        self._subscriber_queues: list[queue.Queue[ImagePayload | None]] = []
+        self._subscriber_queues: list[ImageQueue] = []
+        self._lock = threading.Lock()
 
         self._is_running = False
 
     def get_cached_background(self) -> deque[npt.NDArray]:
         return deepcopy(self.bg_images)
-
+    
     def bg_cache_is_empty(self) -> bool:
         return len(self.bg_images) == 0
 
@@ -256,7 +222,7 @@ class ImagingWorker(QObject):
                 # get_image_raw can for a moment start returning None, of course
                 # we need to account for this possibility and go next.
                 continue
-
+            
             # The convention is that we always put the current along the x-axis.
             image = np.rot90(image, 2)
 
@@ -271,11 +237,16 @@ class ImagingWorker(QObject):
                 self.display_image_signal.emit(image_payload)
 
     def _push_to_subscribers(self, image_payload: ImagePayload) -> None:
-        for images_remaining, subscriber in self._subscriber_queues:
-            if not images_remaining:
-                continue
-            subscriber.put(image_payload)
-            images_remaining -= 1
+        with self._lock:
+            to_remove = []
+            for imq in self._subscriber_queues:
+                if not imq.num_images_remaining:
+                    continue
+                imq.q.put(image_payload)
+                imq.num_images_remaining -= 1
+                if imq.num_images_remaining == 0:
+                    self._subscriber_queues.remove(imq)
+
 
     def _handle_background(self, image) -> ImagePayload:
         self.bg_images.appendleft(image)
@@ -294,13 +265,17 @@ class ImagingWorker(QObject):
             screen_md=self.screen_md,
             time_calibration=self._time_calibration,
             bunch_charge=self._bunch_charge,
-            is_bg=True,
+            is_bg=True
         )
-
-    def subscribe(self, nimages: int = 0) -> queue.Queue[ImagePayload]:
-        q = queue.Queue(maxsize=nimages)
-        self._subscriber_queues.append([nimages, q])
-        return q
+    
+    @property
+    def read_frequency(self) -> float:
+        return 1 / self._read_period
+    
+    def subscribe(self, nimages: int = 0) -> ImageQueue:
+        imq = ImageQueue(queue.Queue(maxsize=nimages), num_images_remaining=nimages)
+        self._subscriber_queues.append(imq)
+        return imq
 
     def _take_n_fast(self, n: int) -> None:
         # This completely blocks the thread in that it is no longer listening
@@ -389,18 +364,17 @@ class ImagingWorker(QObject):
             inds_mask_neg = np.asarray((Hg - np.max(Hg) * threshold) < 0).nonzero()
             image[inds_mask_neg] = 0.0
 
+        
         if self._clip_offaxis:
             (xmin, xmax), (ymin, ymax) = self._clipping_bounds()
-            zero_off_axis_regions(
-                image, len(image) - xmax, len(image) - xmin, ymin, ymax
-            )
+            zero_off_axis_regions(image, len(image) - xmax, len(image) - xmin, ymin, ymax)
 
         return ImagePayload(
             image=image,
             screen_md=self.screen_md,
             time_calibration=self._time_calibration,
             bunch_charge=self._bunch_charge,
-            is_bg=False,
+            is_bg = False
         )
 
     @cache

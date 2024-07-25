@@ -5,10 +5,8 @@ from scipy.optimize import curve_fit
 
 ValueWithErrorT = tuple[float, float]
 
-
 def line(x, a0, a1) -> Any:
     return a0 + a1 * x
-
 
 def linear_fit(
     indep_var, dep_var, dep_var_err
@@ -27,25 +25,23 @@ def linear_fit(
 
     return a0, a1
 
-
 def gauss(x, a, mu, sigma) -> Any:
     return a * np.exp(-((x - mu) ** 2) / (2.0 * sigma**2))
-
 
 # def parabola(x, a, b, c):
 #     return a*x**2 + b*x + c
 
-
 def parabola(x, a, b, c):
-    return a * x**2 + b * x + c
+    return a*x**2 + b*x + c
 
-
-def get_gaussian_fit(
-    x, y, p0: tuple[float, float, float] | None = None
-) -> tuple[tuple, tuple]:
+def get_gaussian_fit(x, y, p0: tuple[float, float, float] | None = None) -> tuple[tuple, tuple]:
     """popt/perr order: a, mu, sigma"""
     if p0 is None:
-        p0 = [y.max(), y.argmax(), 1]
+        a0 = y.max()
+        mu0 = y.argmax()
+        sigma0 = 1    
+
+    a0, mu0, sigma0 = p0
 
     # Bounds argument of curve_fit slows the fitting procedure down too much
     # (>2x worse), so avoid using it here.
@@ -53,7 +49,7 @@ def get_gaussian_fit(
         gauss,
         x,
         y,
-        p0=p0,
+        p0=[a0, mu0, sigma0],
     )
     variances = np.diag(pcov)
     if (variances < 0).any():

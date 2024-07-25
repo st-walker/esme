@@ -4,51 +4,94 @@
 	- Calibration
 	- TDS data taking (do not need online analysis...)
 
+# TEST TOMORROW MORNING:
+
+
 # Handle when not getting screen metadata?  e.g. orc.55.i1 when screen is off doens't work whole gui crashes.
 
-my tool:                     bolko:
-~600mum/ps @ OTRC.58.I1      450
-~200mum/ps @ OTRC.64.I1D     260
+questions for bolko:
 
+what are in bolko's .mat files from his calib?
+do i need them at all?
+Let's do a really quick calibration using the bolko tool.
 
-default kicker on/off state should depend on whether or not screen is inserted.
-add calibration file location to output of main gui
-turn adaptive FF back on automatically.
-ibfb should not be warning if the screen is on axis.
-make aspect ratio toggleable
-clear the image when data taking stops/fails/whatever.
-draw ROI.
 save roi info.
 save screen position.
 SBML needs to be B2 aware.
-everything minus tds should work for B2.
+also everything needs to be checked for b2 really.
 we need correct r12 calculationf for b2.
+check all orientations are correct.
 
 What if screen is switched off by someone/something else?
-Fix standard increments (+0.1 for voltage for example, +1 for amplitude..)
+what if kickers are depowered by someone?
+then i should try in a loop to power them, right?
 
-open blms button
-blms to group box
-dump switch group box.
-optics using design kick server.
-if on axis then don't use kickers
-if off axis then do use kickers
-if screen position is moved then one time check and set whether ot use kickers.
-gaussian fit for energy axis.
-image analysis
-get automatic time calibraiton calculation correct and working.
-make calibrator and current profiler use the parent widget/thread,.
-two point analysis.
-current profiler.
-make logging work.
-fix colour map
-an icon
-add to jddd.
-dispersion measurement.
-turn off current/time axis if sbm isn't firing..
-warn/forbid bad bunch numbers and bad region numbers
+!!!!!!!!!!!!!!!!!!!!!!!!!FIX COLOUR MAP!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+i need an icon
+
+self.screen masks self.screen()
+make it self._screen?
+
+# LPS Main GUI
+
+# BEFORE I LEAVE TODAY:
+
+ - don't let user put in fake beam regions or fake bunch numbers
+ - save roi info if off axis.
+
+## Minimal feature set todolist (Highest Priority)
+
+1. [ ] Use Bolko Calibrations.
+2. [x] Use new python12 pydoocs without GIL.
+3. [x] Be able to take data.
 
 
+## High Priortiy
+
+1. [ ] Find phase.
+2. [ ] Reconstruct current profile using both crossings.
+3. [x] Subtract background buton
+3. [x] Get transverse projections working.
+4. [x] Get time projection working.
+5. [x] Get energy projection working.
+6. [x] Subtract background button.
+7. [x] ensure SBP behaves itself when stopping
+8. [x] IBFP Check.
+9. [ ] get logging working finally!
+
+
+## Middle Priority
+
+1. [x] Get plain data taking working.
+2. [ ] bunch pattern to and from I1D or B2D.
+3. [ ] Design kick server, to and from 200m optics, to and from I1D.
+4. [ ] Automatically Calibrate TDS.
+5. [X] Get negative axis working.
+6. [x] get dispersion axes calibration working.
+6. [x] add author string to print to logbook.
+7. [x] figure out levels stuff so images look good.
+8. [x] add external panels to top menu, camera status, pattern builder, tds monitor, special bunch diagnostic?
+9. [x] play / pause / set rate data acquisition
+11. [x] add gain or gain control.
+12. [ ] don't power cameras off at the end, instead disable cameras each time when changing screen.
+
+## Low Priority
+
+1. [x] Get indiciators working.
+2. [ ] Dispersion measurement.
+3. [ ] If kicker would not fire because bunch number is too big, then complain/say something...
+3. [ ] Use Kickers to steer onto screen automatically (i.e. before TDS is ever switched on).
+4. [x] Handle screens being on/off properly (including turning off afterwards if we turned them on).
+5. [ ] Add some sort of help, e.g., remember to update the timings in the config file...
+6. [x] Make initial size 50% bigger.
+7. [ ] Get rid of logging tab somehow.
+8. [x] Reduce spacing between control boxes a little bit.
+9. [x] Change JDDD... to Open JDDD panel.
+10. [ ] reset image view when changing screen.
+11. [x] laser heater status working.
+12.
+11.
 
 
 # High Resolution Slice Energy Spread

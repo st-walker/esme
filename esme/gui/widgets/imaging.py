@@ -215,8 +215,14 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         self.producer_worker.submit(message)
 
     def _open_logbook_writer(self) -> None:
+        if tcal := self.ui.time_calibration_spinbox.value():
+            self.elogger.time_calibration = tcal * 1e6 # µm/ps to m/s
+        else:
+            tcal = None
         self.elogger.show_as_new_modal_dialogue(
-            self.screen, list(self.producer_worker.bg_images)
+            self.screen, list(self.producer_worker.bg_images),
+            time_calibration=tcal,
+            energy_calibration=None
         )
 
     def set_subtract_background(self, subtract_bg_state: Qt.CheckState) -> None:  # type: ignore
@@ -320,6 +326,8 @@ class LogBookEntryWriterDialogue(QDialog):
         self.outdir = hardcoded_path
 
         self._screen = screen
+        self._time_calibration = None
+        self._energy_calibration = None
 
         self._bg_images = bg_images
         self._executor = ProcessPoolExecutor(max_workers=1)
@@ -330,10 +338,14 @@ class LogBookEntryWriterDialogue(QDialog):
         self._connect_buttons()
 
     def show_as_new_modal_dialogue(
-        self, screen: Screen, bg_images: list[npt.NDArray]
+        self, screen: Screen, bg_images: list[npt.NDArray], 
+        time_calibration: float | None = None,
+        energy_calibration: float | None = None,
     ) -> None:
         self._screen = screen
         self.bg_images = bg_images
+        self._time_calibration = time_calibration
+        self._energy_calibration = energy_calibration
         self.ui.nbg_label.setText(f"Background Images: {len(self.bg_images)}")
         self.setModal(True)
         self.show()
@@ -453,8 +465,18 @@ class LogBookEntryWriterDialogue(QDialog):
     def get_machine_state(self) -> pd.Series:
         screen_name = self._screen.name
         location = self._get_location()
-        kvps = {"screen": screen_name, "location": location}
+        screen_metadata = self._screen.get_screen_metadata()
+        kvps = {"screen": screen_name, 
+                "location": location,
+                "xpixel_size": screen_metadata.xsize,
+                "ypixel_size": screen_metadata.ysize,
+                "nxpixels": screen_metadata.nx,
+                "nypixels": screen_metadata.ny,
+                "time_calibration": self.time_calibration,
+                "energy_calibration": self.energy_calibration
+                }
         kvps |= self.mreader.full_read()
+
         # kvps |= self._screen.dump()
         # kvps |= self._screen.analysis.dump()
         series = pd.Series(kvps)

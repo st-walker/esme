@@ -121,25 +121,28 @@ class CurrentProfileWorker(QRunnable):
             time.sleep(0.2)
 
     def _take_images(self, n: int) -> list[ImagePayload]:
+        initial_read_rate = self.imager_worker.read_frequency
         self.imager_worker.submit(ImagingMessage(MessageType.SET_FREQUENCY, data={"frequency": 10.0}))
         result = []
         image_queue = self.imager_worker.subscribe(n)
         print("Another queue...")
         images = []
-        while True:
+        while image_queue.num_images_remaining != 0:
             if len(images) == n:
                 break
             try:
-                image = image_queue.get(timeout=1)
+                image = image_queue.q.get(timeout=1)
                 print(image)
                 images.append(image)
                 image_queue.task_done()
             except queue.Empty:
                 continue
-        self.imager_worker.submit(ImagingMessage(MessageType.SET_FREQUENCY, data={"frequency": 1.0}))
+        # Now go back to previous read rate.
+        self.imager_worker.submit(ImagingMessage(MessageType.SET_FREQUENCY, data={"frequency": initial_read_rate}))
         return images
     
     def _take_background(self) -> deque[npt.NDArray]:
+        initial_read_rate = self.imager_worker.read_frequency
         self.imager_worker.submit(ImagingMessage(MessageType.SET_FREQUENCY, data={"frequency": 10.0}))
         self.imager_worker.submit(ImagingMessage(MessageType.CLEAR_BACKGROUND))
         # Wait for background clearing to be done.
@@ -224,10 +227,7 @@ class CurrentProfilerWindow(QMainWindow):
         self._connect_buttons()
 
         self._measurement = None
-
-        self.ui.area_control.screen_name_signal.connect(self._set_screen)
         # Set initial screen name in the calibration context.
-        self._set_screen(self.ui.area_control.get_selected_screen_name())
 
         self.threadpool = QThreadPool()
         self.worker = None
@@ -260,13 +260,6 @@ class CurrentProfilerWindow(QMainWindow):
     def _connect_buttons(self) -> None:
         self.ui.start_measurement_button.clicked.connect(self.measure_current_profile)
         self.ui.cancel_button.clicked.connect(self.cancel_current_profile_measurement)
-        self.ui.beam_region_spinner.valueChanged.connect(
-            lambda n: self.machine.sbunches.set_beam_region(n - 1)
-        )
-        self.ui.bunch_number_spinner.valueChanged.connect(
-            self.machine.sbunches.set_bunch_number
-        )
-        self.ui.goto_last_in_beamregion.clicked.connect(lambda: self.sbunches.set_to_last_bunch())
 
     def _get_screen(self) -> Screen:
         return self.machine.screens[self.i1profile.context.screen_name]

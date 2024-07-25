@@ -26,18 +26,16 @@ import numpy.typing as npt
 
 from esme.control.exceptions import DOOCSReadError, DOOCSWriteError
 
-try:
-    import pydoocs
-except ImportError:
-    PYDOOCS_SO = "/System/Volumes/Data/home/xfeloper/user/stwalker/pydoocs12/pydoocs-main/pydoocs.cpython-312-darwin.so"
-    SPEC = importlib.util.spec_from_file_location("pydoocs", PYDOOCS_SO)
-    if SPEC is not None:
-        try:
-            pydoocs = importlib.util.module_from_spec(SPEC)
-        except ImportError:
-            import warnings
+# PYDOOCS_SO = "/System/Volumes/Data/home/xfeloper/user/stwalker/pydoocs12/pydoocs-main/pydoocs.cpython-312-darwin.so"
+PYDOOCS_SO = "/System/Volumes/Data/home/xfeloper/user/stwalker/stuarts-pydoocs/pydoocs/build/lib.macosx-10.9-x86_64-cpython-312/pydoocs.cpython-312-darwin.so"
+SPEC = importlib.util.spec_from_file_location("pydoocs", PYDOOCS_SO)
+if SPEC is not None:
+    try:
+        pydoocs = importlib.util.module_from_spec(SPEC)
+    except ImportError:
+        import warnings
 
-            warnings.warn(f"Unable to import pydoocs from {PYDOOCS_SO}")
+        warnings.warn(f"Unable to import pydoocs from {PYDOOCS_SO}")
 
 
 LOG = logging.getLogger(__name__)
@@ -296,16 +294,15 @@ class VXFELDOOCSInterface(DOOCSInterface):
 
     def get_value(self, channel: str) -> Any:
         return super().get_value(self.filter_address(channel))
-
+    
     def set_value(self, channel: str, value: Any) -> None:
         super().set_value(self.filter_address(channel), value)
 
     def get_names(self, wc_address: str) -> list[str]:
         return super().get_names(self.filter_address(wc_address))
-
+    
     def read_full(self, channel: str) -> dict[str, Any]:
         return super().read_full(self.filter_address(channel))
-
 
 def dump_fdl(
     stub: str,

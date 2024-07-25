@@ -74,13 +74,13 @@ class ScreenWidget(QWidget):
         self.xplot, self.yplot = self._make_transverse_projections()
         # self.gauss_beam_length_string = pg.TextItem(html=f"<i>σ</i><sub>Gauss.</sub> = ", anchor=(0.0, 0), color="white")
         # self.gauss_beam_length_string = pg.TextItem(f"HELLO ", color="yellow")
-        self.gauss_beam_length_string = pg.TextItem("", color="yellow")
+        self.gauss_beam_length_string = pg.TextItem("text", color="yellow")
         self.gauss_beam_length_string.setFlag(self.gauss_beam_length_string.ItemIgnoresTransformations)
         self.image_plot.addItem(self.gauss_beam_length_string, ignoreBounds=True)
         self.gauss_beam_length_string.setParentItem(self.image_plot)
         self.gauss_beam_length_string.setPos(1000, 650)
 
-        self.gauss_beam_length_string.setHtml("<i>Hello</i>")
+        # self.gauss_beam_length_string.setHtml("<i>Hello</i>")
         # self.xplot.addItem(self.gauss_beam_length_string)
         # self.yplot.addItem(self.gauss_beam_length_string)
         # self.xplot.addItem(self.gauss_beam_length_string)
@@ -253,8 +253,9 @@ class ScreenWidget(QWidget):
                 xvar = image_payload.time_calibrated
                 yvar = image_payload.current
                 popt = image_payload.gaussfit_current.to_popt()
-                # self.gauss_beam_length_string.setHtml("<i>Hello</i>")
-                self.gauss_beam_length_string.setHtml(f"<i>σ</i><sub>Gauss.</sub> = {popt[2]*1e12:.2f} ps")
+                stdev = image_payload.stdev_bunch_length * 1e12
+                sigma_gauss = popt[2] *1e12
+                self.gauss_beam_length_string.setHtml(f"σ = {stdev:.2f} ps<br><i>σ</i><sub>Gauss.</sub> = {sigma_gauss:.2f} ps")
 
             else:
                 xvar = image_payload.time

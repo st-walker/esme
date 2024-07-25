@@ -51,7 +51,6 @@ USE_VIRTUAL_XFEL = False
 
 USE_VIRTUAL_XFEL_ADDRESSES = False
 
-
 def get_machine_manager_factory(virtual=False) -> MachineManagerFactory:
     global _MACHINE_MANAGER_FACTORY
     if _MACHINE_MANAGER_FACTORY:
@@ -70,10 +69,10 @@ def is_in_controlroom() -> bool:
 
 
 def make_default_doocs_interface() -> DOOCSInterfaceABC:
-    global USE_VIRTUAL_XFEL_ADDRESSES
-    # if not is_in_controlroom():
-    #     return get_default_virtual_machine_interface()
-    if USE_VIRTUAL_XFEL_ADDRESSES:
+    global USE_VIRTUAL_XFEL_ADDRESSES    
+    if not is_in_controlroom():
+        return get_default_virtual_machine_interface()
+    elif USE_VIRTUAL_XFEL_ADDRESSES:
         return VXFELDOOCSInterface()
     else:
         return DOOCSInterface()
@@ -101,7 +100,6 @@ def get_default_virtual_machine_interface() -> DictionaryDOOCSInterface:
 
 def get_config_path() -> Path:
     return Path("/Users/xfeloper/user/stwalker/lps")
-
 
 def get_tds_calibration_config_dir() -> Path:
     return get_config_path() / "tds-calibrations"
@@ -140,7 +138,7 @@ class QPlainTextEditLogger(QObject, logging.Handler):
 
 
 def setup_screen_display_widget(
-    widget: pg.GraphicsLayoutWidget,
+    widget: pg.GraphicsLayoutWidget, 
 ) -> pg.PlotItem:
     # We add a plot to the pg.GraphicsLayoutWidget
     main_plot = widget.addPlot()
@@ -383,8 +381,3 @@ class PlayPauseButton(QPushButton):
 
     def toggle_action(self) -> None:
         self.is_playing = not self.is_playing
-
-
-def load_blm_names():
-    with open(DEFAULT_CONFIG_PATH, "r") as f:
-        tdict = toml.load(f)

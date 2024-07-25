@@ -1,8 +1,8 @@
 import logging
-import textwrap
 import time
+import textwrap
 
-from PyQt5.QtCore import QProcess, Qt, QTimer, pyqtSignal
+from PyQt5.QtCore import QProcess, QTimer, pyqtSignal, Qt
 from PyQt5.QtWidgets import (
     QDialog,
     QHBoxLayout,
@@ -12,22 +12,18 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from esme.control.exceptions import DOOCSReadError, DOOCSWriteError, EuXFELMachineError
-from esme.control.screens import (
-    Position,
-    PoweringState,
-    Screen,
-    screen_is_fully_operational,
-)
+from esme.control.exceptions import EuXFELMachineError
+from esme.control.screens import Screen, screen_is_fully_operational, PoweringState
 from esme.core import DiagnosticRegion
 from esme.gui.ui import Ui_area_widget
+from esme.control.exceptions import DOOCSReadError
+from esme.control.screens import Screen, Position
 from esme.gui.widgets.common import get_machine_manager_factory, raise_message_box
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
 
 _CAMERA_DIALOGUE = None
-
 
 class AreaControl(QWidget):
     screen_name_signal = pyqtSignal(str)
@@ -68,24 +64,18 @@ class AreaControl(QWidget):
         self.ui.b2_radio_button.pressed.connect(self.set_b2)
         self.ui.jddd_screen_gui_button.clicked.connect(self.open_jddd_screen_window)
         self.ui.select_screen_combobox.activated.connect(self.select_screen)
-        self.ui.screen_on_axis_button.clicked.connect(
-            lambda: self._set_screen_position(Position.ONAXIS)
-        )
-        self.ui.screen_off_axis_button.clicked.connect(
-            lambda: self._set_screen_position(Position.OFFAXIS)
-        )
-        self.ui.screen_out_button.clicked.connect(
-            lambda: self._set_screen_position(Position.OUT)
-        )
+        self.ui.screen_on_axis_button.clicked.connect(lambda: self._set_screen_position(Position.ONAXIS))
+        self.ui.screen_off_axis_button.clicked.connect(lambda: self._set_screen_position(Position.OFFAXIS))
+        self.ui.screen_out_button.clicked.connect(lambda: self._set_screen_position(Position.OUT))
 
     def _set_screen_position(self, pos: Position) -> None:
         screen = self.machine.screens[self.get_selected_screen_name()]
         screen.set_position(pos)
-
+    
     def _update_screen_position_ui(self):
         screen = self.machine.screens[self.get_selected_screen_name()]
         self.ui.screen_position_label.setText(screen.get_position().name)
-
+        
         # self.ui.select_screen_combobox.activated.connect(self.select_screen)
 
     def update_screen_combo_box(self, initial_value=None) -> None:
@@ -148,15 +138,11 @@ class AreaControl(QWidget):
             # XXX: Perhaps this should be changed to a different exception
             # Raised by the screen...
             raise_message_box(
-                text=(
-                    f"{screen_name}'s camera is unreachable, "
-                    " perhaps the server responsible "
-                    " for this camera has crashed."
-                ),
-                informative_text=(
-                    "Check the server status under"
-                    " Status → Miscellaneous → Camera Status"
-                ),
+                text=(f"{screen_name}'s camera is unreachable, "
+                      " perhaps the server responsible "
+                      " for this camera has crashed."),
+                informative_text=("Check the server status under"
+                                  " Status → Miscellaneous → Camera Status"),
                 title="Unreachable Screen",
                 icon="Critical",
             )
@@ -168,8 +154,8 @@ class AreaControl(QWidget):
         # I comment this bit out because it is annoying.  And anyway we do not need to tell
         # The user because we offer to switch them off at the end anyway.
         # global _CAMERA_DIALOGUE
-        # _CAMERA_DIALOGUE = CameraDialogue(screen_name,
-        #                                   is_powered=is_powered,
+        # _CAMERA_DIALOGUE = CameraDialogue(screen_name, 
+        #                                   is_powered=is_powered, 
         #                                   is_taking_data=is_taking_data)
         # _CAMERA_DIALOGUE.show()
 
@@ -184,13 +170,13 @@ class AreaControl(QWidget):
                 icon="Warning",
             )
         else:
-            if is_powered:  # or was powered, i.e., it was not powered before we did it.
+            if is_powered: # or was powered, i.e., it was not powered before we did it.
                 self._screens_we_set_to_take_data.add(screen)
             else:
                 self._screens_we_powered.add(screen)
-
+    
     def select_screen(self, index: int) -> None:
-        screen_name: str = self.ui.select_screen_combobox.itemText(index)
+        screen_name: str = self.ui.select_screen_combobox.itemText(index)        
 
         self._setup_screen(screen_name)
         # Emitting here can be expensive as the rest of the GUI learns from this one signal
@@ -211,10 +197,8 @@ class AreaControl(QWidget):
         if not self._screens_we_powered | self._screens_we_set_to_take_data:
             return
 
-        dialog = SwitchOffCamerasDialog(
-            [s.name for s in self._screens_we_powered],
-            [s.name for s in self._screens_we_set_to_take_data],
-        )
+        dialog = SwitchOffCamerasDialog([s.name for s in self._screens_we_powered],
+                                        [s.name for s in self._screens_we_set_to_take_data])
         if dialog.exec_() == QDialog.Accepted:
             for camera in self._screens_we_powered:
                 camera.power_on_off(on=False)
@@ -227,27 +211,17 @@ class AreaControl(QWidget):
 
 
 class CameraDialogue(QDialog):
-    def __init__(
-        self,
-        camera_name: str,
-        *,
-        is_powered: bool,
-        is_taking_data: bool,
-        parent: QWidget | None = None,
-    ):
+    def __init__(self, camera_name: str, *, is_powered: bool, is_taking_data: bool, parent: QWidget | None = None):
         super().__init__(parent)
 
         self.setWindowTitle(f"{camera_name}'s Camera Status")
-
+        
         if not is_powered:
             message = f"Camera {camera_name} powered off and not taking data.\nPowering and setting up camera for image acquisition..."
         elif is_powered and not is_taking_data:
             message = f"Camera {camera_name} is not taking data.\nStarting image acquisition..."
         else:
-            message = "Camera status: unknown: is powered: %s, is taking data: %s" % (
-                is_powered,
-                is_taking_data,
-            )
+            message = "Camera status: unknown: is powered: %s, is taking data: %s" % (is_powered, is_taking_data)
 
         self.label = QLabel(message)
 
@@ -280,12 +254,7 @@ def try_to_boot_screen(screen: Screen, timeout: float = 10.0) -> None:
         elif not screen.is_powered():
             screen.power_on_off(on=True)
         elif not screen.is_acquiring_images():
-            try:
-                screen.start_stop_image_acquisition(acquire=True)
-            except (
-                DOOCSWriteError
-            ):  # This is probably because running locally on laptop...
-                pass
+            screen.start_stop_image_acquisition(acquire=True)
 
         if not screen_is_fully_operational(screen):
             QTimer.singleShot(punt_time, try_it)
@@ -294,7 +263,8 @@ def try_to_boot_screen(screen: Screen, timeout: float = 10.0) -> None:
 
 
 class SwitchOffCamerasDialog(QDialog):
-    def __init__(self, we_switched_on: list[str], we_started_taking_data: list[str]):
+    def __init__(self, we_switched_on: list[str],
+                we_started_taking_data: list[str]):
         super().__init__()
         self.we_switched_on = we_switched_on
         self.we_started_taking_data = we_started_taking_data
@@ -304,14 +274,12 @@ class SwitchOffCamerasDialog(QDialog):
         self.setWindowTitle("Restore Cameras")
         layout = QVBoxLayout()
 
-        message = textwrap.dedent(
-            """\
+        message = textwrap.dedent("""\
         One or more cameras was powered or started taking
         data due to this application. Should the cameras
         be restored to their previous states?
 
-        """
-        )
+        """)
 
         # Build up bulleted list of screens we switched on.
         started_taking_data_bullets = ""
@@ -324,19 +292,19 @@ class SwitchOffCamerasDialog(QDialog):
             powered_on_bullets += f"• {name}\n"
 
         # The message telling the user we would stop taking data
-        stop_taking_data_message = (
-            "Would stop acquiring images:\n" f"{started_taking_data_bullets}"
-        )
+        stop_taking_data_message = ("Would stop acquiring images:\n"
+                                   f"{started_taking_data_bullets}")
         # Only append this string if we actually did this for any screens.
         if started_taking_data_bullets:
             message += stop_taking_data_message
         # The message telling the user we would power these off.
-        power_off_message = "Would power off:\n" f"{powered_on_bullets}"
+        power_off_message = ("Would power off:\n"
+                             f"{powered_on_bullets}")
         # Only if we powered any on does it make sense to offer to
         # power them off...
         if powered_on_bullets:
             message += power_off_message
-
+ 
         message_label = QLabel(message, self)
         layout.addWidget(message_label)
 

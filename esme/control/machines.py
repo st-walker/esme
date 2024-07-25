@@ -173,6 +173,7 @@ class ImagingManager(MachineReadManager):
         r12 = self.optics.r12_streaking_from_tds_to_point(screen_name)            
         voltage = self.deflector.get_voltage_rb()
         beam_energy = self.optics.get_beam_energy()
+        print(f"{r12=}, {voltage=}, {beam_energy=}")
         return calculate_tds_time_calibration(r12_streaking=r12,
                                               energy_mev=beam_energy,
                                               voltage=voltage)
