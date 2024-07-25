@@ -128,7 +128,9 @@ class Ui_slice_analysis_gui(object):
         self.get_image_button.setText(
             _translate("slice_analysis_gui", "Get Image From Screen")
         )
-        self.groupBox_2.setTitle(_translate("slice_analysis_gui", "Parameters"))
+        self.groupBox_2.setTitle(
+            _translate("slice_analysis_gui", "Measurement Parameters")
+        )
         self.label_4.setText(_translate("slice_analysis_gui", "TDS Voltage / MV"))
         self.label_6.setText(_translate("slice_analysis_gui", "Beam Energy / MeV"))
         self.label_7.setText(_translate("slice_analysis_gui", "Pixel Size x / µm"))
