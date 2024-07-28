@@ -301,8 +301,8 @@ def tds():
 
 
 @main.command()
-def slices():
-    from esme.gui.widgets.slicer import start_slice_analysis_gui
+def slice():
+    from esme.gui.widgets.slice import start_slice_analysis_gui
 
     start_slice_analysis_gui()
 

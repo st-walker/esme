@@ -4,16 +4,13 @@ import cv2
 import numpy as np
 import numpy.typing as npt
 import scipy.ndimage as ndi
+from numba import carray, cfunc
+from numba.types import CPointer, float64, intc, intp, voidptr
 from scipy import LowLevelCallable
-from uncertainties import ufloat
 from scipy.optimize import curve_fit
-
+from uncertainties import ufloat
 
 import esme.maths as maths
-
-from numba import cfunc, carray
-from numba.types import intc, intp, float64, voidptr
-from numba.types import CPointer
 
 CENTRAL_SLICE_SEARCH_WINDOW_RELATIVE_WIDTH = 3
 
@@ -37,53 +34,68 @@ class ImageFunctor:
 class BackgroundSubtractor(ImageFunctor):
     def __init__(self, bg):
         self.bg = bg
-        super().__init__(short="Background Subtracted",
-                         long_description="Subtracts the background from the image and clips")
+        super().__init__(
+            short="Background Subtracted",
+            long_description="Subtracts the background from the image and clips",
+        )
 
     def __call__(self, image):
         return subtract_background(image, self.bg)
 
+
 class BackgroundNoiseRemover(ImageFunctor):
     def __init__(self, kernel_size=100):
         self.kernel_size = kernel_size
-        super().__init__(short="Background Noise Smoothed and Masked",
-                         long_description="Smooths the whole image and removes isolated, dim pixels")
+        super().__init__(
+            short="Background Noise Smoothed and Masked",
+            long_description="Smooths the whole image and removes isolated, dim pixels",
+        )
 
     def __call__(self, image):
         return remove_background_noise(image, kernel_size=self.kernel_size)
 
+
 class HotspotSmoother(ImageFunctor):
     def __init__(self):
-        super().__init__(short="Hotspots Smoothed and Masked",
-                         long_description="Smooths hotspot pixels and averages them with their neighbours")
+        super().__init__(
+            short="Hotspots Smoothed and Masked",
+            long_description="Smooths hotspot pixels and averages them with their neighbours",
+        )
 
     def __call__(self, image):
         return smooth_noise_hotspots(image)
 
+
 class IsolatedPixelsRemover(ImageFunctor):
     def __init__(self):
-        super().__init__(short="Isolated Pixel Clusters Removed",
-                         long_description='Removes any pixels that are not attached to the main pixel "blob"')
+        super().__init__(
+            short="Isolated Pixel Clusters Removed",
+            long_description='Removes any pixels that are not attached to the main pixel "blob"',
+        )
 
     def __call__(self, image):
         return remove_all_disconnected_pixels(image)
 
+
 class ImageCropper(ImageFunctor):
     def __init__(self):
-        super().__init__(short="Image Cropped",
-                         long_description='Crops the image by removing all consecutive rows and columns of zeroes starting from the bordersg ')
+        super().__init__(
+            short="Image Cropped",
+            long_description="Crops the image by removing all consecutive rows and columns of zeroes starting from the bordersg ",
+        )
 
     def __call__(self, image):
         return remove_all_disconnected_pixels(image)
 
 
 def make_image_processing_pipeline(bg):
-    functors = [BackgroundSubtractor(bg),
-                BackgroundNoiseRemover(kernel_size=100),
-                HotspotSmoother(),
-                IsolatedPixelsRemover()]
+    functors = [
+        BackgroundSubtractor(bg),
+        BackgroundNoiseRemover(kernel_size=100),
+        HotspotSmoother(),
+        IsolatedPixelsRemover(),
+    ]
     return ImagePipeline(functors)
-    
 
 
 class ImagePipeline:
@@ -107,11 +119,8 @@ class ImagePipeline:
         yield from iter(self.functors)
 
 
-
-
 def mean8(image):
-    @cfunc(intc(CPointer(float64), intp,
-                CPointer(float64), voidptr))
+    @cfunc(intc(CPointer(float64), intp, CPointer(float64), voidptr))
     def _nbmean8(values_ptr, len_values, result, data):
         # Make array from inputs
         values = carray(values_ptr, (len_values,), dtype=float64)
@@ -127,9 +136,13 @@ def mean8(image):
     # model="constant" and cval=0 because by definition beyond the
     # edges of the image in our case there is nothing (particularly if the image is cropped).
     # Use footprint of 3x3 1s with 0 in middle to not include central pixel.
-    return ndi.generic_filter(image, LowLevelCallable(_nbmean8.ctypes),
-                              footprint=footprint, mode='constant', cval=0.0)
-
+    return ndi.generic_filter(
+        image,
+        LowLevelCallable(_nbmean8.ctypes),
+        footprint=footprint,
+        mode="constant",
+        cval=0.0,
+    )
 
 
 class Image:
@@ -140,8 +153,9 @@ class Image:
     def view(self):
         pass
 
+
 def get_cropping_bounds(
-        im: RawImageT, just_central_slices=False, sigma_tail_cut=3
+    im: RawImageT, just_central_slices=False, sigma_tail_cut=3
 ) -> tuple[tuple[int, int], tuple[int, int]]:
     non_zero_mask = im != 0
 
@@ -165,10 +179,6 @@ def get_cropping_bounds(
     #     irow0 = irow0 + np.asarray(np.where(cumsum < cut)).max()
     #     irow1 = irow0 + np.asarray(np.where(cumsum > (1 - cut))).min()
 
-    #     from IPython import embed; embed()
-
-    # from IPython import embed; embed()
-
     if just_central_slices:
         length = irow1 - irow0
         middle = irow0 + length // 2
@@ -181,6 +191,7 @@ def get_cropping_bounds(
     # columns.
     return (irow0, irow1 + 1), (icol0, icol1 + 1)
 
+
 def get_beam_core_from_cropped_image(im0):
     # im0 should be cropped so that the whole beam is visible.
     pass
@@ -188,7 +199,7 @@ def get_beam_core_from_cropped_image(im0):
 
 def get_cropping_slice(im: RawImageT) -> tuple:
     (row0, row1), (col0, col1) = get_cropping_bounds(im)
-    return np.s_[row0: row1, col0: col1]
+    return np.s_[row0:row1, col0:col1]
 
 
 def crop_image(im: RawImageT) -> RawImageT:
@@ -248,7 +259,6 @@ def filter_image(im0: RawImageT, bg: RawImageT, crop=False) -> RawImageT:
     for _ in range(0, 3):
         im0bgm1 = remove_background_noise(im0bg)
 
-
     im0bgm2 = smooth_noise_hotspots(im0bgm1)
     im_no_outliers = remove_all_disconnected_pixels(im0bgm2)
 
@@ -276,10 +286,8 @@ def remove_all_disconnected_pixels(im: RawImageT) -> RawImageT:
     ranked_markers, counts = np.unique(markers.flatten(), return_counts=True)
     # marker corresponds to the background, the second one corresponds to the
     # main contiguous space occupied by the beam
-    try:
-        beam_blob_marker = np.argpartition(-counts, kth=1)[1]
-    except:
-        import ipdb; ipdb.set_trace()
+    beam_blob_marker = np.argpartition(-counts, kth=1)[1]
+
     mask = markers == beam_blob_marker
     masked_image = np.where(mask, im, 0)
 
@@ -287,8 +295,7 @@ def remove_all_disconnected_pixels(im: RawImageT) -> RawImageT:
 
 
 def get_slice_properties(
-        image: RawImageT, fast: bool = True, mask_nans=True,
-        crop=True
+    image: RawImageT, fast: bool = True, mask_nans=True, crop=True
 ) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
     #  Get bounds of image (i.e. to remove all fully-zero rows and columns)---this
     # speeds up the fitting procedure a lot by only fitting region of interest.
@@ -307,9 +314,9 @@ def get_slice_properties(
     mean_slice_position_error = []
     sigma_slice = []
     sigma_slice_error = []
-    for (i,
-        beam_slice
-    ) in enumerate(image):  # Iterates over the ROWS, so each one is a slice of the beam.
+    for i, beam_slice in enumerate(
+        image
+    ):  # Iterates over the ROWS, so each one is a slice of the beam.
         try:
             popt, perr = maths.get_gaussian_fit(row_index, beam_slice)
         except RuntimeError:  # Happens if curve_fit fails to converge.
@@ -320,10 +327,10 @@ def get_slice_properties(
             _, sigma_mu, sigma_sigma = perr
 
         # if np.isnan(sigma):
-                # mu = 0
-                # sigma = 0
-                # sigma_mu = 0
-                # sigma_sigma = 0
+        # mu = 0
+        # sigma = 0
+        # sigma_mu = 0
+        # sigma_sigma = 0
         # except:
         #     import ipdb; ipdb.set_trace()
 
@@ -332,28 +339,48 @@ def get_slice_properties(
         sigma_slice.append(sigma)
         sigma_slice_error.append(sigma_sigma)
 
+    mean_slice_position = np.array(mean_slice_position)
+    mean_slice_position_error = np.array(mean_slice_position_error)
+    sigma_slice = np.array(sigma_slice)
+    sigma_slice_error = np.array(sigma_slice_error)
+
     # So we get back into the coordinate system of the original, uncropped image:
     row_index = np.arange(irow0, irow1)
     mean_slice_position += np.array(icol0)
 
+    # We mask fits with centroids which lie outside the image
+    outlier_mask = (
+        (mean_slice_position > irow1)
+        | (mean_slice_position < irow0)
+        | (sigma_slice > irow1)
+        | (sigma_slice_error > irow1)
+    )
+
     # Deal with nans due to failed fitting
     # I.e. where True = NaN
-    nan_mask = (np.isnan(mean_slice_position)
-                | np.isnan(mean_slice_position_error)
-                | np.isnan(sigma_slice)
-                | np.isnan(sigma_slice_error))
-
+    nan_mask = (
+        np.isnan(mean_slice_position)
+        | np.isnan(mean_slice_position_error)
+        | np.isnan(sigma_slice)
+        | np.isnan(sigma_slice_error)
+    )
 
     # Deal with zeroes due to failed fitting or bad data, True == zero
-    zeros_mask = ((mean_slice_position == 0)
-                  | (mean_slice_position_error == 0)
-                  | (sigma_slice == 0)
-                  | (sigma_slice_error == 0))
+    zeros_mask = (
+        (mean_slice_position == 0)
+        | (mean_slice_position_error == 0)
+        | (sigma_slice == 0)
+        | (sigma_slice_error == 0)
+    )
 
-    # # everything = row_index, mean_slice_position, slice_width
-    # if np.isnan(mean_slice_position).any() or np.isnan(sigma_slice).any():
-    #     from IPython import embed; embed()
-    
+    mask = np.ones_like(mean_slice_position, dtype=bool)
+    mask &= ~(outlier_mask | nan_mask | zeros_mask)
+    row_index = row_index[mask]
+    mean_slice_position = mean_slice_position[mask]
+    mean_slice_position_error = mean_slice_position_error[mask]
+    sigma_slice = sigma_slice[mask]
+    sigma_slice_error = sigma_slice_error[mask]
+
     mean_slice_position = np.array(
         [ufloat(n, s) for n, s in zip(mean_slice_position, mean_slice_position_error)]
     )
@@ -361,14 +388,7 @@ def get_slice_properties(
         [ufloat(n, s) for n, s in zip(sigma_slice, sigma_slice_error)]
     )
 
-    if mask_nans:
-        net_mask = nan_mask | zeros_mask
-        row_index = row_index[~net_mask]
-        mean_slice_position = mean_slice_position[~net_mask]
-        slice_width = slice_width[~net_mask]
-
     return row_index, mean_slice_position, slice_width
-
 
 
 def get_chosen_slice_from_fitted_parabola(rows, means):
@@ -376,6 +396,7 @@ def get_chosen_slice_from_fitted_parabola(rows, means):
     a, b, c = popt
     xmin = -b / (2 * a)
     return round(xmin)
+
 
 def fit_parabola_to_image_means(rows, means):
     errors = [m.s for m in means]
@@ -387,79 +408,90 @@ def get_fitted_parabola_from_image_means(rows, means):
     popt, _ = fit_parabola_to_image_means(rows, means)
     return maths.parabola(rows, *popt)
 
-def get_gaussian_slice_properties(
-        image: RawImageT, fast: bool = True, mask_nans=True,
-        crop=True
-) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
 
-    #  Get bounds of image (i.e. to remove all fully-zero rows and columns)---this
-    # speeds up the fitting procedure a lot by only fitting region of interest.
-    irow0 = icol0 = 0
-    irow1, icol1 = image.shape
-    if crop:
-        (irow0, irow1), (icol0, icol1) = get_cropping_bounds(
-            image, just_central_slices=fast
-        )
-        # Do any cropping
-        image = image[irow0:irow1, icol0:icol1]
+# def get_gaussian_slice_properties(
+#         image: RawImageT, fast: bool = True, mask_nans=True,
+#         crop=True, mask_outliers=True
+# ) -> tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
 
-    row_index = np.arange(image.shape[1])
+#     #  Get bounds of image (i.e. to remove all fully-zero rows and columns)---this
+#     # speeds up the fitting procedure a lot by only fitting region of interest.
+#     irow0 = icol0 = 0
+#     irow1, icol1 = image.shape
+#     if crop:
+#         (irow0, irow1), (icol0, icol1) = get_cropping_bounds(
+#             image, just_central_slices=fast
+#         )
+#         # Do any cropping
+#         image = image[irow0:irow1, icol0:icol1]
 
-    mean_slice_position = []
-    mean_slice_position_error = []
-    sigma_slice = []
-    sigma_slice_error = []
-    for (i,
-        beam_slice
-    ) in enumerate(image):  # Iterates over the ROWS, so each one is a slice of the beam.
-        try:
-            popt, perr = maths.get_gaussian_fit(row_index, beam_slice)
-        except RuntimeError:  # Happens if curve_fit fails to converge.
-            # Set parameters to NaN, mask them later from the output
-            mu = sigma = sigma_mu = sigma_sigma = np.nan
-        else:
-            _, mu, sigma = popt
-            _, sigma_mu, sigma_sigma = perr
+#     row_index = np.arange(image.shape[1])
 
-        try:
-            if np.isnan(sigma):
-                mu = 0
-                sigma = 0
-                sigma_mu = 0
-                sigma_sigma = 0
-        except:
-            import ipdb; ipdb.set_trace()
+#     mean_slice_position = []
+#     mean_slice_position_error = []
+#     sigma_slice = []
+#     sigma_slice_error = []
+#     for (i,
+#         beam_slice
+#     ) in enumerate(image):  # Iterates over the ROWS, so each one is a slice of the beam.
+#         try:
+#             popt, perr = maths.get_gaussian_fit(row_index, beam_slice)
+#         except RuntimeError:  # Happens if curve_fit fails to converge.
+#             # Set parameters to NaN, mask them later from the output
+#             mu = sigma = sigma_mu = sigma_sigma = np.nan
+#         else:
+#             _, mu, sigma = popt
+#             _, sigma_mu, sigma_sigma = perr
 
-        mean_slice_position.append(mu)
-        mean_slice_position_error.append(sigma_mu)
-        sigma_slice.append(sigma)
-        sigma_slice_error.append(sigma_sigma)
+#         try:
+#             if np.isnan(sigma):
+#                 mu = 0
+#                 sigma = 0
+#                 sigma_mu = 0
+#                 sigma_sigma = 0
+#         except:
+#             import ipdb; ipdb.set_trace()
 
-    # So we get back into the coordinate system of the original, uncropped image:
-    row_index = np.arange(irow0, irow1)
-    mean_slice_position += np.array(icol0)
+#         mean_slice_position.append(mu)
+#         mean_slice_position_error.append(sigma_mu)
+#         sigma_slice.append(sigma)
+#         sigma_slice_error.append(sigma_sigma)
 
-    # Deal with nans due to for example
-    nan_mask = ~(
-        np.isnan(mean_slice_position)
-        | np.isnan(mean_slice_position_error)
-        | np.isnan(sigma_slice)
-        | np.isnan(sigma_slice_error)
-    )
 
-    mean_slice_position = np.array(
-        [ufloat(n, s) for n, s in zip(mean_slice_position, mean_slice_position_error)]
-    )
-    slice_width = np.array(
-        [ufloat(n, s) for n, s in zip(sigma_slice, sigma_slice_error)]
-    )
+#     if mask_outliers:
+#         # We mask fits with centroids which lie outside the image
+#         outlier_mask = ~((mean_slice_position > len(row_index))
+#         | (mean_slice_position < 0)
+#         | sigma_slice > len(row_index)
+#         | sigma_slice_error > len(row_index))
 
-    if mask_nans:
-        row_index = row_index[nan_mask]
-        mean_slice_position = mean_slice_position[nan_mask]
-        slice_width = slice_width[nan_mask]
 
-    return row_index, mean_slice_position, slice_width
+#     # So we get back into the coordinate system of the original, uncropped image:
+#     row_index = np.arange(irow0, irow1)
+#     mean_slice_position += np.array(icol0)
+
+#     # Deal with nans due to for example
+#     nan_mask = ~(
+#         np.isnan(mean_slice_position)
+#         | np.isnan(mean_slice_position_error)
+#         | np.isnan(sigma_slice)
+#         | np.isnan(sigma_slice_error)
+#     )
+
+#     mean_slice_position = np.array(
+#         [ufloat(n, s) for n, s in zip(mean_slice_position, mean_slice_position_error)]
+#     )
+#     slice_width = np.array(
+#         [ufloat(n, s) for n, s in zip(sigma_slice, sigma_slice_error)]
+#     )
+
+
+#     if mask_nans:
+#         row_index = row_index[nan_mask]
+#         mean_slice_position = mean_slice_position[nan_mask]
+#         slice_width = slice_width[nan_mask]
+
+#     return row_index, mean_slice_position, slice_width
 
 
 def get_central_slice_width_from_slice_properties(means, sigmas, padding=10):
@@ -467,17 +499,22 @@ def get_central_slice_width_from_slice_properties(means, sigmas, padding=10):
 
     return np.mean(sigmas[centre_index - padding : centre_index + padding])
 
+
 def get_average_central_slices(means, sigmas, padding=10):
     centre_index = np.argmin(means)
-    return (np.mean(means[centre_index - padding : centre_index + padding]),
-            np.mean(sigmas[centre_index - padding : centre_index + padding]))
+    return (
+        np.mean(means[centre_index - padding : centre_index + padding]),
+        np.mean(sigmas[centre_index - padding : centre_index + padding]),
+    )
 
 
 def get_central_slice_width_from_parabola(means, sigmas, padding=10):
     pass
 
 
-def get_selected_central_slice_width_from_slice_properties(means, sigmas, padding=10, slice_pos=None):
+def get_selected_central_slice_width_from_slice_properties(
+    means, sigmas, padding=10, slice_pos=None
+):
     centre_index = int(len(means)) // 2
     if slice_pos is None:
         centre_index = means.argmin()
@@ -486,15 +523,19 @@ def get_selected_central_slice_width_from_slice_properties(means, sigmas, paddin
     else:
         centre_index += int(slice_pos * len(means) // 2)
 
+    return centre_index, np.mean(
+        sigmas[centre_index - padding : centre_index + padding]
+    )
 
-
-    return centre_index, np.mean(sigmas[centre_index - padding : centre_index + padding])
 
 def zero_off_axis_regions(image, xmin: int, xmax: int, ymin: int, ymax: int) -> None:
     image[:xmin] = 0.0
-    image[xmax + 1:] = 0.0
+    image[xmax + 1 :] = 0.0
     image[..., :ymin] = 0.0
-    image[..., ymax + 1:] = 0.0
+    image[..., ymax + 1 :] = 0.0
 
-def clip_off_axis_regions(image, xmin: int, xmax: int, ymin: int, ymax: int) -> npt.NDArray:
-    return image[ymin: ymax + 1, xmin: xmax + 1]
+
+def clip_off_axis_regions(
+    image, xmin: int, xmax: int, ymin: int, ymax: int
+) -> npt.NDArray:
+    return image[ymin : ymax + 1, xmin : xmax + 1]
