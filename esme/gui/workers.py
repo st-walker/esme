@@ -38,6 +38,7 @@ class ImagePayload:
     time_calibration: float
     bunch_charge: float | None
     is_bg: bool
+    raw_image: npt.NDArray | None = None
 
     @cached_property
     def eproj(self):
@@ -106,7 +107,6 @@ class ImagePayload:
 class MessageType(Enum):
     CACHE_BACKGROUND = auto()
     CLEAR_BACKGROUND = auto()
-    # TAKE_N_FAST = auto()
     CHANGE_SCREEN = auto()
     SUBTRACT_BACKGROUND = auto()
     PLAY_SCREEN = auto()
@@ -115,6 +115,7 @@ class MessageType(Enum):
     CLIP_OFFAXIS = auto()
     SMOOTH_IMAGE = auto()
     TIME_CALIBRATION = auto()
+    INCLUDE_RAW = auto()
 
 
 @dataclass
@@ -158,10 +159,11 @@ class ImagingWorker(QObject):
         self._pause: bool = False
         self._read_period: float = 1.0
         self._clip_offaxis = False
-        self._xyflip = False, False
         self._smooth_image = False
         self._time_calibration = None
         self._bunch_charge = None
+        self._previous_macropulse = -1
+        self._include_raw_image = False
 
         # Queue for messages we we receive from
         self._consumerq: queue.Queue[ImagingMessage | None] = queue.Queue()
@@ -169,6 +171,10 @@ class ImagingWorker(QObject):
         self._lock = threading.Lock()
 
         self._is_running = False
+
+    def get_image_analysis_configuration(self) -> dict[str, bool]:
+        return {"clip_offaxis": self._clip_offaxis,
+                "smooth_image": self._smooth_image}
 
     def get_cached_background(self) -> deque[npt.NDArray]:
         return deepcopy(self.bg_images)
@@ -216,17 +222,21 @@ class ImagingWorker(QObject):
                 continue
 
             # image = np.rot90(self.screen.get_image_raw(), 3)
-            image = self.screen.get_image_raw()
+            data = self.screen.get_image_raw_full()
+            image = data["data"]
+            macropulse = data["macropulse"]
             if image is None:
                 # this can happen sometimes, sometimes when switching cameras
                 # get_image_raw can for a moment start returning None, of course
-                # we need to account for this possibility and go next.
+                # we need to account for this possibility tell any
                 continue
-            
+
             # The convention is that we always put the current along the x-axis.
             image = np.rot90(image, 2)
 
-            if self._caching_background:
+            if macropulse == self._previous_macropulse:
+                image_payload = self._handle_duplicate_image(image)
+            elif self._caching_background:
                 image_payload = self._handle_background(image)
             else:
                 image_payload = self._do_image_analysis(image)
@@ -235,6 +245,18 @@ class ImagingWorker(QObject):
 
             if not self._pause:
                 self.display_image_signal.emit(image_payload)
+
+            self._previous_macropulse = macropulse
+
+    def _handle_duplicate_image(self, image) -> ImagePayload:
+        image *= 0
+        return ImagePayload(
+            image=image,
+            screen_md=self.screen_md,
+            time_calibration=self._time_calibration,
+            bunch_charge=self._bunch_charge,
+            is_bg=False
+        )
 
     def _push_to_subscribers(self, image_payload: ImagePayload) -> None:
         with self._lock:
@@ -265,7 +287,7 @@ class ImagingWorker(QObject):
             screen_md=self.screen_md,
             time_calibration=self._time_calibration,
             bunch_charge=self._bunch_charge,
-            is_bg=True
+            is_bg=True,
         )
     
     @property
@@ -276,20 +298,6 @@ class ImagingWorker(QObject):
         imq = ImageQueue(queue.Queue(maxsize=nimages), num_images_remaining=nimages)
         self._subscriber_queues.append(imq)
         return imq
-
-    def _take_n_fast(self, n: int) -> None:
-        # This completely blocks the thread in that it is no longer listening
-        # For messages.
-        out = []
-        assert n > 0
-        for i in range(n):
-            image = self.screen.get_image_raw()
-            out.append(image)
-            self.n_fast_state.emit(i)
-            self._process_and_emit_image_for_display(image)
-        # At least emit one image for display.
-        self._process_and_emit_image_for_display(image)
-        return out
 
     def submit(self, message: ImagingMessage) -> None:
         self._consumerq.put(message)
@@ -323,8 +331,6 @@ class ImagingWorker(QObject):
                 time.sleep(0.5)
             case MessageType.CLEAR_BACKGROUND:
                 self._clear_bg_cache()
-            # case MessageType.TAKE_N_FAST:
-            #     result = self._take_n_fast(message.data["n"])
             case MessageType.CHANGE_SCREEN:
                 self._set_screen(message.data["screen"])
             case MessageType.SUBTRACT_BACKGROUND:
@@ -342,6 +348,8 @@ class ImagingWorker(QObject):
             case MessageType.TIME_CALIBRATION:
                 self._time_calibration = message.data["time_calibration"]
                 self._bunch_charge = message.data["bunch_charge"]
+            case MessageType.INCLUDE_RAW:
+                self._include_raw_image = message.data["state"]
             case _:
                 message = f"Unknown message sent to {type(self).__name__}: {message}"
                 LOG.critical(message)
@@ -353,6 +361,11 @@ class ImagingWorker(QObject):
         self.nbackground_taken.emit(0)
 
     def _do_image_analysis(self, image: npt.NDArray) -> None:
+        if self._include_raw_image:
+            raw = image.copy()
+        else:
+            raw = None
+
         if self.bg_images and self._do_subtract_background:
             image = image.astype(np.float64)
             image -= self.mean_bg
@@ -363,7 +376,6 @@ class ImagingWorker(QObject):
             threshold = 0.05
             inds_mask_neg = np.asarray((Hg - np.max(Hg) * threshold) < 0).nonzero()
             image[inds_mask_neg] = 0.0
-
         
         if self._clip_offaxis:
             (xmin, xmax), (ymin, ymax) = self._clipping_bounds()
@@ -374,7 +386,8 @@ class ImagingWorker(QObject):
             screen_md=self.screen_md,
             time_calibration=self._time_calibration,
             bunch_charge=self._bunch_charge,
-            is_bg = False
+            is_bg = False,
+            raw_image=raw
         )
 
     @cache
@@ -399,7 +412,6 @@ class ImagingWorker(QObject):
         self._clipping_bounds.cache_clear()
         self._clear_bg_cache()
         self._try_and_set_screen_metadata()
-        self._xyflip = screen.get_hflip(), screen.get_vflip()
 
     def _try_and_set_screen_metadata(self):
         # if the screen is not powered, then getting the metadata will fail.

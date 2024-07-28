@@ -23,11 +23,12 @@ TDS_LENGTH = 0.7  # metres
 
 
 class AmplitudeVoltageMapping:
-    def __init__(self, region: DiagnosticRegion, amplitudes, voltages, calibration_time: datetime | None = None):
+    def __init__(self, region: DiagnosticRegion, amplitudes, voltages, calibration_time: datetime | None = None, calibration_filepath = ""):
         self.region = region
         self._amplitudes = list(amplitudes)
         self._voltages = list(voltages)
         self.calibration_time = calibration_time
+        self.calibration_filepath = calibration_filepath
 
         if len(self._amplitudes) != len(self._voltages):
             raise ValueError("Mismatch in number of amplitudes and voltages")
@@ -64,6 +65,34 @@ class AmplitudeVoltageMapping:
     def __call__(self, amplitude):
         return self.get_voltage(amplitude)
 
+class TimeCalibration:
+    def __init__(self, screen_name: str, amplitudes, calfactors, calibration_time: datetime | None = None, calibration_filepath = ""):
+        self.screen_name = screen_name
+        self._amplitudes = list(amplitudes)
+        self._calfactors = calfactors
+        self.calibration_time = calibration_time
+        self.calibration_filepath = calibration_filepath
+
+        if len(self._amplitudes) != len(self._calfactors):
+            raise ValueError("Mismatch in number of amplitudes and voltages")
+
+        self._amp_to_tcal_popt, self._amp_to_tcal_pcov = self.fit_to_time_calibration()
+        self._tcal_to_amp_popt, self._tcal_to_amp_pcov = self.fit_to_amplitude()
+
+    def fit_to_time_calibration(self):
+        popt, pcov = curve_fit(line, self._amplitudes, self._calfactors)
+        return popt, pcov
+
+    def fit_to_amplitude(self):
+        popt, pcov = curve_fit(line, self._calfactors, self._amplitudes)
+        return popt, pcov
+    
+    def get_time_calibration(self, amplitude) -> float:
+        popt, _ = curve_fit(line, self._amplitudes, self._calfactors)
+        return line(np.array(amplitude), *popt)
+
+    def __call__(self, amplitude):
+        return self.get_time_calibration(amplitude)
 
 
 class SinglePointVoltageCalibration(AmplitudeVoltageMapping):

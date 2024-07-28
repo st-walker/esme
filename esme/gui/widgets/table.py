@@ -8,18 +8,18 @@ import pandas as pd
 
 @dataclass
 class MeasuredBeamParameters:
-    sigma_z: tuple[float, float] | None = None
-    resolution_z: tuple[float, float] | None = None
+    sigma_t: tuple[float, float] | None = None
+    resolution_t: tuple[float, float] | None = None
     sigma_x0: tuple[float, float] | None = None
     sigma_xi: tuple[float, float] | None = None
 
     @property
-    def resolution_t(self):
-        return (self.resolution_z[0] / c, self.resolution_z[1] / c)
+    def resolution_z(self):
+        return (self.resolution_t[0] * c, self.resolution_t[1] * c)
 
     @property
-    def sigma_t(self):
-        return (self.sigma_z[0] / c, self.sigma_z[1] / c)
+    def sigma_z(self):
+        return (self.sigma_t[0] * c, self.sigma_z[1] * c)
 
 
 def format_value_with_uncertainty(value, uncertainty):
@@ -40,26 +40,26 @@ class BeamCurrentTableModel(QAbstractTableModel):
 
         self.headers = ["Gaussian", "RMS", "Units"]
         self.param_order = [
-            "sigma_z",
             "sigma_t",
-            "resolution_z",
+            "sigma_z",
             "resolution_t",
+            "resolution_z",
             "sigma_x0",
             "sigma_xi",
         ]
         self.units = {
-            "sigma_z": "mm",
             "sigma_t": "s",
-            "resolution_z": "mm",
+            "sigma_z": "mm",
             "resolution_t": "s",
+            "resolution_z": "mm",
             "sigma_x0": "mm",
             "sigma_xi": "mm",
         }
         self.html_headers = [
-            "<i>σ<sub>z</sub></i>",
             "<i>σ<sub>t</sub></i>",
-            "<i>R<sub>z</sub></i>",
+            "<i>σ<sub>z</sub></i>",
             "<i>R<sub>t</sub></i>",
+            "<i>R<sub>z</sub></i>",
             "<i>σ<sub>x,0</sub></i>",
             "<i>σ<sub>x,i</sub></i>",
         ]

@@ -6,12 +6,11 @@ import queue
 import time
 from collections import deque
 from concurrent.futures import Future, ProcessPoolExecutor
-from dataclasses import dataclass, field
 from datetime import datetime
-from functools import cache
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
+import json
 
 import numpy as np
 import numpy.typing as npt
@@ -35,7 +34,6 @@ from PyQt5.QtWidgets import (
 from scipy import ndimage
 
 from esme import DiagnosticRegion
-from esme.image import zero_off_axis_regions
 from esme.control.exceptions import DOOCSReadError
 from esme.control.screens import Position, Screen, ScreenMetadata
 from esme.control.tds import StreakingPlane
@@ -45,6 +43,7 @@ from esme.calibration import AmplitudeVoltageMapping
 from scipy.optimize import curve_fit
 from esme.gui.widgets.current import CurrentProfilerWindow
 from esme.gui.workers import ImagingMessage, ImagePayload, MessageType, ImagingWorker, GaussianParameters
+from esme.core import region_from_screen_name
 
 from .common import get_machine_manager_factory, send_widget_to_log
 
@@ -86,7 +85,6 @@ class ImagingControlWidget(DiagnosticSectionWidget):
 
         self.screen = self.mreader.screens["OTRC.58.I1"]
         self._was_beam_on_screen = self.mreader.is_beam_on_screen(self.screen)
-
 
         # Thread that reads the images and others can get from.
         self.producer_worker, self.producer_thread = self.setup_data_taking_worker()
@@ -136,14 +134,28 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         else:
             raise ValueError("Unknown diagnostic section: %s", section)
         
-    def _calculate_time_calibration(self) -> None:
+    def _calculate_time_calibration_from_voltage(self) -> None:
         try:
-            time_calibration = self.mreader.calculate_time_calibration(self.screen.name)
+            time_calibration = self.mreader.calculate_time_calibration_from_voltage(self.screen.name)
         except DOOCSReadError as e:
             QMessageBox.warning(None, "Read Error", f"Error trying to calculate TDS calibration at screen.  Could not read {e.address}.")
             # In case we e.g. cannot read the beam energy (this would typically be if there is no beam...)
             return
+        except KeyError:
+            QMessageBox.warning(None, "Missing Measurement",
+                                f"Unable to determine time calibration, missing cached measurement for screen: {self.screen.name}")
+            return
         # Multiply by 1e-6 to convert from m/s to µm/ps.
+        LOG.info("Calculated time calibration from voltage: %sµm/ps", time_calibration*1e-6)
+        self.ui.time_calibration_spinbox.setValue(time_calibration * 1e-6)
+
+    def _calculate_time_calibration_from_cached_measurement(self) -> None:
+        try:
+            time_calibration = self.mreader.calculate_time_calibration_from_calibration(self.screen.name)
+        except DOOCSReadError as e:
+            QMessageBox.warning(None, "Read Error", f"Error trying to calculate time calibration at screen.  Could not read {e.address}.")
+            return
+        LOG.info("Calculated time calibration at screen from cached measurement: %sµm/ps", time_calibration*1e-6)
         self.ui.time_calibration_spinbox.setValue(time_calibration * 1e-6)
 
     def _pass_time_calibration_to_worker(self, time_calibration_value: float) -> None:
@@ -183,13 +195,20 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         self.ui.read_rate_spinner.valueChanged.connect(self._set_read_frequency)
         self.ui.smooth_image_checkbox.stateChanged.connect(self._set_smooth_image)
 
-        self.ui.calculate_dispersion_button.clicked.connect(self._calculate_dispersion)
-        self.ui.calculate_time_calibration_button.clicked.connect(self._calculate_time_calibration)
-        self.ui.regenerate_axes_button.clicked.connect(self._generate_axes_calibrations)
+        self.ui.calculate_dispersion_from_linear_optics_button.clicked.connect(self._calculate_dispersion)
+        self.ui.calculate_time_calibration_from_voltage_button.clicked.connect(self._calculate_time_calibration_from_voltage)
+        self.ui.calculate_time_calibration_from_previous_measurement_button.clicked.connect(self._calculate_time_calibration_from_cached_measurement)
+        # self.ui.regenerate_axes_button.clicked.connect(self._generate_axes_calibrations)
 
         self.ui.time_calibration_spinbox.valueChanged.connect(self._pass_time_calibration_to_worker)
 
         self.ui.current_profile_button.clicked.connect(self.current_profiler.show)
+
+        self.ui.fix_aspect_ratio_checkbox.stateChanged.connect(self._set_lock_aspect_ratio)
+
+
+    def _set_lock_aspect_ratio(self, lock_state: Qt.CheckState) -> None:
+        self.ui.screen_display_widget.lock_aspect_ratio(do_lock=bool(lock_state))
 
     def _set_smooth_image(self, smooth_image_state: Qt.CheckState) -> None:
         assert smooth_image_state != Qt.PartiallyChecked
@@ -290,6 +309,11 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         self.producer_thread.wait()
 
     def set_screen(self, screen_name: str) -> None:
+        region = region_from_screen_name(screen_name)
+        if region is DiagnosticRegion.I1:
+            self.mreader = self.i1
+        elif region is DiagnosticRegion.B2:
+            self.mreader = self.b2
         self.screen = self.mreader.screens[screen_name]
         # Change elogger window screen to the correct screen instance
         self.elogger.set_screen(self.screen)
@@ -316,11 +340,12 @@ class LogBookEntryWriterDialogue(QDialog):
         self.ui = self._make_ui()
 
         mfactory = get_machine_manager_factory()
-        self.i1reader = mfactory.make_machine_reader_manager(DiagnosticRegion.I1)
-        self.b2reader = mfactory.make_machine_reader_manager(DiagnosticRegion.B2)
+        self.i1reader, self.b2reader = mfactory.make_i1_b2_imaging_managers()
+
+        # self.i1reader = mfactory.make_machine_reader_manager(DiagnosticRegion.I1)
+        # self.b2reader = mfactory.make_machine_reader_manager(DiagnosticRegion.B2)
         # Set initial machine reader instance choice to be for I1.:
         self.mreader = self.i1reader
-
         # XXX?  could be this be put in QSettings somehow instead?
         hardcoded_path = "/Users/xfeloper/user/stwalker/lps-dumpage/"
         self.outdir = hardcoded_path
@@ -426,7 +451,8 @@ class LogBookEntryWriterDialogue(QDialog):
         if self._bg_images:
             np.savez(outdir / "bg_images.npz", self._bg_images)
 
-        kvps.to_csv(outdir / "channels.csv")
+        with (outdir / "snapshot.json").open("w") as f:
+            json.dump(kvps, f, indent=4)
 
         log_text = self.ui.text_edit.toPlainText()
         screen_info = f"Screen: {screen_name}"
@@ -434,6 +460,8 @@ class LogBookEntryWriterDialogue(QDialog):
         "----\n"
         text = "\n----\n".join([log_text, screen_info, outdir_info_string])
         author = self.ui.author_edit.text() or self.DEFAULT_AUTHOR
+
+        LOG.info(text)
 
         # Go all the way to the top of the widget heirarchy for printing.
         parent = self.parent()
@@ -462,32 +490,26 @@ class LogBookEntryWriterDialogue(QDialog):
 
         return futures
 
-    def get_machine_state(self) -> pd.Series:
+    def get_machine_state(self) -> dict[str, Any]:
         screen_name = self._screen.name
         location = self._get_location()
         screen_metadata = self._screen.get_screen_metadata()
-        kvps = {"screen": screen_name, 
+        kvps = {"screen": screen_name,
+                "screen_position": self._screen.get_position().name,
                 "location": location,
                 "xpixel_size": screen_metadata.xsize,
                 "ypixel_size": screen_metadata.ysize,
+                "xroi_offaxis_clip": self._screen.analysis.get_xroi_clipping(),
+                "yroi_offaxis_clip": self._screen.analysis.get_yroi_clipping(),
                 "nxpixels": screen_metadata.nx,
                 "nypixels": screen_metadata.ny,
-                "time_calibration": self.time_calibration,
-                "energy_calibration": self.energy_calibration
+                "time_calibration": self._time_calibration,
+                "energy_calibration": self._energy_calibration,
+                "tds_calibration_path": str(self.mreader.deflector.calibration.calibration_filepath)
                 }
         kvps |= self.mreader.full_read()
 
-        # kvps |= self._screen.dump()
-        # kvps |= self._screen.analysis.dump()
-        series = pd.Series(kvps)
-        series.index.name = "channel"
-        series.reset_index(name="value")
-
-        return series
-        # XXX: TDS CALIBRATION NEEDS TO SOMEHOW BE INCLUDED HERE !!
-        # Or elsewhere?
-
-        return MachineState(kvps=series)
+        return kvps
 
     def _make_ui(self) -> SimpleNamespace:
         ui = SimpleNamespace()

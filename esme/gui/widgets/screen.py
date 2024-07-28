@@ -22,6 +22,7 @@ from esme.maths import gauss, get_gaussian_fit
 from enum import Enum, auto
 from functools import cached_property
 from esme.gui.workers import ImagePayload
+from esme.core import region_from_screen_name
 
 from .common import get_machine_manager_factory, setup_screen_display_widget
 
@@ -69,13 +70,12 @@ class ScreenWidget(QWidget):
         self.image_plot = setup_screen_display_widget(self.glwidget)
         self.setup_screen_axes()
 
-
         # Add projection axes to the image display daughter widget
         self.xplot, self.yplot = self._make_transverse_projections()
         # self.gauss_beam_length_string = pg.TextItem(html=f"<i>σ</i><sub>Gauss.</sub> = ", anchor=(0.0, 0), color="white")
         # self.gauss_beam_length_string = pg.TextItem(f"HELLO ", color="yellow")
         self.gauss_beam_length_string = pg.TextItem("text", color="yellow")
-        self.gauss_beam_length_string.setFlag(self.gauss_beam_length_string.ItemIgnoresTransformations)
+        # self.gauss_beam_length_string.setFlag(self.gauss_beam_length_string.ItemIgnoresTransformations)
         self.image_plot.addItem(self.gauss_beam_length_string, ignoreBounds=True)
         self.gauss_beam_length_string.setParentItem(self.image_plot)
         self.gauss_beam_length_string.setPos(1000, 650)
@@ -94,6 +94,9 @@ class ScreenWidget(QWidget):
         # We have to pick some screen to begin with so it might as well be the first screen.
         self.set_screen("OTRC.55.I1")
 
+    def lock_aspect_ratio(self, *, do_lock: bool) -> None:
+        self.image_plot.setAspectLocked(do_lock)
+
     def setup_screen_axes(self) -> None:
         xlabel = "<i>&Delta;x</i>"
         ylabel = "<i>&Delta;y</i>"
@@ -107,6 +110,11 @@ class ScreenWidget(QWidget):
         self.image_plot.setLabel(ypos, ylabel, units="m")
 
     def set_screen(self, screen_name: str) -> None:
+        region = region_from_screen_name(screen_name)
+        if region is DiagnosticRegion.I1:
+            self.machine = self.i1machine
+        elif region is DiagnosticRegion.B2:
+            self.machine = self.b2machine
         # Screen dimensions should always be distance (not pixels, not time, not energy).
         # dx, dy = self.machine.optics.dispersions_at_screen(screen_name)
         screen = self.machine.screens[screen_name]
@@ -206,7 +214,8 @@ class ScreenWidget(QWidget):
         axis.setScale(abs(scale_factor))
 
     def clear_image(self) -> None:
-        self.image_plot.items[0].clear()
+        self.image_plot.items[0].clear()     
+        self.image_plot.items[0].setImage()   
 
     @pyqtSlot(ImagePayload)
     def post_beam_image(self, image_payload: ImagePayload) -> None:

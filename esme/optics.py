@@ -62,6 +62,35 @@ def i1d_conf_from_measurement_df(df):
     df["XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/PHASE.SAMPLE"]
 
     conf = EuXFELSimConfig()
+    r56 = -4.336e-3
+    # XXX WHY?!?  Why is this hardcoded?
+    # r56 = df["XFEL.MAGNETS/CHICANE/LH/R_56_RBV"]
+    conf.controls["lh"].r56 = r56
+
+    dump_angle = np.radians(-30)
+    dipoles = {"BB.62.I1D": {"angle": dump_angle, "e1": dump_angle / 2, "e2": dump_angle / 2}}
+    quads = {quad_name: {"k1l": float(k1l)*1e-3} for quad_name, k1l in k1ls.items()}
+
+    conf.components = quads | dipoles
+    # XXX: And why is AH1 off here?!?!?
+    conf.controls["ah1"].active = False
+    conf.controls["a1"].v = a1v * 1e-3
+    conf.controls["a1"].phi = 0
+
+    return conf
+
+def b2d_conf_from_measurement_df(df):
+    quad_names = df.keys()[df.keys().str.match("^Q")]
+    dipole_names = df.keys()[df.keys().str.match("^B[LB]\.")]
+
+    k1ls = df.iloc[0][quad_names] # mrad
+    angles = df.iloc[0][dipole_names] # mrad
+
+    n_cavities_a1 = 8
+    a1v = df["XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/AMPL.SAMPLE"].iloc[0] / n_cavities_a1
+    df["XFEL.RF/LLRF.CONTROLLER/VS.A1.I1/PHASE.SAMPLE"]
+
+    conf = EuXFELSimConfig()
 
     r56 = -4.336e-3
     conf.controls["lh"].r56 = r56

@@ -2,7 +2,7 @@ from typing import Any
 
 from esme.control.snapshot import SnapshotRequest, Snapshotter
 from esme.core import DiagnosticRegion
-from esme.calibration import calculate_tds_time_calibration
+from esme.calibration import calculate_tds_time_calibration, TimeCalibration
 
 from .dint import DOOCSInterface
 from .kickers import FastKickerController
@@ -150,8 +150,6 @@ class MachineReadManager:
         rest_read = self.snapshotter.snapshot(resolve_wildcards=True)
         rest_read |= full_optics_read
         return rest_read
-    
-
 
 
 class ImagingManager(MachineReadManager):
@@ -162,14 +160,16 @@ class ImagingManager(MachineReadManager):
         optics: MachineLinearOptics,
         request: SnapshotRequest,
         deflector: TransverseDeflector,
-        sbunches: SpecialBunchesControl
+        sbunches: SpecialBunchesControl,
+        time_calibrations: dict[str, TimeCalibration] | None = None
     ):
         super().__init__(screens=screens, optics=optics, request=request)
         self.deflector = deflector
         self.sbunches = sbunches
+        self.time_calibrations = time_calibrations or {}
         self.di = DOOCSInterface()
 
-    def calculate_time_calibration(self, screen_name: str) -> float:
+    def calculate_time_calibration_from_voltage(self, screen_name: str) -> float:
         r12 = self.optics.r12_streaking_from_tds_to_point(screen_name)            
         voltage = self.deflector.get_voltage_rb()
         beam_energy = self.optics.get_beam_energy()
@@ -177,9 +177,16 @@ class ImagingManager(MachineReadManager):
         return calculate_tds_time_calibration(r12_streaking=r12,
                                               energy_mev=beam_energy,
                                               voltage=voltage)
+    
+    def calculate_time_calibration_from_calibration(self, screen_name: str) -> float:
+        amplitude = self.deflector.get_amplitude_rb()
+        return self.time_calibrations[screen_name].get_time_calibration(amplitude)
 
     def is_tds_calibrated(self) -> bool:
         return self.tds.calibration is not None
+    
+    def is_screen_time_calibrated(self, screen_name: str) -> bool:
+        return screen_name in self.time_calibrations
 
     def turn_beam_off(self) -> None:    
         self.di.set_value("XFEL.UTIL/BUNCH_PATTERN/CONTROL/BEAM_ALLOWED", 0)

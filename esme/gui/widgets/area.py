@@ -47,8 +47,10 @@ class AreaControl(QWidget):
 
         self._connect_buttons()
 
-        self._screens_we_powered: set[Screen] = set()
-        self._screens_we_set_to_take_data: set[Screen] = set()
+        self._selected_i1_screen = self.I1_INITIAL_SCREEN
+        self._selected_b2_screen = self.B2_INITIAL_SCREEN
+
+        self._set_keep_screens_on = False
 
         self.jddd_camera_window_processes: dict[str, QProcess] = {}
 
@@ -67,6 +69,10 @@ class AreaControl(QWidget):
         self.ui.screen_on_axis_button.clicked.connect(lambda: self._set_screen_position(Position.ONAXIS))
         self.ui.screen_off_axis_button.clicked.connect(lambda: self._set_screen_position(Position.OFFAXIS))
         self.ui.screen_out_button.clicked.connect(lambda: self._set_screen_position(Position.OUT))
+        self.ui.keep_screens_on_checkbox.stateChanged.connect(self._set_keep_screens_on)
+
+    def _set_keep_screens_on(self, state: Qt.CheckState) -> None:
+        self._set_keep_screens_on = bool(state)
 
     def _set_screen_position(self, pos: Position) -> None:
         screen = self.machine.screens[self.get_selected_screen_name()]
@@ -106,11 +112,20 @@ class AreaControl(QWidget):
         if self.machine is self.b2machine:
             # Keep track of selected screen if moving from B2 to I1.
             self._selected_b2_screen = self.get_selected_screen_name()
+            self.stop_image_acquisition_for_screen(self._selected_b2_screen)
 
         LOG.debug(f"Setting area in {self} to I1")
         self.machine = self.i1machine
         screen_name = self._selected_i1_screen or self.I1_INITIAL_SCREEN
         self.update_screen_combo_box(screen_name)
+
+    def stop_image_acquisition_for_screen(self, screen_name: str):
+        if self.ui.keep_screens_on_checkbox.isChecked():
+            return
+        try:
+            self.i1machine.screens[screen_name].start_stop_image_acquisition(acquire=False)
+        except KeyError:
+            self.b2machine.screens[screen_name].start_stop_image_acquisition(acquire=False)
 
     def set_b2(self):
         if self.machine is self.i1machine:
@@ -121,6 +136,7 @@ class AreaControl(QWidget):
         self.machine = self.b2machine
         screen_name = self._selected_b2_screen or self.B2_INITIAL_SCREEN
         self.update_screen_combo_box(screen_name)
+        self.screen_name_signal.emit(screen_name)
 
     def _setup_screen(self, screen_name: str) -> None:
         """check the screen is on, if it's not, we try and power it.
@@ -150,14 +166,6 @@ class AreaControl(QWidget):
 
         if is_powered and is_taking_data:
             return
-        # We don't tell the user we are turning the screen on, we just do it
-        # I comment this bit out because it is annoying.  And anyway we do not need to tell
-        # The user because we offer to switch them off at the end anyway.
-        # global _CAMERA_DIALOGUE
-        # _CAMERA_DIALOGUE = CameraDialogue(screen_name, 
-        #                                   is_powered=is_powered, 
-        #                                   is_taking_data=is_taking_data)
-        # _CAMERA_DIALOGUE.show()
 
         try:
             timeout = 10
@@ -169,11 +177,6 @@ class AreaControl(QWidget):
                 title="Unbootable Screen",
                 icon="Warning",
             )
-        else:
-            if is_powered: # or was powered, i.e., it was not powered before we did it.
-                self._screens_we_set_to_take_data.add(screen)
-            else:
-                self._screens_we_powered.add(screen)
     
     def select_screen(self, index: int) -> None:
         screen_name: str = self.ui.select_screen_combobox.itemText(index)        
@@ -182,6 +185,12 @@ class AreaControl(QWidget):
         # Emitting here can be expensive as the rest of the GUI learns from this one signal
         # Where we are in the machine (the region, I1 or B2, is inferred from the screen name.)
         self.screen_name_signal.emit(screen_name)
+        if self.i1machine is self.machine:
+            self.stop_image_acquisition_for_screen(self._selected_i1_screen)
+            self._selected_i1_screen = screen_name
+        elif self.b2machine is self.machine:
+            self.stop_image_acquisition_for_screen(self._selected_b2_screen)
+            self._selected_b2_screen = screen_name
 
     def set_area(self, area: DiagnosticRegion) -> None:
         if area is self.machine.area:
@@ -193,49 +202,8 @@ class AreaControl(QWidget):
             self.set_b2()
 
     def closeEvent(self, event) -> None:
-        self.close_jddd_screen_windows()
-        if not self._screens_we_powered | self._screens_we_set_to_take_data:
-            return
-
-        dialog = SwitchOffCamerasDialog([s.name for s in self._screens_we_powered],
-                                        [s.name for s in self._screens_we_set_to_take_data])
-        if dialog.exec_() == QDialog.Accepted:
-            for camera in self._screens_we_powered:
-                camera.power_on_off(on=False)
-            for camera in self._screens_we_set_to_take_data:
-                camera.start_stop_image_acquisition(acquire=False)
-
-    def close_jddd_screen_windows(self) -> None:
         for process in self.jddd_camera_window_processes.values():
             process.close()
-
-
-class CameraDialogue(QDialog):
-    def __init__(self, camera_name: str, *, is_powered: bool, is_taking_data: bool, parent: QWidget | None = None):
-        super().__init__(parent)
-
-        self.setWindowTitle(f"{camera_name}'s Camera Status")
-        
-        if not is_powered:
-            message = f"Camera {camera_name} powered off and not taking data.\nPowering and setting up camera for image acquisition..."
-        elif is_powered and not is_taking_data:
-            message = f"Camera {camera_name} is not taking data.\nStarting image acquisition..."
-        else:
-            message = "Camera status: unknown: is powered: %s, is taking data: %s" % (is_powered, is_taking_data)
-
-        self.label = QLabel(message)
-
-        self.ok_button = QPushButton("OK")
-        self.ok_button.clicked.connect(self.accept)
-
-        layout = QVBoxLayout()
-        layout.addWidget(self.label)
-        layout.addWidget(self.ok_button)
-
-        self.setLayout(layout)
-
-        # Set the dialog to be modal.
-        self.setWindowModality(Qt.ApplicationModal)
 
 
 def try_to_boot_screen(screen: Screen, timeout: float = 10.0) -> None:
@@ -261,64 +229,3 @@ def try_to_boot_screen(screen: Screen, timeout: float = 10.0) -> None:
 
     try_it()
 
-
-class SwitchOffCamerasDialog(QDialog):
-    def __init__(self, we_switched_on: list[str],
-                we_started_taking_data: list[str]):
-        super().__init__()
-        self.we_switched_on = we_switched_on
-        self.we_started_taking_data = we_started_taking_data
-        self.initUI()
-
-    def initUI(self):
-        self.setWindowTitle("Restore Cameras")
-        layout = QVBoxLayout()
-
-        message = textwrap.dedent("""\
-        One or more cameras was powered or started taking
-        data due to this application. Should the cameras
-        be restored to their previous states?
-
-        """)
-
-        # Build up bulleted list of screens we switched on.
-        started_taking_data_bullets = ""
-        for name in sorted(self.we_started_taking_data):
-            started_taking_data_bullets += f"• {name}\n"
-
-        # Build up bolleted list of screens we powered on.
-        powered_on_bullets = ""
-        for name in sorted(self.we_switched_on):
-            powered_on_bullets += f"• {name}\n"
-
-        # The message telling the user we would stop taking data
-        stop_taking_data_message = ("Would stop acquiring images:\n"
-                                   f"{started_taking_data_bullets}")
-        # Only append this string if we actually did this for any screens.
-        if started_taking_data_bullets:
-            message += stop_taking_data_message
-        # The message telling the user we would power these off.
-        power_off_message = ("Would power off:\n"
-                             f"{powered_on_bullets}")
-        # Only if we powered any on does it make sense to offer to
-        # power them off...
-        if powered_on_bullets:
-            message += power_off_message
- 
-        message_label = QLabel(message, self)
-        layout.addWidget(message_label)
-
-        # Add buttons
-        button_layout = QHBoxLayout()
-
-        yes_button = QPushButton("Restore Cameras", self)
-        yes_button.clicked.connect(self.accept)
-        button_layout.addWidget(yes_button)
-
-        no_button = QPushButton("Exit", self)
-        no_button.clicked.connect(self.reject)
-        button_layout.addWidget(no_button)
-
-        layout.addLayout(button_layout)
-
-        self.setLayout(layout)

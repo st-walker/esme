@@ -295,6 +295,10 @@ def tds():
     from esme.gui.calibrator import start_tds_calibrator
     start_tds_calibrator(sys.argv)
 
+@main.command()
+def slices():
+    from esme.gui.widgets.slice import start_slice_analysis_gui
+    start_slice_analysis_gui()
 
 @main.command()
 def current():

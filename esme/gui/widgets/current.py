@@ -17,11 +17,9 @@ from esme.gui.calibrator import MeasurementContext
 from esme.gui.widgets.common import get_machine_manager_factory, get_tds_calibration_config_dir, set_machine_by_region
 from esme.control.screens import Screen, Position
 from esme.control.pattern import get_bunch_pattern, get_beam_regions
-from esme.calibration import get_tds_com_slope, AmplitudeVoltageMapping
 from esme.gui.calibrator import save_measurement_context
 from esme.analysis import streaking_parameter, apparent_gaussian_bunch_length_from_processed_image, apparent_rms_bunch_length_from_processed_image
 import logging
-from esme.calibration import AmplitudeVoltageMapping
 from esme.core import DiagnosticRegion
 from esme.control.exceptions import DOOCSReadError
 from esme.core import DiagnosticRegion, region_from_screen_name
@@ -36,28 +34,36 @@ import datetime
 class InterruptedMeasurement(RuntimeError):
     pass
 
+class MeasurementError(RuntimeError):
+    def __init__(self, reason, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.reason = reason
 
 
 @dataclass
 class StreakedBeamData:
     phase: float = np.nan
-    images: list[ImagePayload] = None
-    bg: npt.NDArray = None
+    image_payloads: list[ImagePayload] = None
 
+    def mean_current_profile(self):
+        return np.mean([pl.current for pl in self.image_payloads], axis=0) # XXX: is this correct?
+    
+    def mean_stdev_bunch_length(self) -> float:
+        return np.mean([pl.stdev_bunch_length for pl in self.image_payloads])
 
-@dataclass
-class UnstreakedBeamData:
-    images: list[npt.NDArray] = None
-    bg: npt.NDArray = 0.0
+    def mean_gaussian_bunch_length(self) -> float:
+        gauss_sigmas = []
+        for pl in self.image_payloads:
+            param = pl.gaussfit_current
+            gauss_sigmas.append(param.sigma)
+        return np.mean(gauss_sigmas)
 
-
-# @dataclass
-# class CurrentProfileMeasurement:
-#     context: MeasurementContext
-#     avmapping: AmplitudeVoltageMapping
-
-
-
+    def time_calibrated(self):
+        return self.image_payloads[0].time_calibrated
+    
+    def time(self)
+        return self.image_payloads[0].time
+        
 @dataclass
 class CurrentProfileContext(MeasurementContext):
     avmapping: AmplitudeVoltageMapping = None
@@ -69,21 +75,32 @@ class CurrentProfileMeasurement:
     context: CurrentProfileContext = field(default_factory=lambda: CurrentProfileContext())
     streak0: StreakedBeamData = field(default_factory=lambda: StreakedBeamData())
     streak1: StreakedBeamData = field(default_factory=lambda: StreakedBeamData())
-    unstreaked: UnstreakedBeamData = field(default_factory=lambda: UnstreakedBeamData())
-    background_streaked: npt.ArrayLike = 0.0
+    unstreaked: list[ImagePayload] = field(default_factory=list)
+    background_unstreaked: npt.ArrayLike | None = None
+    background_streaked: npt.ArrayLike | None = None
 
     tds_calibration_directory: Path | None = None
 
     def current0(self) -> tuple[np.ndarray, np.ndarray]:
-        pass
+        return self.streak0.time, self.streak0.mean_current_profile()
 
     def current1(self) -> tuple[np.ndarray, np.ndarray]:
-        pass
+        return self.streak1.time, self.streak1.mean_current_profile()
+    
+    def unstreaked_stdev_beam_length(self) -> float:
+        return np.mean([pl.stdev_bunch_length for pl in self.unstreaked])
+    
+    def unstreaked_gauss_beam_length(self) -> float:
+        sizes = []
+        for pl in self.unstreaked:
+            param = pl.gaussfit_current
+            sizes.append(param.sigma)
+        return np.mean(sizes)
 
 
 class CurrentProfileWorkerSignals(QObject):
     images_taken_signal = pyqtSignal(int)
-    measurement_error = pyqtSignal()
+    measurement_error = pyqtSignal(MeasurementError)
     measurement_interrupted_signal = pyqtSignal()
     measurement_finished_signal = pyqtSignal(CurrentProfileMeasurement)
 
@@ -107,10 +124,18 @@ class CurrentProfileWorker(QRunnable):
     def run(self) -> None:
         try:
             result = self._measure_current_profile()
-        except Exception as e:
-            self.signals.measurement_error.emit(InterruptedMeasurement())
+        except InterruptedMeasurement:
+            self.signals.measurement_interrupted_signal.emit()
+        except Exception as e
+            self.signals.measurement_error.emit(InterruptedMeasurement(repr(e)))
         else:
             self.signals.measurement_finished_signal.emit(result)
+
+    def _raise_if_interrupted(self, read_rate) -> None:
+        if self.interrupt_event.is_set():
+            # restore read rate and raise exception to unwind stack and cancel measurement.
+            self.imager_worker.submit(ImagingMessage(MessageType.SET_FREQUENCY, data={"frequency": read_rate}))
+            raise InterruptedMeasurement()
 
     def n_images_per_measurement(self) -> int:
         return int(self.beam_images_per_streak * 3 + self.bg_images_per_gain * 2)
@@ -122,54 +147,71 @@ class CurrentProfileWorker(QRunnable):
 
     def _take_images(self, n: int) -> list[ImagePayload]:
         initial_read_rate = self.imager_worker.read_frequency
+        LOG.debug("Setting image analysis thread to max rate (10Hz) for data acquisition")
         self.imager_worker.submit(ImagingMessage(MessageType.SET_FREQUENCY, data={"frequency": 10.0}))
-        result = []
+        # Subscribe to the image worker and get a queue.
         image_queue = self.imager_worker.subscribe(n)
-        print("Another queue...")
         images = []
         while image_queue.num_images_remaining != 0:
-            if len(images) == n:
-                break
+            self._raise_if_interrupted(initial_read_rate)
             try:
-                image = image_queue.q.get(timeout=1)
-                print(image)
-                images.append(image)
+                images.append(image_queue.q.get(timeout=1))
                 image_queue.task_done()
             except queue.Empty:
-                continue
-        # Now go back to previous read rate.
+                # We were too fast, sleep and let some more images get taken.
+                time.sleep(0.2)
+        self.signals.images_taken_signal.emit(n)
+        # We've finished, now we go back to the previous read rate.
+        LOG.debug("Post image acquisition; reverting to initial read rate: %s", initial_read_rate)
         self.imager_worker.submit(ImagingMessage(MessageType.SET_FREQUENCY, data={"frequency": initial_read_rate}))
         return images
     
     def _take_background(self) -> deque[npt.NDArray]:
+        # _take_background is different to _take_images in that we simply
+        # clear the background cache, go to max rate, read the cache,
+        # And then revert the read frequency back to what it was before.
+
+        # Save read frequency for future reference
         initial_read_rate = self.imager_worker.read_frequency
+        # Go to fast read rate.
         self.imager_worker.submit(ImagingMessage(MessageType.SET_FREQUENCY, data={"frequency": 10.0}))
+        # Clear the background cache.
         self.imager_worker.submit(ImagingMessage(MessageType.CLEAR_BACKGROUND))
         # Wait for background clearing to be done.
         while not self.imager_worker.bg_cache_is_empty():
+            self._raise_if_interrupted()
             time.sleep(0.1)
+        LOG.info("Cleared background cache, starting to take background in acquisition thread...")
+        # Start caching background again.
         self.imager_worker.submit(ImagingMessage(MessageType.CACHE_BACKGROUND))
         while not self.imager_worker.bg_cache_is_full():
-            print("WAITING.........!!!!!!!!!")
+            self._raise_if_interrupted(initial_read_rate)
             time.sleep(0.1)
-        print("FINISHED WAITING!!!")
-        return self.imager_worker.get_cached_background()
+        LOG.info("Finished taking background.  Reverting to initial read rate: %s", initial_read_rate)
+        # Go back to the original read rate.
+        self.imager_worker.submit(ImagingMessage(MessageType.SET_FREQUENCY, data={"frequency": initial_read_rate}))
+        # Get the cached background and return it.
+        bg_cache = self.imager_worker.get_cached_background()
+        self.signals.images_taken_signal.emit(len(bg_cache))
+        return bg_cache
     
     def _measure_current_profile(self) -> None:
+        self.producer_worker.submit(message)
         # First turn beam on and do auto gain
         # Then take images.
         # Then turn beam off and take background.
         # Then turn beam on and turn tds on do gain control.
         # Then flip tds phase and take images.
+
         # Save streak amplitude
         streak_amplitude = self.machine.tds.get_amplitude_rb()
-        print("Going unstreaked")
+        LOG.info("Setting amplitude to zero to measure unstreaked beam size")
         # Go unstreaked.
         self.machine.tds.set_amplitude(0.)
         self.machine.turn_beam_onto_screen(self.screen, streak=True)
         time.sleep(1)
         self.run_screen_autogain()
-        print("Taking unstreaked beam images")
+        LOG.info("Taking %s unstreaked beam images...", self.beam_images_per_streak)
         unstreaked_beam_images = self._take_images(n=self.beam_images_per_streak)
 
         self.machine.take_beam_off_screen(self.screen)
@@ -187,17 +229,14 @@ class CurrentProfileWorker(QRunnable):
         self.signals.streaked_beam_signal.emit()
         phase1 = phase0 + 180
         self.machine.set_phase(phase1)
-        time.sleep(1)
+        time.sleep(1.5)
         streaked_payloads1 = self._take_images(n=self.beam_images_per_streak)
         # Go back to original phase
         self.machine.set_phase(phase0)
-
         self.take_beam_off_screen(self.screen)
         time.sleep(1)
 
         bg_streaked = self._take_background()
-
-        print("ALL.  DONE.")
 
         return CurrentProfileMeasurement(streak0=StreakedBeamData(phase0, streaked_payloads0),
                                          streak1=StreakedBeamData(phase1, streaked_payloads1),
@@ -253,7 +292,7 @@ class CurrentProfilerWindow(QMainWindow):
     def _active_measurement(self) -> CurrentProfileMeasurement:
         if self.i1machine is self.machine:
             return self.i1profile
-        elif self.b2machine is self.achime:
+        elif self.b2machine is self.machine:
             return self.b2profile
         raise RuntimeError()
 
@@ -270,14 +309,21 @@ class CurrentProfilerWindow(QMainWindow):
         # Progress bar stuff:
         self.ui.progress_bar.setValue(0)
         self.ui.progress_bar.setMaximum(self.worker.n_images_per_measurement())
-        self.worker.signals.images_taken_signal.connect(self.ui.progress_bar.setValue)
+        self.worker.signals.images_taken_signal.connect(self._increment_progress_bar)
+
         # Enabling the UI again at when the measurement stops.
         # self.worker.signals.measurement_finished_signal.connect(lambda: self.set_ui_enabled(enabled=True))
         self.worker.signals.measurement_finished_signal.connect(self._post_final_result)
-        # self.worker.run()
+        # self.worker.run() # Use this line instead of the threadpool to run sequentially.
         self.threadpool.start(self.worker)
-        # self.set_ui_enabled(enabled=False)
+        self.set_ui_enabled(enabled=False)
 
+    def _increment_progress_bar(self, increment: int) -> None:
+        self.ui.progress_bar.setValue(self.ui.progress_bar.value() + increment)
+
+    def set_ui_enabled(self, *, enabled) -> None:
+        self.ui.start_measurement_button.setEnabled(enabled)
+        self.ui.cancel_button.setEnabled(not enabled)        
 
     def _post_final_result(self, result: CurrentProfileMeasurement):
         if self.i1machine is self.machine:
@@ -289,16 +335,52 @@ class CurrentProfilerWindow(QMainWindow):
 
         self._plot_current_profile(result)        
         self._plot_spotsizes(result)
+        self._result_to_table(result)
+
+    def _result_to_table(self, result: CurrentProfileMeasurement) -> None:
+        self.ui.beam_table_view.gaussian_params.sigma_t = 1
+        self.ui.beam_table_view.gaussian_params.resolution_t = 1
+        self.ui.beam_table_view.gaussian_params.sigma_x0 = 1
+        self.ui.beam_table_view.gaussian_params.sigma_xi = 1
+                
+        self.ui.beam_table_view.rms_params.sigma_t = 1
+        self.ui.beam_table_view.rms_params.resolution_t = 1
+        self.ui.beam_table_view.rms_params.sigma_x0 = 1
+        self.ui.beam_table_view.rms_params.sigma_xi = 1
 
     def _plot_current_profile(self, result: CurrentProfileMeasurement) -> None:
-        self._plot_streaked_beam(result.streak0)
-        self._plot_streaked_beam(result.streak1)
-        # !! XXX: two point analysis goes here..
+        self._plot_streaked_beam_current(result.streak0)
+        self._plot_streaked_beam_current(result.streak1)
+        self._plot_beam_two_point_analysis(result.streak0, result.streak1)
 
-    def _post_streaked_beam(self, data: StreakedBeamData) -> None:
+    def _plot_streaked_beam_current(self, data: StreakedBeamData) -> None:
         currents = [im.current for im in data.images]
-        mean_current = np.mean(currents, axis=1)
+        mean_current = np.mean(currents, axis=1) # XXX: is this correct? possibly not.
         self.plots.current.plot(time, mean_current, name=f"𝜙 = {data.phase}°")
+
+    def _plot_beam_two_point_analysis(self, beam0: StreakedBeamData, beam1: StreakedBeamData) -> None:
+        # !! XXX: two point analysis goes here..
+        pass
+
+    def _plot_spotsizes(self, result: CurrentProfileMeasurement) -> None:
+        gauss_size0 = result.streak0.mean_gaussian_bunch_length()
+        stdev_size0 = result.streak0.mean_stdev_bunch_length()
+        gauss_size1 = result.streak1.mean_gaussian_bunch_length()
+        stdev_size1 = result.streak1.mean_stdev_bunch_length()
+        gauss_size_unstreaked = result.unstreaked_gauss_beam_length()
+        stdev_size_unstreaked = result.unstreaked_stdev_beam_length()
+
+        # XXX: These first two plots should be scatter plots.
+        self.plots.spot_size.plot([-1, 0, 1], [gauss_size0,
+                                               gauss_size_unstreaked,
+                                               gauss_size1],
+                                               "Gauss.")
+        self.plots.spot_size.plot([-1, 0, 1], [stdev_size0,
+                                               stdev_size_unstreaked,
+                                               stdev_size1],
+                                               name="stdev")
+        # Now we do the fitting.
+        
 
     def cancel_current_profile_measurement(self) -> None:
         if self.worker is None:
@@ -310,26 +392,6 @@ class CurrentProfilerWindow(QMainWindow):
         if self._get_screen().get_position() is Position.ONAXIS:
             self.machine.turn_beam_off()
         self.set_ui_enabled(enabled=True)
-
-    def goto_last_bunch_in_beam_region(self, selected_beam_region: int) -> None:
-        beam_regions = get_beam_regions(get_bunch_pattern())
-        # This is zero counting!! beam region 1 is 0 when read from sbunch midlayer!
-        selected_beam_region = self.machine.sbunches.get_beam_region()
-        assert selected_beam_region >= 0
-        try:
-            br = beam_regions[selected_beam_region]
-        except IndexError:
-            LOG.info(
-                f"User tried to select last bunch of nonexistent beam region: {selected_beam_region}."
-            )
-            box = QMessageBox(self)  # , "Invalid Beam Region",
-            box.setText(f"Beam Region {selected_beam_region+1} does not exist.")
-            box.exec()
-            return
-        else:
-            self.dbunch_manager.sbunches.set_bunch_number(br.nbunches())
-        self._update_beam_region_and_bunch_ui()
-
 
     def clear_displays(self) -> None:
         self.plots.current.clear()

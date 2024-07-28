@@ -3,11 +3,14 @@ from collections import defaultdict
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, Callable
+import logging
 
 import pandas as pd
 import toml
 import yaml
 
+from esme.calibration import TimeCalibration
+from esme.load import load_time_calibrations
 from esme.analysis import OpticsFixedPoints
 from esme.control.dint import DOOCSInterfaceABC
 from esme.control.kickers import (
@@ -47,7 +50,10 @@ from esme.control.vdint import (
     WildcardAddress,
 )
 from esme.core import DiagnosticRegion
+# from esme.gui.widgets.common import get_tds_calibration_config_dir
 
+LOG = logging.getLogger(__name__)
+LOG.setLevel(logging.INFO)
 
 def load_kickers_from_config(
     dconf: dict[str, Any], area: DiagnosticRegion, di: DOOCSInterfaceABC | None = None
@@ -267,12 +273,20 @@ class MachineManagerFactory:
                 optics=self._get_optics(area),
                 request=self._get_misc_snapshot_request(area),
                 deflector=self._get_deflector(area),
-                sbunches=self._get_sbunches(area)
+                sbunches=self._get_sbunches(area),
+                time_calibrations=self._get_time_calibrations(area)                
             )
         else:
             self._manager_cache[area]["imaging"]
         return manager
-
+    
+    def _get_time_calibrations(self, area) -> dict[str, TimeCalibration]:
+        try:
+            tcaldict = load_most_recent_time_calibrations(area)
+        except FileNotFoundError:
+            tcaldict = {}
+        return tcaldict
+    
     def make_i1_b2_imaging_managers(self) -> tuple[ImagingManager, ImagingManager]:
         i1 = self.make_imaging_manager(DiagnosticRegion.I1)
         b2 = self.make_imaging_manager(DiagnosticRegion.B2)
@@ -579,3 +593,31 @@ def get_scan_config_for_area(dconf: dict[str, Any], area: str) -> dict[str, Any]
             return scan
 
     raise ValueError(f"Unable to find scan information for area: {area}")
+
+def load_most_recent_time_calibrations(section: DiagnosticRegion) -> dict[str, TimeCalibration]:
+    cdir = get_tds_calibration_config_dir() / DiagnosticRegion(section).name.lower()
+
+    dirs = cdir.glob("*")
+    for directory in iter(sorted(dirs, key=os.path.getmtime)):
+        if not directory.is_dir():
+            continue
+        calibration_file = directory / "calibration.toml"
+        
+        try:
+            screen_time_calibrations = load_time_calibrations(calibration_file)
+        except FileNotFoundError:
+            pass
+        else:
+            LOG.info(f"Loading calibration file {calibration_file} for {section.name} TDS")
+            return screen_time_calibrations
+
+    msg = f"Failed to find calibration file for {section.name} TDS in {cdir}"
+    LOG.warning(msg)
+    raise FileNotFoundError(msg)
+
+
+def get_config_path() -> Path:
+    return Path("/Users/xfeloper/user/stwalker/lps")
+
+def get_tds_calibration_config_dir() -> Path:
+    return get_config_path() / "tds-calibrations"

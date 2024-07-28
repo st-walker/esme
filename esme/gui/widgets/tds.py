@@ -50,7 +50,7 @@ LOG.setLevel(logging.INFO)
 
 
 @dataclass
-class TaggedCalibration:
+class TaggedVoltageCalibration:
     avmapping: AmplitudeVoltageMapping
     filepath: Path
 
@@ -129,9 +129,10 @@ class TDSControl(QtWidgets.QWidget):
         self.ui.tds_amplitude_spinbox.setValue(
             self.machine.deflector.get_amplitude_sp()
         )
-        # We multiply by 1e-6 convert from V to MV.
-        self.ui.tds_voltage_readback.setText(f"{(self.machine.deflector.get_voltage_rb() * 1e-6):.2f}")
-        self.ui.tds_voltage_spinbox.setValue(self.machine.deflector.get_voltage_sp() * 1e-6)
+        if self.machine.deflector.calibration:
+            # We multiply by 1e-6 convert from V to MV.
+            self.ui.tds_voltage_readback.setText(f"{(self.machine.deflector.get_voltage_rb() * 1e-6):.2f}")
+            self.ui.tds_voltage_spinbox.setValue(self.machine.deflector.get_voltage_sp() * 1e-6)
 
     def connect_buttons(self) -> None:
         self.ui.tds_phase_spinbox.valueChanged.connect(self.set_phase)
@@ -184,6 +185,11 @@ class TDSControl(QtWidgets.QWidget):
         elif self.b2machine is self.machine:
             tagged_calibration = self.b2calibration
         
+        if tagged_calibration is None:
+            self.ui.calibration_file_path_label.setText("Missing Calibration")
+            self.ui.calibration_time_label_2.setText("")
+            return
+
         calibration_filename = Path(tagged_calibration.filepath)
         datetime = tagged_calibration.avmapping.calibration_time
         short_filename = os.sep.join(calibration_filename.parts[-1:])
@@ -225,21 +231,22 @@ class TDSControl(QtWidgets.QWidget):
             self.b2machine.deflector.calibration = avmapping
 
 
-def load_most_recent_calibration(section: DiagnosticRegion) -> TaggedCalibration:
+def load_most_recent_calibration(section: DiagnosticRegion) -> TaggedVoltageCalibration:
     cdir = get_tds_calibration_config_dir() / DiagnosticRegion(section).name.lower()
 
     dirs = cdir.glob("*")
     for directory in iter(sorted(dirs, key=os.path.getmtime)):
         if not directory.is_dir():
             continue
-        avmapping_file = directory / "avmapping.toml"
+        calibration_file = directory / "calibration.toml"
+        
         try:
-            avmapping = load_amplitude_voltage_mapping(avmapping_file)
+            avmapping = load_amplitude_voltage_mapping(calibration_file)
         except FileNotFoundError:
             pass
         else:
-            LOG.info(f"Loading calibration file {avmapping_file} for {section.name} TDS")
-            return TaggedCalibration(avmapping, avmapping_file)
+            LOG.info(f"Loading calibration file {calibration_file} for {section.name} TDS")
+            return TaggedVoltageCalibration(avmapping, calibration_file)
 
     msg = f"Failed to find calibration file for {section.name} TDS in {cdir}"
     LOG.warning(msg)

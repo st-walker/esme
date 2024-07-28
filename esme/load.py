@@ -15,7 +15,7 @@ from esme.control.scanner import QuadScan, QuadScanSetpoint
 from esme.analysis import AnalysisAddresses, OpticsFixedPoints, SetpointDataFrame, MeasurementDataFrames, Scan
 from esme.calibration import CompleteCalibration, CalibrationOptics
 from esme.core import DiagnosticRegion
-from esme.calibration import AmplitudeVoltageMapping
+from esme.calibration import AmplitudeVoltageMapping, TimeCalibration
 
 
 LOG = logging.getLogger(__name__)
@@ -141,14 +141,31 @@ def i1_tscan_config_from_scan_config_file(config_path: os.PathLike):
 
 def load_amplitude_voltage_mapping(ftoml: os.PathLike) -> AmplitudeVoltageMapping:
     with Path(ftoml).open("r") as f:
-        avmapping_kvps = toml.load(f)
+        kvps = toml.load(f)
+        avmapping_kvps = kvps["voltage"]
         area = DiagnosticRegion[avmapping_kvps["area"]]
         amplitudes = avmapping_kvps["amplitudes"]
         voltages = avmapping_kvps["voltages"]
         calibration_time = avmapping_kvps.get("calibration_time")
         if calibration_time is not None:
             calibration_time = datetime.datetime.fromtimestamp(calibration_time)
-        return AmplitudeVoltageMapping(area, amplitudes, voltages, calibration_time=calibration_time)
+        return AmplitudeVoltageMapping(area, amplitudes, voltages, calibration_time=calibration_time, calibration_filepath=ftoml)
+
+def load_time_calibrations(ftoml: os.PathLike) -> dict[str, TimeCalibration]:
+    with Path(ftoml).open("r") as f:
+        kvps = toml.load(f)
+        time_cal_kvps = kvps["time"]
+        result = {}
+        for screen_name, time_calibration in time_cal_kvps.items():
+            caltime = time_calibration["calibration_time"]
+            amplitudes = time_calibration["amplitudes"]
+            calfactors = time_calibration["calfactors"]
+            result[screen_name] = TimeCalibration(screen_name,
+                                                  amplitudes,
+                                                  calfactors,
+                                                  calibration_time=caltime,
+                                                  calibration_filepath=str(ftoml))
+        return result
 
 
 def load_calibration_from_yaml(yaml_file_path: str) -> CompleteCalibration:
