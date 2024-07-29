@@ -16,7 +16,7 @@ from scipy import ndimage
 
 from esme.control.screens import Position, Screen, ScreenMetadata
 from esme.maths import get_gaussian_fit
-from esme.image import zero_off_axis_regions
+from esme.image import zero_off_axis_regions, get_slice_properties
 from esme.control.exceptions import DOOCSReadError
 
 LOG = logging.getLogger(__name__)
@@ -75,7 +75,6 @@ class ImagePayload:
     @cached_property
     def current(self):
         profile = self.tproj * (self.bunch_charge / np.trapz(self.tproj, self.time_calibrated))
-        print(self.bunch_charge, profile.max())
         return profile
     
     @cached_property
@@ -102,6 +101,37 @@ class ImagePayload:
                                        300 * self.screen_md.ysize / self.time_calibration])
         scale, mu, sigma = popt
         return GaussianParameters(scale=scale, mu=mu, sigma=sigma)
+
+    @cached_property
+    def slice_gaussfit_time_calibrated(self):
+        """This is the slice of the image that is gaussian fitted in time."""
+        row_index, mean_slice_position, slice_width = get_slice_properties(
+            self.image.T, mask_nans=True
+        )
+        time = self.time_calibrated[row_index]
+        mean_slice_position *= self.screen_md.xsize  # In the non-streaking plane
+        slice_width *= self.screen_md.xsize  # Also in the non streaking plane....
+        return time, mean_slice_position, slice_width
+
+    @cached_property
+    def slice_gaussfit_time(self):
+        """This is the slice of the image that is gaussian fitted in time."""
+        row_index, mean_slice_position, slice_width = get_slice_properties(
+            self.image.T, mask_nans=True
+        )
+        time = self.time[row_index]
+        mean_slice_position *= self.screen_md.xsize  # In the non-streaking plane
+        slice_width *= self.screen_md.xsize  # Also in the non streaking plane....
+        return time, mean_slice_position, slice_width
+
+    @cached_property
+    def slice_gaussfit_px(self):
+        row_index, mean_slice_position, slice_width = get_slice_properties(
+            self.image.T, mask_nans=True
+        )
+        # timepx = self.timepx[row_index]
+        time = row_index
+        return time, mean_slice_position, slice_width
 
 
 class MessageType(Enum):
@@ -259,6 +289,8 @@ class ImagingWorker(QObject):
         )
 
     def _push_to_subscribers(self, image_payload: ImagePayload) -> None:
+        if not self._subscriber_queues:
+            return
         with self._lock:
             to_remove = []
             for imq in self._subscriber_queues:

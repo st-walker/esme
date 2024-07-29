@@ -37,9 +37,7 @@ def parabola(x, a, b, c):
 def get_gaussian_fit(x, y, p0: tuple[float, float, float] | None = None) -> tuple[tuple, tuple]:
     """popt/perr order: a, mu, sigma"""
     if p0 is None:
-        a0 = y.max()
-        mu0 = y.argmax()
-        sigma0 = 1    
+        p0 = [y.max(), y.argmax(), 1]
 
     a0, mu0, sigma0 = p0
 

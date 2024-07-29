@@ -240,6 +240,7 @@ class SliceAnalysisWindow(QWidget):
         self.ui.send_to_logbook_button.clicked.connect(
             self._open_send_to_logbook_dialog
         )
+        self.ui.cancel_button.clicked.connect(self.close)
 
     def _open_send_to_logbook_dialog(self) -> None:
         text = textwrap.dedent(
@@ -296,7 +297,8 @@ class SliceAnalysisWindow(QWidget):
             pass
 
     def _select_image_number(self, image_number: int) -> None:
-        image_number = np.clip(image_number, 0, len(self._image_payloads))
+        maxlen = max(0, len(self._image_payloads) - 1)
+        image_number = np.clip(image_number, 0, maxlen)
         self.ui.image_number_spinner.setValue(image_number)
 
         try:
@@ -419,17 +421,18 @@ class SliceAnalysisWindow(QWidget):
         self.append_image_from_screen()
 
     def append_image_from_screen(self) -> None:
-        imp = _read_image_from_screen()
+        imp = self._get_image_from_worker()
         self._image_payloads.append(imp)
-        index = len(self._image_payloads)
+        index = len(self._image_payloads) - 1
         self._plot_beam_centroids(imp, index)
         self._plot_lps(imp, index)
         self._plot_image(imp, index)
         self.ui.phase_space_canvas.canvas.draw()
+        self.ui.image_number_spinner.setValue(index)
 
     def _get_image_from_worker(self) -> None:
-        q = self.image_worker.subscribe(nimages=1)
-        imp = q.wait()
+        imq = self.image_worker.subscribe(nimages=1)
+        imp = imq.q.get(block=True, timeout=3)
         return imp
 
     def load_image_from_file(self) -> None:

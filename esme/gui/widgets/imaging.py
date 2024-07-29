@@ -42,6 +42,7 @@ from esme.gui.widgets.screen import AxesCalibration
 from esme.calibration import AmplitudeVoltageMapping
 from scipy.optimize import curve_fit
 from esme.gui.widgets.current import CurrentProfilerWindow
+from esme.gui.widgets.slice import SliceAnalysisWindow
 from esme.gui.workers import ImagingMessage, ImagePayload, MessageType, ImagingWorker, GaussianParameters
 from esme.core import region_from_screen_name
 
@@ -90,6 +91,7 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         self.producer_worker, self.producer_thread = self.setup_data_taking_worker()
 
         self.current_profiler = CurrentProfilerWindow(self.producer_worker)
+        self.slice_analyser = SliceAnalysisWindow(image_worker=self.producer_worker)
 
         self.elogger = LogBookEntryWriterDialogue(
             self.screen, bg_images=None, parent=self
@@ -203,9 +205,15 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         self.ui.time_calibration_spinbox.valueChanged.connect(self._pass_time_calibration_to_worker)
 
         self.ui.current_profile_button.clicked.connect(self.current_profiler.show)
+        self.ui.open_slice_analysis_button.clicked.connect(self._start_slice_analyser)
 
         self.ui.fix_aspect_ratio_checkbox.stateChanged.connect(self._set_lock_aspect_ratio)
 
+    def _start_slice_analyser(self):
+        if not self.ui.time_calibration_spinbox.value():
+            QMessageBox.critical(None, "Missing Time Calibration", "Slice Analysis Requires a time calibration at the given screen")
+        else:
+            self.slice_analyser.show()
 
     def _set_lock_aspect_ratio(self, lock_state: Qt.CheckState) -> None:
         self.ui.screen_display_widget.lock_aspect_ratio(do_lock=bool(lock_state))
@@ -324,7 +332,6 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         self.ui.screen_display_widget.set_screen(self.screen.name)
         self._calculate_dispersion()
         self._generate_axes_calibrations()
-
 
 
 def gauss(x, a, mu, sigma):

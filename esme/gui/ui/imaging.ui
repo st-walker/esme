@@ -184,7 +184,7 @@
        </widget>
       </item>
       <item row="2" column="4">
-       <widget class="QPushButton" name="pushButton">
+       <widget class="QPushButton" name="open_slice_emittance_button">
         <property name="enabled">
          <bool>false</bool>
         </property>
@@ -204,7 +204,7 @@
        </widget>
       </item>
       <item row="1" column="4">
-       <widget class="QPushButton" name="pushButton_3">
+       <widget class="QPushButton" name="open_slice_analysis_button">
         <property name="text">
          <string>Slice Analysis</string>
         </property>

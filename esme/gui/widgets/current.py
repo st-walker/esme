@@ -61,12 +61,11 @@ class StreakedBeamData:
     def time_calibrated(self):
         return self.image_payloads[0].time_calibrated
     
-    def time(self)
+    def time(self):
         return self.image_payloads[0].time
         
 @dataclass
 class CurrentProfileContext(MeasurementContext):
-    avmapping: AmplitudeVoltageMapping = None
     bunch_charge: float = np.nan
     tds_amplitude: float = np.nan
 
@@ -126,7 +125,7 @@ class CurrentProfileWorker(QRunnable):
             result = self._measure_current_profile()
         except InterruptedMeasurement:
             self.signals.measurement_interrupted_signal.emit()
-        except Exception as e
+        except Exception as e:
             self.signals.measurement_error.emit(InterruptedMeasurement(repr(e)))
         else:
             self.signals.measurement_finished_signal.emit(result)
