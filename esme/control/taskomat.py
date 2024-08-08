@@ -1,6 +1,5 @@
 import re
 from functools import cache
-from enum import IntEnum
 from typing import Any
 
 from .dint import DOOCSAddress, DOOCSInterface
@@ -36,14 +35,17 @@ class Sequence:
 
     def is_running(self) -> bool:
         return self.di.get_value(self._fdl.filled(property="RUNNING")) == 1
-    
+
     def force_stop(self) -> None:
         return self.di.set_value(self._fdl.filled(property="FORCESTOP"), 1)
+
+    def run_step(self, step_number: int) -> None:
+        self.di.set_value(self._get_step_address(step_number, "RUN"), 1)
 
     def _get_step_address(self, step_number: int, suffix: str) -> str:
         # given step number and suffix, gives full address.
         return self._fdl.filled(property=f"STEP{step_number:03}.{suffix}")
-    
+
     @cache
     def _get_step_type_map(self) -> dict[int, str]:
         addy = self._fdl.filled(property="COMBOBOX_TYPES")
@@ -58,7 +60,7 @@ class Sequence:
     def get_step_type(self, step_number: int) -> str:
         step_type_int = self._get_step_value(step_number, "TYPE")
         return self._get_step_type_map()[step_type_int]
-    
+
     @cache
     def get_step_numbers(self) -> list[int]:
         properties = self.di.get_names(str(self._fdl.filled(property="*")))
@@ -97,3 +99,6 @@ class Sequence:
 
     def get_html_log(self) -> str:
         return self.di.get_value(self._fdl.filled(property="LOG_HTML"))
+
+    def set_dynamic_property(self, prop: str, value: Any) -> None:
+        self.di.set_value(self._fdl.filled(property=prop), value)

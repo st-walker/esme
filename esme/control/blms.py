@@ -1,5 +1,5 @@
-from .dint import DOOCSInterface
-from .dint import DOOCSAddress
+from .dint import DOOCSAddress, DOOCSInterface
+
 
 class BeamLossMonitor:
     def __init__(self, name: str, di: DOOCSInterface | None = None) -> None:
@@ -9,9 +9,11 @@ class BeamLossMonitor:
 
     def get_slow_counter(self) -> int:
         return self.di.get_value(self._fdl.filled(property="SINGLE_SLOWCOUNTER"))
-    
+
     def get_slow_threshold(self) -> int:
-        return self.di.get_value(self._fdl.filled(property="SINGLE_SLOW_PROTECTION_THRESHOLD"))
-    
+        return self.di.get_value(
+            self._fdl.filled(property="SINGLE_SLOW_PROTECTION_THRESHOLD")
+        )
+
     def slow_protection_reset(self) -> None:
-        return self.di.set_value(self._fdl.filled(property="SLOW_PROTECTION.RESET"), 1)
+        self.di.set_value(self._fdl.filled(property="SLOW_PROTECTION.RESET"), 1)

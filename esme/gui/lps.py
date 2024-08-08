@@ -2,18 +2,18 @@ import logging
 import os
 import sys
 
-from PyQt5.QtCore import QObject, QProcess, Qt, pyqtSignal, QTimer, QLocale
+import yaml
+from PyQt5.QtCore import QObject, QProcess, Qt, QTimer, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QMainWindow
 
+from esme.control.dint import DOOCSInterface
+from esme.core import DiagnosticRegion
 from esme.gui.ui import mainwindow
 from esme.gui.widgets.common import (
+    DEFAULT_CONFIG_PATH,
     get_machine_manager_factory,
     send_widget_to_log,
-    set_tds_calibration_by_region,
 )
-from esme.core import DiagnosticRegion
-from esme.control.dint import DOOCSInterface
-import pydoocs
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
@@ -26,7 +26,7 @@ _JDDD_RUN_ARGS = {
     "i1_llrf": "-file Main_TDS_LLRF_Operation.xml -address XFEL.RF/LLRF.CONTROLLER/LLTDSI1/",
     "b2_sbm": "-file XFEL_B2_Diag_bunches.xml -address XFEL.RF//LLTDSI1/",
     "i1_sbm": "-file XFEL_I1_Diag_bunches.xml -address XFEL.RF//LLTDSI1/",
-    "blms_and_toroids": "-file XFEL_BLM_TOROID_alarm_overview.xml"
+    "blms_and_toroids": "-file XFEL_BLM_TOROID_alarm_overview.xml",
 }
 _OPEN_IMAGE_ANALYSIS_CONFIG_LINE = (
     "cd /home/xfeloper/released_software/ImageAnalysisConfigurator"
@@ -59,8 +59,8 @@ class LPSMainWindow(QMainWindow):
         super().__init__()
         self.ui = mainwindow.Ui_tdsfriend_mainwindow()
         self.ui.setupUi(self)
-        # XXX: Not a priortity right now.
-        # self._init_target_control()
+        self._init_blms()
+        self._init_target_control()
 
         self.di = DOOCSInterface()
 
@@ -75,6 +75,8 @@ class LPSMainWindow(QMainWindow):
             self.ui.special_bunch_panel.set_kickers_for_screen
         )
         self.ui.area.screen_name_signal.connect(self.ui.imaging_widget.set_screen)
+        self.ui.area.region_signal.connect(self.ui.blm_stack.set_widget_by_region)
+        self.ui.area.region_signal.connect(self.ui.target_stack.set_widget_by_region)
 
         # Connect the emission of the TDS panel's TDS voltage calibrations to here.
         self.ui.tds_panel.voltage_calibration_signal.connect(
@@ -98,16 +100,16 @@ class LPSMainWindow(QMainWindow):
 
     def _init_target_control(self) -> None:
         f = get_machine_manager_factory()
-        i1d_dump, i1d_undo_dump = f.make_dump_sequences(DiagnosticRegion.I1)
-        b2d_dump, b2d_undo_dump = f.make_dump_sequences(DiagnosticRegion.B2)
+        i1d_target_def = f.make_target_definitions(DiagnosticRegion.I1)
+        b2d_target_def = f.make_target_definitions(DiagnosticRegion.B2)
+        self.ui.target_stack.set_target_widget(DiagnosticRegion.I1, i1d_target_def)
+        self.ui.target_stack.set_target_widget(DiagnosticRegion.B2, b2d_target_def)
 
-        self.ui.target_stack.add_target_widget(
-            DiagnosticRegion.I1, "I1D", i1d_dump, i1d_undo_dump
-        )
-
-        self.ui.target_stack.add_target_widget(
-            DiagnosticRegion.B2, "B2D", b2d_dump, b2d_undo_dump
-        )
+    def _init_blms(self) -> None:
+        with open(DEFAULT_CONFIG_PATH, "r") as f:
+            blm_definitions = yaml.full_load(f)["blms"]
+            for region_name, blm_names in blm_definitions.items():
+                self.ui.blm_stack.add_blms(DiagnosticRegion[region_name], blm_names)
 
     def update_tds_voltage_calibration(self, voltage_calibration) -> None:
         self.ui.imaging_widget.set_tds_calibration(voltage_calibration)

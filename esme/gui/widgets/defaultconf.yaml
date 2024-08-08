@@ -133,16 +133,37 @@ deflectors:
 dumps:
   I1:
     taskomat_location: DumpInjector
-    pre_run_properties_forward:
+    init_step: 0
+    properties_forward:
       TO_DUMP: 1
-    pre_run_properties_backward:
+    properties_backward:
+      TO_DUMP: 0
+  B1:
+    taskomat_location: DumpB1
+    init_steps: 0
+    properties_forward:
+      TO_DUMP: 1
+    properties_backward:
       TO_DUMP: 0
   B2:
     taskomat_location: DumpB2
-    pre_run_properties_forward:
+    init_step: 0
+    properties_forward:
       TO_DUMP: 1
-    pre_run_properties_backward:
+    properties_backward:
       TO_DUMP: 0
+
+# optics:
+#   I1:
+#     ???
+
+blms:
+  I1:
+    - BLM.56.I1
+    - BLM.60.I1
+    - BLM.66.I1
+  B2:
+    - BLM.460.B2
 
 snapshots:
   # When you press snapshot to elog, etc, where the LPS images etc. go.

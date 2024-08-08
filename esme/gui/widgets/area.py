@@ -1,23 +1,18 @@
 import logging
 import time
-import textwrap
 
-from PyQt5.QtCore import QProcess, QTimer, pyqtSignal, Qt
-from PyQt5.QtWidgets import (
-    QDialog,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QVBoxLayout,
-    QWidget,
+from PyQt5.QtCore import QProcess, Qt, QTimer, pyqtSignal
+from PyQt5.QtWidgets import QWidget
+
+from esme.control.exceptions import DOOCSReadError, EuXFELMachineError
+from esme.control.screens import (
+    Position,
+    PoweringState,
+    Screen,
+    screen_is_fully_operational,
 )
-
-from esme.control.exceptions import EuXFELMachineError
-from esme.control.screens import Screen, screen_is_fully_operational, PoweringState
-from esme.core import DiagnosticRegion
+from esme.core import DiagnosticRegion, region_from_screen_name
 from esme.gui.ui import Ui_area_widget
-from esme.control.exceptions import DOOCSReadError
-from esme.control.screens import Screen, Position
 from esme.gui.widgets.common import get_machine_manager_factory, raise_message_box
 
 LOG = logging.getLogger(__name__)
@@ -25,8 +20,10 @@ LOG.setLevel(logging.INFO)
 
 _CAMERA_DIALOGUE = None
 
+
 class AreaControl(QWidget):
     screen_name_signal = pyqtSignal(str)
+    region_signal = pyqtSignal(DiagnosticRegion)
     # These default screen names are from the Bolko tool.  I guess
     # they're the best to use for reasons of phase advance or
     # whatever.
@@ -66,9 +63,15 @@ class AreaControl(QWidget):
         self.ui.b2_radio_button.pressed.connect(self.set_b2)
         self.ui.jddd_screen_gui_button.clicked.connect(self.open_jddd_screen_window)
         self.ui.select_screen_combobox.activated.connect(self.select_screen)
-        self.ui.screen_on_axis_button.clicked.connect(lambda: self._set_screen_position(Position.ONAXIS))
-        self.ui.screen_off_axis_button.clicked.connect(lambda: self._set_screen_position(Position.OFFAXIS))
-        self.ui.screen_out_button.clicked.connect(lambda: self._set_screen_position(Position.OUT))
+        self.ui.screen_on_axis_button.clicked.connect(
+            lambda: self._set_screen_position(Position.ONAXIS)
+        )
+        self.ui.screen_off_axis_button.clicked.connect(
+            lambda: self._set_screen_position(Position.OFFAXIS)
+        )
+        self.ui.screen_out_button.clicked.connect(
+            lambda: self._set_screen_position(Position.OUT)
+        )
         self.ui.keep_screens_on_checkbox.stateChanged.connect(self._set_keep_screens_on)
 
     def _set_keep_screens_on(self, state: Qt.CheckState) -> None:
@@ -77,11 +80,11 @@ class AreaControl(QWidget):
     def _set_screen_position(self, pos: Position) -> None:
         screen = self.machine.screens[self.get_selected_screen_name()]
         screen.set_position(pos)
-    
+
     def _update_screen_position_ui(self):
         screen = self.machine.screens[self.get_selected_screen_name()]
         self.ui.screen_position_label.setText(screen.get_position().name)
-        
+
         # self.ui.select_screen_combobox.activated.connect(self.select_screen)
 
     def update_screen_combo_box(self, initial_value=None) -> None:
@@ -92,7 +95,10 @@ class AreaControl(QWidget):
             self.ui.select_screen_combobox.setCurrentIndex(index)
 
     def emit_current_screen_name(self) -> None:
-        self.screen_name_signal.emit(self.get_selected_screen_name())
+        screen_name = self.get_selected_screen_name()
+        area = region_from_screen_name(self.get_selected_screen_name())
+        self.screen_name_signal.emit(screen_name)
+        self.region_signal.emit(area)
 
     def get_selected_screen_name(self) -> str:
         return self.ui.select_screen_combobox.currentText()
@@ -118,14 +124,19 @@ class AreaControl(QWidget):
         self.machine = self.i1machine
         screen_name = self._selected_i1_screen or self.I1_INITIAL_SCREEN
         self.update_screen_combo_box(screen_name)
+        self.region_signal.emit(DiagnosticRegion.I1)
 
     def stop_image_acquisition_for_screen(self, screen_name: str):
         if self.ui.keep_screens_on_checkbox.isChecked():
             return
         try:
-            self.i1machine.screens[screen_name].start_stop_image_acquisition(acquire=False)
+            self.i1machine.screens[screen_name].start_stop_image_acquisition(
+                acquire=False
+            )
         except KeyError:
-            self.b2machine.screens[screen_name].start_stop_image_acquisition(acquire=False)
+            self.b2machine.screens[screen_name].start_stop_image_acquisition(
+                acquire=False
+            )
 
     def set_b2(self):
         if self.machine is self.i1machine:
@@ -137,6 +148,7 @@ class AreaControl(QWidget):
         screen_name = self._selected_b2_screen or self.B2_INITIAL_SCREEN
         self.update_screen_combo_box(screen_name)
         self.screen_name_signal.emit(screen_name)
+        self.region_signal.emit(DiagnosticRegion.B2)
 
     def _setup_screen(self, screen_name: str) -> None:
         """check the screen is on, if it's not, we try and power it.
@@ -154,11 +166,15 @@ class AreaControl(QWidget):
             # XXX: Perhaps this should be changed to a different exception
             # Raised by the screen...
             raise_message_box(
-                text=(f"{screen_name}'s camera is unreachable, "
-                      " perhaps the server responsible "
-                      " for this camera has crashed."),
-                informative_text=("Check the server status under"
-                                  " Status → Miscellaneous → Camera Status"),
+                text=(
+                    f"{screen_name}'s camera is unreachable, "
+                    " perhaps the server responsible "
+                    " for this camera has crashed."
+                ),
+                informative_text=(
+                    "Check the server status under"
+                    " Status → Miscellaneous → Camera Status"
+                ),
                 title="Unreachable Screen",
                 icon="Critical",
             )
@@ -177,9 +193,9 @@ class AreaControl(QWidget):
                 title="Unbootable Screen",
                 icon="Warning",
             )
-    
+
     def select_screen(self, index: int) -> None:
-        screen_name: str = self.ui.select_screen_combobox.itemText(index)        
+        screen_name: str = self.ui.select_screen_combobox.itemText(index)
 
         self._setup_screen(screen_name)
         # Emitting here can be expensive as the rest of the GUI learns from this one signal
@@ -228,4 +244,3 @@ def try_to_boot_screen(screen: Screen, timeout: float = 10.0) -> None:
             QTimer.singleShot(punt_time, try_it)
 
     try_it()
-

@@ -1,17 +1,16 @@
+import logging
 import os
 from collections import defaultdict
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, Callable
-import logging
 
 import pandas as pd
 import toml
 import yaml
 
-from esme.calibration import TimeCalibration
-from esme.load import load_time_calibrations
 from esme.analysis import OpticsFixedPoints
+from esme.calibration import TimeCalibration
 from esme.control.dint import DOOCSInterfaceABC
 from esme.control.kickers import (
     FastKicker,
@@ -26,7 +25,7 @@ from esme.control.machines import (
     LPSMachine,
     MachineManager,
     MachineReadManager,
-    TDSCalibrationManager
+    TDSCalibrationManager,
 )
 from esme.control.mstate import AreaWatcher
 from esme.control.optics import I1toB2DLinearOptics, I1toI1DLinearOptics
@@ -40,6 +39,7 @@ from esme.control.scanner import (
 )
 from esme.control.screens import Screen
 from esme.control.snapshot import SnapshotRequest
+from esme.control.target import TargetDefinition
 from esme.control.taskomat import Sequence
 from esme.control.tds import StreakingPlane, TransverseDeflector
 from esme.control.vdint import (
@@ -50,10 +50,13 @@ from esme.control.vdint import (
     WildcardAddress,
 )
 from esme.core import DiagnosticRegion
+from esme.load import load_time_calibrations
+
 # from esme.gui.widgets.common import get_tds_calibration_config_dir
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
+
 
 def load_kickers_from_config(
     dconf: dict[str, Any], area: DiagnosticRegion, di: DOOCSInterfaceABC | None = None
@@ -146,7 +149,7 @@ class MachineManagerFactory:
         try:
             inst = self._facade_cache[area][name]
         except KeyError:
-            inst = backup_fn(area)
+            inst = backup_fn(area, di=self._default_di)
             self._facade_cache[area][name] = inst
         return inst
 
@@ -181,11 +184,6 @@ class MachineManagerFactory:
     def _get_misc_snapshot_request(self, area: DiagnosticRegion) -> SnapshotRequest:
         return self._get_else_build_from_config(
             "reader", area, load_misc_snapshot_from_config
-        )
-
-    def _get_dump_sequences(self, area: DiagnosticRegion) -> tuple[Sequence, Sequence]:
-        return self._get_else_build_from_config(
-            "dumps", area, load_target_sequences_from_config
         )
 
     def make_diagnostic_bunches_manager(
@@ -274,37 +272,30 @@ class MachineManagerFactory:
                 request=self._get_misc_snapshot_request(area),
                 deflector=self._get_deflector(area),
                 sbunches=self._get_sbunches(area),
-                time_calibrations=self._get_time_calibrations(area)                
+                time_calibrations=self._get_time_calibrations(area),
             )
         else:
             self._manager_cache[area]["imaging"]
         return manager
-    
+
     def _get_time_calibrations(self, area) -> dict[str, TimeCalibration]:
         try:
             tcaldict = load_most_recent_time_calibrations(area)
         except FileNotFoundError:
             tcaldict = {}
         return tcaldict
-    
+
     def make_i1_b2_imaging_managers(self) -> tuple[ImagingManager, ImagingManager]:
         i1 = self.make_imaging_manager(DiagnosticRegion.I1)
         b2 = self.make_imaging_manager(DiagnosticRegion.B2)
         return i1, b2
 
-    def make_dump_sequences(
-        self, area: DiagnosticRegion
-    ) -> tuple[DiagnosticRegion, DiagnosticRegion]:
-        try:
-            forward_sequence = deepcopy(
-                self._manager_cache[area]["forward_taskomat_location"]
-            )
-            backward_sequence = deepcopy(
-                self._manager_cache[area]["backward_taskomat_location"]
-            )
-        except KeyError:
-            return self._get_dump_sequences(area)
-        
+    def make_target_definitions(self, area: DiagnosticRegion) -> TargetDefinition:
+        tdef = self._get_else_build_from_config(
+            "dumps", area, load_deflector_from_config
+        )
+        return tdef
+
     def make_tds_calibration_manager(self, area: DiagnosticRegion):
         try:
             manager = deepcopy(self._manager_cache[area]["calibration"])
@@ -320,6 +311,12 @@ class MachineManagerFactory:
             self._manager_cache[area]["calibration"] = manager
 
         return manager
+
+
+def load_target_definition_from_config(ddumps: dict[str, Any]) -> TargetDefinition:
+    from IPython import embed
+
+    embed()
 
 
 # def build_lps_machine_from_config(yamlf: os.PathLike, area: DiagnosticRegion, di: DOOCSInterfaceABC | None = None) -> LPSMachine:
@@ -430,7 +427,12 @@ def load_deflector_from_config(
         fsm = ddef["fsm"]
         plane = StreakingPlane[ddef["streak"].upper()]
         deflectors[area] = TransverseDeflector(
-            sp_fdl, rb_fdl, modulator_voltage_addr=modulator, fsm_addr=fsm, plane=plane, di=di
+            sp_fdl,
+            rb_fdl,
+            modulator_voltage_addr=modulator,
+            fsm_addr=fsm,
+            plane=plane,
+            di=di,
         )
     return deflectors[area]
 
@@ -594,7 +596,10 @@ def get_scan_config_for_area(dconf: dict[str, Any], area: str) -> dict[str, Any]
 
     raise ValueError(f"Unable to find scan information for area: {area}")
 
-def load_most_recent_time_calibrations(section: DiagnosticRegion) -> dict[str, TimeCalibration]:
+
+def load_most_recent_time_calibrations(
+    section: DiagnosticRegion,
+) -> dict[str, TimeCalibration]:
     cdir = get_tds_calibration_config_dir() / DiagnosticRegion(section).name.lower()
 
     dirs = cdir.glob("*")
@@ -602,13 +607,15 @@ def load_most_recent_time_calibrations(section: DiagnosticRegion) -> dict[str, T
         if not directory.is_dir():
             continue
         calibration_file = directory / "calibration.toml"
-        
+
         try:
             screen_time_calibrations = load_time_calibrations(calibration_file)
         except FileNotFoundError:
             pass
         else:
-            LOG.info(f"Loading calibration file {calibration_file} for {section.name} TDS")
+            LOG.info(
+                f"Loading calibration file {calibration_file} for {section.name} TDS"
+            )
             return screen_time_calibrations
 
     msg = f"Failed to find calibration file for {section.name} TDS in {cdir}"
@@ -618,6 +625,7 @@ def load_most_recent_time_calibrations(section: DiagnosticRegion) -> dict[str, T
 
 def get_config_path() -> Path:
     return Path("/Users/xfeloper/user/stwalker/lps")
+
 
 def get_tds_calibration_config_dir() -> Path:
     return get_config_path() / "tds-calibrations"

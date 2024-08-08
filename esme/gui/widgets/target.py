@@ -1,21 +1,18 @@
 import sys
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication, QStackedWidget, QWidget
+from PyQt5.QtWidgets import QApplication, QWidget
 
-from esme.gui.ui.target import Ui_Target
+from esme.control.target import TargetDefinition
 from esme.core import DiagnosticRegion
+from esme.gui.ui.target import Ui_Target
 from esme.gui.widgets.sequence import TaskomatSequenceDisplay
-from esme.control.taskomat import Sequence
+from esme.gui.widgets.stack import DiagnosticStack
 
 
 class TargetControl(QWidget):
     def __init__(
-        self,
-        dump_name: str,
-        sequence_dump: Sequence,
-        sequence_undo: Sequence,
-        parent: QWidget | None = None,
+        self, parent: QWidget | None = None, dumpdefn: TargetDefinition = None
     ) -> None:
         super().__init__()
 
@@ -23,49 +20,49 @@ class TargetControl(QWidget):
         self.ui.setupUi(self)
         self._connect_buttons()
 
-        self.sequence_dump = sequence_dump
-        self.sequence_undo = sequence_undo
+        self.targ_def = dumpdefn
 
         self._sequence_widget = None
 
     def _connect_buttons(self) -> None:
         self.ui.go_to_dump_button.clicked.connect(self.go_to_dump)
-        self.ui.go_straight_button.clicked.connect(self.go_straight)
-        self.ui.enable_panel_checkbox.stateChanged.connect(self.toggle_buttons)
+        self.ui.go_straight_button.clicked.connect(self.undo_dump_and_go_straight)
+        self.ui.enable_dump_control_checkbox.stateChanged.connect(self.toggle_buttons)
 
     def toggle_buttons(self, state: Qt.CheckState) -> None:
         self.ui.button_dump.setEnabled(state == Qt.Checked)
         self.ui.button_straight.setEnabled(state == Qt.Checked)
 
+    def _run_init_step(self) -> None:
+        self.targ_def.sequence.run_step(self.targ_def.init_step)
+
     def go_to_dump(self) -> None:
-        self._sequence_widget = TaskomatSequenceDisplay(self.sequence_dump)
-        self._sequence_widget.setWindowModality(Qt.ApplicationModal)
-        self._sequence_widget.show()
+        self._run_init_step()
+        self.targ_def.sequence.set_dynamic_property(*self.targ_def.property_to_dump)
+        self._make_taskomat_window()
 
     def undo_dump_and_go_straight(self) -> None:
-        self._sequence_widget = TaskomatSequenceDisplay(self.sequence_undo)
+        self._run_init_step()
+        self.targ_def.sequence.set_dynamic_property(*self.targ_def.property_undo_dump)
+        self._make_taskomat_window()
+
+    def _make_taskomat_window(self) -> None:
+        self._sequence_widget = TaskomatSequenceDisplay(self.targ_def.sequence)
         self._sequence_widget.setWindowModality(Qt.ApplicationModal)
         self._sequence_widget.show()
 
 
-class TargetStack(QStackedWidget):
+class TargetStack(DiagnosticStack):
     def __init__(self, parent: QWidget | None = None):
-        super().__init__(parent=parent)
-        self._regions: list[DiagnosticRegion] = []
+        super().__init__(
+            parent=parent, i1_widget=TargetControl(), b2_widget=TargetControl()
+        )
 
-    def add_target_widget(
-        self,
-        region: DiagnosticRegion,
-        dump_name: str,
-        dump_sequence: Sequence,
-        undo_dump_sequence: Sequence,
+    def set_target_widget(
+        self, region: DiagnosticRegion, targ_def: TargetDefinition
     ) -> None:
-        tc = TargetStack(dump_name, dump_sequence, undo_dump_sequence)
-        self._stacked_widget.addWidget(tc)
-        self._keys.append(key)
-
-    def set_region(self, section: DiagnosticRegion) -> None:
-        self.stacked_widget.setCurrentIndex(self._regions[section])
+        tcw = self.get_widget_by_region(region)
+        tcw.targ_def = targ_def
 
 
 if __name__ == "__main__":
