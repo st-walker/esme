@@ -1,5 +1,5 @@
 from enum import Enum
-from math import isclose
+from math import isclose, copysign
 
 from .dint import DOOCSInterface
 
@@ -60,6 +60,14 @@ class TransverseDeflector:
         """Increment the phase by the provided amount."""
         phase_increment += self.get_phase_sp()
         self.set_phase(phase_increment)
+
+    def increment_180_degrees(self) -> None:
+        phase = self.get_phase_sp() + 180
+        self.set_phase(phase % copysign(360, phase))
+
+    def decrement_180_degrees(self) -> None:
+        phase = self.get_phase_sp() - 180
+        self.set_phase(phase % copysign(360, phase))
 
     def get_amplitude_rb(self) -> float:
         """Get the amplitude readback value."""

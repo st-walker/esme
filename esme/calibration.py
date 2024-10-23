@@ -49,9 +49,11 @@ class AmplitudeVoltageMapping:
         return line(abs(np.array(amplitude)), *popt)
 
     def get_amplitude(self, voltage):
-        if self._is_single_point:
-            return voltage * self._amplitudes[0] / self._voltages[0]
-        popt = self._amp_to_voltage_popt
+        # from IPython import embed; embed()
+        # if self._is_single_point:
+        #     return voltage * self._amplitudes[0] / self._voltages[0]
+        # popt = self._amp_to_voltage_popt
+        popt = self._voltage_to_amp_popt
         return line(np.array(voltage), *popt)
 
     def fit_to_voltage(self):

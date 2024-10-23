@@ -162,7 +162,7 @@ class ScreenWidget(QWidget):
 
         # The dispersive axes always is on the y-axis, because we want
         # time on the x-axis.
-        axis = self.xplot.getAxis("right")
+        axis = self.yplot.getAxis("right")
         if axescalib.streaking_plane is StreakingPlane.HORIZONTAL:
             dim = "y"
         elif axescalib.streaking_plane is StreakingPlane.VERTICAL:
@@ -177,7 +177,6 @@ class ScreenWidget(QWidget):
             # We delta_P, we have dispersion and we have x (the physics positions on the screen)
             # delta_P = x * reference_energy
             scale_factor = axescalib.energy_ev / axescalib.dispersion
-
             self.set_axis_transform_with_label(
                 axis, scale_factor, AXES_KWARGS["energy"]
             )
@@ -193,7 +192,7 @@ class ScreenWidget(QWidget):
             raise TypeError(f"Unknown streaking plane: {axescalib.streaking_plane}")
 
         if not abs(axescalib.time_calibration):
-            self.xplot.hideAxis("left")
+            # self.xplot.hideAxis("left")
             self.set_axis_transform_with_label(axis, 1.0, AXES_KWARGS[dim])
         else:
             self.xplot.showAxis("left")
@@ -232,6 +231,7 @@ class ScreenWidget(QWidget):
         yplot = win.addPlot(row=0, col=1, rowspan=1, colspan=1, axisItems=axis)
         yplot.hideAxis("left")
         yplot.hideAxis("bottom")
+        yplot.setLabel("right", text="<i>&Delta;x</i>", units="m")
         yplot.getViewBox().invertX(True)
         yplot.setMaximumWidth(200)
         yplot.setYLink(self.image_plot)
@@ -243,7 +243,7 @@ class ScreenWidget(QWidget):
             )
         }
         xplot = win.addPlot(row=1, col=0, colspan=1, axisItems=axis)
-        xplot.hideAxis("left")
+        # xplot.hideAxis("left")
         xplot.setMaximumHeight(200)
         xplot.setXLink(self.image_plot)
         xplot.setLabel("left", text="<i>I</i>", units="A")

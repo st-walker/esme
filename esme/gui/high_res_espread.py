@@ -91,9 +91,9 @@ class HighResolutionEnergySpreadMainWindow(QMainWindow):
             self.voltage_widths_scatter.setData([], [])
             self.finished = False
 
-        image = processed_image.image.T
-        processed_image.central_width_row
-        # image[peak_energy_row] *= 0
+        # image = processed_image.image.T
+        # processed_image.central_width_row
+        # # image[peak_energy_row] *= 0
         items = self.image_plot.items
         assert len(items) == 1
         # view = self.image_plot.items[0].getView()
@@ -111,7 +111,7 @@ class HighResolutionEnergySpreadMainWindow(QMainWindow):
             self.beta_widths_scatter.addPoints(*scatter_data)
 
         image_item = items[0]
-        image_item.setImage(image)
+        # image_item.setImage(image)
 
     def setup_logger(self):
         log_handler = QPlainTextEditLogger()

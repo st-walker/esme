@@ -106,9 +106,9 @@ class ImagePayload:
     def slice_gaussfit_time_calibrated(self):
         """This is the slice of the image that is gaussian fitted in time."""
         row_index, mean_slice_position, slice_width = get_slice_properties(
-            self.image.T, mask_nans=True
+            self.image.T, # mask_nans=True
         )
-        time = self.time_calibrated[row_index]
+        # time = self.time_calibrated[row_index]
         mean_slice_position *= self.screen_md.xsize  # In the non-streaking plane
         slice_width *= self.screen_md.xsize  # Also in the non streaking plane....
         return time, mean_slice_position, slice_width
@@ -178,7 +178,9 @@ class ImagingWorker(QObject):
         self.screen: Screen = initial_screen
         # This clearly assumes the screen is already powered etc..  no catching here!
         print(self.screen)
-        self.screen_md: ScreenMetadata = initial_screen.get_screen_metadata()
+        self.screen_md: ScreenMetadata | None = None
+        self._try_and_set_screen_metadata()
+        # self.screen_md: ScreenMetadata = initial_screen.get_screen_metadata()
         self._set_screen(initial_screen)
 
         # Flag for when possibly emitting a processed image for
@@ -445,7 +447,7 @@ class ImagingWorker(QObject):
         self._clear_bg_cache()
         self._try_and_set_screen_metadata()
 
-    def _try_and_set_screen_metadata(self):
+    def _try_and_set_screen_metadata(self) -> None:
         # if the screen is not powered, then getting the metadata will fail.
         # We will have to just try to get it in the future, hoping that at some
         # point some other part of the program will switch the screen on.

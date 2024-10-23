@@ -31,8 +31,6 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-from scipy import ndimage
-
 from esme import DiagnosticRegion
 from esme.control.exceptions import DOOCSReadError
 from esme.control.screens import Position, Screen, ScreenMetadata
@@ -45,8 +43,9 @@ from esme.gui.widgets.current import CurrentProfilerWindow
 from esme.gui.widgets.slice import SliceAnalysisWindow
 from esme.gui.workers import ImagingMessage, ImagePayload, MessageType, ImagingWorker, GaussianParameters
 from esme.core import region_from_screen_name
+from esme.gui.quickcal import QuickCalibratorWindow
 
-from .common import get_machine_manager_factory, send_widget_to_log
+from .common import get_machine_manager_factory, send_widget_to_log, raise_message_box
 
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
@@ -96,6 +95,7 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         self.elogger = LogBookEntryWriterDialogue(
             self.screen, bg_images=None, parent=self
         )
+        self.qcal = None
 
         self.timer = QTimer()
         self.timer.timeout.connect(self._update_ui)
@@ -173,10 +173,23 @@ class ImagingControlWidget(DiagnosticSectionWidget):
     def _generate_axes_calibrations(self) -> None:
         dispersion = self.ui.dispersion_spinner.value()
         time_calibration = self.ui.time_calibration_spinbox.value() * 1e6 # convert µm/ps to m/s
-        try:
-            energy_ev = energy_ev=self.mreader.optics.get_beam_energy() * 1e6
-        except DOOCSReadError:
-            energy_ev = None
+        # First try to use the value from the GUI.
+        energy_ev = self.ui.energy_spinner.value() * 1e6
+        if not energy_ev:
+            # If gui value is 0 then try to read from the machine
+            try:
+                energy_ev = self.mreader.optics.get_beam_energy() * 1e6
+            except DOOCSReadError:
+                if dispersion: # Only warn the user if the dispersion is nonzero...
+                    raise_message_box("Unable to calibrate energy axis",
+                                    informative_text="No beam energy has been set and unable to read the beam energy, so no energy axis can be provided",
+                                    title="Unknown beam energy",
+                                    icon="Warning")
+                else:
+                    energy_ev = None
+            else:
+                self.ui.energy_spinner.setValue(energy_ev / 1e6)
+
         axescalib = AxesCalibration(
             energy_ev=energy_ev,
             dispersion=dispersion,
@@ -198,9 +211,11 @@ class ImagingControlWidget(DiagnosticSectionWidget):
         self.ui.smooth_image_checkbox.stateChanged.connect(self._set_smooth_image)
 
         self.ui.calculate_dispersion_from_linear_optics_button.clicked.connect(self._calculate_dispersion)
+        self.ui.read_energy_button.clicked.connect(self._read_beam_energy)
         self.ui.calculate_time_calibration_from_voltage_button.clicked.connect(self._calculate_time_calibration_from_voltage)
         self.ui.calculate_time_calibration_from_previous_measurement_button.clicked.connect(self._calculate_time_calibration_from_cached_measurement)
-        # self.ui.regenerate_axes_button.clicked.connect(self._generate_axes_calibrations)
+        self.ui.measure_time_calibration_button.clicked.connect(self._open_quickcal_window)
+        self.ui.regenerate_axes_button.clicked.connect(self._generate_axes_calibrations)
 
         self.ui.time_calibration_spinbox.valueChanged.connect(self._pass_time_calibration_to_worker)
 
@@ -209,11 +224,30 @@ class ImagingControlWidget(DiagnosticSectionWidget):
 
         self.ui.fix_aspect_ratio_checkbox.stateChanged.connect(self._set_lock_aspect_ratio)
 
+    def _read_beam_energy(self) -> None:
+        try:
+            energy_mev = self.mreader.optics.get_beam_energy()
+        except DOOCSReadError as e:
+            raise_message_box("Unable to read beam energy",
+                                informative_text=f"Unable to read beam energy from screen, tried addresses: {e}",
+                                title="Unknown beam energy",
+                                icon="Warning")
+            return
+            
+        self.ui.energy_spinner.setValue(energy_mev)
+
+    def _open_quickcal_window(self) -> None:
+        if not self.qcal:
+            self.qcal = QuickCalibratorWindow()
+        self.qcal.show()
+        self.qcal.raise_()
+
     def _start_slice_analyser(self):
         if not self.ui.time_calibration_spinbox.value():
             QMessageBox.critical(None, "Missing Time Calibration", "Slice Analysis Requires a time calibration at the given screen")
         else:
             self.slice_analyser.show()
+            self.slice_analyser.raise_()
 
     def _set_lock_aspect_ratio(self, lock_state: Qt.CheckState) -> None:
         self.ui.screen_display_widget.lock_aspect_ratio(do_lock=bool(lock_state))

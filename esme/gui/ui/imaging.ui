@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1642</width>
+    <width>1763</width>
     <height>849</height>
    </rect>
   </property>
@@ -20,38 +20,30 @@
       <string>Calibration</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_3">
-      <item row="4" column="1">
-       <widget class="QPushButton" name="calculate_time_calibration_from_voltage_button">
-        <property name="text">
-         <string>From Voltage</string>
+      <item row="2" column="1">
+       <widget class="QDoubleSpinBox" name="energy_spinner">
+        <property name="locale">
+         <locale language="English" country="UnitedKingdom"/>
+        </property>
+        <property name="suffix">
+         <string>MeV</string>
+        </property>
+        <property name="decimals">
+         <number>0</number>
+        </property>
+        <property name="maximum">
+         <double>3000.000000000000000</double>
         </property>
        </widget>
       </item>
-      <item row="0" column="0">
-       <widget class="QLabel" name="label">
+      <item row="5" column="0">
+       <widget class="QLabel" name="label_4">
         <property name="text">
-         <string>Dispersion</string>
+         <string>Calculate Time Calibration ...</string>
         </property>
        </widget>
       </item>
-      <item row="3" column="2">
-       <widget class="QPushButton" name="measure_time_calibration_button">
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
-        <property name="text">
-         <string>Measure Time Calibration</string>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="2">
-       <widget class="QPushButton" name="calculate_time_calibration_from_previous_measurement_button">
-        <property name="text">
-         <string>From Cached Measurement</string>
-        </property>
-       </widget>
-      </item>
-      <item row="0" column="1">
+      <item row="1" column="1">
        <widget class="QDoubleSpinBox" name="dispersion_spinner">
         <property name="locale">
          <locale language="English" country="UnitedStates"/>
@@ -85,14 +77,7 @@
         </property>
        </widget>
       </item>
-      <item row="4" column="0">
-       <widget class="QLabel" name="label_4">
-        <property name="text">
-         <string>Calculate Time Calibration ...</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="1">
+      <item row="4" column="1">
        <widget class="QDoubleSpinBox" name="time_calibration_spinbox">
         <property name="locale">
          <locale language="English" country="UnitedStates"/>
@@ -114,40 +99,76 @@
         </property>
        </widget>
       </item>
-      <item row="3" column="0">
+      <item row="2" column="0">
+       <widget class="QLabel" name="label_6">
+        <property name="text">
+         <string>Energy</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
        <widget class="QLabel" name="label_3">
         <property name="text">
          <string>Time Calibration</string>
         </property>
        </widget>
       </item>
-      <item row="2" column="0" colspan="3">
+      <item row="5" column="1">
+       <widget class="QPushButton" name="calculate_time_calibration_from_voltage_button">
+        <property name="text">
+         <string>From Voltage</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="2">
+       <widget class="QPushButton" name="measure_time_calibration_button">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="text">
+         <string>Measure Time Calibration</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="2">
+       <widget class="QPushButton" name="calculate_time_calibration_from_previous_measurement_button">
+        <property name="text">
+         <string>From Cached Measurement</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0" colspan="4">
        <widget class="Line" name="line_3">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
         </property>
        </widget>
       </item>
-      <item row="0" column="2">
-       <widget class="QPushButton" name="calculate_dispersion_with_scan">
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
-        <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Calculates the dispersion at the screen using linear optics and magnet strengths from the machine&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
+      <item row="1" column="0">
+       <widget class="QLabel" name="label">
         <property name="text">
-         <string>Measure Dispersion...</string>
-        </property>
-        <property name="flat">
-         <bool>false</bool>
+         <string>Dispersion</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="1" colspan="2">
+      <item row="0" column="0" colspan="3">
+       <widget class="QPushButton" name="regenerate_axes_button">
+        <property name="text">
+         <string>Regenerate Axes</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="2">
        <widget class="QPushButton" name="calculate_dispersion_from_linear_optics_button">
         <property name="text">
          <string>Calculate Dispersion From Linear Optics</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="2">
+       <widget class="QPushButton" name="read_energy_button">
+        <property name="text">
+         <string>Read Energy from Machine</string>
         </property>
        </widget>
       </item>
@@ -288,11 +309,14 @@
           </item>
           <item>
            <widget class="QDoubleSpinBox" name="threshold_spinbox">
+            <property name="decimals">
+             <number>3</number>
+            </property>
             <property name="maximum">
              <double>1.000000000000000</double>
             </property>
             <property name="singleStep">
-             <double>0.010000000000000</double>
+             <double>0.001000000000000</double>
             </property>
             <property name="value">
              <double>0.050000000000000</double>

@@ -517,7 +517,10 @@ def get_selected_central_slice_width_from_slice_properties(
 ):
     centre_index = int(len(means)) // 2
     if slice_pos is None:
-        centre_index = means.argmin()
+        try:
+            centre_index = means.argmin()
+        except:
+            from ipdb import set_trace; set_trace()
     elif abs(slice_pos) > 0.5:
         raise ValueError("slice pos outside of [-0.5, 0.5].")
     else:

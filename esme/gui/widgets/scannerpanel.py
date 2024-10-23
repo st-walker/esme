@@ -8,13 +8,14 @@ from datetime import datetime
 from enum import Enum, auto
 from pathlib import Path
 from typing import Any
+import pydoocs
 
 import numpy as np
 from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtCore import QObject, QThread, QTimer, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QFileDialog, QMessageBox
 from scipy.constants import e
-from uncertainties import UFloat
+from uncertainties import UFloat, ufloat
 
 from esme.analysis import (
     DerivedBeamParameters,
@@ -502,20 +503,16 @@ class ScanWorker(QObject):
     def start_tds_firing(self):
         self.machine.sbunches.start_diagnostic_bunch()
 
-    def run(self):
-        self.make_output_directory()
-
-        print(self.machine)
-        print(self.machine.di)
+    def take_beam_off_screen(self):
         self.machine.beam_off()
         self.machine.sbunches.stop_diagnostic_bunch()
-        time.sleep(1)
-        # self.machine.sbunches.
-        try:
-            background = self.take_background(self.scan_request.total_background_images)
-        except InterruptedMeasurementException as e:
-            self.measurement_interrupted_signal.emit(e)
-            return
+
+    def put_beam_on_screen(self):
+        self.machine.beam_on()
+        self.machine.sbunches.start_diagnostic_bunch()
+
+    def run(self):
+        self.make_output_directory()
 
         # Setup the special bunch midlayer, we benefit a lot from
         # using this over directly affecting the TDS timing because we
@@ -523,13 +520,24 @@ class ScanWorker(QObject):
         if is_in_controlroom():
             self.setup_special_bunch_midlayer()
 
+        print(self.machine)
+        print(self.machine.di)
+        self.take_beam_off_screen()
+        time.sleep(1)
+
+        try:
+            background = self.take_background(self.scan_request.total_background_images)
+        except InterruptedMeasurementException as e:
+            self.measurement_interrupted_signal.emit(e)
+            return
+
         # Turn the beam on and put the TDS on beam and wait.
         self.machine.beam_on()
         self.start_tds_firing()
         time.sleep(self.scan_request.settings.beam_on_wait)
 
         try:
-            tscan_widths, tscan_bunch_lengths = self.tds_scan(background)
+            tscan_widths = self.tds_scan(background)
             time.sleep(5)
             bscan_widths = None
             if self.scan_request.do_beta_scan:
@@ -540,9 +548,6 @@ class ScanWorker(QObject):
         except InterruptedMeasurementException as e:
             self.measurement_interrupted_signal.emit(e)
             return
-
-        # bunch_length = np.mean(tscan_bunch_lengths[max(tscan_bunch_lengths)])
-        bunch_length = np.mean(list(tscan_bunch_lengths.values()))
 
         fitter = SliceWidthsFitter(
             dscan_widths=dscan_widths,
@@ -560,7 +565,7 @@ class ScanWorker(QObject):
             dscan_voltage=dscan_voltage,
             tscan_dispersion=tscan_dispersion,
             optics_fixed_points=ofp,
-            sigma_z=(bunch_length.n, bunch_length.s),
+            sigma_z=None,
         )
 
         result = OnlineMeasurementResult(
@@ -568,109 +573,185 @@ class ScanWorker(QObject):
             output_directory=self.output_directory,
         )
         self.full_measurement_result_signal.emit(result)
-        return derived_beam_parameters
 
-    def take_background(self, n):
+        import os
+        from pathlib import Path
+        outdir = Path("/Users/xfeloper/user/stwalker/espread-measurements")
+        outdir.mkdir(parents=True, exist_ok=True)
+        outdir_new = outdir / self.scan_request.slug
+        outdir_new.mkdir()
+
+        import pandas as pd
+        pd.to_pickle(dscan_widths, outdir_new / "dscan_widths.pkl")
+        pd.to_pickle(tscan_widths, outdir_new / "tscan_widths.pkl")
+        pd.to_pickle(bscan_widths, outdir_new / "bscan_widths.pkl")
+
+        return derived_beam_parameters
+    
+    def anal(self):
+        return self.machine.screen.analysis
+
+    def take_background(self, n=10) -> None:
         if self.kill:
             raise InterruptedMeasurementException
 
-        LOG.info(f"Taking {n} background shots...")
-        self.machine.beam_off()
-        time.sleep(2)
+        anal = self.anal()
+        anal.set_background_count(n)
+        self.take_beam_off_screen()
+        time.sleep(1)
+        anal.accumulate_background()
+        anal.set_subtract_background(do_subtract=True)
 
-        bgs = []
-        with self.background_data_accumulator() as accu:
-            for raw_image in self.take_screen_data(n, expect_beam=False):
-                if self.kill:
-                    raise UserCancelledMeasurementException
-                accu.take_snapshot(
-                    raw_image,
-                    dispersion=np.nan,
-                    voltage=np.nan,
-                    beta=np.nan,
-                    scan_type="BACKGROUND",
-                )
-                self.background_image_signal.emit(raw_image)
-                bgs.append(raw_image.T)
+    def _find_gain(self) -> None:
+        anal = self.anal()
+        self.put_beam_on_screen()
+        time.sleep(1)
+        anal.activate_gain_control()
+        while anal.is_active():
+            self._raise_if_interrupted()
+            time.sleep(0.5)
 
-        mean_bg = np.mean(bgs, axis=0)
-        return mean_bg
+    def _sleep_until_inactive(self) -> None:
+        while self.anal().is_active():
+            time.sleep(0.2)
+            self._raise_if_interrupted()
 
+    def _raise_if_interrupted(self):
+        if self.kill:
+            raise InterruptedMeasurementException
+        
     def dispersion_scan(self, bg) -> dict[float, UFloat]:
         voltage = self.scan_request.dscan_tds_voltage
         slice_pos = self.scan_request.slice_pos
         self.set_tds_voltage(voltage)
         print("Doing dispersion scan at voltage", voltage)
         # print("Doing dispersion scan at amplitude", amplitude)
-        widths = defaultdict(list)
+        max(self.scan_request.voltages)
+        anal = self.anal()
+        md = self.machine.screen.get_screen_metadata()
+        pxsize = md.xsize
+
+        widths = {}
         for setpoint in self.machine.scanner.scan.qscan.setpoints:
             self.set_quads(setpoint)
             time.sleep(self.scan_request.settings.quad_wait)
-            sp_widths, _ = self.do_one_scan_setpoint(
-                ScanType.DISPERSION,
-                dispersion=setpoint.dispersion,
-                voltage=voltage,
-                beta=setpoint.beta,
-                bg=bg,
-                slice_pos=slice_pos,
-            )
-            widths[setpoint.dispersion].extend(sp_widths)
-            # Get the average...
-        widths = {dx: np.mean(widths) for dx, widths in widths.items()}
-        return widths
+            pxwidth_slices, pxwidth_err_slices = self._sample_until_nonzero()            
+            imid = len(pxwidth_slices) // 2
+            print("dispersion", setpoint.dispersion, pxwidth_slices)
 
-    def tds_scan(self, bg) -> tuple[dict[float, UFloat], dict[float, UFloat]]:
+            pxwidth = pxwidth_slices[imid]
+            pxwidth_err = pxwidth_err_slices[imid]            
+            widths[setpoint.dispersion] = ufloat(pxwidth, pxwidth_err) # * pxsize
+            pxu = ufloat(pxwidth, pxwidth_err)
+            
+            self.processed_image_signal.emit(ProcessedImage(np.array([]),
+                                                            scan_type=ScanType.DISPERSION,
+                                                            central_width=pxu,
+                                                            central_width_row=None,
+                                                            sigma_z=None,
+                                                            dispersion=setpoint.dispersion,
+                                                            voltage=voltage,
+                                                            beta=setpoint.beta))
+
+        return widths
+    
+    def _sample_until_nonzero(self):
+        anal = self.anal()
+        self._start_sampling()
+        pxwidth_slices, pxwidth_err_slices = anal.get_slices_gauss_sigma()
+        lenslices = len(pxwidth_slices)
+        print(f"Number of slices sampled: {lenslices}")
+        if len(pxwidth_slices) != 19:
+            return self._sample_until_nonzero()
+
+        return pxwidth_slices, pxwidth_err_slices
+
+    def _start_sampling(self):
+        anal = self.anal()
+        anal.start_sampling_with_raw_data()
+        self._sleep_until_inactive()
+
+    def tds_scan(self, bg) -> dict[float, UFloat]:
         setpoint = self.machine.scanner.scan.tscan.setpoint
         slice_pos = self.scan_request.slice_pos
         self.set_quads(setpoint)
         time.sleep(5)
-        widths = defaultdict(list)
-        lengths = defaultdict(list)
+        widths = {}
 
-        # We also calculate the bunch length at the maximum streak of the TDS Scan
-        max(self.scan_request.voltages)
-
-        for voltage in self.scan_request.voltages:
-            self.set_tds_voltage(voltage)
+        anal = self.anal()
+        md = self.machine.screen.get_screen_metadata()
+        pxsize = md.xsize
+        for voltage in self.scan_request.voltages:            
+            self.set_tds_voltage(voltage)            
             time.sleep(self.scan_request.settings.tds_amplitude_wait)
-            sp_widths, sp_lengths = self.do_one_scan_setpoint(
-                ScanType.TDS,
-                dispersion=setpoint.dispersion,
-                voltage=voltage,
-                beta=setpoint.beta,
-                bg=bg,
-                slice_pos=slice_pos,
-            )
-            widths[voltage].extend(sp_widths)
-            lengths[voltage].extend(sp_lengths)
+            pxwidth_slices, pxwidth_err_slices = self._sample_until_nonzero()            
+            imid = len(pxwidth_slices) // 2
+            print("voltage", voltage, pxwidth_slices)
 
-        widths = {voltage: np.mean(widths) for voltage, widths in widths.items()}
-        lengths = {voltage: np.mean(lengths) for voltage, lengths in lengths.items()}
-        return widths, lengths
+            pxwidth = pxwidth_slices[imid]
+            pxwidth_err = pxwidth_err_slices[imid]
+            pxu = ufloat(pxwidth, pxwidth_err)
+            
+            widths[voltage] = ufloat(pxwidth, pxwidth_err) # * pxsize
+            self.processed_image_signal.emit(ProcessedImage(np.array([]),
+                                                            scan_type=ScanType.TDS,
+                                                            central_width=pxu,
+                                                            central_width_row=None,
+                                                            sigma_z=None,
+                                                            dispersion=setpoint.dispersion,
+                                                            voltage=voltage,
+                                                            beta=setpoint.beta))
+        return widths
 
     def beta_scan(self, bg) -> dict[float, UFloat]:
         voltage = self.scan_request.dscan_tds_voltage
         slice_pos = self.scan_request.slice_pos
         self.set_tds_voltage(voltage)
         print("Doing beta scan at voltage", voltage)
-        widths = defaultdict(list)
+        widths = {}
+
+        anal = self.anal()
+        md = self.machine.screen.get_screen_metadata()
+        pxsize = md.xsize
 
         for setpoint in self.machine.scanner.scan.bscan.setpoints:
             print(f"Starting beta scan setpoint={setpoint.beta}.")
             self.set_quads(setpoint)
             time.sleep(self.scan_request.settings.quad_wait)
-            sp_widths, _ = self.do_one_scan_setpoint(
-                ScanType.BETA,
-                setpoint.dispersion,
-                voltage=voltage,
-                beta=setpoint.beta,
-                bg=bg,
-                slice_pos=slice_pos,
-            )
-            widths[setpoint.beta].extend(sp_widths)
             # Get the average...
-        widths = {dx: np.mean(widths) for dx, widths in widths.items()}
+            pxwidth_slices, pxwidth_err_slices = self._sample_until_nonzero()            
+            imid = len(pxwidth_slices) // 2
+            print("beta:", setpoint.beta, pxwidth_slices)
+
+            pxwidth = pxwidth_slices[imid]
+            pxwidth_err = pxwidth_err_slices[imid]
+            
+            widths[setpoint.beta] = ufloat(pxwidth, pxwidth_err) # * pxsize
+            pxu = ufloat(pxwidth, pxwidth_err)
+
+            self.processed_image_signal.emit(ProcessedImage(np.array([]),
+                                                            scan_type=ScanType.BETA,
+                                                            central_width=pxu,
+                                                            central_width_row=None,
+                                                            sigma_z=None,
+                                                            dispersion=setpoint.dispersion,
+                                                            voltage=voltage,
+                                                            beta=setpoint.beta))
+
         return widths
+    
+    def do_one_scan_setpoint_new(self, 
+                             scan_type: ScanType,
+                             dispersion: float,
+                             voltage: float,
+                             beta: float,
+                             slice_pos=None
+                             ):
+        widths = []
+        anal = self.machine.screen.analysis()
+        anal.accumulate_background()
+        # 
+
 
     def do_one_scan_setpoint(
         self,
@@ -753,64 +834,65 @@ class ScanWorker(QObject):
         filename = "background.pkl"
         return SnapshotAccumulator(shotter, outdir / filename)
 
-    def process_image(
-        self,
-        image,
-        scan_type: ScanType,
-        dispersion: float,
-        voltage: float,
-        beta: float,
-        bg=0,
-        slice_pos=None,
-    ) -> ProcessedImage:
-        image = image.T  # Flip to match control room..?  TODO
-        image = filter_image(image, bg=bg, crop=True)
+    # def process_image(
+    #     self,
+    #     image,
+    #     scan_type: ScanType,
+    #     dispersion: float,
+    #     voltage: float,
+    #     beta: float,
+    #     bg=0,
+    #     slice_pos=None,
+    # ) -> ProcessedImage:
+    #     image = image.T  # Flip to match control room..?  TODO
+    #     bg = 0.0
+    #     image = filter_image(image, bg=bg, crop=True)
 
-        _, means, sigmas = get_slice_properties(image)
+    #     _, means, sigmas = get_slice_properties(image)
 
-        # sigma = get_central_slice_width_from_slice_properties(
-        #     means, sigmas, padding=10, slice_pos=slice_pos
-        # )
+    #     # sigma = get_central_slice_width_from_slice_properties(
+    #     #     means, sigmas, padding=10, slice_pos=slice_pos
+    #     # )
 
-        (
-            central_width_row,
-            sigma,
-        ) = get_selected_central_slice_width_from_slice_properties(
-            means, sigmas, padding=20, slice_pos=slice_pos
-        )
+    #     (
+    #         central_width_row,
+    #         sigma,
+    #     ) = get_selected_central_slice_width_from_slice_properties(
+    #         means, sigmas, padding=20, slice_pos=slice_pos
+    #     )
 
-        # # Initially just pick middle slice
-        # central_width_row = int(len(means) // 2)
-        # print(central_width_row, len(means))
-        # # elif slice_pos is None then we go with max energy slice
-        # if slice_pos is None:
-        #     central_width_row = np.argmin(means)
-        # elif abs(slice_pos) > 0.5:
-        #     raise ValueError("slice pos outside of [-0.5, 0.5].")
-        # else:
-        #     central_width_row = central_width_row + int(slice_pos * len(means) // 2)
+    #     # # Initially just pick middle slice
+    #     # central_width_row = int(len(means) // 2)
+    #     # print(central_width_row, len(means))
+    #     # # elif slice_pos is None then we go with max energy slice
+    #     # if slice_pos is None:
+    #     #     central_width_row = np.argmin(means)
+    #     # elif abs(slice_pos) > 0.5:
+    #     #     raise ValueError("slice pos outside of [-0.5, 0.5].")
+    #     # else:
+    #     #     central_width_row = central_width_row + int(slice_pos * len(means) // 2)
 
-        # print(slice_pos, central_width_row)
+    #     # print(slice_pos, central_width_row)
 
-        r12_streaking = self.machine.optics.r12_streaking_from_tds_to_point(
-            self.scan_request.screen_name
-        )
-        beam_energy = self.machine.optics.get_beam_energy() * 1e6 * e  # MeV to Joules
+    #     r12_streaking = self.machine.optics.r12_streaking_from_tds_to_point(
+    #         self.scan_request.screen_name
+    #     )
+    #     beam_energy = self.machine.optics.get_beam_energy() * 1e6 * e  # MeV to Joules
         
-        sigma_z = true_bunch_length_from_processed_image(
-            image, voltage=voltage, r34=r12_streaking, energy=beam_energy
-        )
+    #     sigma_z = true_bunch_length_from_processed_image(
+    #         image, voltage=voltage, r34=r12_streaking, energy=beam_energy
+    #     )
 
-        return ProcessedImage(
-            image,
-            scan_type,
-            central_width=sigma,
-            central_width_row=central_width_row,
-            sigma_z=sigma_z,
-            dispersion=dispersion,
-            voltage=voltage,
-            beta=beta,
-        )
+    #     return ProcessedImage(
+    #         image,
+    #         scan_type,
+    #         central_width=sigma,
+    #         central_width_row=central_width_row,
+    #         sigma_z=sigma_z,
+    #         dispersion=dispersion,
+    #         voltage=voltage,
+    #         beta=beta,
+    #     )
 
 
 class MeasurementError(RuntimeError):

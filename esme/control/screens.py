@@ -238,7 +238,7 @@ class Screen:
             ny = self.get_image_ypixels()
         except DOOCSReadError as e:
             raise DOOCSReadError(
-                "Unable to read screen pixel info, screen may be off"
+                f"Unable to read screen pixel info, screen {self} may be off"
             ) from e
         pix = ScreenMetadata(xsize=xsize, ysize=ysize, nx=nx, ny=ny)
         return pix

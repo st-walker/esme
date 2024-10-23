@@ -38,3 +38,15 @@ class DiagnosticStack(QWidget):
     def get_widget_by_region(self, region: DiagnosticRegion) -> QWidget:
         index = self._regions.index(region)
         return self._stack.widget(index)
+    
+    def set_new_widget_by_region(self, region: DiagnosticRegion, new_widget: QWidget) -> None:
+        # Get index of the region
+        index = self._regions.index(region)
+        old_widget = self._stack.widget(index)
+        self._stack.removeWidget(old_widget)
+        self._stack.insertWidget(index, new_widget)
+        self.update()
+
+    def get_current_widget(self) -> QWidget:
+        return self._stack.currentWidget()
+

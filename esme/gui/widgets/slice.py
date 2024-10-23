@@ -321,6 +321,10 @@ class SliceAnalysisWindow(QWidget):
             )
             self._espread_ax.set_ylabel(r"$\sigma_E$ / eV")
 
+            # self._energy_ax = self.centroid_ax.secondary_yaxis(
+            #     "right", functions=()
+            # We need to pick centroid of whole image and call that 130MeV or whatever.
+
         self._set_espread_ui_enabled(enable=bool(dispersion))
 
     def _clear_plots(self):
@@ -422,6 +426,7 @@ class SliceAnalysisWindow(QWidget):
 
     def append_image_from_screen(self) -> None:
         imp = self._get_image_from_worker()
+        from IPython import embed; embed()
         self._image_payloads.append(imp)
         index = len(self._image_payloads) - 1
         self._plot_beam_centroids(imp, index)

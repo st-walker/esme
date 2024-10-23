@@ -19,6 +19,7 @@ from esme.load import load_result_directory
 from esme.plot import pretty_parameter_table
 import esme.gui.widgets.common as wcommon
 from esme.gui.high_res_espread import start_hires_gui
+from esme.gui.quickcal import start_quick_calibrator
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
@@ -293,7 +294,7 @@ def gui():
 @main.command()
 def tds():
     from esme.gui.calibrator import start_tds_calibrator
-    start_tds_calibrator(sys.argv)
+    start_quick_calibrator()
 
 @main.command()
 def slice():
