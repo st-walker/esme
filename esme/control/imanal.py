@@ -79,6 +79,10 @@ class ImageAnalysisServerFacade:
         return (self.di.get_value(self._analysis_address("SLICES.GAUSS_SIGMA")),
                 self.di.get_value(self._analysis_address("SLICES.GAUSS_SIGMA_ERR")))
 
+    def get_slices_gauss_mean(self) -> tuple[float, float]:
+        return (self.di.get_value(self._analysis_address("SLICES.GAUSS_MEAN")),
+                self.di.get_value(self._analysis_address("SLICES.GAUSS_MEAN_ERR")))
+
     def get_last_sampled_image_dir(self) -> str:
         dirname = self.di.get_value(self._analysis_address("SAMPLES.TIMESTAMP"))
         node_name = self._get_node_name()
