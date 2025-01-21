@@ -108,8 +108,10 @@ class ScannerControl(QtWidgets.QWidget):
 
         self.timer = self.build_main_timer(100)
 
-        amplitudes = [7, 10, 13, 16]
-        voltages = np.array([0.35, 0.51, 0.66, 0.83]) * 1e6
+        amplitudes = [9, 12, 15, 18]
+        voltages = np.array([0.49, 0.65, 0.84, 0.99]) * 1e6
+        # amplitudes = [7, 10, 13, 16]
+        # voltages = np.array([0.35, 0.51, 0.66, 0.83]) * 1e6
         self.avmapping = AmplitudeVoltageMapping(DiagnosticRegion.I1, amplitudes, voltages)
         self.machine.deflector.calibration = self.avmapping
         print(amplitudes)
@@ -579,7 +581,7 @@ class ScanWorker(QObject):
         outdir = Path("/Users/xfeloper/user/stwalker/espread-measurements")
         outdir.mkdir(parents=True, exist_ok=True)
         outdir_new = outdir / self.scan_request.slug
-        outdir_new.mkdir()
+        outdir_new.mkdir(exist_ok=True)
 
         import pandas as pd
         pd.to_pickle(dscan_widths, outdir_new / "dscan_widths.pkl")
@@ -635,12 +637,8 @@ class ScanWorker(QObject):
         for setpoint in self.machine.scanner.scan.qscan.setpoints:
             self.set_quads(setpoint)
             time.sleep(self.scan_request.settings.quad_wait)
-            pxwidth_slices, pxwidth_err_slices = self._sample_until_nonzero()            
-            imid = len(pxwidth_slices) // 2
-            print("dispersion", setpoint.dispersion, pxwidth_slices)
+            pxwidth, pxwidth_err = self._sample_until_nonzero()
 
-            pxwidth = pxwidth_slices[imid]
-            pxwidth_err = pxwidth_err_slices[imid]            
             widths[setpoint.dispersion] = ufloat(pxwidth, pxwidth_err) # * pxsize
             pxu = ufloat(pxwidth, pxwidth_err)
             
@@ -652,19 +650,33 @@ class ScanWorker(QObject):
                                                             dispersion=setpoint.dispersion,
                                                             voltage=voltage,
                                                             beta=setpoint.beta))
+            self.save_one_setpoint_raw_images(scan_type=ScanType.DISPERSION,
+                                              dispersion=setpoint.dispersion,
+                                              voltage=voltage,
+                                              beta=setpoint.beta)
+
+            result = {"XFEL.DIAG/CAMERA/OTRC.64.I1D/IMAGE_EXT_ZMQ"}
 
         return widths
     
     def _sample_until_nonzero(self):
         anal = self.anal()
         self._start_sampling()
-        pxwidth_slices, pxwidth_err_slices = anal.get_slices_gauss_sigma()
-        lenslices = len(pxwidth_slices)
-        print(f"Number of slices sampled: {lenslices}")
-        if len(pxwidth_slices) != 19:
-            return self._sample_until_nonzero()
-
-        return pxwidth_slices, pxwidth_err_slices
+        import time; time.sleep(5)
+        for _ in range(10):
+            pxwidth_slices, pxwidth_err_slices = anal.get_slices_gauss_sigma()
+            pxmean_slices, pxmean_err_slices = anal.get_slices_gauss_mean()
+            peak_energy_slice_index = len(pxmean_slices) // 2
+            # peak_energy_slice_index = pxmean_slices.argmin()
+            peak_energy_width = pxwidth_slices[peak_energy_slice_index]
+            peak_energy_width_err = pxwidth_err_slices[peak_energy_slice_index]
+        # from IPython import embed; embed()
+        # from IPython import embed; embed()
+        # lenslices = len(pxwidth_slices)
+        # print(f"Number of slices sampled: {lenslices}")
+        # if len(pxwidth_slices) != 19:
+            # return self._sample_until_nonzero()
+        return peak_energy_width, peak_energy_width_err
 
     def _start_sampling(self):
         anal = self.anal()
@@ -684,12 +696,8 @@ class ScanWorker(QObject):
         for voltage in self.scan_request.voltages:            
             self.set_tds_voltage(voltage)            
             time.sleep(self.scan_request.settings.tds_amplitude_wait)
-            pxwidth_slices, pxwidth_err_slices = self._sample_until_nonzero()            
-            imid = len(pxwidth_slices) // 2
-            print("voltage", voltage, pxwidth_slices)
-
-            pxwidth = pxwidth_slices[imid]
-            pxwidth_err = pxwidth_err_slices[imid]
+            pxwidth, pxwidth_err = self._sample_until_nonzero()            
+            # from IPython import embed; embed()
             pxu = ufloat(pxwidth, pxwidth_err)
             
             widths[voltage] = ufloat(pxwidth, pxwidth_err) # * pxsize
@@ -701,6 +709,11 @@ class ScanWorker(QObject):
                                                             dispersion=setpoint.dispersion,
                                                             voltage=voltage,
                                                             beta=setpoint.beta))
+            self.save_one_setpoint_raw_images(scan_type=ScanType.TDS,
+                                              dispersion=setpoint.dispersion,
+                                              voltage=voltage,
+                                              beta=setpoint.beta)
+            
         return widths
 
     def beta_scan(self, bg) -> dict[float, UFloat]:
@@ -719,13 +732,9 @@ class ScanWorker(QObject):
             self.set_quads(setpoint)
             time.sleep(self.scan_request.settings.quad_wait)
             # Get the average...
-            pxwidth_slices, pxwidth_err_slices = self._sample_until_nonzero()            
-            imid = len(pxwidth_slices) // 2
-            print("beta:", setpoint.beta, pxwidth_slices)
+            pxwidth, pxwidth_err = self._sample_until_nonzero()            
+            print("beta:", setpoint.beta, pxwidth)
 
-            pxwidth = pxwidth_slices[imid]
-            pxwidth_err = pxwidth_err_slices[imid]
-            
             widths[setpoint.beta] = ufloat(pxwidth, pxwidth_err) # * pxsize
             pxu = ufloat(pxwidth, pxwidth_err)
 
@@ -737,6 +746,10 @@ class ScanWorker(QObject):
                                                             dispersion=setpoint.dispersion,
                                                             voltage=voltage,
                                                             beta=setpoint.beta))
+            self.save_one_setpoint_raw_images(scan_type=ScanType.BETA,
+                                              dispersion=setpoint.dispersion,
+                                              voltage=voltage,
+                                              beta=setpoint.beta)
 
         return widths
     
@@ -751,7 +764,6 @@ class ScanWorker(QObject):
         anal = self.machine.screen.analysis()
         anal.accumulate_background()
         # 
-
 
     def do_one_scan_setpoint(
         self,
@@ -791,12 +803,36 @@ class ScanWorker(QObject):
                     beta=beta,
                     scan_type=str(scan_type),
                 )
-                self.processed_image_signal.emit(processed_image)
 
-                widths.append(processed_image.central_width)
-                bunch_lengths.append(processed_image.sigma_z)
+    def save_one_setpoint_raw_images(
+        self,
+        scan_type: ScanType,
+        dispersion: float,
+        voltage: float,
+        beta: float,
+        bg=0.0,
+        slice_pos=None,
+    ):
+        widths = []  # Result
+        bunch_lengths = []
+        # Output pandas dataframe of snapshots
 
-            return widths, bunch_lengths
+        with self.snapshot_accumulator(
+            scan_type, dispersion, voltage, beta
+        ) as accumulator:
+            if self.kill:
+                raise UserCancelledMeasurementException
+            image_taker = self.take_screen_data(
+                self.scan_request.images_per_setpoint, expect_beam=True
+            )
+            for raw_image in image_taker:
+                accumulator.take_snapshot(
+                    raw_image,
+                    dispersion=dispersion,
+                    voltage=voltage,
+                    beta=beta,
+                    scan_type=str(scan_type),
+                )
 
     def set_quads(self, setpoint):
         self.machine.scanner.set_scan_setpoint_quads(setpoint)

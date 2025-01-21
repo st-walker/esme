@@ -71,10 +71,11 @@ class CrossingResult:
         return self.phases - np.mean(self.phases)
     
     def relative_times(self):
-        return self.relative_phases / (360 * TDS_FREQUENCY)
+        scale = 1e12 # to ps
+        return scale * self.relative_phases() / (360 * TDS_FREQUENCY)
 
     def fit_gauss(self):
-        x = self.relative_times
+        x = self.relative_times()
         y = self.gauss_pos
         yerr = self.gauss_pos_err
         popt, pcov = curve_fit(line, x, y, sigma=yerr, absolute_sigma=True)
@@ -82,7 +83,7 @@ class CrossingResult:
         return popt, pcov
 
     def fit_rms(self):
-        x = self.relative_times
+        x = self.relative_times()
         y = self.rms_pos
         yerr = self.rms_pos_err
         popt, pcov = curve_fit(line, x, y, sigma=yerr, absolute_sigma=True)
@@ -95,16 +96,17 @@ class CrossingResult:
         cerr, merr = errors
         c = ufloat(c, cerr)
         m = ufloat(m, merr)
-        result = c + m * self.relative_times
+        result = c + m * self.relative_times()
         values = [r.n for r in result]
         errors = [r.s for r in result]
         return values, errors        
 
     def time_calibration_gauss(self) -> tuple[float, float]:
+        from IPython import embed; embed()
         popt, pcov = self.fit_gauss()
         errors = np.sqrt(np.diag(pcov))
-        _, m = popt
-        _, merr = errors
+        m, _ = popt
+        merr = errors
         return m, merr
 
     def time_calibration_rms(self) -> tuple[float, float]:
@@ -211,6 +213,7 @@ class QuickCalibratorWindow(QMainWindow):
                                      self._get_tds_from_stack(),
                                      SpecialBunchesControl(area))
         self.worker = CalibrationWorker(manager, self.phase_scan_ranges)
+        self.worker.signals.final_result.connect(self.show_result)
         self.threadpool.start(self.worker)
         self.enable_ui(enable=False)
 
@@ -219,6 +222,7 @@ class QuickCalibratorWindow(QMainWindow):
         self.enable_ui(enable=True)
 
     def show_result(self, result: CalibrationResult) -> None:
+
         self._plot_result(result)
         self._add_plot_text_box(result)
         ### XXX: Some button, which to accept?
@@ -240,20 +244,27 @@ class QuickCalibratorWindow(QMainWindow):
             self._plot_crossing_result(result.second, label="Second")
         self.calib_ax.legend()
 
-    def _add_plot_text_box(self) -> None:
+    def _add_plot_text_box(self, result) -> None:
         pass
         # self.calib_ax.text(0.5, 0.05, fr"First: \sigma_{{}}{}±{} µm/ps")
 
     def _plot_crossing_result(self, crossing_result: CrossingResult, label) -> None:
-        x = crossing_result.first.phases
+        dt = crossing_result.relative_times()
         # Convert phases to time offsets
-        x *= 1e12 # to picoseconds
-
-        y = crossing_result.first.gauss_pos
-        yerr = crossing_result.first.gauss_pos_err
-        popt, pcov = curve_fit(line, x, y, sigma=yerr, absolute_sigma=True)
-        l1, = self.calib_ax.plot(x, line(x, *popt))
-        self.calib_ax.errorbar(x, y, yerr=yerr, linestyle="x", color=l1.get_color())
+        dt *= 1e12 # to picoseconds
+        y = np.array(crossing_result.gauss_pos) * 1e3
+        yerr = np.array(crossing_result.gauss_pos_err) * 1e3
+        popt, pcov = curve_fit(line, dt, y, sigma=yerr, absolute_sigma=True)
+        l1, = self.calib_ax.plot(dt, line(dt, *popt))
+        self.calib_ax.errorbar(dt, y,
+                               yerr=yerr,
+                               linestyle="",
+                               marker="x", 
+                               color=l1.get_color(),
+                               label=label
+                               )
+        # from IPython import embed; embed()
+        # self.calib_ax.draw()
 
     def _connect_buttons(self) -> None:
         self.ui.set_phase_00.clicked.connect(self.set_phase_00)
@@ -354,12 +365,15 @@ class CalibrationWorker(QRunnable):
 
     def run(self) -> None:
         # Put beam onto screen if it not already
-        anal = self.man.screen.analysis
-        self._find_gain()
-        self._take_background()
-        self.man.turn_beam_onto_screen()
-        time.sleep(1)
-        self._do_phase_scans()
+        try:
+            anal = self.man.screen.analysis
+            self._find_gain()
+            self._take_background()
+            self.man.turn_beam_onto_screen()
+            time.sleep(1)
+            self._do_phase_scans()
+        except InterruptedCalibrationError:
+            pass
 
 
 def _make_cal_string(cal: float, cal_err: float) -> str:
@@ -431,8 +445,6 @@ class CalibrationDialog(QDialog):
 
         # Store the values
         self.result = result
-        # self.first = result.first.time_calibration_gauss()
-        # self.second = result.second.time_calibration_gauss()
 
         self._init_ui()
 
@@ -443,14 +455,15 @@ class CalibrationDialog(QDialog):
 
         cal1 = self.result.first.time_calibration_gauss()
         cal1_str = _make_cal_string(cal1[0], cal1[1])
+        # from IPython import embed; embed()
         message = dedent(f"""\
             The Calibration has finished.  Choose a Calibration:
 
             First: {cal1_str}
             """)
         
-        if self.second is not None:
-            avg = self.first[0] + self.second[0] / 2.0
+        if self.result.second is not None:
+            avg = self.first[0] + self.rsecond[0] / 2.0
             avg_err = np.sqrt(self.first[1] + self.second[1])
             second_str = _make_cal_string(*self.second)
             avg_str = _make_cal_string(avg, avg_err)
@@ -461,15 +474,15 @@ class CalibrationDialog(QDialog):
             """)
 
         # Add a label to the dialog
-        message_label = QLabel("The calibration has finished.  Pick a calibration:")
+        message_label = QLabel(message)
         main_layout.addWidget(message_label)
 
         # Create the buttons
         self.first_button = QPushButton("First")
         self.second_button = QPushButton("Second")
-        self.second_button.setEnabled(self.second is not None)
+        self.second_button.setEnabled(self.result.second is not None)
         self.average_button = QPushButton("Average")
-        self.average_button.setEnabled(self.second is not None)
+        self.average_button.setEnabled(self.result.second is not None)
         self.cancel_button = QPushButton("Cancel")
 
         # Use a QHBoxLayout for the buttons
